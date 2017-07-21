@@ -273,7 +273,7 @@ class geo():
 
     def combine(self, geo_list, deltaLength=None):
         for geo1 in geo_list:
-            err_msg = 'one or more objects in geo_list are not geo object. '
+            err_msg = 'some objects in geo_list are not geo object. '
             assert isinstance(geo1, geo), err_msg
             err_msg = 'one or more objects not finished create yet. '
             assert geo1.get_n_nodes() != 0, err_msg

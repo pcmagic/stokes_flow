@@ -729,54 +729,6 @@ def check_surf_force_matrix_3d(**kwargs):
         raise ValueError(err_msg)
 
 
-def point_force_matrix_3d_petsc(obj1: sf.stokesFlowObj,  # objct contain velocity information
-                                obj2: sf.stokesFlowObj,  # objct contain force information
-                                **kwargs):
-    # Solve m matrix using point force stokeslets method
-    # U = M * F.
-
-    vnodes = obj1.get_u_nodes()
-    n_vnode = obj1.get_n_velocity()
-    fnodes = obj2.get_f_nodes()
-    n_fnode = obj2.get_n_force()
-
-    m = PETSc.Mat().create(comm=PETSc.COMM_WORLD)
-    n_unknown = obj2.get_n_unknown()
-    m.setSizes(((None, n_vnode), (None, n_fnode)))
-    m.setType('dense')
-    m.setFromOptions()
-    m.setUp()
-    m_start, m_end = m.getOwnershipRange()
-
-    for i0 in range(m_start, m_end):  # interaction between different nodes.
-        delta_xi = fnodes - vnodes[i0 // 3]  # [delta_x, delta_y, delta_z]
-        temp1 = delta_xi ** 2
-        delta_r2 = temp1.sum(axis=1)  # r^2
-        delta_r1 = delta_r2 ** 0.5  # r^1
-        delta_r3 = delta_r2 * delta_r1  # r^3
-        temp2 = 1 / (delta_r1 * (8 * np.pi))  # 1/r^1/(8*np.pi)
-        temp3 = 1 / (delta_r3 * (8 * np.pi))  # 1/r^3/(8*np.pi)
-        if i0 % 3 == 0:  # velocity x axis
-            m[i0, 0::n_unknown] = (temp2 + delta_xi[:, 0] * delta_xi[:, 0] * temp3)  # Fxx
-            m[i0, 1::n_unknown] = (delta_xi[:, 0] * delta_xi[:, 1] * temp3)  # Fxy
-            m[i0, 2::n_unknown] = (delta_xi[:, 0] * delta_xi[:, 2] * temp3)  # Fxz
-        elif i0 % 3 == 1:  # velocity y axis
-            m[i0, 0::n_unknown] = (delta_xi[:, 0] * delta_xi[:, 1] * temp3)  # Fxy
-            m[i0, 1::n_unknown] = (temp2 + delta_xi[:, 1] * delta_xi[:, 1] * temp3)  # Fyy
-            m[i0, 2::n_unknown] = (delta_xi[:, 1] * delta_xi[:, 2] * temp3)  # Fyz
-        elif i0 % 3 == 2:  # velocity z axis
-            m[i0, 0::n_unknown] = (delta_xi[:, 0] * delta_xi[:, 2] * temp3)  # Fxz
-            m[i0, 1::n_unknown] = (delta_xi[:, 1] * delta_xi[:, 2] * temp3)  # Fyz
-            m[i0, 2::n_unknown] = (temp2 + delta_xi[:, 2] * delta_xi[:, 2] * temp3)  # Fzz
-    m.assemble()
-
-    return m  # ' regularized stokeslets matrix, U = M * F '
-
-
-def check_point_force_matrix_3d_petsc(**kwargs):
-    pass
-
-
 def point_source_matrix_3d_petsc(obj1: sf.stokesFlowObj,  # objct contain velocity information
                                  obj2: sf.stokesFlowObj,  # objct contain force information
                                  **kwargs):

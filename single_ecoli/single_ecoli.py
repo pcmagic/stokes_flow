@@ -279,14 +279,16 @@ def main_fun(**main_kwargs):
             # vhobj1.show_u_nodes(' ')
             # ecoli_comp.show_f_nodes(' ')
             # ecoli_comp.show_u_nodes(' ')
-            vsobj.show_f_u_nodes(' ')
-            vhobj0.show_f_u_nodes(' ')
+            # vsobj.show_f_u_nodes(' ')
+            # vhobj0.show_f_u_nodes(' ')
             ecoli_comp.show_f_u_nodes(' ')
 
         problem.create_matrix()
         residualNorm = problem.solve()
         # # debug
         # problem.saveM_ASCII('%s_M.txt' % fileHeadle)
+        # problem.saveF_ASCII('%s_F.txt' % fileHeadle)
+        # problem.saveV_ASCII('%s_V.txt' % fileHeadle)
 
         temp_f = 0.5 * (np.abs(vsobj.get_force().reshape((-1, 3)).sum(axis=0)) +
                         np.abs(vhobj0.get_force().reshape((-1, 3)).sum(axis=0) +

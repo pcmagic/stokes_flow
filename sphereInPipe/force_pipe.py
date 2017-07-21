@@ -40,7 +40,7 @@ def get_problem_kwargs(**main_kwargs):
     lp = OptDB.getReal('lp', 1)  # length of pipe
     b0 = OptDB.getReal('b0', 1e-4)  # (b0, b1) the range of b, location of force
     b1 = OptDB.getReal('b1', 0.9)
-    nb = OptDB.getInt('nb', 6)  # amount of b
+    nb = OptDB.getInt('nb', 2)  # amount of b
     th = OptDB.getInt('th', 30)  # threshold
     solve_method = OptDB.getString('s', 'gmres')
     precondition_method = OptDB.getString('g', 'none')
@@ -228,7 +228,8 @@ def do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, d
              'dp':           dp,
              'ep':           ep,
              'lp':           lp,
-             'rp':           rp},
+             'rp':           rp,
+             'th':           th, },
             oned_as='column')
     PETSc.Sys().Print('export mat file to %s ' % fileHeadle)
     pass
@@ -312,23 +313,36 @@ def construct(**main_kwargs):
 def debug_stokeslets_b(b, node):
     problem_kwargs = get_problem_kwargs()
     fileHeadle = problem_kwargs['fileHeadle']
-    t_headle = '_pick.bin'
-    if fileHeadle[-len(t_headle):] != t_headle:
-        fileHeadle = fileHeadle + t_headle
-    with open(fileHeadle, 'rb') as input:
-        unpick = pickle.Unpickler(input)
-        problem = unpick.load()
-        problem.unpickmyself()
-    assert isinstance(problem, sf.stokesletsInPipeProblem)
+    problem = sf.stokesletsInPipeForceFreeProblem(**problem_kwargs)
+    # fileHeadle = 'construct07'
+    problem.set_prepare(fileHeadle)
+
+    # t_headle = '_pick.bin'
+    # if fileHeadle[-len(t_headle):] != t_headle:
+    #     fileHeadle = fileHeadle + t_headle
+    # with open(fileHeadle, 'rb') as input:
+    #     unpick = pickle.Unpickler(input)
+    #     problem = unpick.load()
+    #     problem.unpickmyself()
+    # assert isinstance(problem, sf.stokesletsInPipeProblem)
+
     node = np.array(node).reshape((-1, 3))
-    num_ans = np.array(problem.debug_solve_stokeslets_b(b=b, node=node)).flatten()
+    num_ans1, num_ans2, num_ans3 = problem.debug_solve_stokeslets_b(b=b, node=node)
 
     tR, tphi = cart2pol(node[:, 0], node[:, 1])
-    greenFun = detail(threshold=50, b=b)
+    greenFun = detail(threshold=30, b=b)
     greenFun.solve_prepare()
-    any_ans = np.array(greenFun.solve_u(tR, tphi, node[:, 2])).flatten()
-    print(np.vstack((any_ans, num_ans, num_ans - any_ans, (num_ans - any_ans) / any_ans)).T)
-    print(np.sqrt(np.sum((num_ans - any_ans) ** 2) / np.sum(any_ans ** 2)))
+    any_ans1 = np.hstack([greenFun.solve_u1(R, phi, z) for R, phi, z in zip(tR, tphi, node[:, 2])])
+    any_ans2 = np.hstack([greenFun.solve_u2(R, phi, z) for R, phi, z in zip(tR, tphi, node[:, 2])])
+    any_ans3 = np.hstack([greenFun.solve_u3(R, phi, z) for R, phi, z in zip(tR, tphi, node[:, 2])])
+    print('u1')
+    print(np.vstack((any_ans1, num_ans1, num_ans1 - any_ans1, (num_ans1 - any_ans1) / any_ans1)).T)
+    print('u2')
+    print(np.vstack((any_ans2, num_ans2, num_ans2 - any_ans2, (num_ans2 - any_ans2) / any_ans2)).T)
+    print('u3')
+    print(np.vstack((any_ans3, num_ans3, num_ans3 - any_ans3, (num_ans3 - any_ans3) / any_ans3)).T)
+    print(np.sqrt(np.sum((num_ans1 - any_ans1) ** 2 + (num_ans2 - any_ans2) ** 2 + (num_ans3 - any_ans3) ** 2)
+                  / np.sum(any_ans1 ** 2 + any_ans2 ** 2 + any_ans3 ** 2)))
     return True
 
 
@@ -354,14 +368,18 @@ def debug_solve_u_pipe(b, dp, lp):
 def debug_solve_stokeslets_fnode(fnode, unodes):
     problem_kwargs = get_problem_kwargs()
     fileHeadle = problem_kwargs['fileHeadle']
-    t_headle = '_pick.bin'
-    if fileHeadle[-len(t_headle):] != t_headle:
-        fileHeadle = fileHeadle + t_headle
-    with open(fileHeadle, 'rb') as input:
-        unpick = pickle.Unpickler(input)
-        problem = unpick.load()
-        problem.unpickmyself()
-    assert isinstance(problem, sf.stokesletsInPipeProblem)
+    problem = sf.stokesletsInPipeForceFreeProblem(**problem_kwargs)
+    fileHeadle = 'construct07'
+    problem.set_prepare(fileHeadle)
+
+    # t_headle = '_pick.bin'
+    # if fileHeadle[-len(t_headle):] != t_headle:
+    #     fileHeadle = fileHeadle + t_headle
+    # with open(fileHeadle, 'rb') as input:
+    #     unpick = pickle.Unpickler(input)
+    #     problem = unpick.load()
+    #     problem.unpickmyself()
+    # assert isinstance(problem, sf.stokesletsInPipeProblem)
 
     fnode = np.array(fnode).reshape((1, 3))
     unodes = np.array(unodes).reshape((-1, 3))
@@ -370,10 +388,10 @@ def debug_solve_stokeslets_fnode(fnode, unodes):
 
 
 if __name__ == '__main__':
-    main_fun()
+    # main_fun()
     # show_err()
     # export_mat()
-    # debug_stokeslets_b(5.81500000e-01, (0.5, 0, 0.2))
+    debug_stokeslets_b(5.81500000e-01, np.vstack((np.ones(10) * 0.5, np.ones(10) * 0.5, np.linspace(0.1, 1, 10))).T)
     # debug_solve_u_pipe(0.5, 0.1, 0.5)
     # debug_solve_stokeslets_fnode((0.7, 0.3, 0.8), np.random.sample(18))
 

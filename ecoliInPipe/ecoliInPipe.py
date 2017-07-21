@@ -11,19 +11,20 @@ import petsc4py
 
 petsc4py.init(sys.argv)
 from os import path as ospath
+from petsc4py import PETSc
 
-t_path = sys.path[0]
-t_path = ospath.dirname(t_path)
-if ospath.isdir(t_path):
-    sys.path = [t_path] + sys.path
-else:
-    err_msg = "can not add path father path"
-    raise ValueError(err_msg)
+# t_path = sys.path[0]
+# t_path = ospath.dirname(t_path)
+# if ospath.isdir(t_path):
+#     sys.path = [t_path] + sys.path
+# else:
+#     err_msg = "can not add path father path"
+#     raise ValueError(err_msg)
+sys.path = ['/home/zhangji/stokes_flow-master'] + sys.path
 
 import numpy as np
 from src import stokes_flow as sf
 from src.stokes_flow import problem_dic, obj_dic
-from petsc4py import PETSc
 from src.geo import *
 from time import time
 from scipy.io import loadmat
@@ -282,7 +283,7 @@ def main_fun(**main_kwargs):
 
         problem.create_matrix()
         residualNorm = problem.solve()
-        # # debug
+        # debug
         # problem.saveM_ASCII('%s_M.txt' % fileHeadle)
 
         temp_f = 0.5 * (np.abs(vsobj.get_force().reshape((-1, 3)).sum(axis=0)) +
@@ -299,10 +300,11 @@ def main_fun(**main_kwargs):
         if problem_kwargs['pickProblem']:
             problem.pickmyself(fileHeadle)
         velocity_err = save_vtk(problem)
-        with open("caseInfo.txt", "a") as outfile:
-            outline = np.hstack((prb_index, zoom_factor, non_dim_U, non_dim_F, velocity_err))
-            outfile.write(' '.join('%e' % i for i in outline))
-            outfile.write('\n')
+        if rank == 0:
+            with open("caseInfo.txt", "a") as outfile:
+                outline = np.hstack((prb_index, zoom_factor, non_dim_U, non_dim_F, velocity_err))
+                outfile.write(' '.join('%e' % i for i in outline))
+                outfile.write('\n')
     else:
         pass
         # with open(fileHeadle + '_pick.bin', 'rb') as input:
