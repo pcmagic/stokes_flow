@@ -848,39 +848,6 @@ def point_force_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # velocity node
     return m00, m01, m02, m10, m11, m12, m20, m21, m22, i0
 
 
-def point_force_matrix_3d_petsc_mij2(temp):
-    t_u_node, f_nodes, i0, u_glb, f_glbIdx_all, m = temp
-    mypi = np.pi
-    dxi = (t_u_node - f_nodes).T
-    dx0 = dxi[0]
-    dx1 = dxi[1]
-    dx2 = dxi[2]
-    dr2 = np.sum(dxi ** 2, axis=0)
-    dr1 = np.sqrt(dr2)
-    dr3 = dr1 * dr2
-    temp1 = 1 / (dr1 * (8 * mypi))  # 1/r^1
-    temp2 = 1 / (dr3 * (8 * mypi))  # 1/r^3
-    m00 = temp2 * dx0 * dx0 + temp1
-    m01 = temp2 * dx0 * dx1
-    m02 = temp2 * dx0 * dx2
-    m10 = temp2 * dx1 * dx0
-    m11 = temp2 * dx1 * dx1 + temp1
-    m12 = temp2 * dx1 * dx2
-    m20 = temp2 * dx2 * dx0
-    m21 = temp2 * dx2 * dx1
-    m22 = temp2 * dx2 * dx2 + temp1
-    m.setValues(u_glb + 0, f_glbIdx_all[0::3], m00, addv=False)
-    m.setValues(u_glb + 0, f_glbIdx_all[1::3], m01, addv=False)
-    m.setValues(u_glb + 0, f_glbIdx_all[2::3], m02, addv=False)
-    m.setValues(u_glb + 1, f_glbIdx_all[0::3], m10, addv=False)
-    m.setValues(u_glb + 1, f_glbIdx_all[1::3], m11, addv=False)
-    m.setValues(u_glb + 1, f_glbIdx_all[2::3], m12, addv=False)
-    m.setValues(u_glb + 2, f_glbIdx_all[0::3], m20, addv=False)
-    m.setValues(u_glb + 2, f_glbIdx_all[1::3], m21, addv=False)
-    m.setValues(u_glb + 2, f_glbIdx_all[2::3], m22, addv=False)
-    return m00, m01, m02, m10, m11, m12, m20, m21, m22, i0
-
-
 def point_force_matrix_3d_petsc(obj1: sf.stokesFlowObj,  # objct contain velocity information
                                 obj2: sf.stokesFlowObj,  # objct contain force information
                                 m,

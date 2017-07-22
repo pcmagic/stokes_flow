@@ -23,6 +23,8 @@ tube+sphere/
 *\construct07_pick.bin
 *.orig
 *.iml
+*.txt
+*.exe
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -297,14 +297,14 @@ def main_fun(**main_kwargs):
         PETSc.Sys.Print('velocity_sphere', rel_Us + ecoli_comp.get_ref_U())
         PETSc.Sys.Print('velocity_helix', rel_Uh + ecoli_comp.get_ref_U())
 
-        if problem_kwargs['pickProblem']:
-            problem.pickmyself(fileHeadle)
-        velocity_err = save_vtk(problem)
-        if rank == 0:
-            with open("caseInfo.txt", "a") as outfile:
-                outline = np.hstack((prb_index, zoom_factor, non_dim_U, non_dim_F, velocity_err))
-                outfile.write(' '.join('%e' % i for i in outline))
-                outfile.write('\n')
+        # if problem_kwargs['pickProblem']:
+        #     problem.pickmyself(fileHeadle)
+        # velocity_err = save_vtk(problem)
+        # if rank == 0:
+        #     with open("caseInfo.txt", "a") as outfile:
+        #         outline = np.hstack((prb_index, zoom_factor, non_dim_U, non_dim_F, velocity_err))
+        #         outfile.write(' '.join('%e' % i for i in outline))
+        #         outfile.write('\n')
     else:
         pass
         # with open(fileHeadle + '_pick.bin', 'rb') as input:

@@ -48,14 +48,14 @@ class detail():
         self._psi_yn2_k0 = np.zeros([0])
         self._pi_yn2_k0 = np.zeros([0])
         self._omega_yn2_k0 = np.zeros([0])
-        self._finish_xyk = False  # run get_xyk first
-        self._finish_xn = False  # run solve_prepare_xn first
-        self._finish_yn = False  # run solve_prepare_yn first
-        self._finish1 = False  # run solve_prepare1 first
-        self._finish2 = False  # run solve_prepare2 first
-        self._finish3 = False  # run solve_prepare3 first
+        self._finish_xyk = False  # run _set_xyk first
+        self._finish_xn = False  # run _solve_prepare_xn first
+        self._finish_yn = False  # run _solve_prepare_yn first
+        self._finish1 = False  # run _solve_prepare1 first
+        self._finish2 = False  # run _solve_prepare2 first
+        self._finish3 = False  # run _solve_prepare3 first
 
-    def get_xyk(self):
+    def _set_xyk(self):
         threshold = self._threshold
         kmax = int(threshold - 2)
         nmax = int(threshold / 2)
@@ -87,8 +87,8 @@ class detail():
     def get_b(self):
         return self._b
 
-    def solve_prepare_xn(self):
-        err_msg = 'run get_xyk first. '
+    def _solve_prepare_xn(self):
+        err_msg = 'run _set_xyk first. '
         assert self._finish_xyk, err_msg
 
         DmyD = lambda k, s: 2 * s ** (-2) * iv(k, s) * (
@@ -99,8 +99,8 @@ class detail():
         self._finish_xn = True
         return True
 
-    def solve_prepare_yn(self):
-        err_msg = 'run get_xyk first. '
+    def _solve_prepare_yn(self):
+        err_msg = 'run _set_xyk first. '
         assert self._finish_xyk, err_msg
 
         DmyD = lambda k, s: 2 * s ** (-2) * iv(k, s) * (
@@ -111,8 +111,8 @@ class detail():
         self._finish_yn = True
         return True
 
-    def solve_prepare1(self):
-        err_msg = 'run solve_prepare_xn first. '
+    def _solve_prepare1(self):
+        err_msg = 'run _solve_prepare_xn first. '
         assert self._finish_xn, err_msg
 
         psi1 = lambda k, s, b: (1 / 16) * pi ** (-2) * (s ** 2 * ((iv((-2) + k, s) + iv(k, s)) * iv(1 + k, s) + iv((-1) + k, s) * (iv(k, s) + iv(2 + k, s))) * (
@@ -173,8 +173,8 @@ class detail():
         self._finish1 = True
         return True
 
-    def solve_prepare2(self):
-        err_msg = 'run solve_prepare_yn first. '
+    def _solve_prepare2(self):
+        err_msg = 'run _solve_prepare_yn first. '
         assert self._finish_yn, err_msg
 
         psi2 = lambda k, s, b: (1 / 16) * pi ** (-2) * (
@@ -204,8 +204,8 @@ class detail():
         self._finish2 = True
         return True
 
-    def solve_prepare3(self):
-        err_msg = 'run solve_prepare_xn first. '
+    def _solve_prepare3(self):
+        err_msg = 'run _solve_prepare_xn first. '
         assert self._finish_xn, err_msg
 
         psi3 = lambda k, s, b: (1 / 8) * pi ** (-2) * s * (((iv((-2) + k, s) + iv(k, s)) * iv(1 + k, s) + iv((-1) + k, s) * (iv(k, s) + iv(2 + k, s))) * (
@@ -242,7 +242,7 @@ class detail():
         return True
 
     def solve_u1(self, R, Phi, z):
-        err_msg = 'run solve_prepare1 first. '
+        err_msg = 'run _solve_prepare1 first. '
         assert self._finish1, err_msg
 
         AFPhi1nL = lambda xn, k, psi1, omega1, pi1, R, z, DmyD: (-2) * exp(1) ** ((-1) * z * imag(xn)) * pi * imag(DmyD ** (-1) * exp(1) ** (sqrt(-1 + 0j) * z * real(xn)) * (
@@ -302,7 +302,7 @@ class detail():
         return uR1, uPhi1, uz1
 
     def solve_u2(self, R, Phi, z):
-        err_msg = 'run solve_prepare2 first. '
+        err_msg = 'run _solve_prepare2 first. '
         assert self._finish2, err_msg
 
         AFPhi2nL = lambda xn, k, psi2, omega2, pi2, R, z, DmyD: (-2) * exp(1) ** ((-1) * z * imag(xn)) * pi * imag(DmyD ** (-1) * exp(1) ** (sqrt(-1 + 0j) * z * real(xn)) * (
@@ -358,7 +358,7 @@ class detail():
         return uR2, uPhi2, uz2
 
     def solve_u3(self, R, Phi, z):
-        err_msg = 'run solve_prepare3 first. '
+        err_msg = 'run _solve_prepare3 first. '
         assert self._finish3, err_msg
 
         BFPhi3nL = lambda xn, k, psi3, omega3, pi3, R, z, DmyD: 2 * exp(1) ** ((-1) * z * imag(xn)) * pi * real(DmyD ** (-1) * exp(1) ** (sqrt(-1 + 0j) * z * real(xn)) * (
@@ -417,12 +417,12 @@ class detail():
         return uR3, uPhi3, uz3
 
     def solve_prepare(self):
-        self.get_xyk()
-        self.solve_prepare_xn()
-        self.solve_prepare_yn()
-        self.solve_prepare1()
-        self.solve_prepare2()
-        self.solve_prepare3()
+        self._set_xyk()
+        self._solve_prepare_xn()
+        self._solve_prepare_yn()
+        self._solve_prepare1()
+        self._solve_prepare2()
+        self._solve_prepare3()
         return True
 
     def solve_u(self, R, Phi, z):
@@ -430,17 +430,3 @@ class detail():
         uR2, uPhi2, uz2 = self.solve_u2(R, Phi, z)
         uR3, uPhi3, uz3 = self.solve_u3(R, Phi, z)
         return uR1, uPhi1, uz1, uR2, uPhi2, uz2, uR3, uPhi3, uz3
-
-# class greenFun():
-#     def __init__(self, threshold, x, y, z, dp, rp, lp, **kwargs):
-#         R = np.sqrt(x ** 2 + y ** 2)
-#         phi = np.arctan2(y, x)
-#         self._b = R
-#         self._phi = phi
-#         self._z = z
-#
-#
-#         self._detail = detail(threshold=threshold, b=R)
-#         self._detail.solve_prepare()
-#
-#     def

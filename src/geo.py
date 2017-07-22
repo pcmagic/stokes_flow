@@ -148,9 +148,8 @@ class geo():
         nodes_petsc.assemble()
         return nodes_petsc
 
-    def set_nodes(self, nodes: np.array, deltalength, resetVelocity=False):
-        err_msg = 'nodes is a n*3 numpy array containing x, y and z coordinates. '
-        assert nodes.shape[1] == 3, err_msg
+    def set_nodes(self, nodes, deltalength, resetVelocity=False):
+        nodes = np.array(nodes).reshape((-1, 3))
         self._nodes = nodes
         self._deltaLength = deltalength
         self.set_dmda()
@@ -378,6 +377,11 @@ class geo():
         comm = PETSc.COMM_WORLD.tompi4py()
         self._glbIdx = indices
         self._glbIdx_all = np.hstack(comm.allgather(indices))
+        return True
+
+    def set_glbIdx_all(self, indices):
+        self._glbIdx = []
+        self._glbIdx_all = indices
         return True
 
     def get_glbIdx(self):

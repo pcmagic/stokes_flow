@@ -69,9 +69,10 @@ def save_vtk(problem: sf.stokesFlowProblem):
     velocity_err_sphere = problem.vtk_check('%s_sphere_Check' % fileHeadle, vsobj_check)
     velocity_err_helix0 = problem.vtk_check('%s_helix0_Check' % fileHeadle, vhobj0_check)
     velocity_err_helix1 = problem.vtk_check('%s_helix1_Check' % fileHeadle, vhobj1_check)
-    PETSc.Sys.Print('total velocity error is: %f' % velocity_err[0])
-    PETSc.Sys.Print('velocity errors of sphere, helix0, and helix1 are %f, %f, and %f, respectively. ' %
-                    (velocity_err_sphere[0], velocity_err_helix0[0], velocity_err_helix1[0]))
+    PETSc.Sys.Print('velocity error           (total, x, y, z): ',  velocity_err)
+    PETSc.Sys.Print('velocity error of sphere (total, x, y, z): ',  velocity_err_sphere)
+    PETSc.Sys.Print('velocity error of helix0 (total, x, y, z): ',  velocity_err_helix0)
+    PETSc.Sys.Print('velocity error of helix1 (total, x, y, z): ',  velocity_err_helix1)
 
     t1 = time()
     PETSc.Sys.Print('%s: write vtk files use: %fs' % (str(problem), (t1 - t0)))
@@ -210,7 +211,8 @@ def print_case_info(**problem_kwargs):
     PETSc.Sys.Print('  nth, hfct and epsilon of helix are %d, %f and %f, ' % (nth, hfct, eh))
     PETSc.Sys.Print('  sphere/ellipse radius: %f and %f, delta length: %f, epsilon: %f' % (rs1, rs2, ds, es))
     PETSc.Sys.Print('  ecoli center: %s, distance between head and tail is %f' % (str(center), dist_hs))
-    PETSc.Sys.Print('  relative velocity of head and tail are %s and %s' % (str(rel_Us), str(rel_Uh)))
+    PETSc.Sys.Print('  relative velocities of head are %s' % str(rel_Us))
+    PETSc.Sys.Print('  relative velocities of tail are %s' % str(rel_Uh))
     PETSc.Sys.Print('  geo zoom factor is %f' % zoom_factor)
 
     err_msg = "Only 'rs', 'tp_rs', 'lg_rs', and 'pf' methods are accept for this main code. "

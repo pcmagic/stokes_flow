@@ -216,20 +216,6 @@ def main_fun(**main_kwargs):
         vsobj.set_data(fsgeo, vsgeo, **vsobj_kwargs)
 
         # # create problem
-        # problem = problem_dic[matrix_method](**problem_kwargs)
-        # problem.solve_prepare(**problem_kwargs)
-        # if problem_kwargs['pickProblem']:
-        #     # do NOT save anything really, just check if the path is correct, to avoid this error after long time calculation.
-        #     problem.pickmyself(fileHeadle, check=True)
-
-        # load problem, solved force at (or outside) the pipe prepared.
-        # t_headle = '_pick.bin'
-        # prbHeadle = prbHeadle if prbHeadle[-len(t_headle):] == t_headle else prbHeadle + t_headle
-        # with open(prbHeadle, 'rb') as input:
-        #     unpick = pickle.Unpickler(input)
-        #     problem = unpick.load()
-        #     problem.unpickmyself()
-        # problem.set_kwargs(**problem_kwargs)
         problem = problem_dic[matrix_method](**problem_kwargs)
         problem.set_prepare(forcepipe)
 
@@ -243,7 +229,7 @@ def main_fun(**main_kwargs):
         if rank == 0:
             force_sphere = vsobj.get_force_z()
             PETSc.Sys.Print('---->>>Resultant at z axis is %f' % (np.sum(force_sphere) / (6 * np.pi * rs)))
-        save_vtk(problem)
+        # save_vtk(problem)
 
 
     else:
