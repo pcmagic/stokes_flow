@@ -323,45 +323,59 @@ def stokeslets_matrix_3d_petsc(obj1: sf.stokesFlowObj,  # object contain velocit
     return m  # stokeslets matrix, U = M * F
 
 
+def regularized_stokeslets_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # velocity node
+                                               f_nodes: np.ndarray,  # force nodes
+                                               delta_2,  # delta_2 = e^2
+                                               i0, **kwargs):
+    mypi = np.pi
+    dxi = (t_u_node - f_nodes).T
+    dx0 = dxi[0]
+    dx1 = dxi[1]
+    dx2 = dxi[2]
+    dr2 = np.sum(dxi ** 2, axis=0) + delta_2  # dr2 = r^2+e^2
+    dr1 = np.sqrt(dr2)  # dr1 = (r^2+e^2)^0.5
+    dr3 = dr1 * dr2  # dr3 = (r^2+e^2)^1.5
+    temp1 = (dr2 + delta_2) / (dr3 * (8 * mypi))  # (r^2+2*e^2)/(r^2+e^2)^1.5
+    temp2 = 1 / (dr3 * (8 * mypi))  # 1/(r^2+e^2)^1.5
+    m00 = temp2 * dx0 * dx0 + temp1
+    m01 = temp2 * dx0 * dx1
+    m02 = temp2 * dx0 * dx2
+    m10 = temp2 * dx1 * dx0
+    m11 = temp2 * dx1 * dx1 + temp1
+    m12 = temp2 * dx1 * dx2
+    m20 = temp2 * dx2 * dx0
+    m21 = temp2 * dx2 * dx1
+    m22 = temp2 * dx2 * dx2 + temp1
+    return m00, m01, m02, m10, m11, m12, m20, m21, m22, i0
+
+
 def regularized_stokeslets_matrix_3d_petsc(obj1: sf.stokesFlowObj,  # objct contain velocity information
                                            obj2: sf.stokesFlowObj,  # objct contain force information
-                                           **kwargs):
+                                           m, **kwargs):
     # Solve m matrix using regularized stokeslets method
     # U = M * F.
     # Cortez R. The method of regularized Stokeslets[J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
+    delta_2 = kwargs['delta'] ** 2  # correction factor
+    u_nodes = obj1.get_u_nodes()
+    f_nodes = obj2.get_f_nodes()
+    _, u_glbIdx_all = obj1.get_u_geo().get_glbIdx()
+    _, f_glbIdx_all = obj2.get_f_geo().get_glbIdx()
+    u_dmda = obj1.get_u_geo().get_dmda()
 
-    delta = kwargs['delta']  # correction factor
-    vnodes = obj1.get_u_nodes()
-    n_vnode = obj1.get_n_velocity()
-    fnodes = obj2.get_f_nodes()
-    n_fnode = obj2.get_n_force()
-
-    n_unknown = obj2.get_n_unknown()
-    m = PETSc.Mat().create(comm=PETSc.COMM_WORLD)
-    m.setSizes(((None, n_vnode), (None, n_fnode)))
-    m.setType('dense')
-    m.setFromOptions()
-    m.setUp()
-    m_start, m_end = m.getOwnershipRange()
-    for i0 in range(m_start, m_end):
-        delta_xi = fnodes - vnodes[i0 // 3]
-        temp1 = delta_xi ** 2
-        delta_2 = np.square(delta)  # delta_2 = e^2
-        delta_r2 = temp1.sum(axis=1) + delta_2  # delta_r2 = r^2+e^2
-        delta_r3 = delta_r2 * np.sqrt(delta_r2)  # delta_r3 = (r^2+e^2)^1.5
-        temp2 = (delta_r2 + delta_2) / delta_r3  # temp2 = (r^2+2*e^2)/(r^2+e^2)^1.5
-        if i0 % 3 == 0:  # x axis
-            m[i0, 0::n_unknown] = (temp2 + np.square(delta_xi[:, 0]) / delta_r3) / (8 * np.pi)  # Mxx
-            m[i0, 1::n_unknown] = delta_xi[:, 0] * delta_xi[:, 1] / delta_r3 / (8 * np.pi)  # Mxy
-            m[i0, 2::n_unknown] = delta_xi[:, 0] * delta_xi[:, 2] / delta_r3 / (8 * np.pi)  # Mxz
-        elif i0 % 3 == 1:  # y axis
-            m[i0, 0::n_unknown] = delta_xi[:, 0] * delta_xi[:, 1] / delta_r3 / (8 * np.pi)  # Mxy
-            m[i0, 1::n_unknown] = (temp2 + np.square(delta_xi[:, 1]) / delta_r3) / (8 * np.pi)  # Myy
-            m[i0, 2::n_unknown] = delta_xi[:, 1] * delta_xi[:, 2] / delta_r3 / (8 * np.pi)  # Myz
-        else:  # z axis
-            m[i0, 0::n_unknown] = delta_xi[:, 0] * delta_xi[:, 2] / delta_r3 / (8 * np.pi)  # Mxz
-            m[i0, 1::n_unknown] = delta_xi[:, 1] * delta_xi[:, 2] / delta_r3 / (8 * np.pi)  # Myz
-            m[i0, 2::n_unknown] = (temp2 + np.square(delta_xi[:, 2]) / delta_r3) / (8 * np.pi)  # Mzz
+    for i0 in range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1]):
+        m00, m01, m02, m10, m11, m12, m20, m21, m22, i1 = regularized_stokeslets_matrix_3d_petsc_mij(u_nodes[i0], f_nodes, delta_2, i0)
+        u_glb = u_glbIdx_all[i1 * 3]
+        m.setValues(u_glb + 0, f_glbIdx_all[0::3], m00, addv=False)
+        m.setValues(u_glb + 0, f_glbIdx_all[1::3], m01, addv=False)
+        m.setValues(u_glb + 0, f_glbIdx_all[2::3], m02, addv=False)
+        m.setValues(u_glb + 1, f_glbIdx_all[0::3], m10, addv=False)
+        m.setValues(u_glb + 1, f_glbIdx_all[1::3], m11, addv=False)
+        m.setValues(u_glb + 1, f_glbIdx_all[2::3], m12, addv=False)
+        m.setValues(u_glb + 2, f_glbIdx_all[0::3], m20, addv=False)
+        m.setValues(u_glb + 2, f_glbIdx_all[1::3], m21, addv=False)
+        m.setValues(u_glb + 2, f_glbIdx_all[2::3], m22, addv=False)
+        # if i0 % 1000==0:
+        #     m.assemble()
     m.assemble()
 
     return m  # ' regularized stokeslets matrix, U = M * F '
@@ -850,8 +864,7 @@ def point_force_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # velocity node
 
 def point_force_matrix_3d_petsc(obj1: sf.stokesFlowObj,  # objct contain velocity information
                                 obj2: sf.stokesFlowObj,  # objct contain force information
-                                m,
-                                **kwargs):
+                                m, **kwargs):
     # Solve m matrix using point force stokeslets method
     # U = M * F.
     u_nodes = obj1.get_u_nodes()
@@ -859,104 +872,6 @@ def point_force_matrix_3d_petsc(obj1: sf.stokesFlowObj,  # objct contain velocit
     _, u_glbIdx_all = obj1.get_u_geo().get_glbIdx()
     _, f_glbIdx_all = obj2.get_f_geo().get_glbIdx()
     u_dmda = obj1.get_u_geo().get_dmda()
-    # PETSc.Sys.Print('begin point_force_matrix_3d_petsc')
-
-    # from multiprocessing import Process, Queue, current_process
-    # NUMBER_OF_PROCESSES = 1
-    # def worker(input, output):
-    #     for func, args in iter(input.get, 'STOP'):
-    #         result = func(*args)
-    #         output.put(result)
-    #
-    # task_queue = Queue()
-    # done_queue = Queue()
-    # TASKS1 = [(point_force_matrix_3d_petsc_mij, (u_nodes[i1], f_nodes, i1))
-    #           for i1 in range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1])]
-    # for task in TASKS1:
-    #     task_queue.put(task)
-    # for i in range(NUMBER_OF_PROCESSES):
-    #     Process(target=worker, args=(task_queue, done_queue)).start()
-    # for i in range(len(TASKS1)):
-    #     m00, m01, m02, m10, m11, m12, m20, m21, m22, i1 = done_queue.get()
-    #     u_glb = u_glbIdx_all[i1 * 3]
-    #     # PETSc.Sys.Print(i1)
-    #     m.setValues(u_glb + 0, f_glbIdx_all[0::3], m00, addv=False)
-    #     m.setValues(u_glb + 0, f_glbIdx_all[1::3], m01, addv=False)
-    #     m.setValues(u_glb + 0, f_glbIdx_all[2::3], m02, addv=False)
-    #     m.setValues(u_glb + 1, f_glbIdx_all[0::3], m10, addv=False)
-    #     m.setValues(u_glb + 1, f_glbIdx_all[1::3], m11, addv=False)
-    #     m.setValues(u_glb + 1, f_glbIdx_all[2::3], m12, addv=False)
-    #     m.setValues(u_glb + 2, f_glbIdx_all[0::3], m20, addv=False)
-    #     m.setValues(u_glb + 2, f_glbIdx_all[1::3], m21, addv=False)
-    #     m.setValues(u_glb + 2, f_glbIdx_all[2::3], m22, addv=False)
-    # for i in range(NUMBER_OF_PROCESSES):
-    #     task_queue.put('STOP')
-
-
-    # import concurrent.futures
-    # mij_args = [(u_nodes[i1], f_nodes, i1, u_glbIdx_all[i1 * 3], f_glbIdx_all, m) for i1 in range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1])]
-    # with concurrent.futures.ThreadPoolExecutor() as executor:
-    #     executor.map(point_force_matrix_3d_petsc_mij2, mij_args)
-    # for m00, m01, m02, m10, m11, m12, m20, m21, m22, i1 in executor.map(point_force_matrix_3d_petsc_mij2, mij_args):
-    #     u_glb = u_glbIdx_all[i1 * 3]
-    #     PETSc.Sys.Print(i1)
-    # m.setValues(u_glb + 0, f_glbIdx_all[0::3], m00, addv=False)
-    # m.setValues(u_glb + 0, f_glbIdx_all[1::3], m01, addv=False)
-    # m.setValues(u_glb + 0, f_glbIdx_all[2::3], m02, addv=False)
-    # m.setValues(u_glb + 1, f_glbIdx_all[0::3], m10, addv=False)
-    # m.setValues(u_glb + 1, f_glbIdx_all[1::3], m11, addv=False)
-    # m.setValues(u_glb + 1, f_glbIdx_all[2::3], m12, addv=False)
-    # m.setValues(u_glb + 2, f_glbIdx_all[0::3], m20, addv=False)
-    # m.setValues(u_glb + 2, f_glbIdx_all[1::3], m21, addv=False)
-    # m.setValues(u_glb + 2, f_glbIdx_all[2::3], m22, addv=False)
-
-    # mij_args = [(u_nodes[i1], f_nodes, i1) for i1 in range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1])]
-    # mij_list = []
-    # with Pool() as pool:
-    #     for t_mij_args in mij_args:
-    #         t_mij_list = pool.apply_async(point_force_matrix_3d_petsc_mij, t_mij_args)
-    #         mij_list.append(t_mij_list)
-    # for aaaa in mij_list:
-    #     ttt = aaaa.get()
-    #     print(111)
-    # u_glb = u_glbIdx_all[i1 * 3]
-    # m.setValues(u_glb + 0, f_glbIdx_all[0::3], m00, addv=False)
-    # m.setValues(u_glb + 0, f_glbIdx_all[1::3], m01, addv=False)
-    # m.setValues(u_glb + 0, f_glbIdx_all[2::3], m02, addv=False)
-    # m.setValues(u_glb + 1, f_glbIdx_all[0::3], m10, addv=False)
-    # m.setValues(u_glb + 1, f_glbIdx_all[1::3], m11, addv=False)
-    # m.setValues(u_glb + 1, f_glbIdx_all[2::3], m12, addv=False)
-    # m.setValues(u_glb + 2, f_glbIdx_all[0::3], m20, addv=False)
-    # m.setValues(u_glb + 2, f_glbIdx_all[1::3], m21, addv=False)
-    # m.setValues(u_glb + 2, f_glbIdx_all[2::3], m22, addv=False)
-    # m.assemble()
-
-    # mij_args = [(u_nodes[i1], f_nodes, i1) for i1 in range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1])]
-    # with Pool() as pool:
-    #     mij_list = pool.starmap(point_force_matrix_3d_petsc_mij, mij_args)
-    # PETSc.Sys.sleep(10)
-    # for m00, m01, m02, m10, m11, m12, m20, m21, m22, i1 in mij_list:
-    #     u_glb = u_glbIdx_all[i1 * 3]
-    #     m.setValues(u_glb + 0, f_glbIdx_all[0::3], m00, addv=False)
-    #     m.setValues(u_glb + 0, f_glbIdx_all[1::3], m01, addv=False)
-    #     m.setValues(u_glb + 0, f_glbIdx_all[2::3], m02, addv=False)
-    #     m.setValues(u_glb + 1, f_glbIdx_all[0::3], m10, addv=False)
-    #     m.setValues(u_glb + 1, f_glbIdx_all[1::3], m11, addv=False)
-    #     m.setValues(u_glb + 1, f_glbIdx_all[2::3], m12, addv=False)
-    #     m.setValues(u_glb + 2, f_glbIdx_all[0::3], m20, addv=False)
-    #     m.setValues(u_glb + 2, f_glbIdx_all[1::3], m21, addv=False)
-    #     m.setValues(u_glb + 2, f_glbIdx_all[2::3], m22, addv=False)
-
-    # mij_args = [(u_nodes[i1], f_nodes, i1) for i1 in range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1])]
-    # with Pool() as pool:
-    #     mij_list = pool.starmap(point_force_matrix_3d_petsc_mij, mij_args)
-    #     for m0, m1, m2, i1 in mij_list:
-    #         u_glb = (u_glbIdx_all[i1 * 3]+0, u_glbIdx_all[i1 * 3]+1, u_glbIdx_all[i1 * 3]+2)
-    #         t_m = np.hstack((m0, m1, m2))
-    #         m.setValues(u_glb, f_glbIdx_all, t_m, addv=False)
-    # m.assemble()
-    # myview = PETSc.Viewer().createASCII('M_dbg.txt', 'w')
-    # myview(m)
 
     for i0 in range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1]):
         m00, m01, m02, m10, m11, m12, m20, m21, m22, i1 = point_force_matrix_3d_petsc_mij(u_nodes[i0], f_nodes, i0)
@@ -970,9 +885,9 @@ def point_force_matrix_3d_petsc(obj1: sf.stokesFlowObj,  # objct contain velocit
         m.setValues(u_glb + 2, f_glbIdx_all[0::3], m20, addv=False)
         m.setValues(u_glb + 2, f_glbIdx_all[1::3], m21, addv=False)
         m.setValues(u_glb + 2, f_glbIdx_all[2::3], m22, addv=False)
-    # PETSc.Sys.Print('end point_force_matrix_3d_petsc')
+    m.assemble()
     return True  # ' point_force_matrix, U = M * F '
 
 
 def check_point_force_matrix_3d_petsc(**kwargs):
-    pass
+    return True

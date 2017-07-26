@@ -48,8 +48,8 @@ def save_vtk(problem: sf.stokesFlowProblem):
 
     # create check obj
     check_kwargs = problem_kwargs.copy()
-    check_kwargs['nth'] = problem_kwargs['nth'] + 1
-    check_kwargs['ds'] = problem_kwargs['ds'] * 0.8
+    check_kwargs['nth'] = problem_kwargs['nth'] - 2 if problem_kwargs['nth'] >= 6 else problem_kwargs['nth'] + 1
+    check_kwargs['ds'] = problem_kwargs['ds'] * 1.2
     check_kwargs['hfct'] = 1
     objtype = obj_dic[matrix_method]
     vsobj_check, vhobj0_check, vhobj1_check = createEcoli(objtype, **check_kwargs)
@@ -69,10 +69,10 @@ def save_vtk(problem: sf.stokesFlowProblem):
     velocity_err_sphere = problem.vtk_check('%s_sphere_Check' % fileHeadle, vsobj_check)
     velocity_err_helix0 = problem.vtk_check('%s_helix0_Check' % fileHeadle, vhobj0_check)
     velocity_err_helix1 = problem.vtk_check('%s_helix1_Check' % fileHeadle, vhobj1_check)
-    PETSc.Sys.Print('velocity error           (total, x, y, z): ',  velocity_err)
-    PETSc.Sys.Print('velocity error of sphere (total, x, y, z): ',  velocity_err_sphere)
-    PETSc.Sys.Print('velocity error of helix0 (total, x, y, z): ',  velocity_err_helix0)
-    PETSc.Sys.Print('velocity error of helix1 (total, x, y, z): ',  velocity_err_helix1)
+    PETSc.Sys.Print('velocity error           (total, x, y, z): ', velocity_err)
+    PETSc.Sys.Print('velocity error of sphere (total, x, y, z): ', velocity_err_sphere)
+    PETSc.Sys.Print('velocity error of helix0 (total, x, y, z): ', velocity_err_helix0)
+    PETSc.Sys.Print('velocity error of helix1 (total, x, y, z): ', velocity_err_helix1)
 
     t1 = time()
     PETSc.Sys.Print('%s: write vtk files use: %fs' % (str(problem), (t1 - t0)))
@@ -134,6 +134,7 @@ def get_problem_kwargs(**main_kwargs):
     center = np.array((centerx, centery, centerz))  # center of ecoli
     zoom_factor = OptDB.getReal('zoom_factor', 1)
     prb_index = OptDB.getInt('prb_index', -1)
+    ffweight = OptDB.getReal('ffweight', 1 / zoom_factor**2)
 
     problem_kwargs = {
         'name':                  'singleEcoliPro',
@@ -156,6 +157,7 @@ def get_problem_kwargs(**main_kwargs):
         'dist_hs':               dist_hs,
         'center':                center,
         'zoom_factor':           zoom_factor,
+        'ffweight':              ffweight,
         'prb_index':             prb_index,
         'matname':               matname,
         'bnodesHeadle':          bnodesHeadle,
@@ -205,6 +207,7 @@ def print_case_info(**problem_kwargs):
     rel_Uh = problem_kwargs['rel_Uh']
     dist_hs = problem_kwargs['dist_hs']
     zoom_factor = problem_kwargs['zoom_factor']
+    ffweight = problem_kwargs['ffweight']
 
     PETSc.Sys.Print('Case information: ')
     PETSc.Sys.Print('  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
@@ -213,7 +216,7 @@ def print_case_info(**problem_kwargs):
     PETSc.Sys.Print('  ecoli center: %s, distance between head and tail is %f' % (str(center), dist_hs))
     PETSc.Sys.Print('  relative velocities of head are %s' % str(rel_Us))
     PETSc.Sys.Print('  relative velocities of tail are %s' % str(rel_Uh))
-    PETSc.Sys.Print('  geo zoom factor is %f' % zoom_factor)
+    PETSc.Sys.Print('  geometry zoom factor is %f, force free weight is %f' % (zoom_factor, ffweight))
 
     err_msg = "Only 'rs', 'tp_rs', 'lg_rs', and 'pf' methods are accept for this main code. "
     acceptType = ('rs', 'tp_rs', 'lg_rs', 'pf')
@@ -297,7 +300,8 @@ def main_fun(**main_kwargs):
                                vhobj1.get_force().reshape((-1, 3)).sum(axis=0)))
         temp_F = np.hstack((temp_f, temp_f * zoom_factor))
         non_dim_F = ecoli_comp.get_re_sum() / temp_F
-        non_dim_U = ecoli_comp.get_ref_U() / np.array((zoom_factor, zoom_factor, zoom_factor, 1, 1, 1))
+        t_nondim = rel_Uh[-1] + rel_Us[-1]
+        non_dim_U = ecoli_comp.get_ref_U() / np.array((zoom_factor * rh1, zoom_factor * rh1, zoom_factor * rh1, 1, 1, 1)) / t_nondim
         PETSc.Sys.Print('non_dim_U', non_dim_U)
         PETSc.Sys.Print('non_dim_F', non_dim_F)
         PETSc.Sys.Print('velocity_sphere', rel_Us + ecoli_comp.get_ref_U())
@@ -306,10 +310,11 @@ def main_fun(**main_kwargs):
         if problem_kwargs['pickProblem']:
             problem.pickmyself(fileHeadle)
         velocity_err_sphere, velocity_err_helix0, velocity_err_helix1, velocity_err = save_vtk(problem)
-        with open("caseInfo.txt", "a") as outfile:
-            outline = np.hstack((prb_index, zoom_factor, non_dim_U, non_dim_F, velocity_err))
-            outfile.write(' '.join('%e' % i for i in outline))
-            outfile.write('\n')
+        if rank == 0:
+            with open("caseInfo.txt", "a") as outfile:
+                outline = np.hstack((prb_index, zoom_factor, non_dim_U, non_dim_F, velocity_err))
+                outfile.write(' '.join('%e' % i for i in outline))
+                outfile.write('\n')
     else:
         pass
         # with open(fileHeadle + '_pick.bin', 'rb') as input:
@@ -317,8 +322,7 @@ def main_fun(**main_kwargs):
         #     problem = unpick.load()
         #     problem.unpickmyself()
         #     residualNorm = problem.get_residualNorm()
-        #     if rank == 0:
-        #         PETSc.Sys.Print('---->>>unpick the problem from file %s_pick.bin' % (fileHeadle))
+        #     PETSc.Sys.Print('---->>>unpick the problem from file %s_pick.bin' % (fileHeadle))
         #
         #     problem_kwargs1 = get_problem_kwargs(**main_kwargs)
         #     problem_kwargs = problem.get_kwargs()

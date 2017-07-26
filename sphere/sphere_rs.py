@@ -94,7 +94,7 @@ def save_vtk(problem: sf.stokesFlowProblem):
 def get_problem_kwargs(**main_kwargs):
     OptDB = PETSc.Options()
     radius = OptDB.getReal('r', 1)
-    deltaLength = OptDB.getReal('d', 0.5)
+    deltaLength = OptDB.getReal('d', 0.3)
     epsilon = OptDB.getReal('e', 0.3)
     u = OptDB.getReal('u', 1)
     fileHeadle = OptDB.getString('f', 'sphere')
@@ -102,7 +102,7 @@ def get_problem_kwargs(**main_kwargs):
     precondition_method = OptDB.getString('g', 'none')
     plot = OptDB.getBool('plot', False)
     debug_mode = OptDB.getBool('debug', False)
-    matrix_method = OptDB.getString('sm', 'pf')
+    matrix_method = OptDB.getString('sm', 'rs')
     restart = OptDB.getBool('restart', False)
     twoPara_n = OptDB.getInt('tp_n', 1)
     legendre_m = OptDB.getInt('legendre_m', 3)
@@ -112,6 +112,8 @@ def get_problem_kwargs(**main_kwargs):
     random_velocity = OptDB.getBool('random_velocity', False)
     getConvergenceHistory = OptDB.getBool('getConvergenceHistory', False)
     pickProblem = OptDB.getBool('pickProblem', False)
+    prb_index = OptDB.getInt('prb_index', -1)
+    ffweight = OptDB.getReal('ffweight', 1)
 
     n_obj = OptDB.getInt('n', 1)
     n_obj_x = OptDB.getInt('nx', n_obj)
@@ -152,7 +154,9 @@ def get_problem_kwargs(**main_kwargs):
         'n_sphere_check':        n_sphere_check,
         'n_node_threshold':      n_node_threshold,
         'getConvergenceHistory': getConvergenceHistory,
-        'pickProblem':           pickProblem
+        'pickProblem':           pickProblem,
+        'prb_index':             prb_index,
+        'ffweight':           ffweight,
     }
 
     for key in main_kwargs:
@@ -170,8 +174,10 @@ def print_case_info(**problem_kwargs):
     deltaLength = problem_kwargs['deltaLength']
     matrix_method = problem_kwargs['matrix_method']
     u = problem_kwargs['u']
+    ffweight = problem_kwargs['ffweight']
 
     PETSc.Sys.Print('sphere radius: %f, delta length: %f, velocity: %f' % (radius, deltaLength, u))
+    PETSc.Sys.Print('  solver zoom factors is %f' % ffweight)
 
     err_msg = "Only 'pf', 'rs', 'tp_rs', and 'lg_rs' methods are accept for this main code. "
     assert matrix_method in ('rs', 'tp_rs', 'lg_rs', 'rs_precondition', 'tp_rs_precondition', 'lg_rs_precondition', 'pf'), err_msg
@@ -226,8 +232,8 @@ def main_fun(**main_kwargs):
         if random_velocity:
             sphere_velocity = np.random.sample(6) * u
         else:
-            # sphere_velocity = np.array([u, 0, 0, 0, 0, 0])
-            sphere_velocity = np.array([1, 2, 3, 4, 5, 6])
+            sphere_velocity = np.array([u, 0, 0, 0, 0, 0])
+            # sphere_velocity = np.array([1, 2, 3, 4, 5, 6])
         sphere_geo0.set_rigid_velocity(sphere_velocity)
 
         problem = problem_dic[matrix_method](**problem_kwargs)
@@ -283,6 +289,7 @@ def main_fun(**main_kwargs):
     # sphere_err = save_vtk(problem, **main_kwargs)
     force_sphere = obj_sphere.get_force_x()
     PETSc.Sys.Print('---->>>Resultant at x axis is %f' % (np.sum(force_sphere) / 6 / np.pi / radius))
+    PETSc.Sys.Print('---->>>DBG %f' % (np.sum(force_sphere) / 6 / np.pi))
 
     return problem, sphere_err
 
