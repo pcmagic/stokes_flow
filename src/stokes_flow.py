@@ -2979,6 +2979,7 @@ class forceFreeProblem(stokesFlowProblem):
         kwargs = self._kwargs
         solve_method = kwargs['solve_method']
         ffweight = kwargs['ffweight']
+        zoom_factor = kwargs['zoom_factor']
 
         err_msg = 'unequal force and velocity degrees of freedom, only lsqr method is accept. '
         for obj1 in self.get_all_obj_list():
@@ -3018,25 +3019,27 @@ class forceFreeProblem(stokesFlowProblem):
                 # self._M_petsc.setValues(u_glbIdx_all, range(f_size), np.zeros(f_size), addv=False)
                 # self._M_petsc.setValues(range(u_size), f_glbIdx_all, np.zeros(u_size), addv=False)
                 for sub_obj in obj1.get_obj_list():
-                    sub_nodes = sub_obj.get_u_geo().get_nodes()
-                    r = sub_nodes - center
+                    r_u = sub_obj.get_u_geo().get_nodes() - center
+                    r_f = sub_obj.get_f_geo().get_nodes() - center
                     t_I = np.array(((-1, 0, 0),
                                     (0, -1, 0),
-                                    (0, 0, -1))) * ffweight
+                                    (0, 0, -1)))
                     tmu1 = npm.repmat(t_I, sub_obj.get_n_u_node(), 1)
                     tmu2 = np.vstack([((0, -ri[2], ri[1]),
                                        (ri[2], 0, -ri[0]),
                                        (-ri[1], ri[0], 0))
-                                      for ri in r]) * ffweight
-                    tmu = np.hstack((tmu1, tmu2))
-                    sub_nodes = sub_obj.get_f_geo().get_nodes()
-                    r = sub_nodes - center
+                                      for ri in r_u])
                     tmf1 = npm.repmat(t_I, 1, sub_obj.get_n_f_node())
                     tmf2 = np.hstack([((0, -ri[2], ri[1]),
                                        (ri[2], 0, -ri[0]),
                                        (-ri[1], ri[0], 0))
-                                      for ri in r]) * ffweight
-                    tmf = np.vstack((tmf1, tmf2))
+                                      for ri in r_f])
+                    if ffweight:
+                        tmu = np.hstack((tmu1 / zoom_factor, tmu2 / zoom_factor ** 2))
+                        tmf = np.vstack((tmf1 / zoom_factor, tmf2 / zoom_factor ** 2))
+                    else:
+                        tmu = np.hstack((tmu1, tmu2))
+                        tmf = np.vstack((tmf1, tmf2))
                     _, sub_u_glbIdx_all = sub_obj.get_u_geo().get_glbIdx()
                     _, sub_f_glbIdx_all = sub_obj.get_f_geo().get_glbIdx()
                     self._M_petsc.setValues(sub_u_glbIdx_all, f_glbIdx_all, tmu, addv=False)
@@ -3051,6 +3054,7 @@ class forceFreeProblem(stokesFlowProblem):
     def _solve_force(self, ksp):
         kwargs = self._kwargs
         ffweight = kwargs['ffweight']
+        zoom_factor = kwargs['zoom_factor']
         getConvergenceHistory = kwargs['getConvergenceHistory']
         if getConvergenceHistory:
             ksp.setConvergenceHistory()
@@ -3066,8 +3070,12 @@ class forceFreeProblem(stokesFlowProblem):
                     _, f_glbIdx_all = sub_obj.get_f_geo().get_glbIdx()
                     sub_obj.set_force(self._force[f_glbIdx_all])
                 _, f_glbIdx_all = obj0.get_f_glbIdx()
-                ref_U = self._force[f_glbIdx_all] * ffweight
-                obj0.set_ref_U(self._force[f_glbIdx_all])
+                if ffweight:
+                    ref_U = self._force[f_glbIdx_all] / [zoom_factor, zoom_factor, zoom_factor, zoom_factor ** 2, zoom_factor ** 2, zoom_factor ** 2]
+                    # ref_U = self._force[f_glbIdx_all]
+                else:
+                    ref_U = self._force[f_glbIdx_all]
+                obj0.set_ref_U(ref_U)
                 # absolute speed
                 for sub_obj, rel_U in zip(obj0.get_obj_list(), obj0.get_rel_U_list()):
                     abs_U = ref_U + rel_U

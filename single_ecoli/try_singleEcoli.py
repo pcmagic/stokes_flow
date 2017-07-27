@@ -52,7 +52,7 @@ def save_vtk(problem: sf.stokesFlowProblem):
     check_kwargs['ds'] = problem_kwargs['ds'] * 0.8
     check_kwargs['hfct'] = 1
     objtype = obj_dic[matrix_method]
-    vsobj_check, vhobj0_check, vhobj1_check = createEcoli(objtype, **check_kwargs)
+    vsobj_check, vhobj0_check, vhobj1_check = createEcoli_ellipse(objtype, **check_kwargs)
     # set boundary condition
     rel_Us = problem_kwargs['rel_Us']
     rel_Uh = problem_kwargs['rel_Uh']

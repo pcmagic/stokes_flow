@@ -113,7 +113,6 @@ def get_problem_kwargs(**main_kwargs):
     getConvergenceHistory = OptDB.getBool('getConvergenceHistory', False)
     pickProblem = OptDB.getBool('pickProblem', False)
     prb_index = OptDB.getInt('prb_index', -1)
-    ffweight = OptDB.getReal('ffweight', 1)
 
     n_obj = OptDB.getInt('n', 1)
     n_obj_x = OptDB.getInt('nx', n_obj)
@@ -156,7 +155,6 @@ def get_problem_kwargs(**main_kwargs):
         'getConvergenceHistory': getConvergenceHistory,
         'pickProblem':           pickProblem,
         'prb_index':             prb_index,
-        'ffweight':           ffweight,
     }
 
     for key in main_kwargs:
@@ -174,10 +172,8 @@ def print_case_info(**problem_kwargs):
     deltaLength = problem_kwargs['deltaLength']
     matrix_method = problem_kwargs['matrix_method']
     u = problem_kwargs['u']
-    ffweight = problem_kwargs['ffweight']
 
     PETSc.Sys.Print('sphere radius: %f, delta length: %f, velocity: %f' % (radius, deltaLength, u))
-    PETSc.Sys.Print('  solver zoom factors is %f' % ffweight)
 
     err_msg = "Only 'pf', 'rs', 'tp_rs', and 'lg_rs' methods are accept for this main code. "
     assert matrix_method in ('rs', 'tp_rs', 'lg_rs', 'rs_precondition', 'tp_rs_precondition', 'lg_rs_precondition', 'pf'), err_msg

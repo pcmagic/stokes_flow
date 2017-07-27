@@ -10,7 +10,7 @@ from src.support_class import *
 import abc
 
 __all__ = ['geo', 'sphere_geo', 'ellipse_geo', 'tunnel_geo', 'stokeslets_tunnel_geo', 'pipe_cover_geo', 'supHelix',
-           'region', 'createEcoli']
+           'region', 'createEcoli_ellipse', 'createEcoli_tunnel']
 
 
 class geo():
@@ -137,6 +137,24 @@ class geo():
         if zoom_origin is None:
             zoom_origin = self.get_origin()
         self._nodes = (self._nodes - zoom_origin) * factor + zoom_origin
+        return True
+
+    def node_zoom_x(self, factor, zoom_origin=None):
+        if zoom_origin is None:
+            zoom_origin = self.get_origin()
+        self._nodes[:, 0] = (self._nodes[:, 0] - zoom_origin[0]) * factor + zoom_origin[0]
+        return True
+
+    def node_zoom_y(self, factor, zoom_origin=None):
+        if zoom_origin is None:
+            zoom_origin = self.get_origin()
+        self._nodes[:, 1] = (self._nodes[:, 1] - zoom_origin[1]) * factor + zoom_origin[1]
+        return True
+
+    def node_zoom_z(self, factor, zoom_origin=None):
+        if zoom_origin is None:
+            zoom_origin = self.get_origin()
+        self._nodes[:, 2] = (self._nodes[:, 2] - zoom_origin[2]) * factor + zoom_origin[2]
         return True
 
     def get_nodes(self):
@@ -611,6 +629,62 @@ class ellipse_geo(geo):
         t_theta = np.hstack((t_theta0, np.pi / 2, np.pi - t_theta0[::-1]))
         t_x = a * np.cos(t_theta)
         t_y = b * np.sin(t_theta)
+
+        # generate nodes.
+        x = []
+        y = []
+        z = []
+        ai_para = 0
+        for xi, yi in zip(t_x, t_y):
+            ai_para = ai_para + 1
+            ni = np.ceil(2 * np.pi * yi / ds).astype(int)
+            ai, da = np.linspace(0, 2 * np.pi, ni, endpoint=False, retstep=True)
+            ai = ai + (-1) ** ai_para * da / 4 + np.sign(xi) * np.pi / 2
+            x.append(xi * np.ones_like(ai))
+            y.append(np.sign(xi) * yi * np.cos(ai))
+            z.append(np.sign(xi) * yi * np.sin(ai))
+        self._nodes = np.vstack((np.hstack(x), np.hstack(y), np.hstack(z))).T
+        self.set_dmda()
+        self._u = np.zeros(self._nodes.size)
+        self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
+        return True
+
+    def create_half_delta(self, ds: float,  # length of the mesh
+                          a: float,  # axis1 = 2*a
+                          b: float):  # axis2 = 2*b
+        err_msg = 'both major and minor axises should positive. '
+        assert a > 0 and b > 0, err_msg
+        self._deltaLength = ds
+
+        # fit arc length as function F of theta using 2-degree pylonomial
+        from scipy.special import ellipeinc
+        from scipy.optimize import curve_fit
+        func = lambda theta, a, b: a * theta ** 2 + b * theta
+
+        theta = np.linspace(0, np.pi / 2, 100)
+        arcl = b * ellipeinc(theta, 1 - (a / b) ** 2)
+        popt, _ = curve_fit(func, theta, arcl)
+        # # dbg
+        # plt.plot(theta, arcl, '.')
+        # plt.plot(theta, func(theta, popt[0], popt[1]))
+        # plt.show()
+        # assert 1 == 2
+
+        # divided arc length equally, and get theta using F^-1.
+        n = np.ceil(arcl[-1] / ds).astype(int)
+        t_arcl = np.linspace(0, arcl[-1], n, endpoint=False) + ds / 2
+        # do something to correct the fitting error.
+        while t_arcl[-1] > arcl[-1]:
+            t_arcl = t_arcl[:-1]
+        t_theta1 = (-popt[1] + np.sqrt(popt[1] ** 2 + 4 * popt[0] * t_arcl)) / (2 * popt[0])
+        t_theta2 = (-popt[1] - np.sqrt(popt[1] ** 2 + 4 * popt[0] * t_arcl)) / (2 * popt[0])
+        b_theta1 = [a and b for a, b in zip(t_theta1 > 0, t_theta1 < np.pi / 2)]
+        b_theta2 = [a and b for a, b in zip(t_theta2 > 0, t_theta2 < np.pi / 2)]
+        err_msg = 'something is wrong, theta of ellipse is uncertain. '
+        assert all([a != b for a, b in zip(b_theta1, b_theta2)]), err_msg
+        t_theta0 = t_theta1 * b_theta1 + t_theta2 * b_theta2
+        t_x = a * np.cos(t_theta0)
+        t_y = b * np.sin(t_theta0)
 
         # generate nodes.
         x = []
@@ -1152,7 +1226,7 @@ class region:
         return full_region_x, full_region_y, full_region_z
 
 
-def createEcoli(objtype, **kwargs):
+def createEcoli_ellipse(objtype, **kwargs):
     nth = kwargs['nth']
     hfct = kwargs['hfct']
     eh = kwargs['eh']
@@ -1160,16 +1234,20 @@ def createEcoli(objtype, **kwargs):
     rh1 = kwargs['rh1']
     rh2 = kwargs['rh2']
     ph = kwargs['ph']
-    moveh = kwargs['moveh']
     with_cover = kwargs['with_cover']
     ds = kwargs['ds']
     rs1 = kwargs['rs1']
     rs2 = kwargs['rs2']
     es = kwargs['es']
-    moves = kwargs['moves']
     left_hand = kwargs['left_hand']
     # sphere_rotation = kwargs['sphere_rotation'] if 'sphere_rotation' in kwargs.keys() else 0
     zoom_factor = kwargs['zoom_factor'] if 'zoom_factor' in kwargs.keys() else 1
+    dist_hs = kwargs['dist_hs']
+    lh = ph * ch  # length of helix
+    movesz = 0.5 * (dist_hs - 2 * rs1 + lh) + rs1
+    movehz = 0.5 * (dist_hs + 2 * rs1 - lh) + lh / 2
+    moves = np.array((0, 0, movesz))  # move distance of sphere
+    moveh = np.array((0, 0, -movehz))  # move distance of helix
 
     # create helix
     B = ph / (2 * np.pi)
@@ -1197,3 +1275,95 @@ def createEcoli(objtype, **kwargs):
 
     vsobj.move(moves * zoom_factor)
     return vsobj, vhobj0, vhobj1
+
+
+def capsule(rs1, rs2, ls, ds):
+    lvs3 = ls - 2 * rs2
+    dth = ds / rs2
+    err_msg = 'geo parameter of capsule head is wrong. '
+    assert lvs3 >= 0, err_msg
+
+    vsgeo1 = ellipse_geo()  # velocity node geo of head
+    vsgeo1.create_half_delta(ds, rs1, rs2)
+    vsgeo2 = vsgeo1.copy()
+    vsgeo1.node_rotation(norm=np.array((0, 1, 0)), theta=-np.pi / 2)
+    vsgeo1.node_rotation(norm=np.array((0, 0, 1)), theta=-np.pi / 2)
+    vsgeo1.move((0, 0, -lvs3 / 2))
+    vsgeo2.node_rotation(norm=np.array((0, 1, 0)), theta=+np.pi / 2)
+    vsgeo2.node_rotation(norm=np.array((0, 0, 1)), theta=+np.pi / 2 - dth)
+    vsgeo2.move((0, 0, +lvs3 / 2))
+    vsgeo2.set_nodes(np.flipud(vsgeo2.get_nodes()), deltalength=vsgeo2.get_deltaLength())
+    vsgeo3 = tunnel_geo()
+    vsgeo3.create_deltatheta(dth=dth, radius=rs2, length=lvs3)
+    vsgeo = geo()
+    vsgeo.combine([vsgeo1, vsgeo3, vsgeo2])
+    return vsgeo
+
+
+def createEcoli_tunnel(objtype, **kwargs):
+    nth = kwargs['nth']
+    hfct = kwargs['hfct']
+    eh = kwargs['eh']
+    ch = kwargs['ch']
+    rh1 = kwargs['rh1']
+    rh2 = kwargs['rh2']
+    ph = kwargs['ph']
+    with_cover = kwargs['with_cover']
+    ds = kwargs['ds']
+    rs1 = kwargs['rs1']
+    rs2 = kwargs['rs2']
+    ls = kwargs['ls']
+    es = kwargs['es']
+    left_hand = kwargs['left_hand']
+    # sphere_rotation = kwargs['sphere_rotation'] if 'sphere_rotation' in kwargs.keys() else 0
+    zoom_factor = kwargs['zoom_factor'] if 'zoom_factor' in kwargs.keys() else 1
+    dist_hs = kwargs['dist_hs']
+    lh = ph * ch  # length of helix
+    movesz = 0.5 * (dist_hs - ls + lh) + ls / 2
+    movehz = 0.5 * (dist_hs + ls - lh) + lh / 2
+    moves = np.array((0, 0, movesz))  # move distance of sphere
+    moveh = np.array((0, 0, -movehz))  # move distance of helix
+
+    # create helix
+    B = ph / (2 * np.pi)
+    vhgeo0 = supHelix()  # velocity node geo of helix
+    dth = 2 * np.pi / nth
+    fhgeo0 = vhgeo0.create_deltatheta(dth=dth, radius=rh2, R=rh1, B=B, n_c=ch, epsilon=eh, with_cover=with_cover,
+                                      factor=hfct, left_hand=left_hand)
+    vhobj0 = objtype()
+    vhobj0.set_data(fhgeo0, vhgeo0, name='helix_0')
+    vhobj0.zoom(zoom_factor)
+    vhobj0.move(moveh * zoom_factor)
+    vhobj1 = vhobj0.copy()
+    vhobj1.node_rotation(norm=(0, 0, 1), theta=np.pi, rotation_origin=(0, 0, 0))
+    vhobj1.set_name('helix_1')
+
+    # create head
+    vsgeo = capsule(rs1, rs2, ls, ds)
+    fsgeo = vsgeo.copy()  # force node geo of sphere
+    fsgeo.node_zoom(1 + ds / (0.5 * (rs1 + rs2)) * es)
+    fsgeo.node_zoom_z(1 - ds / (0.5 * (rs1 + rs2)) * es)
+    vsobj = objtype()
+    vsobj.set_data(fsgeo, vsgeo, name='sphere_0')
+    vsobj.zoom(zoom_factor)
+    vsobj.move(moves * zoom_factor)
+
+    # create T shape
+    lT = (rh1 + rh2) * 2
+    t_factor = 1
+    rT = rh2 * t_factor
+    dth = 2 * np.pi / nth / t_factor ** 0.5
+    moveT = moveh + (0, 0, lh / 2)
+    vTgeo = tunnel_geo()
+    fTgeo = vTgeo.create_deltatheta(dth=dth, radius=rT, length=lT, with_cover=True)
+    theta = -np.pi / 2
+    vTgeo.node_rotation(norm=np.array((0, 1, 0)), theta=theta)
+    fTgeo.node_rotation(norm=np.array((0, 1, 0)), theta=theta)
+    theta = -np.pi * ch - rT / lT * 3
+    vTgeo.node_rotation(norm=np.array((0, 0, 1)), theta=theta)
+    fTgeo.node_rotation(norm=np.array((0, 0, 1)), theta=theta)
+    vTobj = objtype()
+    vTobj.set_data(fTgeo, vTgeo, name='T_shape_0')
+    vTobj.zoom(zoom_factor)
+    vTobj.move(moveT * zoom_factor)
+    return vsobj, vhobj0, vhobj1, vTobj

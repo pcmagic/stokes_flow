@@ -53,7 +53,7 @@ def save_vtk(problem: sf.stokesFlowProblem):
     check_kwargs['ds'] = problem_kwargs['ds'] * 1.2
     check_kwargs['hfct'] = 1
     objtype = obj_dic[matrix_method]
-    vsobj_check, vhobj0_check, vhobj1_check = createEcoli(objtype, **check_kwargs)
+    vsobj_check, vhobj0_check, vhobj1_check = createEcoli_tunnel(objtype, **check_kwargs)
     # set boundary condition
     rel_Us = problem_kwargs['rel_Us']
     rel_Uh = problem_kwargs['rel_Uh']
@@ -89,8 +89,9 @@ def get_problem_kwargs(**main_kwargs):
     with_cover = OptDB.getBool('with_cover', True)
     left_hand = OptDB.getBool('left_hand', False)
     rs = OptDB.getReal('rs', 0.5)  # radius of head
-    rs1 = OptDB.getReal('rs1', rs)  # radius of head
+    rs1 = OptDB.getReal('rs1', rs * 2)  # radius of head
     rs2 = OptDB.getReal('rs2', rs)  # radius of head
+    ls = OptDB.getReal('ls', rs1 * 2)  # length of head
     ds = OptDB.getReal('ds', 1)  # delta length of sphere
     es = OptDB.getReal('es', -0.1)  # epsilon of shpere
     matname = OptDB.getString('mat', 'body1')
@@ -119,17 +120,12 @@ def get_problem_kwargs(**main_kwargs):
     rel_Us = np.array((0, 0, 0, 0, 0, rel_Usz))  # relative omega of sphere
     rel_Uh = np.array((0, 0, 0, 0, 0, rel_Uhz))  # relative omega of helix
     dist_hs = OptDB.getReal('dist_hs', 2)  # distance between head and tail
-    lh = ph * ch  # length of helix
-    movesz = 0.5 * (dist_hs - 2 * rs1 + lh) + rs1
-    movehz = 0.5 * (dist_hs + 2 * rs1 - lh) + lh / 2
-    moves = np.array((0, 0, movesz))  # move distance of sphere
-    moveh = np.array((0, 0, -movehz))  # move distance of helix
     centerx = OptDB.getReal('centerx', 0)
     centery = OptDB.getReal('centery', 0)
     centerz = OptDB.getReal('centerz', 0)
     center = np.array((centerx, centery, centerz))  # center of ecoli
     zoom_factor = OptDB.getReal('zoom_factor', 1)
-    ffweight = OptDB.getReal('ffweight', 1 / zoom_factor**2)
+    ffweight = OptDB.getBool('ffweight', False)
     prb_index = OptDB.getInt('prb_index', -1)
 
     t_headle = '_force_pipe.mat'
@@ -147,12 +143,11 @@ def get_problem_kwargs(**main_kwargs):
         'ph':                    ph,
         'rs1':                   rs1,
         'rs2':                   rs2,
+        'ls':                    ls,
         'ds':                    ds,
         'es':                    es,
         'rel_Us':                rel_Us,
         'rel_Uh':                rel_Uh,
-        'moves':                 moves,
-        'moveh':                 moveh,
         'dist_hs':               dist_hs,
         'center':                center,
         'zoom_factor':           zoom_factor,
@@ -201,6 +196,7 @@ def print_case_info(**problem_kwargs):
     ds = problem_kwargs['ds']
     rs1 = problem_kwargs['rs1']
     rs2 = problem_kwargs['rs2']
+    ls = problem_kwargs['ls']
     es = problem_kwargs['es']
     center = problem_kwargs['center']
     rel_Us = problem_kwargs['rel_Us']
@@ -210,14 +206,13 @@ def print_case_info(**problem_kwargs):
     zoom_factor = problem_kwargs['zoom_factor']
     ffweight = problem_kwargs['ffweight']
 
-
     PETSc.Sys.Print('Case information: ')
     PETSc.Sys.Print('  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
     PETSc.Sys.Print('  nth, hfct and epsilon of helix are %d, %f and %f, ' % (nth, hfct, eh))
-    PETSc.Sys.Print('  sphere/ellipse radius: %f and %f, delta length: %f, epsilon: %f' % (rs1, rs2, ds, es))
+    PETSc.Sys.Print('  head radius: %f and %f, head length: %f, delta length: %f, epsilon: %f' % (rs1, rs2, ls, ds, es))
     PETSc.Sys.Print('  ecoli center: %s, distance between head and tail is %f' % (str(center), dist_hs))
     PETSc.Sys.Print('  relative velocity of head and tail are %s and %s' % (str(rel_Us), str(rel_Uh)))
-    PETSc.Sys.Print('  geometry zoom factor is %f, force free weight is %f' % (zoom_factor, ffweight))
+    PETSc.Sys.Print('  geometry zoom factor is %f, force free weight mode is %s' % (zoom_factor, ffweight))
 
     err_msg = "Only 'rs', 'tp_rs', 'lg_rs', and 'pf' methods are accept for this main code. "
     acceptType = ('rs', 'tp_rs', 'lg_rs', 'pf')
@@ -264,7 +259,7 @@ def main_fun(**main_kwargs):
 
         # create ecoli
         objtype = obj_dic[matrix_method]
-        vsobj, vhobj0, vhobj1 = createEcoli(objtype, **problem_kwargs)
+        vsobj, vhobj0, vhobj1, vTobj = createEcoli_tunnel(objtype, **problem_kwargs)
         center = problem_kwargs['center']
         rel_Us = problem_kwargs['rel_Us']
         rel_Uh = problem_kwargs['rel_Uh']
@@ -272,6 +267,7 @@ def main_fun(**main_kwargs):
         ecoli_comp.add_obj(vsobj, rel_U=rel_Us)
         ecoli_comp.add_obj(vhobj0, rel_U=rel_Uh)
         ecoli_comp.add_obj(vhobj1, rel_U=rel_Uh)
+        ecoli_comp.add_obj(vTobj, rel_U=rel_Uh)
 
         problem = sf.stokesletsInPipeForceFreeProblem(**problem_kwargs)
         problem.set_prepare(forcepipe)
@@ -303,7 +299,7 @@ def main_fun(**main_kwargs):
         PETSc.Sys.Print('velocity_helix', rel_Uh + ecoli_comp.get_ref_U())
 
         if problem_kwargs['pickProblem']:
-            problem.pickmyself(fileHeadle)
+            problem.pickmyself(fileHeadle, pick_M=True)
         velocity_err = save_vtk(problem)
         # velocity_err = 0
         if rank == 0:
@@ -318,17 +314,17 @@ def main_fun(**main_kwargs):
             problem.unpickmyself()
             PETSc.Sys.Print('---->>>unpick the problem from file %s_pick.bin' % (fileHeadle))
 
-            problem_kwargs1 = get_problem_kwargs(**main_kwargs)
-            problem_kwargs = problem.get_kwargs()
-            problem_kwargs['matname'] = problem_kwargs1['matname']
-            problem_kwargs['bnodesHeadle'] = problem_kwargs1['bnodesHeadle']
-            problem_kwargs['belemsHeadle'] = problem_kwargs1['belemsHeadle']
-            err_msg = 'problem was picked with MPI size %d, current MPI size %d is wrong. ' % (problem_kwargs['MPISIZE'], problem_kwargs1['MPISIZE'],)
-            assert problem_kwargs['MPISIZE'] == problem_kwargs1['MPISIZE'], err_msg
-            problem.set_kwargs(**problem_kwargs)
-            print_case_info(**problem_kwargs)
-            problem.print_info()
-            save_vtk(problem)
+        problem_kwargs1 = get_problem_kwargs(**main_kwargs)
+        problem_kwargs = problem.get_kwargs()
+        problem_kwargs['matname'] = problem_kwargs1['matname']
+        problem_kwargs['bnodesHeadle'] = problem_kwargs1['bnodesHeadle']
+        problem_kwargs['belemsHeadle'] = problem_kwargs1['belemsHeadle']
+        err_msg = 'problem was picked with MPI size %d, current MPI size %d is wrong. ' % (problem_kwargs['MPISIZE'], problem_kwargs1['MPISIZE'],)
+        assert problem_kwargs['MPISIZE'] == problem_kwargs1['MPISIZE'], err_msg
+        problem.set_kwargs(**problem_kwargs)
+        print_case_info(**problem_kwargs)
+        problem.print_info()
+        save_vtk(problem)
 
     return problem
 
