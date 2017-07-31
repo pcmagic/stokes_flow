@@ -1353,7 +1353,7 @@ def createEcoli_tunnel(objtype, **kwargs):
     t_factor = 1
     rT = rh2 * t_factor
     dth = 2 * np.pi / nth / t_factor ** 0.5
-    moveT = moveh + (0, 0, lh / 2)
+    moveT = moveh + (0, 0, lh / 2 + rh2 * 1)
     vTgeo = tunnel_geo()
     fTgeo = vTgeo.create_deltatheta(dth=dth, radius=rT, length=lT, with_cover=True)
     theta = -np.pi / 2

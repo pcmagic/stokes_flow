@@ -95,14 +95,14 @@ def get_problem_kwargs(**main_kwargs):
     OptDB = PETSc.Options()
     radius = OptDB.getReal('r', 1)
     deltaLength = OptDB.getReal('d', 0.3)
-    epsilon = OptDB.getReal('e', 0.3)
+    epsilon = OptDB.getReal('e', -0.3)
     u = OptDB.getReal('u', 1)
     fileHeadle = OptDB.getString('f', 'sphere')
     solve_method = OptDB.getString('s', 'gmres')
     precondition_method = OptDB.getString('g', 'none')
     plot = OptDB.getBool('plot', False)
     debug_mode = OptDB.getBool('debug', False)
-    matrix_method = OptDB.getString('sm', 'rs')
+    matrix_method = OptDB.getString('sm', 'pf')
     restart = OptDB.getBool('restart', False)
     twoPara_n = OptDB.getInt('tp_n', 1)
     legendre_m = OptDB.getInt('legendre_m', 3)
@@ -229,7 +229,6 @@ def main_fun(**main_kwargs):
             sphere_velocity = np.random.sample(6) * u
         else:
             sphere_velocity = np.array([u, 0, 0, 0, 0, 0])
-            # sphere_velocity = np.array([1, 2, 3, 4, 5, 6])
         sphere_geo0.set_rigid_velocity(sphere_velocity)
 
         problem = problem_dic[matrix_method](**problem_kwargs)
@@ -239,29 +238,18 @@ def main_fun(**main_kwargs):
         obj_sphere_kwargs = {'name': 'sphereObj_0_0'}
         sphere_geo1 = sphere_geo0.copy()
         if matrix_method in ('pf',):
-            sphere_geo1.create_n(n, radius - deltaLength * epsilon)
+            sphere_geo1.create_n(n, radius + deltaLength * epsilon)
         obj_sphere.set_data(sphere_geo1, sphere_geo0, **obj_sphere_kwargs)
-        problem.add_obj(obj_sphere)
-        for i in range(1, n_obj_x * n_obj_y):
+        for i in range(n_obj_x * n_obj_y):
             ix = i // n_obj_x
             iy = i % n_obj_x
             obj2 = obj_sphere.copy()
             obj2.set_name('sphereObj_%d_%d' % (ix, iy))
-            # if random_velocity:
-            #     sphere_velocity = np.random.sample(6) * u
-            # else:
-            #     sphere_velocity = np.array([u, 0, 0, 0, 0, 0])
-            # sphere_geo2 = sphere_geo0.copy()
-            # sphere_geo2.set_rigid_velocity(sphere_velocity)
-            # sphere_geo3 = sphere_geo0.copy()
-            # if matrix_method in ('pf',):
-            #     sphere_geo3.create_n(n, radius - deltaLength * epsilon)
-            # obj2.set_data(sphere_geo3, sphere_geo2, **obj2)
             move_dist = np.array([ix, iy, 0]) * move_delta
             obj2.move(move_dist)
             if random_velocity:
                 sphere_velocity = np.random.sample(6) * u
-                sphere_geo2 = obj2.get_u_geo().set_rigid_velocity(sphere_velocity)
+                obj2.get_u_geo().set_rigid_velocity(sphere_velocity)
             problem.add_obj(obj2)
 
         problem.print_info()
@@ -283,9 +271,8 @@ def main_fun(**main_kwargs):
 
     sphere_err = 0
     # sphere_err = save_vtk(problem, **main_kwargs)
-    force_sphere = obj_sphere.get_force_x()
+    force_sphere = obj2.get_force_x()
     PETSc.Sys.Print('---->>>Resultant at x axis is %f' % (np.sum(force_sphere) / 6 / np.pi / radius))
-    PETSc.Sys.Print('---->>>DBG %f' % (np.sum(force_sphere) / 6 / np.pi))
 
     return problem, sphere_err
 

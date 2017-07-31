@@ -53,7 +53,7 @@ def save_vtk(problem: sf.stokesFlowProblem):
     check_kwargs['ds'] = problem_kwargs['ds'] * 1.2
     check_kwargs['hfct'] = 1
     objtype = obj_dic[matrix_method]
-    vsobj_check, vhobj0_check, vhobj1_check = createEcoli_tunnel(objtype, **check_kwargs)
+    vsobj_check, vhobj0_check, vhobj1_check, vTobj_check = createEcoli_tunnel(objtype, **check_kwargs)
     # set boundary condition
     rel_Us = problem_kwargs['rel_Us']
     rel_Uh = problem_kwargs['rel_Uh']
@@ -62,9 +62,10 @@ def save_vtk(problem: sf.stokesFlowProblem):
     vsobj_check.set_rigid_velocity(rel_Us + ref_U)
     vhobj0_check.set_rigid_velocity(rel_Uh + ref_U)
     vhobj1_check.set_rigid_velocity(rel_Uh + ref_U)
+    vTobj_check.set_rigid_velocity(rel_Uh + ref_U)
     # create ecoli
     ecoli_check_obj = sf.stokesFlowObj()
-    ecoli_check_obj.combine([vsobj_check, vhobj0_check, vhobj1_check], set_re_u=True, set_force=True)
+    ecoli_check_obj.combine([vsobj_check, vhobj0_check, vhobj1_check, vTobj_check], set_re_u=True, set_force=True)
     # ecoli_check_obj.show_velocity(length_factor=0.0005)
     velocity_err = problem.vtk_check('%s_Check' % fileHeadle, ecoli_check_obj)
     PETSc.Sys.Print('velocity error (total, x, y, z): ', velocity_err)
@@ -268,6 +269,11 @@ def main_fun(**main_kwargs):
         ecoli_comp.add_obj(vhobj0, rel_U=rel_Uh)
         ecoli_comp.add_obj(vhobj1, rel_U=rel_Uh)
         ecoli_comp.add_obj(vTobj, rel_U=rel_Uh)
+        if problem_kwargs['plot_geo']:
+            # vsobj.show_f_u_nodes(' ')
+            # vhobj0.show_f_u_nodes(' ')
+            # vhobj1.show_f_u_nodes(' ')
+            ecoli_comp.show_f_u_nodes(' ')
 
         problem = sf.stokesletsInPipeForceFreeProblem(**problem_kwargs)
         problem.set_prepare(forcepipe)
@@ -275,11 +281,6 @@ def main_fun(**main_kwargs):
             problem.pickmyself(fileHeadle, check=True)
         problem.add_obj(ecoli_comp)
         problem.print_info()
-        if problem_kwargs['plot_geo']:
-            # vsobj.show_f_u_nodes(' ')
-            # vhobj0.show_f_u_nodes(' ')
-            # vhobj1.show_f_u_nodes(' ')
-            ecoli_comp.show_f_u_nodes(' ')
 
         problem.create_matrix()
         problem.solve()

@@ -3173,7 +3173,7 @@ class stokesletsInPipeForceFreeProblem(stokesletsInPipeProblem, forceFreeProblem
             obj.set_problem(self)
             for sub_obj in obj.get_obj_list():
                 _, b, _ = sub_obj.get_f_geo().get_polar_coord()
-                assert all(b >= b0) and all(b <= b1), err_msg
+                assert all(b <= b1), err_msg
                 self._all_obj_list.append(sub_obj)
                 self._f_pkg.addDM(sub_obj.get_f_geo().get_dmda())
                 self._u_pkg.addDM(sub_obj.get_u_geo().get_dmda())
