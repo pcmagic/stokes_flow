@@ -40,13 +40,15 @@ def save_vtk(problem: sf.stokesFlowProblem):
     U = problem_kwargs['U']
     n_sphere_check = problem_kwargs['n_sphere_check']
 
-    bgeo = geo()
-    bnodesHeadle = problem_kwargs['bnodesHeadle']
-    matname = problem_kwargs['matname']
-    bgeo.mat_nodes(filename=matname, mat_handle=bnodesHeadle)
-    belemsHeadle = problem_kwargs['belemsHeadle']
-    bgeo.mat_elmes(filename=matname, mat_handle=belemsHeadle, elemtype='tetra')
-    problem.vtk_tetra(fileHeadle + '_Velocity', bgeo)
+    problem.vtk_obj(fileHeadle)
+
+    # bgeo = geo()
+    # bnodesHeadle = problem_kwargs['bnodesHeadle']
+    # matname = problem_kwargs['matname']
+    # bgeo.mat_nodes(filename=matname, mat_handle=bnodesHeadle)
+    # belemsHeadle = problem_kwargs['belemsHeadle']
+    # bgeo.mat_elmes(filename=matname, mat_handle=belemsHeadle, elemtype='tetra')
+    # problem.vtk_tetra(fileHeadle + '_Velocity', bgeo)
 
     # velocity_err = -1
     sphere_geo_check = sphere_geo()  # force geo
@@ -69,7 +71,7 @@ def get_problem_kwargs(**main_kwargs):
     fileHeadle = OptDB.getString('f', 'sphereInPipe')
     forcepipe = OptDB.getString('forcepipe', 'construct07')
     dp = OptDB.getReal('dp', 0.5)  # delta length of pipe
-    ds = OptDB.getReal('ds', 0.7)  # delta length of sphere
+    ds = OptDB.getReal('ds', 0.1)  # delta length of sphere
     ep = OptDB.getReal('ep', 2)  # epsilon of pipe
     es = OptDB.getReal('es', -2)  # epsilon of shpere
     lp = OptDB.getReal('lp', 2)  # length of pipe
@@ -194,7 +196,6 @@ def main_fun(**main_kwargs):
         es = problem_kwargs['es']
         vsgeo = sphere_geo()  # velocity node geo of sphere
         vsgeo.create_delta(ds, rs)
-        vsgeo.node_rotation(norm=np.array((0, 1, 0)), theta=np.pi / 7)
         # vsgeo.show_nodes()
         U = problem_kwargs['U']
         vsgeo.set_rigid_velocity(np.array((0, 0, U, 0, 0, 0)))
@@ -229,7 +230,7 @@ def main_fun(**main_kwargs):
         if rank == 0:
             force_sphere = vsobj.get_force_z()
             PETSc.Sys.Print('---->>>Resultant at z axis is %f' % (np.sum(force_sphere) / (6 * np.pi * rs)))
-        # save_vtk(problem)
+        save_vtk(problem)
 
 
     else:

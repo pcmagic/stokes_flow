@@ -25,6 +25,8 @@ tube+sphere/
 *.iml
 *.txt
 *.exe
+*(copy).py
+*~
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

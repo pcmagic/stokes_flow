@@ -31,10 +31,11 @@ import pickle
 
 
 def save_vtk(problem: sf.stokesFlowProblem):
-    t0 = time()
-    problem_kwargs = problem.get_kwargs()
+    t0 = time( )
+    problem_kwargs = problem.get_kwargs( )
     fileHeadle = problem_kwargs['fileHeadle']
     matrix_method = problem_kwargs['matrix_method']
+    with_T_geo = problem_kwargs['with_T_geo']
 
     problem.vtk_obj(fileHeadle)
 
@@ -47,7 +48,7 @@ def save_vtk(problem: sf.stokesFlowProblem):
     # problem.vtk_tetra(fileHeadle + '_Velocity', bgeo)
 
     # create check obj
-    check_kwargs = problem_kwargs.copy()
+    check_kwargs = problem_kwargs.copy( )
     check_kwargs['nth'] = problem_kwargs['nth'] - 2 if problem_kwargs['nth'] >= 6 else problem_kwargs['nth'] + 1
     check_kwargs['ds'] = problem_kwargs['ds'] * 1.2
     check_kwargs['hfct'] = 1
@@ -56,35 +57,39 @@ def save_vtk(problem: sf.stokesFlowProblem):
     # set boundary condition
     rel_Us = problem_kwargs['rel_Us']
     rel_Uh = problem_kwargs['rel_Uh']
-    ecoli_comp = problem.get_obj_list()[0]
-    ref_U = ecoli_comp.get_ref_U()
+    ecoli_comp = problem.get_obj_list( )[0]
+    ref_U = ecoli_comp.get_ref_U( )
     vsobj_check.set_rigid_velocity(rel_Us + ref_U)
     vhobj0_check.set_rigid_velocity(rel_Uh + ref_U)
     vhobj1_check.set_rigid_velocity(rel_Uh + ref_U)
-    vTobj_check.set_rigid_velocity(rel_Uh + ref_U)
     # create ecoli
-    ecoli_check_obj = sf.stokesFlowObj()
-    ecoli_check_obj.combine([vsobj_check, vhobj0_check, vhobj1_check, vTobj_check], set_re_u=True, set_force=True)
+    ecoli_check_obj = sf.stokesFlowObj( )
+    if with_T_geo:
+        vTobj_check.set_rigid_velocity(rel_Uh + ref_U)
+        ecoli_check_obj.combine([vsobj_check, vhobj0_check, vhobj1_check, vTobj_check], set_re_u=True, set_force=True)
+    else:
+        ecoli_check_obj.combine([vsobj_check, vhobj0_check, vhobj1_check], set_re_u=True, set_force=True)
     # ecoli_check_obj.show_velocity(length_factor=0.0005)
     velocity_err = problem.vtk_check('%s_Check' % fileHeadle, ecoli_check_obj)
     velocity_err_sphere = problem.vtk_check('%s_sphere_Check' % fileHeadle, vsobj_check)
     velocity_err_helix0 = problem.vtk_check('%s_helix0_Check' % fileHeadle, vhobj0_check)
     velocity_err_helix1 = problem.vtk_check('%s_helix1_Check' % fileHeadle, vhobj1_check)
-    velocity_err_Tgeo = problem.vtk_check('%s_Tgeo_Check' % fileHeadle, vTobj_check)
     PETSc.Sys.Print('velocity error           (total, x, y, z): ', velocity_err)
     PETSc.Sys.Print('velocity error of sphere (total, x, y, z): ', velocity_err_sphere)
     PETSc.Sys.Print('velocity error of helix0 (total, x, y, z): ', velocity_err_helix0)
     PETSc.Sys.Print('velocity error of helix1 (total, x, y, z): ', velocity_err_helix1)
-    PETSc.Sys.Print('velocity error of Tgeo (total, x, y, z): ', velocity_err_Tgeo)
+    if with_T_geo:
+        velocity_err_Tgeo = problem.vtk_check('%s_Tgeo_Check' % fileHeadle, vTobj_check)
+        PETSc.Sys.Print('velocity error of Tgeo (total, x, y, z): ', velocity_err_Tgeo)
 
-    t1 = time()
+    t1 = time( )
     PETSc.Sys.Print('%s: write vtk files use: %fs' % (str(problem), (t1 - t0)))
 
     return velocity_err_sphere, velocity_err_helix0, velocity_err_helix1, velocity_err
 
 
 def get_problem_kwargs(**main_kwargs):
-    OptDB = PETSc.Options()
+    OptDB = PETSc.Options( )
     fileHeadle = OptDB.getString('f', 'singleEcoliPro')
     nth = OptDB.getInt('nth', 2)  # amount of nodes on each cycle of helix
     hfct = OptDB.getReal('hfct', 1)  # helix axis line factor, put more nodes near both tops
@@ -127,13 +132,15 @@ def get_problem_kwargs(**main_kwargs):
     rel_Us = np.array((0, 0, 0, 0, 0, rel_Usz))  # relative omega of sphere
     rel_Uh = np.array((0, 0, 0, 0, 0, rel_Uhz))  # relative omega of helix
     dist_hs = OptDB.getReal('dist_hs', 2)  # distance between head and tail
+    dist_hc = OptDB.getReal('dist_hc', rh1)  # distance between tail and center line
     centerx = OptDB.getReal('centerx', 0)
     centery = OptDB.getReal('centery', 0)
     centerz = OptDB.getReal('centerz', 0)
     center = np.array((centerx, centery, centerz))  # center of ecoli
     zoom_factor = OptDB.getReal('zoom_factor', 1)
     prb_index = OptDB.getInt('prb_index', -1)
-    ffweight = OptDB.getBool('ffweight', False)
+    ffweight = OptDB.getReal('ffweight', 1)
+    with_T_geo = OptDB.getBool('with_T_geo', True)
 
     problem_kwargs = {
         'name':                  'singleEcoliPro',
@@ -153,6 +160,7 @@ def get_problem_kwargs(**main_kwargs):
         'rel_Us':                rel_Us,
         'rel_Uh':                rel_Uh,
         'dist_hs':               dist_hs,
+        'dist_hc':               dist_hc,
         'center':                center,
         'zoom_factor':           zoom_factor,
         'ffweight':              ffweight,
@@ -175,6 +183,7 @@ def get_problem_kwargs(**main_kwargs):
         'plot_geo':              plot_geo,
         'with_cover':            with_cover,
         'left_hand':             left_hand,
+        'with_T_geo':             with_T_geo,
     }
 
     for key in main_kwargs:
@@ -183,9 +192,9 @@ def get_problem_kwargs(**main_kwargs):
 
 
 def print_case_info(**problem_kwargs):
-    comm = PETSc.COMM_WORLD.tompi4py()
-    rank = comm.Get_rank()
-    size = comm.Get_size()
+    comm = PETSc.COMM_WORLD.tompi4py( )
+    rank = comm.Get_rank( )
+    size = comm.Get_size( )
 
     fileHeadle = problem_kwargs['fileHeadle']
     matrix_method = problem_kwargs['matrix_method']
@@ -205,6 +214,7 @@ def print_case_info(**problem_kwargs):
     rel_Us = problem_kwargs['rel_Us']
     rel_Uh = problem_kwargs['rel_Uh']
     dist_hs = problem_kwargs['dist_hs']
+    dist_hc = problem_kwargs['dist_hc']
     zoom_factor = problem_kwargs['zoom_factor']
     ffweight = problem_kwargs['ffweight']
 
@@ -212,7 +222,7 @@ def print_case_info(**problem_kwargs):
     PETSc.Sys.Print('  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
     PETSc.Sys.Print('  nth, hfct and epsilon of helix are %d, %f and %f, ' % (nth, hfct, eh))
     PETSc.Sys.Print('  head radius: %f and %f, head length: %f, delta length: %f, epsilon: %f' % (rs1, rs2, ls, ds, es))
-    PETSc.Sys.Print('  ecoli center: %s, distance between head and tail is %f' % (str(center), dist_hs))
+    PETSc.Sys.Print('  ecoli center: %s, distance from head to tail is %f, from helix to center is: %f' % (str(center), dist_hs, dist_hc))
     PETSc.Sys.Print('  relative velocities of head are %s' % str(rel_Us))
     PETSc.Sys.Print('  relative velocities of tail are %s' % str(rel_Uh))
     PETSc.Sys.Print('  geometry zoom factor is %f, force free weight mode is %s' % (zoom_factor, ffweight))
@@ -246,8 +256,8 @@ def print_case_info(**problem_kwargs):
 
 # @profile
 def main_fun(**main_kwargs):
-    comm = PETSc.COMM_WORLD.tompi4py()
-    rank = comm.Get_rank()
+    comm = PETSc.COMM_WORLD.tompi4py( )
+    rank = comm.Get_rank( )
     problem_kwargs = get_problem_kwargs(**main_kwargs)
     fileHeadle = problem_kwargs['fileHeadle']
 
@@ -257,6 +267,7 @@ def main_fun(**main_kwargs):
         rh1 = problem_kwargs['rh1']
         zoom_factor = problem_kwargs['zoom_factor']
         prb_index = problem_kwargs['prb_index']
+        with_T_geo = problem_kwargs['with_T_geo']
 
         # create ecoli
         objtype = obj_dic[matrix_method]
@@ -268,13 +279,14 @@ def main_fun(**main_kwargs):
         ecoli_comp.add_obj(vsobj, rel_U=rel_Us)
         ecoli_comp.add_obj(vhobj0, rel_U=rel_Uh)
         ecoli_comp.add_obj(vhobj1, rel_U=rel_Uh)
-        ecoli_comp.add_obj(vTobj, rel_U=rel_Uh)
+        if with_T_geo:
+            ecoli_comp.add_obj(vTobj, rel_U=rel_Uh)
 
         problem = sf.forceFreeProblem(**problem_kwargs)
         if problem_kwargs['pickProblem']:
             problem.pickmyself(fileHeadle, check=True)
         problem.add_obj(ecoli_comp)
-        problem.print_info()
+        problem.print_info( )
         if problem_kwargs['plot_geo']:
             # vsobj.show_f_nodes(' ')
             # vsobj.show_u_nodes(' ')
@@ -288,24 +300,25 @@ def main_fun(**main_kwargs):
             # vhobj0.show_f_u_nodes(' ')
             ecoli_comp.show_f_u_nodes(' ')
 
-        problem.create_matrix()
-        residualNorm = problem.solve()
+        problem.create_matrix( )
+        residualNorm = problem.solve( )
         # # debug
         # problem.saveM_ASCII('%s_M.txt' % fileHeadle)
         # problem.saveF_ASCII('%s_F.txt' % fileHeadle)
         # problem.saveV_ASCII('%s_V.txt' % fileHeadle)
 
-        temp_f = 0.5 * (np.abs(vsobj.get_force().reshape((-1, 3)).sum(axis=0)) +
-                        np.abs(vhobj0.get_force().reshape((-1, 3)).sum(axis=0) +
-                               vhobj1.get_force().reshape((-1, 3)).sum(axis=0)))
+        temp_f = 0.5 * (np.abs(vsobj.get_force( ).reshape((-1, 3)).sum(axis=0)) +
+                        np.abs(vhobj0.get_force( ).reshape((-1, 3)).sum(axis=0) +
+                               vhobj1.get_force( ).reshape((-1, 3)).sum(axis=0)))
         temp_F = np.hstack((temp_f, temp_f * zoom_factor))
-        non_dim_F = ecoli_comp.get_re_sum() / temp_F
+        non_dim_F = ecoli_comp.get_re_sum( ) / temp_F
         t_nondim = rel_Uh[-1] + rel_Us[-1]
-        non_dim_U = ecoli_comp.get_ref_U() / np.array((zoom_factor * rh1, zoom_factor * rh1, zoom_factor * rh1, 1, 1, 1)) / t_nondim
+        non_dim_U = ecoli_comp.get_ref_U( ) / np.array(
+                (zoom_factor * rh1, zoom_factor * rh1, zoom_factor * rh1, 1, 1, 1)) / t_nondim
         PETSc.Sys.Print('non_dim_U', non_dim_U)
         PETSc.Sys.Print('non_dim_F', non_dim_F)
-        PETSc.Sys.Print('velocity_sphere', rel_Us + ecoli_comp.get_ref_U())
-        PETSc.Sys.Print('velocity_helix', rel_Uh + ecoli_comp.get_ref_U())
+        PETSc.Sys.Print('velocity_sphere', rel_Us + ecoli_comp.get_ref_U( ))
+        PETSc.Sys.Print('velocity_helix', rel_Uh + ecoli_comp.get_ref_U( ))
 
         if problem_kwargs['pickProblem']:
             problem.pickmyself(fileHeadle)
@@ -339,4 +352,4 @@ def main_fun(**main_kwargs):
 
 
 if __name__ == '__main__':
-    main_fun()
+    main_fun( )
