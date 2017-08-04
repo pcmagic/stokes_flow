@@ -168,8 +168,8 @@ def stokeslets_matrix_3d_set(m, t_m, i1):
     return True
 
 
-def stokeslets_matrix_3d(obj1: sf.stokesFlowObj,  # objct contain velocity information
-                         obj2: sf.stokesFlowObj):  # objct contain force information
+def stokeslets_matrix_3d(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
+                         obj2: 'sf.stokesFlowObj'):  # objct contain force information
     # Solve m matrix: (delta(i,i)/r + (x_i*x_j)/r^3
 
     u_nodes = obj1.get_u_nodes( )
@@ -284,8 +284,8 @@ def light_stokeslets_matrix_3d_petsc(u_nodes: np.ndarray, f_nodes: np.ndarray):
     return m
 
 
-def stokeslets_matrix_3d_petsc(obj1: sf.stokesFlowObj,  # object contain velocity information
-                               obj2: sf.stokesFlowObj):  # object contain force information
+def stokeslets_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # object contain velocity information
+                               obj2: 'sf.stokesFlowObj'):  # object contain force information
     # Solve m matrix: (delta(i,i)/r + (x_i*x_j)/r^3
 
     vnodes = obj1.get_u_nodes( )
@@ -350,8 +350,8 @@ def regularized_stokeslets_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # velocity
     return m00, m01, m02, m10, m11, m12, m20, m21, m22, i0
 
 
-def regularized_stokeslets_matrix_3d_petsc(obj1: sf.stokesFlowObj,  # objct contain velocity information
-                                           obj2: sf.stokesFlowObj,  # objct contain force information
+def regularized_stokeslets_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
+                                           obj2: 'sf.stokesFlowObj',  # objct contain force information
                                            m, **kwargs):
     # Solve m matrix using regularized stokeslets method
     # U = M * F.
@@ -389,8 +389,8 @@ def check_regularized_stokeslets_matrix_3d(**kwargs):
     assert 'delta' in kwargs, err_msg
 
 
-def legendre_regularized_stokeslets_matrix_3d(obj1: sf.stokesFlowObj,  # objct contain velocity information
-                                              obj2: sf.stokesFlowObj,  # objct contain force information
+def legendre_regularized_stokeslets_matrix_3d(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
+                                              obj2: 'sf.stokesFlowObj',  # objct contain force information
                                               **kwargs):
     # Hosseini, Bamdad, Nilima Nigam, and John M. Stockie. "On regularizations of the Dirac delta distribution." Journal of Computational Physics 305 (2016): 423-447.
     h1 = {
@@ -566,8 +566,8 @@ def check_legendre_regularized_stokeslets_matrix_3d(**kwargs):
 
 
 # @jit
-def two_para_regularized_stokeslets_matrix_3d(obj1: sf.stokesFlowObj,  # objct contain velocity information
-                                              obj2: sf.stokesFlowObj,  # objct contain force information
+def two_para_regularized_stokeslets_matrix_3d(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
+                                              obj2: 'sf.stokesFlowObj',  # objct contain force information
                                               **kwargs):
     # Solve m matrix using regularized stokeslets method
     # U = M * F.
@@ -648,8 +648,8 @@ def check_two_para_regularized_stokeslets_matrix_3d(**kwargs):
     assert 'twoPara_n' in kwargs, err_msg
 
 
-def surf_force_matrix_3d_debug(obj1: sf.surf_forceObj,  # objct contain velocity information
-                               obj2: sf.surf_forceObj,  # objct contain force information
+def surf_force_matrix_3d_debug(obj1: 'sf.surf_forceObj',  # objct contain velocity information
+                               obj2: 'sf.surf_forceObj',  # objct contain force information
                                **kwargs):
     # Solve m matrix using regularized stokeslets method
     # U = M * F.
@@ -713,8 +713,8 @@ def surf_force_matrix_3d_debug(obj1: sf.surf_forceObj,  # objct contain velocity
     return m  # ' regularized stokeslets matrix, U = M * F '
 
 
-def surf_force_matrix_3d(obj1: sf.surf_forceObj,  # objct contain velocity information
-                         obj2: sf.surf_forceObj,  # objct contain force information
+def surf_force_matrix_3d(obj1: 'sf.surf_forceObj',  # objct contain velocity information
+                         obj2: 'sf.surf_forceObj',  # objct contain force information
                          **kwargs):
     # Solve m matrix using surface force distribution method
     # U = M * F.
@@ -798,8 +798,8 @@ def check_surf_force_matrix_3d(**kwargs):
         raise ValueError(err_msg)
 
 
-def point_source_matrix_3d_petsc(obj1: sf.stokesFlowObj,  # objct contain velocity information
-                                 obj2: sf.stokesFlowObj,  # objct contain force information
+def point_source_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
+                                 obj2: 'sf.stokesFlowObj',  # objct contain force information
                                  **kwargs):
     # Solve m matrix using regularized stokeslets method
     # U = M * F.
@@ -848,8 +848,8 @@ def check_point_source_matrix_3d_petsc(**kwargs):
     pass
 
 
-def point_source_dipole_matrix_3d_petsc(obj1: sf.stokesFlowObj,  # objct contain velocity information
-                                        obj2: sf.stokesFlowObj,  # objct contain force information
+def point_source_dipole_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
+                                        obj2: 'sf.stokesFlowObj',  # objct contain force information
                                         **kwargs):
     # Solve m matrix using regularized stokeslets method
     # U = M * F.
@@ -917,8 +917,8 @@ def point_force_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # velocity node
     return m00, m01, m02, m10, m11, m12, m20, m21, m22, i0
 
 
-def point_force_matrix_3d_petsc(obj1: sf.stokesFlowObj,  # objct contain velocity information
-                                obj2: sf.stokesFlowObj,  # objct contain force information
+def point_force_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
+                                obj2: 'sf.stokesFlowObj',  # objct contain force information
                                 m, **kwargs):
     # Solve m matrix using point force stokeslets method
     # U = M * F.

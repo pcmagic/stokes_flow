@@ -22,6 +22,8 @@ from src.ref_solution import *
 from pyvtk import *
 from multiprocessing import Pool, cpu_count, Queue, Process
 from tqdm import tqdm, tqdm_notebook, tnrange
+from src.StokesFlowMethod import point_force_matrix_3d_petsc
+from math import sin, cos
 
 
 class stokesFlowProblem:
@@ -774,8 +776,8 @@ class stokesFlowProblem:
         geo_list = uniqueList( )
         for obj1 in self.get_obj_list( ):
             geo_list.append(obj1.get_f_geo( ))
-        for obj1 in self.get_obj_list( ):
-            geo_list.append(obj1.get_u_geo( ))
+            if obj1.get_f_geo( ) is not obj1.get_u_geo( ):
+                geo_list.append(obj1.get_u_geo( ))
         temp_geo = geo( )
         temp_geo.combine(geo_list)
         temp_geo.show_nodes( )
@@ -1022,7 +1024,8 @@ class stokesFlowObj:
     def show_f_u_nodes(self, linestyle='-'):
         geo_list = uniqueList( )
         geo_list.append(self.get_u_geo( ))
-        geo_list.append(self.get_f_geo( ))
+        if self.get_f_geo( ) is not self.get_u_geo( ):
+            geo_list.append(self.get_f_geo( ))
         temp_geo = geo( )
         temp_geo.combine(geo_list)
         temp_geo.show_nodes(linestyle)
@@ -1851,14 +1854,18 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         self._m_pipe_check = PETSc.Mat( ).create(comm=PETSc.COMM_WORLD)
 
         # create a empty matrix, and a empty velocity vecters, to avoid use too much time to allocate memory.
+        # for numerical part
         self._t_m = PETSc.Mat( ).create(
                 comm=PETSc.COMM_WORLD)  # M matrix associated with u1 part ,velocity due to pipe boundary.
-        self._t_u11 = []  # a list contain three u1 component, for interpolation
-        self._t_u12 = []
-        self._t_u13 = []
+        self._t_u11 = []  # a list contain three u1 component of f1, for interpolation
+        self._t_u12 = []  # a list contain three u1 component of f2, for interpolation
+        self._t_u13 = []  # a list contain three u1 component of f3, for interpolation
         self._set_f123( )
         self._stokeslet_m = PETSc.Mat( ).create(comm=PETSc.COMM_WORLD)  # M matrix associated with stokeslet singularity
         self._t_u2 = PETSc.Vec( ).create(comm=PETSc.COMM_WORLD)
+        # for theritical part
+        self._t_u_the = []  # a list contain three theritical stokeslets.
+        self._dmda_the = []
 
         self._f1_list = []  # list of forces lists for each object at or outside pipe associated with force-nodes at x axis
         self._f2_list = []  # list of forces lists for each object at or outside pipe associated with force-nodes at y axis
@@ -1922,7 +1929,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         t_geo.set_nodes(node, deltalength=0)
         phi, rho, z = t_geo.get_polar_coord( )
         node_rpz = np.vstack((rho, phi, z)).T
-        return self._solve_stokeslets_b(b, node, node_rpz)
+        return self._solve_stokeslets_b_num(b, node, node_rpz)
 
     def debug_solve_u_pipe(self, pgeo, outputHandle, greenFun):
         return self._solve_u_pipe(pgeo, outputHandle, greenFun)
@@ -1950,9 +1957,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
             temp_m.mult(f2, self._t_u12[i0])
             temp_m.mult(f3, self._t_u13[i0])
 
-            if use_cart:
-                pass
-            else:
+            if not use_cart:
                 uphi, _, _ = ugeo.get_polar_coord( )
                 # Transform to polar coord
                 ux1 = self._t_u11[i0][0::3].copy( )
@@ -1978,53 +1983,15 @@ class stokesletsInPipeProblem(stokesFlowProblem):
             self._t_u13[i0].assemble( )
         return True
 
-    def _solve_stokeslets_b(self, b, unode_xyz, unode_rpz, use_cart=False, u_glbIdx=[]):
-        from src.stokesletsInPipe import detail
-        from src.StokesFlowMethod import point_force_matrix_3d_petsc
-        unode = unode_xyz
-        # INDEX = np.abs(unode_xyz[:, 2]) > self._lp / 4
-        # unode_num = unode_xyz[~INDEX]  # numerical part
-        # unode_the = unode_rpz[INDEX]  # theoretical result part
-        #
-        # # theoretical part
-        # greenFun = detail(threshold=self._th, b=b)
-        # greenFun.solve_prepare()
-        # u1_list = []
-        # u2_list = []
-        # u3_list = []
-        # for R, phi, z in unode_the:
-        #     t_u1 = greenFun.solve_u1(R, phi, z)
-        #     u1_list.append(t_u1)
-        #     t_u2 = greenFun.solve_u2(R, phi, z)
-        #     u2_list.append(t_u2)
-        #     t_u3 = greenFun.solve_u3(R, phi, z)
-        #     u3_list.append(t_u3)
-        # u1 = np.vstack(u1_list)
-        # u2 = np.vstack(u2_list)
-        # u3 = np.vstack(u3_list)
-        # if use_cart:
-        #     phi = unode_the[:,1]
-        #     t_ux1 = np.cos(phi) * u1[:, 0] - np.sin(phi) * u1[:, 1]
-        #     t_ux2 = np.cos(phi) * u2[:, 0] - np.sin(phi) * u2[:, 1]
-        #     t_ux3 = np.cos(phi) * u3[:, 0] - np.sin(phi) * u3[:, 1]
-        #     t_uy1 = np.sin(phi) * u1[:, 0] + np.cos(phi) * u1[:, 1]
-        #     t_uy2 = np.sin(phi) * u2[:, 0] + np.cos(phi) * u2[:, 1]
-        #     t_uy3 = np.sin(phi) * u3[:, 0] + np.cos(phi) * u3[:, 1]
-        #     u1 = np.dstack((t_ux1, t_uy1, u1[:, 2])).flatten()
-        #     u2 = np.dstack((t_ux2, t_uy2, u2[:, 2])).flatten()
-        #     u3 = np.dstack((t_ux3, t_uy3, u3[:, 2])).flatten()
-        #     u_the = (u1, u2, u3)
-        # else:
-        #     u_the = (u1.flatten(), u2.flatten(), u3.flatten())
-
+    def _solve_stokeslets_b_num(self, b, unode_xyz, unode_rpz, use_cart=False, u_glbIdx_all=[]):
         # velocity due to stokesles.
         kwargs = self.get_kwargs( )
         stokeslet_geo = self._stokeslet_geo
         stokeslet_node = np.hstack((b, 0, 0))
         stokeslet_geo.set_nodes(stokeslet_node, deltalength=0)
         ugeo = geo( )
-        ugeo.set_nodes(unode, deltalength=0)
-        ugeo.set_glbIdx(u_glbIdx)
+        ugeo.set_nodes(unode_xyz, deltalength=0)
+        ugeo.set_glbIdx_all(u_glbIdx_all)
         obj1 = stokesFlowObj( )
         obj1.set_data(stokeslet_geo, ugeo)
         stokeslet_m = self._stokeslet_m
@@ -2060,7 +2027,42 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         u_petsc.append(t_u1 + self._t_u2)
         return u_petsc
 
-    def _solve_stokeslets_fnode(self, fnode, unodes, u_glbIdx=[]):
+    def _solve_stokeslets_b_the(self, b, unode_xyz, unode_rpz, use_cart=False, u_glbIdx_all=[]):
+        from src.stokesletsInPipe import detail
+        comm = PETSc.COMM_WORLD.tompi4py( )
+        greenFun = detail(threshold=self._th, b=b)
+        greenFun.solve_prepare( )
+
+        u1, u2, u3 = self._t_u_the
+        t_dmda_range = range(self._dmda_the.getRanges( )[0][0], self._dmda_the.getRanges( )[0][1])
+        t_Vec_range = u1.getOwnershipRange( )
+        for i0 in t_dmda_range:
+            R, phi, z = unode_rpz[i0]
+            t_u_glbIdx = u_glbIdx_all[i0 * 3]
+            u1[t_u_glbIdx:t_u_glbIdx + 3] = greenFun.solve_u1(R, phi, z)
+            u2[t_u_glbIdx:t_u_glbIdx + 3] = greenFun.solve_u2(R, phi, z)
+            u3[t_u_glbIdx:t_u_glbIdx + 3] = greenFun.solve_u3(R, phi, z)
+
+        if use_cart:
+            phi = unode_rpz[t_dmda_range, 1]
+            t_Vec_range_x = range(t_Vec_range[0] + 0, t_Vec_range[1], 3)
+            t_Vec_range_y = range(t_Vec_range[0] + 1, t_Vec_range[1], 3)
+            t_ux1 = np.cos(phi) * u1[t_Vec_range_x] - np.sin(phi) * u1[t_Vec_range_y]
+            t_ux2 = np.cos(phi) * u2[t_Vec_range_x] - np.sin(phi) * u2[t_Vec_range_y]
+            t_ux3 = np.cos(phi) * u3[t_Vec_range_x] - np.sin(phi) * u3[t_Vec_range_y]
+            t_uy1 = np.sin(phi) * u1[t_Vec_range_x] + np.cos(phi) * u1[t_Vec_range_y]
+            t_uy2 = np.sin(phi) * u2[t_Vec_range_x] + np.cos(phi) * u2[t_Vec_range_y]
+            t_uy3 = np.sin(phi) * u3[t_Vec_range_x] + np.cos(phi) * u3[t_Vec_range_y]
+            u1[t_Vec_range_x] = t_ux1
+            u1[t_Vec_range_y] = t_uy1
+            u2[t_Vec_range_x] = t_ux2
+            u2[t_Vec_range_y] = t_uy2
+            u3[t_Vec_range_x] = t_ux3
+            u3[t_Vec_range_y] = t_uy3
+        u_petsc = (u1, u2, u3)
+        return u_petsc
+
+    def _solve_stokeslets_fnode(self, fnode, unodes, u_glbIdx_all=[], funHandle=None):
         fnode = fnode.reshape((1, 3))
         unodes = unodes.reshape((-1, 3))
         ugeo = geo( )
@@ -2079,8 +2081,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         z = uz - fz
         t_node_xyz = np.vstack((x, y, z)).T
         t_node_rpz = np.vstack((R, phi, z)).T
-        u_fx_petsc, u_fy_petsc, u_fz_petsc = \
-            self._solve_stokeslets_b(b, t_node_xyz, t_node_rpz, use_cart=True, u_glbIdx=u_glbIdx)
+        u_fx_petsc, u_fy_petsc, u_fz_petsc = funHandle(b, t_node_xyz, t_node_rpz, True, u_glbIdx_all)
         u_fx_loc = u_fx_petsc.getArray( )
         u_fy_loc = u_fy_petsc.getArray( )
         u_fz_loc = u_fz_petsc.getArray( )
@@ -2102,13 +2103,6 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         u_fy_petsc.setValues(range(u_fy_petsc.getOwnershipRange( )[0], u_fy_petsc.getOwnershipRange( )[1]), u_fy_glb)
         u_fz_petsc.setValues(range(u_fz_petsc.getOwnershipRange( )[0], u_fz_petsc.getOwnershipRange( )[1]), u_fz_glb)
 
-        # # dbg
-        # from src.StokesFlowMethod import light_stokeslets_matrix_3d
-        # dbg_m = light_stokeslets_matrix_3d(unodes, fnode)
-        # dbg_ux = np.dot(dbg_m, np.array((1, 0, 0)))
-        # dbg_uy = np.dot(dbg_m, np.array((0, 1, 0)))
-        # dbg_uz = np.dot(dbg_m, np.array((0, 0, 1)))
-        # print((np.max(np.abs(u_fx_glb - dbg_ux)), np.max(np.abs(u_fy_glb - dbg_uy)), np.max(np.abs(u_fz_glb - dbg_uz))))
         return u_fx_petsc, u_fy_petsc, u_fz_petsc
 
     def _check_f_accuracy(self, b, greenFun, waitBar=np.array((1, 1)), **kwargs):
@@ -2520,7 +2514,36 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         return u11, u21, u31
 
     def create_matrix_obj(self, obj1, m, INDEX='', *args):
+        setHandle = self._set_temp_var_num
+        solveHandle = self._solve_stokeslets_b_num
+        self._create_matrix_obj(obj1, m, INDEX, setHandle, solveHandle, *args)
+        # setHandle = self._set_temp_var_the
+        # solveHandle = self._solve_stokeslets_b_the
+        # self._create_matrix_obj(obj1, m, INDEX, setHandle, solveHandle, *args)
+        return True
+
+    def _set_temp_var_the(self, obj1):
         # create a empty matrix, and a empty velocity vecters, to avoid use too much time to allocate memory.
+        comm = PETSc.COMM_WORLD.tompi4py( )
+        ugeo = obj1.get_u_geo( ).copy( )
+        kwargs = self.get_kwargs( )
+        t_u_pkg = PETSc.DMComposite( ).create(comm=PETSc.COMM_WORLD)
+        t_u_pkg.addDM(ugeo.get_dmda( ))
+        t_u_pkg.setFromOptions( )
+        t_u_pkg.setUp( )
+
+        self._t_u_the = [t_u_pkg.createGlobalVector( ), t_u_pkg.createGlobalVector( ), t_u_pkg.createGlobalVector( )]
+        u_isglb = t_u_pkg.getGlobalISs( )
+        u_glbIdx_pipe_all = np.hstack(comm.allgather(u_isglb[0].getIndices( )))
+        t_u_pkg.destroy( )
+
+        self._dmda_the = PETSc.DMDA( ).create(sizes=(ugeo.get_n_nodes( ),), dof=3, stencil_width=0,
+                                              comm=PETSc.COMM_WORLD)
+        return u_glbIdx_pipe_all
+
+    def _set_temp_var_num(self, obj1):
+        # create a empty matrix, and a empty velocity vecters, to avoid use too much time to allocate memory.
+        comm = PETSc.COMM_WORLD.tompi4py( )
         ugeo = obj1.get_u_geo( ).copy( )
         kwargs = self.get_kwargs( )
         t_u_pkg = PETSc.DMComposite( ).create(comm=PETSc.COMM_WORLD)
@@ -2540,16 +2563,21 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         self._stokeslet_m = stokeslet_m
 
         u_isglb = t_u_pkg.getGlobalISs( )
-        u_glbIdx_pipe = u_isglb[0].getIndices( )
+        u_glbIdx_pipe_all = np.hstack(comm.allgather(u_isglb[0].getIndices( )))
         temp_m = PETSc.Mat( ).create(comm=PETSc.COMM_WORLD)
         temp_m.setSizes((self._t_u11[0].getSizes( ), self._f1_list[0].getSizes( )))
         temp_m.setType('dense')
         temp_m.setFromOptions( )
         temp_m.setUp( )
         self._t_m = temp_m
+        t_u_pkg.destroy( )
+        return u_glbIdx_pipe_all
 
+    def _create_matrix_obj(self, obj1, m, INDEX='', setHandle=None, solveHandle=None, *args):
+        # set stokeslets using numerical solution.
+        t_u_glbIdx_all = setHandle(obj1)  # index of stokeslets, maybe different from index of m matrix.
         _, u_glbIdx_all = obj1.get_u_geo( ).get_glbIdx( )
-        unodes = ugeo.get_nodes( )
+        unodes = obj1.get_u_nodes( )
         desc = 'object level' + INDEX
         for obj2 in tqdm(self.get_all_obj_list( ), desc=desc):
             f_nodes = obj2.get_f_nodes( )
@@ -2558,13 +2586,12 @@ class stokesletsInPipeProblem(stokesFlowProblem):
             for i0 in tqdm(range(obj2.get_n_f_node( )), desc='f_node level', leave=False):
                 t_f_node = f_nodes[i0]
                 f_glb = f_glbIdx_all[i0 * 3]
-                u1, u2, u3 = self._solve_stokeslets_fnode(t_f_node, unodes, u_glbIdx_pipe)
+                u1, u2, u3 = self._solve_stokeslets_fnode(t_f_node, unodes, t_u_glbIdx_all, solveHandle)
                 u_range = u1.getOwnershipRange( )
                 u_glbIdx = u_glbIdx_all[u_range[0]:u_range[1]]
                 m.setValues(u_glbIdx, f_glb + 0, u1, addv=False)
                 m.setValues(u_glbIdx, f_glb + 1, u2, addv=False)
                 m.setValues(u_glbIdx, f_glb + 2, u3, addv=False)
-        t_u_pkg.destroy( )
         m.assemble( )
         return True
 
@@ -2879,8 +2906,8 @@ class forceFreeComposite:
         geo_list = uniqueList( )
         for obj1 in self.get_obj_list( ):
             geo_list.append(obj1.get_f_geo( ))
-        for obj1 in self.get_obj_list( ):
-            geo_list.append(obj1.get_u_geo( ))
+            if obj1.get_f_geo( ) is not obj1.get_u_geo( ):
+                geo_list.append(obj1.get_u_geo( ))
         temp_geo = geo( )
         temp_geo.combine(geo_list)
         temp_geo.show_nodes(linestyle)
@@ -3053,9 +3080,9 @@ class forceFreeProblem(stokesFlowProblem):
         cmbd_obj = stokesFlowObj( )
         cmbd_obj.set_data(cmbd_ugeo, cmbd_ugeo)
         self.create_matrix_obj(cmbd_obj, self._M_petsc)
-        # n_obj = len(self.get_all_obj_list())
-        # for i0, obj1 in enumerate(self.get_all_obj_list()):
-        #     INDEX = '  %d/%d' % (i0+1, n_obj)
+        # n_obj = len(self.get_all_obj_list( ))
+        # for i0, obj1 in enumerate(self.get_all_obj_list( )):
+        #     INDEX = '  %d/%d' % (i0 + 1, n_obj)
         #     self.create_matrix_obj(obj1, self._M_petsc, INDEX)
         # 3. set force and torque free part of matrix
         self.set_force_free( )
