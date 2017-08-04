@@ -69,7 +69,7 @@ def save_vtk(problem: sf.stokesFlowProblem):
 def get_problem_kwargs(**main_kwargs):
     OptDB = PETSc.Options()
     fileHeadle = OptDB.getString('f', 'sphereInPipe')
-    forcepipe = OptDB.getString('forcepipe', 'construct07')
+    forcepipe = OptDB.getString('forcepipe', 'construct09')
     dp = OptDB.getReal('dp', 0.5)  # delta length of pipe
     ds = OptDB.getReal('ds', 0.1)  # delta length of sphere
     ep = OptDB.getReal('ep', 2)  # epsilon of pipe
@@ -196,7 +196,8 @@ def main_fun(**main_kwargs):
         es = problem_kwargs['es']
         vsgeo = sphere_geo()  # velocity node geo of sphere
         vsgeo.create_delta(ds, rs)
-        # vsgeo.show_nodes()
+        vsgeo.node_rotation(np.random.sample(3), np.random.random())
+        vsgeo.show_nodes()
         U = problem_kwargs['U']
         vsgeo.set_rigid_velocity(np.array((0, 0, U, 0, 0, 0)))
         fsgeo = vsgeo.copy()  # force node geo of sphere
@@ -230,7 +231,7 @@ def main_fun(**main_kwargs):
         if rank == 0:
             force_sphere = vsobj.get_force_z()
             PETSc.Sys.Print('---->>>Resultant at z axis is %f' % (np.sum(force_sphere) / (6 * np.pi * rs)))
-        save_vtk(problem)
+        # save_vtk(problem)
 
 
     else:
