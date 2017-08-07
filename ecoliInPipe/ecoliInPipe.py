@@ -222,8 +222,7 @@ def print_case_info(**problem_kwargs):
 
     PETSc.Sys.Print('Case information: ')
     PETSc.Sys.Print(
-            '  helix radius: %f and %f, helix pitch: %f, helix cycle: %f, helix distance: %f' % (
-                rh1, rh2, ph, ch, dist_hc))
+            '  helix radius: %f and %f, pitch: %f, cycle: %f, distance: %f' % (rh1, rh2, ph, ch, dist_hc))
     PETSc.Sys.Print('  nth, hfct and epsilon of helix are %d, %f and %f, ' % (nth, hfct, eh))
     PETSc.Sys.Print('  head radius: %f and %f, head length: %f, delta length: %f, epsilon: %f' % (rs1, rs2, ls, ds, es))
     PETSc.Sys.Print('  ecoli center: %s, distance between head and tail is %f' % (str(center), dist_hs))
@@ -376,8 +375,8 @@ def main_fun(**main_kwargs):
         PETSc.Sys.Print('velocity_sphere', rel_Us + ecoli_comp.get_ref_U( ))
         PETSc.Sys.Print('velocity_helix', rel_Uh + ecoli_comp.get_ref_U( ))
 
-        velocity_err = save_vtk(problem)
-        # velocity_err = 0
+        # velocity_err = save_vtk(problem)
+        velocity_err = 0
         if rank == 0:
             with open("caseInfo.txt", "a") as outfile:
                 outline = np.hstack((prb_index, zoom_factor, non_dim_U, non_dim_F, velocity_err))

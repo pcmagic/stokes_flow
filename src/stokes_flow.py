@@ -1849,6 +1849,7 @@ class stokesletsPreconditionObj(stokesletsObj, preconditionObj):
 class stokesletsInPipeProblem(stokesFlowProblem):
     # pipe center line along z asix
     def __init__(self, **kwargs):
+        from src.stokesletsInPipe import detail_light
         super( ).__init__(**kwargs)
         self._fpgeo = geo( )  # force geo of pipe
         self._vpgeo = geo( )  # velocity geo of pipe
@@ -1866,6 +1867,16 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         self._set_f123( )
         self._stokeslet_m = PETSc.Mat( ).create(comm=PETSc.COMM_WORLD)  # M matrix associated with stokeslet singularity
         self._t_u2 = PETSc.Vec( ).create(comm=PETSc.COMM_WORLD)
+        # for theritical part
+        # DBG
+        OptDB = PETSc.Options( )
+        dbg_threshold = OptDB.getReal('dbg_threshold', 10)
+        PETSc.Sys.Print('--------------------> threshold=%f' % dbg_threshold)
+        self._greenFun = detail_light(threshold=dbg_threshold)
+        self._greenFun.solve_prepare_light()
+        dbg_z_the_threshold = OptDB.getReal('dbg_z_the_threshold', np.inf)
+        PETSc.Sys.Print('--------------------> dbg_lp=%f' % dbg_z_the_threshold)
+        self._z_the_threshold = dbg_z_the_threshold
 
         self._f1_list = []  # list of forces lists for each object at or outside pipe associated with force-nodes at x axis
         self._f2_list = []  # list of forces lists for each object at or outside pipe associated with force-nodes at y axis
@@ -1901,10 +1912,9 @@ class stokesletsInPipeProblem(stokesFlowProblem):
     def add_obj(self, obj):
         _, b, _ = obj.get_f_geo( ).get_polar_coord( )
         b_list = self.get_b_list( )
-        b0 = np.min(b_list)
         b1 = np.max(b_list)
-        err_msg = 'b is out of range (%f, %f)' % (b0, b1)
-        assert all(b >= b0) and all(b <= b1), err_msg
+        err_msg = 'b is out of maximun %f' % b1
+        assert all(b <= b1), err_msg
 
         return super( ).add_obj(obj)
 
@@ -2028,7 +2038,6 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         return u_petsc
 
     def _solve_stokeslets_b_the(self, b, unode_rpz, use_cart=False):
-        from src.stokesletsInPipe import detail
         comm = PETSc.COMM_WORLD.tompi4py( )
         dmda_the = PETSc.DMDA( ).create(sizes=(unode_rpz.shape[0],), dof=3, stencil_width=0, comm=PETSc.COMM_WORLD)
         t_u_pkg = PETSc.DMComposite( ).create(comm=PETSc.COMM_WORLD)
@@ -2043,9 +2052,9 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         u_glbIdx_all = np.hstack(comm.allgather(u_isglb[0].getIndices( )))
         t_u_pkg.destroy( )
 
-        greenFun = detail(threshold=self._th, b=b)
-        greenFun.solve_prepare( )
-
+        greenFun = self._greenFun
+        greenFun.set_b(b=b)
+        greenFun.solve_prepare_b()
         t_dmda_range = range(dmda_the.getRanges( )[0][0], dmda_the.getRanges( )[0][1])
         t_Vec_range = u1.getOwnershipRange( )
         for i0 in t_dmda_range:
@@ -2078,6 +2087,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         u2.assemble( )
         u3.assemble( )
         u_petsc = (u1, u2, u3)
+        PETSc.Sys.Print(unode_rpz.size)
         return u_petsc
 
     def _solve_stokeslets_fnode(self, fnode, unodes, u_glbIdx_all=[]):
@@ -2184,15 +2194,6 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         self._ep = mat_contents['ep'][0, 0]
         self._th = mat_contents['th'][0, 0]
         self._factor = mat_contents['factor'][0, 0]
-
-        # DBG
-        OptDB = PETSc.Options( )
-        dbg_threshold = OptDB.getReal('dbg_threshold', 10)
-        PETSc.Sys.Print('--------------------> threshold=%f' % dbg_threshold)
-        self._th = dbg_threshold
-        dbg_z_the_threshold = OptDB.getReal('dbg_z_the_threshold', np.inf)
-        PETSc.Sys.Print('--------------------> dbg_lp=%f' % dbg_z_the_threshold)
-        self._z_the_threshold = dbg_z_the_threshold
 
         kwargs = self.get_kwargs( )
         kwargs['dp'] = self._dp
@@ -2551,10 +2552,6 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         # pgeo.show_velocity(length_factor=length_factor, show_nodes=False)
         return u11, u21, u31
 
-    def create_matrix_obj(self, obj1, m, INDEX='', *args):
-        self._create_matrix_obj(obj1, m, INDEX, *args)
-        return True
-
     def _set_temp_var(self, obj1):
         # create a empty matrix, and a empty velocity vecters, to avoid use too much time to allocate memory.
         comm = PETSc.COMM_WORLD.tompi4py( )
@@ -2587,17 +2584,18 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         t_u_pkg.destroy( )
         return u_glbIdx_pipe_all
 
-    def _create_matrix_obj(self, obj1, m, INDEX='', *args):
+    def create_matrix_obj(self, obj1, m, INDEX='', *args):
         # set stokeslets using numerical solution.
         t_u_glbIdx_all = self._set_temp_var(obj1)  # index of stokeslets, maybe different from index of m matrix.
         _, u_glbIdx_all = obj1.get_u_geo( ).get_glbIdx( )
         unodes = obj1.get_u_nodes( )
-        desc = 'object level' + INDEX
-        for obj2 in tqdm(self.get_all_obj_list( ), desc=desc):
+        obj_desc = 'object level' + INDEX
+        for obj2 in tqdm(self.get_all_obj_list( ), desc=obj_desc):
             f_nodes = obj2.get_f_nodes( )
             _, f_glbIdx_all = obj2.get_f_geo( ).get_glbIdx( )
             f_dmda = obj2.get_f_geo( ).get_dmda( )
-            for i0 in tqdm(range(obj2.get_n_f_node( )), desc='f_node level', leave=False):
+            f_desc = 'f_node level' + ' ' * len(INDEX)
+            for i0 in tqdm(range(obj2.get_n_f_node( )), desc=f_desc, leave=False):
                 t_f_node = f_nodes[i0]
                 f_glb = f_glbIdx_all[i0 * 3]
                 u1, u2, u3 = self._solve_stokeslets_fnode(t_f_node, unodes, t_u_glbIdx_all)
@@ -3088,16 +3086,16 @@ class forceFreeProblem(stokesFlowProblem):
         f_size = self._force_petsc.getSize( )  # including additional degree of freedome.
         u_size = self._velocity_petsc.getSize( )  # including additional degree of freedome.
         # 2. set mij part of matrix
-        cmbd_ugeo = geo( )
-        cmbd_ugeo.combine([obj.get_u_geo( ) for obj in self.get_all_obj_list( )])
-        cmbd_ugeo.set_glbIdx_all(np.hstack([obj.get_u_geo( ).get_glbIdx( )[1] for obj in self.get_all_obj_list( )]))
-        cmbd_obj = stokesFlowObj( )
-        cmbd_obj.set_data(cmbd_ugeo, cmbd_ugeo)
-        self.create_matrix_obj(cmbd_obj, self._M_petsc)
-        # n_obj = len(self.get_all_obj_list( ))
-        # for i0, obj1 in enumerate(self.get_all_obj_list( )):
-        #     INDEX = '  %d/%d' % (i0 + 1, n_obj)
-        #     self.create_matrix_obj(obj1, self._M_petsc, INDEX)
+        # cmbd_ugeo = geo( )
+        # cmbd_ugeo.combine([obj.get_u_geo( ) for obj in self.get_all_obj_list( )])
+        # cmbd_ugeo.set_glbIdx_all(np.hstack([obj.get_u_geo( ).get_glbIdx( )[1] for obj in self.get_all_obj_list( )]))
+        # cmbd_obj = stokesFlowObj( )
+        # cmbd_obj.set_data(cmbd_ugeo, cmbd_ugeo)
+        # self.create_matrix_obj(cmbd_obj, self._M_petsc)
+        n_obj = len(self.get_all_obj_list( ))
+        for i0, obj1 in enumerate(self.get_all_obj_list( )):
+            INDEX = ' %d/%d' % (i0 + 1, n_obj)
+            self.create_matrix_obj(obj1, self._M_petsc, INDEX)
         # 3. set force and torque free part of matrix
         self.set_force_free( )
         # self._M_petsc.view()
@@ -3216,9 +3214,8 @@ class forceFreeProblem(stokesFlowProblem):
 class stokesletsInPipeForceFreeProblem(stokesletsInPipeProblem, forceFreeProblem):
     def add_obj(self, obj):
         b_list = self.get_b_list( )
-        b0 = np.min(b_list)
         b1 = np.max(b_list)
-        err_msg = 'b is out of range (%f, %f)' % (b0, b1)
+        err_msg = 'b is out of maximun %f' % b1
 
         if isinstance(obj, forceFreeComposite):
             self._obj_list.append(obj)
