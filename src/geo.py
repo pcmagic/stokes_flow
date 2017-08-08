@@ -457,7 +457,7 @@ class _ThickLine_geo(geo):
 
     def _create_deltatheta(self, dth: float,  # delta theta of the cycle for the mesh
                            radius: float,  # radius of the cycle
-                           epsilon=1,
+                           epsilon=0,
                            with_cover=False):
         # the tunnel is along z axis
         self._dth = dth
@@ -791,7 +791,7 @@ class tunnel_geo(_ThickLine_geo):
     def create_deltatheta(self, dth: float,  # delta theta of the cycle for the mesh
                           radius: float,
                           length,
-                          epsilon=1,
+                          epsilon=0,
                           with_cover=False,
                           factor=1,
                           left_hand=False):
@@ -1121,7 +1121,7 @@ class supHelix(_ThickLine_geo):
     def create_deltatheta(self, dth: float,  # delta theta of the cycle for the mesh
                           radius: float,
                           R, B, n_c,
-                          epsilon=1,
+                          epsilon=0,
                           with_cover=False,
                           factor=1,
                           left_hand=False):
@@ -1370,7 +1370,7 @@ def createEcoli_tunnel(objtype, **kwargs):
     PETSc.Sys.Print('--------------------> DBG: move factor=%f' % factor)
     moveT = np.array((0, 0, moveh[-1] + lh / 2 + rh2 * factor))
     vTgeo = tunnel_geo( )
-    fTgeo = vTgeo.create_deltatheta(dth=dth, radius=rT, length=lT, with_cover=True)
+    fTgeo = vTgeo.create_deltatheta(dth=dth, radius=rT, length=lT, epsilon=eh, with_cover=True)
     vTobj = objtype( )
     vTobj.set_data(fTgeo, vTgeo, name='T_shape_0')
     theta = -np.pi / 2
