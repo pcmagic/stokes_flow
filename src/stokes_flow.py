@@ -5,7 +5,7 @@ Zhang Ji, 20160409
 """
 import sys
 
-sys.path = ['..'] + sys.path
+# sys.path = ['..'] + sys.path
 from pyvtk import *
 import copy
 import numpy as np
@@ -64,6 +64,7 @@ class stokesFlowProblem:
             'tp_rs_stokeslets_precondition': StokesFlowMethod.two_para_regularized_stokeslets_matrix_3d,
             'lg_rs_stokeslets_precondition': StokesFlowMethod.legendre_regularized_stokeslets_matrix_3d,
             'pf_stokeslets':                 StokesFlowMethod.point_force_matrix_3d_petsc,
+            'pf_stokesletsTwoPlate':         StokesFlowMethod.two_plate_matrix_3d_petsc,
         }
         self._check_args_dict = {
             'rs':                            StokesFlowMethod.check_regularized_stokeslets_matrix_3d,
@@ -82,6 +83,7 @@ class stokesFlowProblem:
             'tp_rs_stokeslets_precondition': StokesFlowMethod.check_two_para_regularized_stokeslets_matrix_3d,
             'lg_rs_stokeslets_precondition': StokesFlowMethod.check_legendre_regularized_stokeslets_matrix_3d,
             'pf_stokeslets':                 StokesFlowMethod.check_point_force_matrix_3d_petsc,
+            'pf_stokesletsTwoPlate':         StokesFlowMethod.check_two_plate_matrix_3d_petsc,
         }
         self._check_args_dict[kwargs['matrix_method']](**kwargs)
 
@@ -3220,6 +3222,7 @@ problem_dic = {
     'rs_stokeslets_precondition':    stokesletsPreconditionProblem,
     'lg_rs_stokeslets_precondition': stokesletsPreconditionProblem,
     'tp_rs_stokeslets_precondition': stokesletsPreconditionProblem,
+    'pf_stokesletsTwoPlate':         stokesFlowProblem,
 }
 obj_dic = {
     'tp_rs':                         stokesFlowObj,
@@ -3243,6 +3246,7 @@ obj_dic = {
     'rs_stokeslets_precondition':    stokesletsPreconditionObj,
     'lg_rs_stokeslets_precondition': stokesletsPreconditionObj,
     'tp_rs_stokeslets_precondition': stokesletsPreconditionObj,
+    'pf_stokesletsTwoPlate':         stokesFlowObj,
 }
 
 # names of models that need two geometries.

@@ -215,7 +215,7 @@ def print_case_info(**problem_kwargs):
     rel_Us = problem_kwargs['rel_Us']
     rel_Uh = problem_kwargs['rel_Uh']
     dist_hs = problem_kwargs['dist_hs']
-    dist_hc = problem_kwargs['dist_hc'] if 'dist_hc' in problem_kwargs.keys() else rh1
+    dist_hc = problem_kwargs['dist_hc'] if 'dist_hc' in problem_kwargs.keys( ) else rh1
     forcepipe = problem_kwargs['forcepipe']
     zoom_factor = problem_kwargs['zoom_factor']
     ffweight = problem_kwargs['ffweight']
