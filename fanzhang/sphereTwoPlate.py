@@ -74,7 +74,6 @@ def get_problem_kwargs(**main_kwargs):
     fileHeadle = OptDB.getString('f', 'sphere')
     solve_method = OptDB.getString('s', 'gmres')
     precondition_method = OptDB.getString('g', 'none')
-    plot = OptDB.getBool('plot', False)
     debug_mode = OptDB.getBool('debug', False)
     matrix_method = OptDB.getString('sm', 'pf_stokesletsTwoPlate')
     restart = OptDB.getBool('restart', False)
@@ -87,6 +86,7 @@ def get_problem_kwargs(**main_kwargs):
     getConvergenceHistory = OptDB.getBool('getConvergenceHistory', False)
     pickProblem = OptDB.getBool('pickProblem', False)
     twoPlateHeight = OptDB.getReal('twoPlateHeight', 5)
+    plot_geo = OptDB.getBool('plot_geo', False)
 
     n_obj = OptDB.getInt('n', 1)
     n_obj_x = OptDB.getInt('nx', n_obj)
@@ -109,7 +109,6 @@ def get_problem_kwargs(**main_kwargs):
                       'precondition_method':   precondition_method,
                       'field_range':           field_range,
                       'n_grid':                n_grid,
-                      'plot':                  plot,
                       'debug_mode':            debug_mode,
                       'fileHeadle':            fileHeadle,
                       'region_type':           'rectangle',
@@ -126,7 +125,9 @@ def get_problem_kwargs(**main_kwargs):
                       'n_node_threshold':      n_node_threshold,
                       'getConvergenceHistory': getConvergenceHistory,
                       'pickProblem':           pickProblem,
-                      'twoPlateHeight':        twoPlateHeight, }
+                      'twoPlateHeight':        twoPlateHeight,
+                      'plot_geo':              plot_geo,
+                      }
 
     for key in main_kwargs:
         problem_kwargs[key] = main_kwargs[key]
@@ -150,9 +151,8 @@ def main_fun(**main_kwargs):
     delta = problem_kwargs['delta']
     u = problem_kwargs['u']
 
-    n = int(16 * radius * radius / deltaLength / deltaLength)
     sphere_geo0 = sphere_geo( )  # force geo
-    sphere_geo0.create_n(n, radius)
+    sphere_geo0.create_delta(deltaLength=deltaLength, radius=radius)
     sphere_velocity = np.array((u, 0, 0, 0, 0, 0))
     if random_velocity:
         sphere_velocity = np.random.sample(6) * u
@@ -162,28 +162,29 @@ def main_fun(**main_kwargs):
     problem = problem_dic[matrix_method](**problem_kwargs)
     obj_sphere = obj_dic[matrix_method]( )
     sphere_geo1 = sphere_geo0.copy( )
-    if matrix_method in ('pf', 'pf_stokesletsTwoPlate', ):
-        sphere_geo1.create_n(n, radius + deltaLength * epsilon)
+    if matrix_method in ('pf', 'pf_stokesletsTwoPlate',):
+        sphere_geo1.node_zoom((radius + deltaLength * epsilon) / radius)
     obj_sphere.set_data(sphere_geo1, sphere_geo0, name='sphereObj_0_0')
     obj_sphere.move((0, 0, 2))
     problem.add_obj(obj_sphere)
 
-    # problem.show_f_u_nodes( )
+    problem.show_f_u_nodes( )
     problem.print_info( )
     problem.create_matrix( )
     residualNorm = problem.solve( )
-
-    geo_check = sphere_geo( )  # force geo
-    geo_check.create_n(n * 3, radius)
-    geo_check.set_rigid_velocity(sphere_velocity)
-    obj_check = obj_dic[matrix_method]( )
-    obj_check.set_data(geo_check, geo_check, name='sphereObj_check')
-    problem.vtk_check(fileHeadle + '_check', obj_check)
 
     problem.vtk_self(fileHeadle)
     obj_sphere.vtk(fileHeadle)
     force_sphere = obj_sphere.get_force_x( )
     PETSc.Sys.Print('---->>>%s: Resultant at x axis is %f' % (str(problem), force_sphere.sum( ) / (6 * np.pi * radius)))
+
+    geo_check = sphere_geo( )  # force geo
+    n = int(16 * radius * radius / deltaLength / deltaLength)
+    geo_check.create_n(n, radius)
+    geo_check.set_rigid_velocity(sphere_velocity)
+    obj_check = obj_dic[matrix_method]( )
+    obj_check.set_data(geo_check, geo_check, name='sphereObj_check')
+    problem.vtk_check(fileHeadle + '_check', obj_check)
 
     return True
 

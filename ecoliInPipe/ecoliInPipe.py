@@ -104,7 +104,6 @@ def get_problem_kwargs(**main_kwargs):
     belemsHeadle = OptDB.getString('belems', 'belems')  # body tetrahedron mesh, for vtu output
     solve_method = OptDB.getString('s', 'gmres')
     precondition_method = OptDB.getString('g', 'none')
-    plot = OptDB.getBool('plot', False)
     matrix_method = OptDB.getString('sm', 'pf')
     restart = OptDB.getBool('restart', False)
     twoPara_n = OptDB.getInt('tp_n', 1)
@@ -169,7 +168,6 @@ def get_problem_kwargs(**main_kwargs):
         'belemsHeadle':          belemsHeadle,
         'solve_method':          solve_method,
         'precondition_method':   precondition_method,
-        'plot':                  plot,
         'fileHeadle':            fileHeadle,
         'forcepipe':             forcepipe,
         'twoPara_n':             twoPara_n,

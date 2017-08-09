@@ -776,14 +776,20 @@ class stokesFlowProblem:
         return True
 
     def show_f_u_nodes(self):
-        geo_list = uniqueList( )
+        f_geo_list = uniqueList( )
+        u_geo_list = uniqueList( )
         for obj1 in self.get_obj_list( ):
-            geo_list.append(obj1.get_f_geo( ))
+            f_geo_list.append(obj1.get_f_geo( ))
             if obj1.get_f_geo( ) is not obj1.get_u_geo( ):
-                geo_list.append(obj1.get_u_geo( ))
-        temp_geo = geo( )
-        temp_geo.combine(geo_list)
-        temp_geo.show_nodes( )
+                u_geo_list.append(obj1.get_u_geo( ))
+        f_geo = geo()
+        f_geo.combine(f_geo_list)
+        u_geo = geo()
+        u_geo.combine(u_geo_list)
+        temp_geo = geoComposit( )
+        temp_geo.append(u_geo)
+        temp_geo.append(f_geo)
+        temp_geo.show_nodes(linestyle)
         return True
 
 
@@ -1025,12 +1031,10 @@ class stokesFlowObj:
         return True
 
     def show_f_u_nodes(self, linestyle='-'):
-        geo_list = uniqueList( )
-        geo_list.append(self.get_u_geo( ))
-        if self.get_f_geo( ) is not self.get_u_geo( ):
-            geo_list.append(self.get_f_geo( ))
-        temp_geo = geo( )
-        temp_geo.combine(geo_list)
+        temp_geo = geoComposit( )
+        temp_geo.append(self.get_u_geo())
+        if self.get_u_geo() is not self.get_f_geo():
+            temp_geo.append(self.get_f_geo())
         temp_geo.show_nodes(linestyle)
         return True
 
@@ -1861,9 +1865,9 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         # for numerical part
         self._t_m = PETSc.Mat( ).create(
                 comm=PETSc.COMM_WORLD)  # M matrix associated with u1 part ,velocity due to pipe boundary.
-        self._t_u11 = []  # a list contain three u1 component of f1, for interpolation
-        self._t_u12 = []  # a list contain three u1 component of f2, for interpolation
-        self._t_u13 = []  # a list contain three u1 component of f3, for interpolation
+        self._t_u11 = uniqueList()  # a list contain three u1 component of f1, for interpolation
+        self._t_u12 = uniqueList()  # a list contain three u1 component of f2, for interpolation
+        self._t_u13 = uniqueList()  # a list contain three u1 component of f3, for interpolation
         self._set_f123( )
         self._stokeslet_m = PETSc.Mat( ).create(comm=PETSc.COMM_WORLD)  # M matrix associated with stokeslet singularity
         self._t_u2 = PETSc.Vec( ).create(comm=PETSc.COMM_WORLD)
@@ -1873,7 +1877,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         dbg_threshold = OptDB.getReal('dbg_threshold', 10)
         PETSc.Sys.Print('--------------------> threshold=%f' % dbg_threshold)
         self._greenFun = detail_light(threshold=dbg_threshold)
-        self._greenFun.solve_prepare_light()
+        self._greenFun.solve_prepare_light( )
         dbg_z_the_threshold = OptDB.getReal('dbg_z_the_threshold', np.inf)
         PETSc.Sys.Print('--------------------> dbg_lp=%f' % dbg_z_the_threshold)
         self._z_the_threshold = dbg_z_the_threshold
@@ -1905,7 +1909,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         f3_petsc.assemble( )
         t_f_pkg.destroy( )
 
-        self._f123_petsc = (f1_petsc, f2_petsc, f3_petsc)
+        self._f123_petsc = [f1_petsc, f2_petsc, f3_petsc]
         self._stokeslet_geo = fgeo
         return True
 
@@ -2054,7 +2058,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
 
         greenFun = self._greenFun
         greenFun.set_b(b=b)
-        greenFun.solve_prepare_b()
+        greenFun.solve_prepare_b( )
         t_dmda_range = range(dmda_the.getRanges( )[0][0], dmda_the.getRanges( )[0][1])
         t_Vec_range = u1.getOwnershipRange( )
         for i0 in t_dmda_range:
@@ -2672,23 +2676,37 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         self._pick_filename = filename
         self._pick_M = pick_M
 
+        if not check and self._finish_solve and pick_M:
+            self.saveM_Binary(filename + '_M')
         # PETSC based version
         if not check:
             self._f_list_PETSC2numpy( )
+            self.destroy( )
 
         if rank == 0:
             with open(filename + '_pick.bin', 'wb') as output:
                 pickler = pickle.Pickler(output, -1)
                 pickler.dump(self)
 
-        if not check and self._finish_solve:
-            self.saveF_Binary(filename + '_F')
-        if not check and self._finish_solve and pick_M:
-            self.saveM_Binary(filename + '_M')
+        # if not check and self._finish_solve:
+        #     self.saveF_Binary(filename + '_F')
         if not check:
             self.unpickmyself( )
         t1 = time( )
         PETSc.Sys( ).Print('%s: pick the problem use: %fs' % (str(self), (t1 - t0)))
+        return True
+
+    def destroy(self):
+        super( ).destroy( )
+
+        self._m_pipe.destroy( )
+        self._m_pipe_check
+        self._t_m
+        for ui in self._t_u11 + self._t_u12 + self._t_u13 + self._f123_petsc:
+            ui.destroy( )
+        self._stokeslet_m.destroy( )
+        self._t_u2.destroy( )
+
         return True
 
     def unpickmyself(self):
@@ -2719,8 +2737,7 @@ class forceFreeComposite:
         self._name = name  # object name
         self.set_dmda( )
         self._ref_U = np.zeros(6)  # ux, uy, uz, omega_x, omega_y, omega_z
-        self._re_sum = np.ones(
-                6)  # analitically, re_sum={sum(fi), sum(cross(ri, fi))}==np.zeros(6) to satisfy the force free equations.
+        self._re_sum = np.ones(6)  # [sum(fi), sum(cross(ri, fi))] (==np.zeros(6) to satisfy the force free equations).
         self._min_ds = np.inf  # min deltalength of objects in the composite
 
     def __repr__(self):
@@ -2915,13 +2932,19 @@ class forceFreeComposite:
         return True
 
     def show_f_u_nodes(self, linestyle='-'):
-        geo_list = uniqueList( )
+        f_geo_list = uniqueList( )
+        u_geo_list = uniqueList( )
         for obj1 in self.get_obj_list( ):
-            geo_list.append(obj1.get_f_geo( ))
+            f_geo_list.append(obj1.get_f_geo( ))
             if obj1.get_f_geo( ) is not obj1.get_u_geo( ):
-                geo_list.append(obj1.get_u_geo( ))
-        temp_geo = geo( )
-        temp_geo.combine(geo_list)
+                u_geo_list.append(obj1.get_u_geo( ))
+        f_geo = geo()
+        f_geo.combine(f_geo_list)
+        u_geo = geo()
+        u_geo.combine(u_geo_list)
+        temp_geo = geoComposit( )
+        temp_geo.append(u_geo)
+        temp_geo.append(f_geo)
         temp_geo.show_nodes(linestyle)
         return True
 

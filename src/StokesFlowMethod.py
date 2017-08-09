@@ -948,8 +948,8 @@ def check_point_force_matrix_3d_petsc(**kwargs):
     return True
 
 
-def two_plate_matrix_3d_petsc(obj1: sf.stokesFlowObj,  # objct contain velocity information
-                              obj2: sf.stokesFlowObj,  # objct contain force information
+def two_plate_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
+                              obj2: 'sf.stokesFlowObj',  # objct contain force information
                               m, **kwargs):
     # see Liron, N., & Mochon, S. (1976). Stokes flow for a stokeslet between two parallel flat plates. Journal of Engineering Mathematics, 10(4), 287-303.
     # U = M * F.

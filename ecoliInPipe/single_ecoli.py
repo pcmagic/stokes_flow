@@ -298,7 +298,7 @@ def main_fun(**main_kwargs):
             # ecoli_comp.show_u_nodes(' ')
             # vsobj.show_f_u_nodes(' ')
             # vhobj0.show_f_u_nodes(' ')
-            ecoli_comp.show_f_u_nodes(' ')
+            ecoli_comp.show_f_u_nodes('-')
 
         problem.create_matrix( )
         residualNorm = problem.solve( )

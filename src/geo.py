@@ -9,8 +9,9 @@ import matplotlib.pyplot as plt
 from src.support_class import *
 import abc
 
-__all__ = ['geo', 'sphere_geo', 'ellipse_geo', 'tunnel_geo', 'stokeslets_tunnel_geo', 'pipe_cover_geo', 'supHelix',
-           'region', 'createEcoli_ellipse', 'createEcoli_tunnel']
+__all__ = ['geo', 'sphere_geo', 'ellipse_geo', 'geoComposit',
+           'tunnel_geo', 'stokeslets_tunnel_geo', 'pipe_cover_geo', 'supHelix',
+           'region', 'createEcoli_ellipse', 'createEcoli_tunnel', ]
 
 
 class geo( ):
@@ -345,20 +346,24 @@ class geo( ):
             plt.show( )
         return True
 
-    def show_nodes(self, linestyle='-'):
+    def show_nodes(self, linestyle='-', color='b'):
         comm = PETSc.COMM_WORLD.tompi4py( )
         rank = comm.Get_rank( )
         if rank == 0:
             fig = plt.figure( )
             ax = fig.gca(projection='3d')
             ax.set_aspect('equal')
-            ax.plot(self.get_nodes_x( ), self.get_nodes_y( ), self.get_nodes_z( ), linestyle=linestyle, c='b',
+            ax.plot(self.get_nodes_x( ), self.get_nodes_y( ), self.get_nodes_z( ),
+                    linestyle=linestyle,
+                    color='b',
                     marker='.')
 
             X = np.hstack((self.get_nodes_x( )))
             Y = np.hstack((self.get_nodes_y( )))
             Z = np.hstack((self.get_nodes_z( )))
-            max_range = np.array([X.max( ) - X.min( ), Y.max( ) - Y.min( ), Z.max( ) - Z.min( )]).max( ) / 2.0
+            max_range = np.array([X.max( ) - X.min( ),
+                                  Y.max( ) - Y.min( ),
+                                  Z.max( ) - Z.min( )]).max( ) / 2.0
             mid_x = (X.max( ) + X.min( )) * 0.5
             mid_y = (Y.max( ) + Y.min( )) * 0.5
             mid_z = (Z.max( ) + Z.min( )) * 0.5
@@ -411,6 +416,51 @@ class geo( ):
         #     f = lambda x: 1 / (1 + np.exp(-factor * x))
         #     x = np.linspace(-0.5, 0.5, n)
         #     return (f(x) - f(-0.5)) / (f(0.5) - f(-0.5))
+
+
+class geoComposit(uniqueList):
+    def show_nodes(self, linestyle='-'):
+        color_list = ['b', 'g', 'r', 'c', 'm', 'y', 'k', ]
+        comm = PETSc.COMM_WORLD.tompi4py( )
+        rank = comm.Get_rank( )
+        if len(self) == 0:
+            return None
+        if rank == 0:
+            fig = plt.figure( )
+            ax = fig.gca(projection='3d')
+            ax.set_aspect('equal')
+            xlim_list = np.zeros((len(self), 2))
+            ylim_list = np.zeros((len(self), 2))
+            zlim_list = np.zeros((len(self), 2))
+            for i0, geo0 in enumerate(self):
+                ax.plot(geo0.get_nodes_x( ), geo0.get_nodes_y( ), geo0.get_nodes_z( ),
+                        linestyle=linestyle,
+                        color=color_list[i0%len(color_list)],
+                        marker='.')
+
+                X = np.hstack((geo0.get_nodes_x( )))
+                Y = np.hstack((geo0.get_nodes_y( )))
+                Z = np.hstack((geo0.get_nodes_z( )))
+                max_range = np.array([X.max( ) - X.min( ),
+                                      Y.max( ) - Y.min( ),
+                                      Z.max( ) - Z.min( )]).max( ) / 2.0
+                mid_x = (X.max( ) + X.min( )) * 0.5
+                mid_y = (Y.max( ) + Y.min( )) * 0.5
+                mid_z = (Z.max( ) + Z.min( )) * 0.5
+                xlim_list[i0] = (mid_x - max_range, mid_x + max_range)
+                ylim_list[i0] = (mid_y - max_range, mid_y + max_range)
+                zlim_list[i0] = (mid_z - max_range, mid_z + max_range)
+            ax.set_xlim(xlim_list.min(), xlim_list.max())
+            ax.set_ylim(ylim_list.min(), ylim_list.max())
+            ax.set_zlim(zlim_list.min(), zlim_list.max())
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+            ax.set_zlabel('z')
+
+            plt.grid( )
+            plt.get_current_fig_manager( ).window.showMaximized( )
+            plt.show( )
+        return True
 
 
 class _ThickLine_geo(geo):
