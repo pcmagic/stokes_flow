@@ -982,3 +982,6 @@ def two_plate_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocit
 def check_two_plate_matrix_3d_petsc(**kwargs):
     err_msg = 'The height of two plate system is necessary. '
     assert 'twoPlateHeight' in kwargs, err_msg
+
+def check_pass(**kwargs):
+    pass

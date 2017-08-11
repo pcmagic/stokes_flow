@@ -11,7 +11,7 @@ import abc
 
 __all__ = ['geo', 'sphere_geo', 'ellipse_geo', 'geoComposit',
            'tunnel_geo', 'stokeslets_tunnel_geo', 'pipe_cover_geo', 'supHelix',
-           'region', 'createEcoli_ellipse', 'createEcoli_tunnel', ]
+           'region', ]
 
 
 class geo( ):
@@ -435,7 +435,7 @@ class geoComposit(uniqueList):
             for i0, geo0 in enumerate(self):
                 ax.plot(geo0.get_nodes_x( ), geo0.get_nodes_y( ), geo0.get_nodes_z( ),
                         linestyle=linestyle,
-                        color=color_list[i0%len(color_list)],
+                        color=color_list[i0 % len(color_list)],
                         marker='.')
 
                 X = np.hstack((geo0.get_nodes_x( )))
@@ -450,9 +450,9 @@ class geoComposit(uniqueList):
                 xlim_list[i0] = (mid_x - max_range, mid_x + max_range)
                 ylim_list[i0] = (mid_y - max_range, mid_y + max_range)
                 zlim_list[i0] = (mid_z - max_range, mid_z + max_range)
-            ax.set_xlim(xlim_list.min(), xlim_list.max())
-            ax.set_ylim(ylim_list.min(), ylim_list.max())
-            ax.set_zlim(zlim_list.min(), zlim_list.max())
+            ax.set_xlim(xlim_list.min( ), xlim_list.max( ))
+            ax.set_ylim(ylim_list.min( ), ylim_list.max( ))
+            ax.set_zlim(zlim_list.min( ), zlim_list.max( ))
             ax.set_xlabel('x')
             ax.set_ylabel('y')
             ax.set_zlabel('z')
@@ -1279,152 +1279,3 @@ class region:
 
         return full_region_x, full_region_y, full_region_z
 
-
-def createEcoli_ellipse(objtype, **kwargs):
-    nth = kwargs['nth']
-    hfct = kwargs['hfct']
-    eh = kwargs['eh']
-    ch = kwargs['ch']
-    rh1 = kwargs['rh1']
-    rh2 = kwargs['rh2']
-    ph = kwargs['ph']
-    with_cover = kwargs['with_cover']
-    ds = kwargs['ds']
-    rs1 = kwargs['rs1']
-    rs2 = kwargs['rs2']
-    es = kwargs['es']
-    left_hand = kwargs['left_hand']
-    # sphere_rotation = kwargs['sphere_rotation'] if 'sphere_rotation' in kwargs.keys() else 0
-    zoom_factor = kwargs['zoom_factor'] if 'zoom_factor' in kwargs.keys( ) else 1
-    dist_hs = kwargs['dist_hs']
-    lh = ph * ch  # length of helix
-    movesz = 0.5 * (dist_hs - 2 * rs1 + lh) + rs1
-    movehz = 0.5 * (dist_hs + 2 * rs1 - lh) + lh / 2
-    moves = np.array((0, 0, movesz))  # move distance of sphere
-    moveh = np.array((0, 0, -movehz))  # move distance of helix
-
-    # create helix
-    B = ph / (2 * np.pi)
-    vhgeo0 = supHelix( )  # velocity node geo of helix
-    dth = 2 * np.pi / nth
-    fhgeo0 = vhgeo0.create_deltatheta(dth=dth, radius=rh2, R=rh1, B=B, n_c=ch, epsilon=eh, with_cover=with_cover,
-                                      factor=hfct, left_hand=left_hand)
-    vhobj0 = objtype( )
-    vhobj0.set_data(fhgeo0, vhgeo0, name='helix_0')
-    vhobj0.zoom(zoom_factor)
-    vhobj0.move(moveh * zoom_factor)
-    vhobj1 = vhobj0.copy( )
-    vhobj1.node_rotation(norm=(0, 0, 1), theta=np.pi, rotation_origin=(0, 0, 0))
-    vhobj1.set_name('helix_1')
-
-    # create sphere
-    vsgeo = ellipse_geo( )  # velocity node geo of sphere
-    vsgeo.create_delta(ds, rs1, rs2)
-    vsgeo.node_rotation(norm=np.array((0, 1, 0)), theta=np.pi / 2)
-    fsgeo = vsgeo.copy( )  # force node geo of sphere
-    fsgeo.node_zoom(1 + ds / (0.5 * (rs1 + rs2)) * es)
-    vsobj = objtype( )
-    vsobj.set_data(fsgeo, vsgeo, name='sphere_0')
-    vsobj.zoom(zoom_factor)
-
-    vsobj.move(moves * zoom_factor)
-    return vsobj, vhobj0, vhobj1
-
-
-def capsule(rs1, rs2, ls, ds):
-    lvs3 = ls - 2 * rs2
-    dth = ds / rs2
-    err_msg = 'geo parameter of capsule head is wrong. '
-    assert lvs3 >= 0, err_msg
-
-    vsgeo1 = ellipse_geo( )  # velocity node geo of head
-    vsgeo1.create_half_delta(ds, rs1, rs2)
-    vsgeo2 = vsgeo1.copy( )
-    vsgeo1.node_rotation(norm=np.array((0, 1, 0)), theta=-np.pi / 2)
-    vsgeo1.node_rotation(norm=np.array((0, 0, 1)), theta=-np.pi / 2)
-    vsgeo1.move((0, 0, -lvs3 / 2))
-    vsgeo2.node_rotation(norm=np.array((0, 1, 0)), theta=+np.pi / 2)
-    vsgeo2.node_rotation(norm=np.array((0, 0, 1)), theta=+np.pi / 2 - dth)
-    vsgeo2.move((0, 0, +lvs3 / 2))
-    vsgeo2.set_nodes(np.flipud(vsgeo2.get_nodes( )), deltalength=vsgeo2.get_deltaLength( ))
-    vsgeo3 = tunnel_geo( )
-    vsgeo3.create_deltatheta(dth=dth, radius=rs2, length=lvs3)
-    vsgeo = geo( )
-    vsgeo.combine([vsgeo1, vsgeo3, vsgeo2])
-    return vsgeo
-
-
-def createEcoli_tunnel(objtype, **kwargs):
-    nth = kwargs['nth']
-    hfct = kwargs['hfct']
-    eh = kwargs['eh']
-    ch = kwargs['ch']
-    rh1 = kwargs['rh1']
-    rh2 = kwargs['rh2']
-    ph = kwargs['ph']
-    with_cover = kwargs['with_cover']
-    ds = kwargs['ds']
-    rs1 = kwargs['rs1']
-    rs2 = kwargs['rs2']
-    ls = kwargs['ls']
-    es = kwargs['es']
-    left_hand = kwargs['left_hand']
-    # sphere_rotation = kwargs['sphere_rotation'] if 'sphere_rotation' in kwargs.keys() else 0
-    zoom_factor = kwargs['zoom_factor'] if 'zoom_factor' in kwargs.keys( ) else 1
-    dist_hs = kwargs['dist_hs']
-    dist_hc = kwargs['dist_hc']
-    lh = ph * ch  # length of helix
-    movesz = 0.5 * (dist_hs - ls + lh) + ls / 2
-    movehz = 0.5 * (dist_hs + ls - lh) + lh / 2
-    moves = np.array((0, 0, movesz))  # move distance of sphere
-    moveh = np.array((dist_hc - rh1, 0, -movehz))  # move distance of helix
-    t_factor = 1
-    rT = rh2 * t_factor
-    lT = (dist_hc + rh2) * 2
-
-    # create helix
-    B = ph / (2 * np.pi)
-    vhgeo0 = supHelix( )  # velocity node geo of helix
-    dth = 2 * np.pi / nth
-    fhgeo0 = vhgeo0.create_deltatheta(dth=dth, radius=rh2, R=rh1, B=B, n_c=ch, epsilon=eh, with_cover=with_cover,
-                                      factor=hfct, left_hand=left_hand)
-    vhobj0 = objtype( )
-    vhobj0.set_data(fhgeo0, vhgeo0, name='helix_0')
-    vhobj0.zoom(zoom_factor)
-    # dbg
-    OptDB = PETSc.Options( )
-    factor = OptDB.getReal('dbg_theta_factor', 0.75)
-    PETSc.Sys.Print('--------------------> DBG: theta factor=%f' % factor)
-    theta = np.pi * ch + (rT + rh2) / (rh1 + rh2) * factor
-    vhobj0.node_rotation(norm=np.array((0, 0, 1)), theta=theta)
-    vhobj0.move(moveh * zoom_factor)
-    vhobj1 = vhobj0.copy( )
-    vhobj1.node_rotation(norm=(0, 0, 1), theta=np.pi, rotation_origin=(0, 0, 0))
-    vhobj1.set_name('helix_1')
-
-    # create head
-    vsgeo = capsule(rs1, rs2, ls, ds)
-    fsgeo = vsgeo.copy( )  # force node geo of sphere
-    fsgeo.node_zoom(1 + ds / (0.5 * (rs1 + rs2)) * es)
-    fsgeo.node_zoom_z(1 - ds / (0.5 * (rs1 + rs2)) * es)
-    vsobj = objtype( )
-    vsobj.set_data(fsgeo, vsgeo, name='sphere_0')
-    vsobj.zoom(zoom_factor)
-    vsobj.move(moves * zoom_factor)
-
-    # create T shape
-    dth = 2 * np.pi / nth / t_factor ** 0.5
-    # dbg
-    OptDB = PETSc.Options( )
-    factor = OptDB.getReal('dbg_move_factor', 1)
-    PETSc.Sys.Print('--------------------> DBG: move factor=%f' % factor)
-    moveT = np.array((0, 0, moveh[-1] + lh / 2 + rh2 * factor))
-    vTgeo = tunnel_geo( )
-    fTgeo = vTgeo.create_deltatheta(dth=dth, radius=rT, length=lT, epsilon=eh, with_cover=True)
-    vTobj = objtype( )
-    vTobj.set_data(fTgeo, vTgeo, name='T_shape_0')
-    theta = -np.pi / 2
-    vTobj.node_rotation(norm=np.array((0, 1, 0)), theta=theta)
-    vTobj.zoom(zoom_factor)
-    vTobj.move(moveT * zoom_factor)
-    return vsobj, vhobj0, vhobj1, vTobj

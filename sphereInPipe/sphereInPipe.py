@@ -196,7 +196,7 @@ def main_fun(**main_kwargs):
         es = problem_kwargs['es']
         vsgeo = sphere_geo()  # velocity node geo of sphere
         vsgeo.create_delta(ds, rs)
-        # vsgeo.node_rotation(np.random.sample(3), np.random.random())
+        vsgeo.node_rotation(norm=(0, 1, 0), theta=np.pi/2)
         # vsgeo.show_nodes()
         U = problem_kwargs['U']
         vsgeo.set_rigid_velocity(np.array((0, 0, U, 0, 0, 0)))
@@ -217,13 +217,15 @@ def main_fun(**main_kwargs):
         vsobj_kwargs = {'name': 'sphere_0', }
         vsobj.set_data(fsgeo, vsgeo, **vsobj_kwargs)
 
-        # # create problem
+        # create problem
         problem = problem_dic[matrix_method](**problem_kwargs)
         problem.set_prepare(forcepipe)
 
         problem.add_obj(vsobj)
         problem.print_info()
         problem.create_matrix()
+        # dbg
+        problem.saveM_ASCII(fileHeadle + '_M')
         residualNorm = problem.solve()
         if problem_kwargs['pickProblem']:
             problem.pickmyself(fileHeadle)
@@ -232,6 +234,7 @@ def main_fun(**main_kwargs):
             force_sphere = vsobj.get_force_z()
             PETSc.Sys.Print('---->>>Resultant at z axis is %f' % (np.sum(force_sphere) / (6 * np.pi * rs)))
         # save_vtk(problem)
+        problem.vtk_obj(fileHeadle)
 
 
     else:

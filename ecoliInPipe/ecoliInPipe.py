@@ -82,8 +82,7 @@ def save_vtk(problem: sf.stokesFlowProblem):
 
 def get_problem_kwargs(**main_kwargs):
     OptDB = PETSc.Options( )
-    fileHeadle = OptDB.getString('f', 'ecoliInPipePro')
-    forcepipe = OptDB.getString('forcepipe', 'dbg')
+
     nth = OptDB.getInt('nth', 2)  # amount of nodes on each cycle of helix
     hfct = OptDB.getReal('hfct', 1)  # helix axis line factor, put more nodes near both tops
     eh = OptDB.getReal('eh', -0.1)  # epsilon of helix
@@ -98,7 +97,14 @@ def get_problem_kwargs(**main_kwargs):
     rs2 = OptDB.getReal('rs2', rs)  # radius of head
     ls = OptDB.getReal('ls', rs1 * 2)  # length of head
     ds = OptDB.getReal('ds', 1)  # delta length of sphere
-    es = OptDB.getReal('es', -0.1)  # epsilon of shpere
+    es = OptDB.getReal('es', -0.1)  # epsilon of sphere
+    rT1 = OptDB.getReal('rT1', rh1)  # radius of Tgeo
+    rT2 = OptDB.getReal('rT2', rh2)  # radius of Tgeo
+    ntT = OptDB.getReal('ntT', nth)  # amount of nodes on each cycle of Tgeo
+    eT = OptDB.getReal('eT', eh)  # epsilon of Tgeo
+
+    fileHeadle = OptDB.getString('f', 'ecoliInPipePro')
+    forcepipe = OptDB.getString('forcepipe', 'dbg')
     matname = OptDB.getString('mat', 'body1')
     bnodesHeadle = OptDB.getString('bnodes', 'bnodes')  # body nodes, for vtu output
     belemsHeadle = OptDB.getString('belems', 'belems')  # body tetrahedron mesh, for vtu output
@@ -106,10 +112,6 @@ def get_problem_kwargs(**main_kwargs):
     precondition_method = OptDB.getString('g', 'none')
     matrix_method = OptDB.getString('sm', 'pf')
     restart = OptDB.getBool('restart', False)
-    twoPara_n = OptDB.getInt('tp_n', 1)
-    legendre_m = OptDB.getInt('legendre_m', 3)
-    legendre_k = OptDB.getInt('legendre_k', 2)
-    n_helix_check = OptDB.getInt('n_helix_check', 2000)
     n_node_threshold = OptDB.getInt('n_threshold', 10000)
     getConvergenceHistory = OptDB.getBool('getConvergenceHistory', False)
     pickProblem = OptDB.getBool('pickProblem', False)
@@ -120,11 +122,10 @@ def get_problem_kwargs(**main_kwargs):
     rel_Usz = OptDB.getReal('rel_Usz', 0)
     # rel_Uhx = OptDB.getReal('rel_Uhx', 0)
     # rel_Uhy = OptDB.getReal('rel_Uhy', 0)
-    rel_Uhz = OptDB.getReal('rel_Uhz', 200)
+    rel_Uhz = OptDB.getReal('rel_Uhz', 1)
     rel_Us = np.array((0, 0, 0, 0, 0, rel_Usz))  # relative omega of sphere
     rel_Uh = np.array((0, 0, 0, 0, 0, rel_Uhz))  # relative omega of helix
     dist_hs = OptDB.getReal('dist_hs', 2)  # distance between head and tail
-    dist_hc = OptDB.getReal('dist_hc', rh1)  # distance between tail and center line
     centerx = OptDB.getReal('centerx', 0)
     centery = OptDB.getReal('centery', 0)
     centerz = OptDB.getReal('centerz', 0)
@@ -132,7 +133,6 @@ def get_problem_kwargs(**main_kwargs):
     zoom_factor = OptDB.getReal('zoom_factor', 1)
     ffweight = OptDB.getReal('ffweight', 1)
     prb_index = OptDB.getInt('prb_index', -1)
-    with_T_geo = OptDB.getBool('with_T_geo', True)
 
     t_headle = '_force_pipe.mat'
     forcepipe = forcepipe if forcepipe[-len(t_headle):] == t_headle else forcepipe + t_headle

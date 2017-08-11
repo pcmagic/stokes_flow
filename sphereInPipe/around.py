@@ -203,7 +203,7 @@ def print_case_info(**problem_kwargs):
         err_msg = "Only 'rs_stokeslets', 'tp_rs_stokeslets', 'lg_rs_stokeslets', and 'ps_stokeslets' methods are accept for this main code. "
         acceptType = ('rs_stokeslets', 'tp_rs_stokeslets', 'lg_rs_stokeslets', 'rs_stokeslets_precondition',
                       'tp_rs_stokeslets_precondition', 'lg_rs_stokeslets_precondition',
-                      'pf_stokeslets')
+                      'pf')
         assert matrix_method in acceptType, err_msg
         epsilon = problem_kwargs['epsilon']
         if matrix_method in ('rs_stokeslets', 'rs_stokeslets_precondition'):
@@ -218,7 +218,7 @@ def print_case_info(**problem_kwargs):
             legendre_k = problem_kwargs['legendre_k']
             PETSc.Sys.Print('create matrix method: %s, epsilon: %f, m: %d, k: %d, p: %d'
                   % (matrix_method, epsilon, legendre_m, legendre_k, (legendre_m + 2 * legendre_k + 1)))
-        elif matrix_method in 'pf_stokeslets':
+        elif matrix_method in 'pf':
             epsilonHeadle = problem_kwargs['epsilonHeadle']
             mat_contents = loadmat(matname)
             epsilon = mat_contents[epsilonHeadle][0]
