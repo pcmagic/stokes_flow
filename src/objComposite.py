@@ -109,6 +109,7 @@ def createEcoli_tunnel(name='...', **kwargs):
     rT2 = kwargs['rT2']
     ntT = kwargs['ntT']
     eT = kwargs['eT']
+    Tfct = kwargs['Tfct']
     matrix_method = kwargs['matrix_method']
     with_T_geo = kwargs['with_T_geo']
     lh = ph * ch  # length of helix
@@ -128,11 +129,12 @@ def createEcoli_tunnel(name='...', **kwargs):
     vhobj0 = objtype( )
     vhobj0.set_data(fhgeo0, vhgeo0, name='helix_0')
     vhobj0.zoom(zoom_factor)
-    # dbg
-    OptDB = PETSc.Options( )
-    factor = OptDB.getReal('dbg_theta_factor', 0.5)
-    PETSc.Sys.Print('--------------------> DBG: theta factor = %f' % factor)
-    theta = np.pi * ch + (rT2 + rh2 * factor) / (rh1 + rh2)
+    # # dbg
+    # OptDB = PETSc.Options( )
+    # factor = OptDB.getReal('dbg_theta_factor', 0.5)
+    # PETSc.Sys.Print('--------------------> DBG: dbg_theta_factor = %f' % factor)
+    # theta = np.pi * ch + (rT2 + rh2 * factor) / (rh1 + rh2)
+    theta = np.pi * ch + (rT2 + rh2 * 0.5) / (rh1 + rh2)
     vhobj0.node_rotation(norm=np.array((0, 0, 1)), theta=theta)
     vhobj0.move(moveh * zoom_factor)
     vhobj1 = vhobj0.copy( )
@@ -151,11 +153,14 @@ def createEcoli_tunnel(name='...', **kwargs):
 
     # create T shape
     dtT = 2 * np.pi / ntT
-    # dbg
-    OptDB = PETSc.Options( )
+    # # dbg
+    # OptDB = PETSc.Options( )
+    # factor = OptDB.getReal('dbg_move_factor', 1)
+    # PETSc.Sys.Print('--------------------> DBG: dbg_move_factor = %f' % factor)
+    # moveT = np.array((0, 0, moveh[-1] + lh / 2 + rh2 * factor))
     moveT = np.array((0, 0, moveh[-1] + lh / 2))
     vTgeo = tunnel_geo( )
-    fTgeo = vTgeo.create_deltatheta(dth=dtT, radius=rT2, length=lT, epsilon=eT, with_cover=True)
+    fTgeo = vTgeo.create_deltatheta(dth=dtT, radius=rT2, factor=Tfct, length=lT, epsilon=eT, with_cover=True)
     vTobj = objtype( )
     vTobj.set_data(fTgeo, vTgeo, name='T_shape_0')
     theta = -np.pi / 2

@@ -137,7 +137,6 @@ def main_fun(**main_kwargs):
     rank = comm.Get_rank()
     problem_kwargs = get_problem_kwargs(**main_kwargs)
     fileHeadle = problem_kwargs['fileHeadle']
-    b0 = problem_kwargs['b0']
     print_case_info(**problem_kwargs)
     matrix_method = problem_kwargs['matrix_method']
     check_acc = problem_kwargs['check_acc']
@@ -372,25 +371,24 @@ def debug_solve_u_pipe(b, dp, lp):
     return True
 
 
-def debug_solve_stokeslets_fnode(fnode, unodes):
+def debug_solve_stokeslets_fnode(fnode):
+    from src.geo import tunnel_geo
     problem_kwargs = get_problem_kwargs()
     fileHeadle = problem_kwargs['fileHeadle']
     problem = sf.stokesletsInPipeForceFreeProblem(**problem_kwargs)
-    fileHeadle = 'construct07'
     problem.set_prepare(fileHeadle)
-
-    # t_headle = '_pick.bin'
-    # if fileHeadle[-len(t_headle):] != t_headle:
-    #     fileHeadle = fileHeadle + t_headle
-    # with open(fileHeadle, 'rb') as input:
-    #     unpick = pickle.Unpickler(input)
-    #     problem = unpick.load()
-    #     problem.unpickmyself()
-    # assert isinstance(problem, sf.stokesletsInPipeProblem)
-
     fnode = np.array(fnode).reshape((1, 3))
-    unodes = np.array(unodes).reshape((-1, 3))
-    problem.debug_solve_stokeslets_fnode(fnode, unodes)
+
+    dp = 0.1
+    rp = 1
+    lp = 1
+    factor = 1
+    vpgeo = tunnel_geo()  # velocity node geo of pipe
+    dth = 2 * np.arcsin(dp / 2 / rp)
+    vpgeo.create_deltatheta(dth=dth, radius=rp, length=lp, epsilon=0, with_cover=True, factor=factor)
+    # vpgeo.show_nodes()
+
+    problem.debug_solve_stokeslets_fnode(fnode, vpgeo)
     return True
 
 
@@ -400,7 +398,7 @@ if __name__ == '__main__':
     # export_mat()
     # debug_stokeslets_b(5.81500000e-01, np.vstack((np.ones(10) * 0.5, np.ones(10) * 0.5, np.linspace(0.1, 1, 10))).T)
     # debug_solve_u_pipe(0.5, 0.1, 0.5)
-    # debug_solve_stokeslets_fnode((0.7, 0.3, 0.8), np.random.sample(18))
+    # debug_solve_stokeslets_fnode((0.3/2**0.5, 0.3/2**0.5, 0))
 
     # OptDB = PETSc.Options()
     # if OptDB.getBool('show_err', False):

@@ -1,11 +1,11 @@
 import sys
 import petsc4py
-import numpy as np
-from src import stokes_flow as sf
 
 petsc4py.init(sys.argv)
 
+import numpy as np
 from petsc4py import PETSc
+from src import stokes_flow as sf
 
 __all__ = ['print_ecoli_info', 'print_solver_info_forceFree', 'print_forceFree_info',
            'get_ecoli_kwargs', 'get_vtk_tetra_kwargs', 'get_solver_kwargs', 'get_forceFree_kwargs',
@@ -13,10 +13,6 @@ __all__ = ['print_ecoli_info', 'print_solver_info_forceFree', 'print_forceFree_i
 
 
 def print_ecoli_info(ecoName, **problem_kwargs):
-    comm = PETSc.COMM_WORLD.tompi4py( )
-    rank = comm.Get_rank( )
-    size = comm.Get_size( )
-
     nth = problem_kwargs['nth']
     hfct = problem_kwargs['hfct']
     eh = problem_kwargs['eh']
@@ -37,13 +33,15 @@ def print_ecoli_info(ecoName, **problem_kwargs):
     rT2 = problem_kwargs['rT2']
     ntT = problem_kwargs['nth']
     eT = problem_kwargs['eT']
+    Tfct = problem_kwargs['Tfct']
     zoom_factor = problem_kwargs['zoom_factor']
 
     PETSc.Sys.Print(ecoName, 'geo information: ')
     PETSc.Sys.Print('  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
     PETSc.Sys.Print('    nth, hfct and epsilon of helix are %d, %f and %f, ' % (nth, hfct, eh))
     PETSc.Sys.Print('  head radius: %f and %f, length: %f, delta length: %f, epsilon: %f' % (rs1, rs2, ls, ds, es))
-    PETSc.Sys.Print('  Tgeo radius: %f and %f, ntT and eT of Tgeo are: %f and %f' % (rT1, rT2, ntT, eT))
+    PETSc.Sys.Print('  Tgeo radius: %f and %f' % (rT1, rT2))
+    PETSc.Sys.Print('    ntT, eT and Tfct of Tgeo are: %d, %f and %f' % (ntT, eT, Tfct))
     PETSc.Sys.Print('  ecoli center: %s, distance from head to tail is %f' % (str(center), dist_hs))
     PETSc.Sys.Print('  relative velocity of head and tail are %s and %s' % (str(rel_Us), str(rel_Uh)))
     PETSc.Sys.Print('  geometry zoom factor is %f' % zoom_factor)
@@ -57,9 +55,8 @@ def print_forceFree_info(**problem_kwargs):
 
 
 def print_solver_info_forceFree(**problem_kwargs):
-    comm = PETSc.COMM_WORLD.tompi4py( )
-    rank = comm.Get_rank( )
-    size = comm.Get_size( )
+    comm = PETSc.COMM_WORLD.tompi4py()
+    size = comm.Get_size()
 
     fileHeadle = problem_kwargs['fileHeadle']
     matrix_method = problem_kwargs['matrix_method']
@@ -95,31 +92,31 @@ def print_single_ecoli_forceFree_result(ecoli_comp: sf.forceFreeComposite, **kwa
     rel_Us = kwargs['rel_Us']
     rel_Uh = kwargs['rel_Uh']
 
-    with_T_geo = len(ecoli_comp.get_obj_list( )) == 4
+    with_T_geo = len(ecoli_comp.get_obj_list()) == 4
     if with_T_geo:
-        vsobj, vhobj0, vhobj1, vTobj = ecoli_comp.get_obj_list( )
-        temp_f = 0.5 * (np.abs(vsobj.get_force( ).reshape((-1, 3)).sum(axis=0)) +
-                        np.abs(vhobj0.get_force( ).reshape((-1, 3)).sum(axis=0) +
-                               vhobj1.get_force( ).reshape((-1, 3)).sum(axis=0) +
-                               vTobj.get_force( ).reshape((-1, 3)).sum(axis=0)))
+        vsobj, vhobj0, vhobj1, vTobj = ecoli_comp.get_obj_list()
+        temp_f = 0.5 * (np.abs(vsobj.get_force().reshape((-1, 3)).sum(axis=0)) +
+                        np.abs(vhobj0.get_force().reshape((-1, 3)).sum(axis=0) +
+                               vhobj1.get_force().reshape((-1, 3)).sum(axis=0) +
+                               vTobj.get_force().reshape((-1, 3)).sum(axis=0)))
     else:
-        vsobj, vhobj0, vhobj1 = ecoli_comp.get_obj_list( )
-        temp_f = 0.5 * (np.abs(vsobj.get_force( ).reshape((-1, 3)).sum(axis=0)) +
-                        np.abs(vhobj0.get_force( ).reshape((-1, 3)).sum(axis=0) +
-                               vhobj1.get_force( ).reshape((-1, 3)).sum(axis=0)))
+        vsobj, vhobj0, vhobj1 = ecoli_comp.get_obj_list()
+        temp_f = 0.5 * (np.abs(vsobj.get_force().reshape((-1, 3)).sum(axis=0)) +
+                        np.abs(vhobj0.get_force().reshape((-1, 3)).sum(axis=0) +
+                               vhobj1.get_force().reshape((-1, 3)).sum(axis=0)))
     temp_F = np.hstack((temp_f, temp_f * zoom_factor))
-    non_dim_F = ecoli_comp.get_re_sum( ) / temp_F
+    non_dim_F = ecoli_comp.get_re_sum() / temp_F
     t_nondim = rel_Uh[-1] + rel_Us[-1]
-    non_dim_U = ecoli_comp.get_ref_U( ) / np.array(
+    non_dim_U = ecoli_comp.get_ref_U() / np.array(
             (zoom_factor * rh1, zoom_factor * rh1, zoom_factor * rh1, 1, 1, 1)) / t_nondim
     PETSc.Sys.Print('non_dim_U', non_dim_U)
     PETSc.Sys.Print('non_dim_F', non_dim_F)
-    PETSc.Sys.Print('velocity_sphere', rel_Us + ecoli_comp.get_ref_U( ))
-    PETSc.Sys.Print('velocity_helix', rel_Uh + ecoli_comp.get_ref_U( ))
+    PETSc.Sys.Print('velocity_sphere', rel_Us + ecoli_comp.get_ref_U())
+    PETSc.Sys.Print('velocity_helix', rel_Uh + ecoli_comp.get_ref_U())
 
 
-def get_ecoli_kwargs( ):
-    OptDB = PETSc.Options( )
+def get_ecoli_kwargs():
+    OptDB = PETSc.Options()
     rh1 = OptDB.getReal('rh1', 0.2)  # radius of helix
     rh2 = OptDB.getReal('rh2', 0.05)  # radius of helix
     nth = OptDB.getInt('nth', 2)  # amount of nodes on each cycle of helix
@@ -139,6 +136,7 @@ def get_ecoli_kwargs( ):
     rT2 = OptDB.getReal('rT2', rh2)  # radius of Tgeo
     ntT = OptDB.getReal('ntT', nth)  # amount of nodes on each cycle of Tgeo
     eT = OptDB.getReal('eT', eh)  # epsilon of Tgeo
+    Tfct = OptDB.getReal('Tfct', 1)  # Tgeo axis line factor, put more nodes near both tops
     with_T_geo = OptDB.getBool('with_T_geo', True)
 
     # rel_Usx = OptDB.getReal('rel_Usx', 0)
@@ -175,6 +173,7 @@ def get_ecoli_kwargs( ):
         'rT2':         rT2,
         'ntT':         ntT,
         'eT':          eT,
+        'Tfct':        Tfct,
         'with_T_geo':  with_T_geo,
         'rel_Us':      rel_Us,
         'rel_Uh':      rel_Uh,
@@ -185,8 +184,8 @@ def get_ecoli_kwargs( ):
     return ecoli_kwargs
 
 
-def get_vtk_tetra_kwargs( ):
-    OptDB = PETSc.Options( )
+def get_vtk_tetra_kwargs():
+    OptDB = PETSc.Options()
     matname = OptDB.getString('bmat', 'body1')
     bnodesHeadle = OptDB.getString('bnodes', 'bnodes')  # body nodes, for vtu output
     belemsHeadle = OptDB.getString('belems', 'belems')  # body tetrahedron mesh, for vtu output
@@ -198,8 +197,8 @@ def get_vtk_tetra_kwargs( ):
     return vtk_tetra_kwargs
 
 
-def get_solver_kwargs( ):
-    OptDB = PETSc.Options( )
+def get_solver_kwargs():
+    OptDB = PETSc.Options()
     solve_method = OptDB.getString('s', 'gmres')
     precondition_method = OptDB.getString('g', 'none')
     matrix_method = OptDB.getString('sm', 'pf')
@@ -228,8 +227,8 @@ def get_solver_kwargs( ):
     return problem_kwargs
 
 
-def get_forceFree_kwargs( ):
-    OptDB = PETSc.Options( )
+def get_forceFree_kwargs():
+    OptDB = PETSc.Options()
     ffweight = OptDB.getReal('ffweight', 1)
     problem_kwargs = {
         'ffweight': ffweight,
