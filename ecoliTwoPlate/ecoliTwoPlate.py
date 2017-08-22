@@ -21,7 +21,7 @@ else:
     raise ValueError(err_msg)
 # sys.path = ['/home/zhangji/stokes_flow-master'] + sys.path
 
-# import numpy as np
+import numpy as np
 # import pickle
 # from time import time
 # from scipy.io import loadmat
@@ -30,7 +30,7 @@ else:
 from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.myio import *
-from src.objComposite import createEcoliComp_tunnel
+from src.objComposite import createEcoliComp_ellipse
 from src.myvtk import save_singleEcoli_vtk
 
 
@@ -39,6 +39,7 @@ def get_problem_kwargs(**main_kwargs):
     OptDB = PETSc.Options()
     fileHeadle = OptDB.getString('f', 'ecoliInPipe')
     problem_kwargs['fileHeadle'] = fileHeadle
+    problem_kwargs['twoPlateHeight'] = 10
 
     kwargs_list = (main_kwargs, get_vtk_tetra_kwargs(), get_ecoli_kwargs(), get_forceFree_kwargs())
     for t_kwargs in kwargs_list:
@@ -59,18 +60,22 @@ def print_case_info(**problem_kwargs):
 def main_fun(**main_kwargs):
     problem_kwargs = get_problem_kwargs(**main_kwargs)
     fileHeadle = problem_kwargs['fileHeadle']
-    forcepipe = problem_kwargs['forcepipe']
 
     if not problem_kwargs['restart']:
         print_case_info(**problem_kwargs)
-        ecoli_comp = createEcoliComp_tunnel(name='ecoli_0', **problem_kwargs)
-        problem = sf.stokesletsInPipeForceFreeProblem(**problem_kwargs)
-        problem.set_prepare(forcepipe)
+        problem_kwargs['rot_norm'] = np.array((1, 0, 0))
+        problem_kwargs['rot_theta'] = np.pi / 2
+        # problem_kwargs['rot_theta'] = 0
+        ecoli_comp = createEcoliComp_ellipse(name='ecoli_0', **problem_kwargs)
+
+        problem = sf.forceFreeProblem(**problem_kwargs)
         problem.add_obj(ecoli_comp)
+        problem.print_info()
+        # problem.show_f_u_nodes()
+        # problem.show_velocity(length_factor=1, show_nodes=True)
 
         if problem_kwargs['pickProblem']:
             problem.pickmyself(fileHeadle, check=True)
-        problem.print_info()
         problem.create_matrix()
         problem.solve()
         # debug
@@ -80,7 +85,7 @@ def main_fun(**main_kwargs):
 
         if problem_kwargs['pickProblem']:
             problem.pickmyself(fileHeadle, pick_M=True)
-        save_singleEcoli_vtk(problem)
+        save_singleEcoli_vtk(problem, createHandle=createEcoliComp_ellipse)
     else:
         pass
         # with open(fileHeadle + '_pick.bin', 'rb') as input:

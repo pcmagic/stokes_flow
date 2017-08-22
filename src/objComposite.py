@@ -3,10 +3,10 @@ from petsc4py import PETSc
 from src.geo import *
 from src import stokes_flow as sf
 
-__all__ = ['createEcoli_ellipse', 'createEcoli_tunnel', 'capsule']
+__all__ = ['createEcoliComp_ellipse', 'createEcoliComp_tunnel', 'capsule']
 
 
-def createEcoli_ellipse(name='...', **kwargs):
+def createEcoliComp_ellipse(name='...', **kwargs):
     nth = kwargs['nth']
     hfct = kwargs['hfct']
     eh = kwargs['eh']
@@ -23,12 +23,13 @@ def createEcoli_ellipse(name='...', **kwargs):
     # sphere_rotation = kwargs['sphere_rotation'] if 'sphere_rotation' in kwargs.keys() else 0
     zoom_factor = kwargs['zoom_factor'] if 'zoom_factor' in kwargs.keys( ) else 1
     dist_hs = kwargs['dist_hs']
+    center = kwargs['center']
     matrix_method = kwargs['matrix_method']
     lh = ph * ch  # length of helix
     movesz = 0.5 * (dist_hs - 2 * rs1 + lh) + rs1
     movehz = 0.5 * (dist_hs + 2 * rs1 - lh) + lh / 2
-    moves = np.array((0, 0, movesz))  # move distance of sphere
-    moveh = np.array((0, 0, -movehz))  # move distance of helix
+    moves = np.array((0, 0, movesz)) + center  # move distance of sphere
+    moveh = np.array((0, 0, -movehz)) + center  # move distance of helix
     objtype = sf.obj_dic[matrix_method]
 
     # create helix
@@ -56,13 +57,18 @@ def createEcoli_ellipse(name='...', **kwargs):
     vsobj.zoom(zoom_factor)
     vsobj.move(moves * zoom_factor)
 
-    center = kwargs['center']
     rel_Us = kwargs['rel_Us']
     rel_Uh = kwargs['rel_Uh']
     ecoli_comp = sf.forceFreeComposite(center, name)
     ecoli_comp.add_obj(vsobj, rel_U=rel_Us)
     ecoli_comp.add_obj(vhobj0, rel_U=rel_Uh)
     ecoli_comp.add_obj(vhobj1, rel_U=rel_Uh)
+
+    # dbg
+    rot_norm = kwargs['rot_norm']
+    rot_theta = kwargs['rot_theta']
+    ecoli_comp.node_rotation(norm=rot_norm, theta=rot_theta, rotation_origin=center)
+
     return ecoli_comp
 
 def capsule(rs1, rs2, ls, ds):
@@ -87,7 +93,7 @@ def capsule(rs1, rs2, ls, ds):
     vsgeo.combine([vsgeo1, vsgeo3, vsgeo2])
     return vsgeo
 
-def createEcoli_tunnel(name='...', **kwargs):
+def createEcoli_tunnel(**kwargs):
     nth = kwargs['nth']
     hfct = kwargs['hfct']
     eh = kwargs['eh']
@@ -105,18 +111,20 @@ def createEcoli_tunnel(name='...', **kwargs):
     # sphere_rotation = kwargs['sphere_rotation'] if 'sphere_rotation' in kwargs.keys() else 0
     zoom_factor = kwargs['zoom_factor']
     dist_hs = kwargs['dist_hs']
+    center = kwargs['center']
     rT1 = kwargs['rT1']
     rT2 = kwargs['rT2']
     ntT = kwargs['ntT']
     eT = kwargs['eT']
     Tfct = kwargs['Tfct']
     matrix_method = kwargs['matrix_method']
-    with_T_geo = kwargs['with_T_geo']
     lh = ph * ch  # length of helix
     movesz = 0.5 * (dist_hs - ls + lh) + ls / 2
     movehz = 0.5 * (dist_hs + ls - lh) + lh / 2
-    moves = np.array((0, 0, movesz))  # move distance of sphere
-    moveh = np.array((rT1 - rh1, 0, -movehz))  # move distance of helix
+    # movesz = (ls + dist_hs) / 2
+    # movehz = (lh + dist_hs) / 2
+    moves = np.array((0, 0, movesz)) + center  # move distance of sphere
+    moveh = np.array((rT1 - rh1, 0, -movehz)) + center  # move distance of helix
     lT = (rT1 + rh2) * 2
     objtype = sf.obj_dic[matrix_method]
 
@@ -172,7 +180,11 @@ def createEcoli_tunnel(name='...', **kwargs):
     vhobj0.node_rotation(norm=np.array((0, 0, 1)), theta=np.pi / 4)
     vhobj1.node_rotation(norm=np.array((0, 0, 1)), theta=np.pi / 4)
     vTobj.node_rotation(norm=np.array((0, 0, 1)), theta=np.pi / 4)
+    return vsobj, vhobj0, vhobj1, vTobj
 
+def createEcoliComp_tunnel(name='...', **kwargs):
+    vsobj, vhobj0, vhobj1, vTobj = createEcoli_tunnel(**kwargs)
+    with_T_geo = kwargs['with_T_geo']
     center = kwargs['center']
     rel_Us = kwargs['rel_Us']
     rel_Uh = kwargs['rel_Uh']

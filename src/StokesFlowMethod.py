@@ -960,11 +960,13 @@ def two_plate_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocit
     _, f_glbIdx_all = obj2.get_f_geo( ).get_glbIdx( )
     f_dmda = obj2.get_f_geo( ).get_dmda( )
     Height = kwargs['twoPlateHeight']
+    INDEX = kwargs['INDEX']
     greenFun = tank(Height=Height)
 
-    for i0 in tqdm(range(f_dmda.getRanges( )[0][0], f_dmda.getRanges( )[0][1])):
+    for i0 in tqdm(range(f_dmda.getRanges( )[0][0], f_dmda.getRanges( )[0][1]), desc=INDEX, leave=False):
         greenFun.set_locF(f_nodes[i0, 0], f_nodes[i0, 1], f_nodes[i0, 2])
         m00, m01, m02, m10, m11, m12, m20, m21, m22 = greenFun.get_Ufunc(u_nodes)
+        # m00, m01, m02, m10, m11, m12, m20, m21, m22 = np.random.sample(obj1.get_n_u_node()*9).reshape((9, -1))
         f_glb = f_glbIdx_all[i0 * 3]
         m.setValues(u_glbIdx_all[0::3], f_glb + 0, m00, addv=False)
         m.setValues(u_glbIdx_all[0::3], f_glb + 1, m01, addv=False)

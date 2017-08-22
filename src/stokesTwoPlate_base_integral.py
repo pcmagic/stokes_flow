@@ -1,12 +1,12 @@
 from sympy import symbols, diff, lambdify
 from sympy import sinh,cosh, besselj
-import matplotlib.pyplot as plt
-import seaborn as sb
+#import matplotlib.pyplot as plt
+#import seaborn as sb
 import numpy as np
 import mpmath as mp
-import pandas as pd
+#import pandas as pd
 
-mp.dps = 15
+mp.dps = 18
 mp.pretty = True
 
 '''
@@ -59,7 +59,7 @@ a2 = x**2 / (sinh(x*H)**2 - (x*H)**2) * (
         + H*sinh(x*x3)*sinh(x*H)*d_rational_sinh)
 
 
-a3 = (h*sinh(x*H)*cosh(x*(H-x3-h)) - H*sinh(x*h)*cosh(x*(H+x3))) / (sinh(x*H)**2)
+a3 = (h*sinh(x*H)*cosh(x*(H-x3-h)) - H*sinh(x*h)*cosh(x*x3)) / (sinh(x*H)**2)
 
 a4_13= x/(sinh(x*H)**2 - (x*H)**2)*(x3*x*H*(h*sinh(x*(x3 - h))
         + H*sinh(x*h)*sinh(x*(H - x3))/sinh(x*H))
@@ -105,7 +105,9 @@ d_sh_ = lambdify([x, x3, h, H], d_sh, ('mpmath', 'numpy'))
 # k is the recipocal vector. So the integral parameter is dimensionless.
 
 h0 = 1.
-k0 = 2. * mp.pi / h0
+pi = mp.pi
+k0 = 2. * pi / h0
+
 
 def j0sh(x, radius, xz, height, Height):
     k = k0 / radius
@@ -139,6 +141,8 @@ def j1xa4_13(x, radius, xz, height, Height):
 def j1xa4_31(x, radius, xz, height, Height):
     k = k0 / radius
     return k * mp.j1(2.*np.pi*x) * (k*x) * a4_31(k*x, xz*h0, height*h0, Height*h0) 
+	
+	
 
 # Functions with no 'a' are hard to integral. We seperate them out.
 func_list_v = [j0sh, j1xsh, j0xdsh]
@@ -167,7 +171,7 @@ def far_integral(func, radius, z, hight, Height, imax, **kwards):
 
 def near_integral(func, radius, z, hight, Height, m=0):
     return np.array(mp.quadosc(lambda x: func(x, radius, z, hight, Height), 
-                    [0, mp.inf], zeros=lambda n: zeros_j[m][int(n-1)] / (2*mp.pi)))
+                    [0, mp.inf], zeros=lambda n: zeros_j[m][int(n-1)] / (2*pi)))
 
 
 
@@ -223,7 +227,7 @@ def w12(x, y, z, h, H, imax=4.0):
 # z = h may never hold for the float presicion.
 def v13(x, y, z, h, H, imax=4.0):
     # The coefficient of integrals. 
-    coeff = (z - h) * x / r * h0
+    coeff = (z - h) * h0
     (z, h) = (z, h) if z > h else (H - z, H - h)
     #r = np.sqrt(x**2 + y**2)
     if z > 3 * h:
@@ -232,7 +236,7 @@ def v13(x, y, z, h, H, imax=4.0):
     elif z == h :
         return 0
     else:
-         return coeff * near_integral(j1xsh, r, z, h, H, m=1)
+         return coeff * x / r * near_integral(j1xsh, r, z, h, H, m=1)
 
 def w13(x, y, z, h, H, imax=8.0):
     #r = np.sqrt(x**2 + y**2)
@@ -365,4 +369,32 @@ def U33_z(x, y, z_list, h, H, imax=4.0):
     r = np.sqrt(x**2 + y**2)
     return np.array([w33(x, y, zz, h, H, imax) + v33(x, y, zz, h, H, imax) 
                     for zz in z_list])
-                    
+
+'''
+Added in Aug.9 2017. The infinite series sum form of Green functions.
+
+r: 		horizental distance from velocity point to the force point.
+x3: 	the height of velocity point.
+h:		the height of force point.
+H:		the height of second plate.
+n: 		the nth term in the series.   
+z(m):	the m-th root of sinh(z)**2 = z**2, already made into a table.
+Note n * r = 20 may give a good result.
+'''      
+
+'''Import z(m), have 500 roots.'''
+zm_list = np.load('zm_list.npy')
+zm = lambda n: zm_list[int(n-1)]
+
+         
+def u33_series(r, x3, h, H, n): 
+    return -pi/H * mp.im((zm(n)*mp.hankel1(0, (r*zm(n))/H))/(sqrt(1 + zm(n)**2) - 1) *
+         ((mp.sqrt(1 + zm(n)**2) + 1)*(x3/H*sinh((h*zm(n))/H)*cosh((x3*zm(n))/H) 
+        + h/H*sinh((x3*zm(n))/H)*cosh((h*zm(n))/H) - 1/zm(n)*sinh((x3*zm(n))/H)*sinh((h*zm(n))/H))
+        - (h*x3)/(H**2)*zm(n)*(sqrt(1 + zm(n)**2)*cosh(((h + x3)*zm(n))/H) 
+        + cosh(((x3 - h)*zm(n))/H) - zm(n)*sinh(((x3 + h)*zm(n))/H))
+        - zm(n)*(x3 + h)/H*sinh((h*zm(n))/H)*sinh((x3*zm(n))/H)))
+		
+'''
+A test for github
+'''		

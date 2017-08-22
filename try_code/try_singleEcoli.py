@@ -33,6 +33,7 @@ def save_vtk(problem: sf.stokesFlowProblem):
     problem_kwargs = problem.get_kwargs()
     fileHeadle = problem_kwargs['fileHeadle']
     matrix_method = problem_kwargs['matrix_method']
+    center = problem_kwargs['center']
 
     # problem.vtk_obj(fileHeadle)
 
@@ -59,9 +60,9 @@ def save_vtk(problem: sf.stokesFlowProblem):
     vhobj0_check.node_rotation(norm=(0, 1, 0), theta=np.pi / 2, rotation_origin=(0, 0, 0))
     vhobj1_check.node_rotation(norm=(0, 1, 0), theta=np.pi / 2, rotation_origin=(0, 0, 0))
     ref_U = ecoli_comp.get_ref_U()
-    vsobj_check.set_rigid_velocity(rel_Us + ref_U)
-    vhobj0_check.set_rigid_velocity(rel_Uh + ref_U)
-    vhobj1_check.set_rigid_velocity(rel_Uh + ref_U)
+    vsobj_check.set_rigid_velocity(rel_Us + ref_U, center=center)
+    vhobj0_check.set_rigid_velocity(rel_Uh + ref_U, center=center)
+    vhobj1_check.set_rigid_velocity(rel_Uh + ref_U, center=center)
     # create ecoli
     ecoli_check_obj = sf.stokesFlowObj()
     ecoli_check_obj.combine([vsobj_check, vhobj0_check, vhobj1_check], set_re_u=True, set_force=True)

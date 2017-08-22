@@ -49,8 +49,12 @@ def print_ecoli_info(ecoName, **problem_kwargs):
 
 
 def print_forceFree_info(**problem_kwargs):
-    ffweight = problem_kwargs['ffweight']
-    PETSc.Sys.Print('  force free weight mode is %f' % ffweight)
+    ffweightx = problem_kwargs['ffweightx']
+    ffweighty = problem_kwargs['ffweighty']
+    ffweightz = problem_kwargs['ffweightz']
+    ffweightT = problem_kwargs['ffweightT']
+    PETSc.Sys.Print('  force free weight of Fx, Fy, Fz, and (Tx, Ty, Tz) are %f, %f, %f, %f' %
+                    (ffweightx, ffweighty, ffweightz, ffweightT))
     return True
 
 
@@ -75,7 +79,8 @@ def print_solver_info_forceFree(**problem_kwargs):
         forcepipe = problem_kwargs['forcepipe']
         PETSc.Sys.Print('  read force of pipe from: ' + forcepipe)
     elif matrix_method in ('pf_stokesletsTwoPlate',):
-        raise Exception('set how to print matrix method please. ')
+        # raise Exception('set how to print matrix method please. ')
+        pass
     else:
         raise Exception('set how to print matrix method please. ')
 
@@ -88,7 +93,6 @@ def print_solver_info_forceFree(**problem_kwargs):
 def print_single_ecoli_forceFree_result(ecoli_comp: sf.forceFreeComposite, **kwargs):
     rh1 = kwargs['rh1']
     zoom_factor = kwargs['zoom_factor']
-    with_T_geo = kwargs['with_T_geo']
     rel_Us = kwargs['rel_Us']
     rel_Uh = kwargs['rel_Uh']
 
@@ -106,7 +110,7 @@ def print_single_ecoli_forceFree_result(ecoli_comp: sf.forceFreeComposite, **kwa
                                vhobj1.get_force().reshape((-1, 3)).sum(axis=0)))
     temp_F = np.hstack((temp_f, temp_f * zoom_factor))
     non_dim_F = ecoli_comp.get_re_sum() / temp_F
-    t_nondim = rel_Uh[-1] + rel_Us[-1]
+    t_nondim = np.sqrt(np.sum((rel_Uh[-3:] + rel_Us[-3:])**2))
     non_dim_U = ecoli_comp.get_ref_U() / np.array(
             (zoom_factor * rh1, zoom_factor * rh1, zoom_factor * rh1, 1, 1, 1)) / t_nondim
     PETSc.Sys.Print('non_dim_U', non_dim_U)
@@ -139,14 +143,14 @@ def get_ecoli_kwargs():
     Tfct = OptDB.getReal('Tfct', 1)  # Tgeo axis line factor, put more nodes near both tops
     with_T_geo = OptDB.getBool('with_T_geo', True)
 
-    # rel_Usx = OptDB.getReal('rel_Usx', 0)
-    # rel_Usy = OptDB.getReal('rel_Usy', 0)
+    rel_Usx = OptDB.getReal('rel_Usx', 0)
+    rel_Usy = OptDB.getReal('rel_Usy', 0)
     rel_Usz = OptDB.getReal('rel_Usz', 0)
-    # rel_Uhx = OptDB.getReal('rel_Uhx', 0)
-    # rel_Uhy = OptDB.getReal('rel_Uhy', 0)
+    rel_Uhx = OptDB.getReal('rel_Uhx', 0)
+    rel_Uhy = OptDB.getReal('rel_Uhy', 0)
     rel_Uhz = OptDB.getReal('rel_Uhz', 1)
-    rel_Us = np.array((0, 0, 0, 0, 0, rel_Usz))  # relative omega of sphere
-    rel_Uh = np.array((0, 0, 0, 0, 0, rel_Uhz))  # relative omega of helix
+    rel_Us = np.array((0, 0, 0, rel_Usx, rel_Usy, rel_Usz))  # relative omega of sphere
+    rel_Uh = np.array((0, 0, 0, rel_Uhx, rel_Uhy, rel_Uhz))  # relative omega of helix
     dist_hs = OptDB.getReal('dist_hs', 2)  # distance between head and tail
     centerx = OptDB.getReal('centerx', 0)
     centery = OptDB.getReal('centery', 0)
@@ -229,8 +233,16 @@ def get_solver_kwargs():
 
 def get_forceFree_kwargs():
     OptDB = PETSc.Options()
-    ffweight = OptDB.getReal('ffweight', 1)
+    ffweight = OptDB.getReal('ffweight', 1)  # force free condition weight
+    ffweightx = OptDB.getReal('ffweightx', ffweight)  # weight of sum(Fx) = 0
+    ffweighty = OptDB.getReal('ffweighty', ffweight)  # weight of sum(Fy) = 0
+    ffweightz = OptDB.getReal('ffweightz', ffweight)  # weight of sum(Fz) = 0
+    ffweightT = OptDB.getReal('ffweightT', ffweight)  # weight of sum(Tx) = sum(Ty) = sum(Tz) = 0
     problem_kwargs = {
-        'ffweight': ffweight,
+        'ffweightx': ffweightx,
+        'ffweighty': ffweighty,
+        'ffweightz': ffweightz,
+        'ffweightT': ffweightT,
     }
     return problem_kwargs
+

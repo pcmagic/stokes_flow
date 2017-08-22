@@ -14,7 +14,7 @@ __all__ = ['geo', 'sphere_geo', 'ellipse_geo', 'geoComposit',
            'region', ]
 
 
-class geo( ):
+class geo():
     def __init__(self):
         self._nodes = np.array([])
         self._elems = np.array([])
@@ -40,7 +40,7 @@ class geo( ):
         assert nodes.shape[1] == 3, err_msg
         self._nodes = nodes
         self._u = np.zeros(self._nodes.size)
-        self.set_dmda( )
+        self.set_dmda()
         return True
 
     def mat_elmes(self,
@@ -52,7 +52,7 @@ class geo( ):
 
         mat_contents = sio.loadmat(filename)
         elems = mat_contents[mat_handle].astype(np.int, order='F')
-        elems = elems - elems.min( )
+        elems = elems - elems.min()
         self._elems = elems
         self._elemtype = elemtype
         return True
@@ -66,7 +66,7 @@ class geo( ):
         assert nodes.shape[1] == 3, err_msg
         self._nodes = np.asfortranarray(nodes)
         self._u = np.zeros(self._nodes.size)
-        self.set_dmda( )
+        self.set_dmda()
         return True
 
     def mat_origin(self,
@@ -86,13 +86,13 @@ class geo( ):
         assert filename != '..', err_msg
 
         mat_contents = sio.loadmat(filename)
-        self._u = mat_contents[mat_handle].flatten( )
+        self._u = mat_contents[mat_handle].flatten()
         return True
 
     def node_rotation(self, norm=np.array([0, 0, 1]), theta=0, rotation_origin=None):
         # The rotation is counterclockwise
         if rotation_origin is None:
-            rotation_origin = self.get_origin( )
+            rotation_origin = self.get_origin()
         else:
             rotation_origin = np.array(rotation_origin).reshape((3,))
 
@@ -130,31 +130,31 @@ class geo( ):
         ])
 
         temp_u = self._u.reshape((3, -1), order='F')
-        self._u = rotation.dot(temp_u).T.flatten( )
+        self._u = rotation.dot(temp_u).T.flatten()
         self._nodes = np.dot(rotation, (self._nodes).T).T
         return True
 
     def node_zoom(self, factor, zoom_origin=None):
         if zoom_origin is None:
-            zoom_origin = self.get_origin( )
+            zoom_origin = self.get_origin()
         self._nodes = (self._nodes - zoom_origin) * factor + zoom_origin
         return True
 
     def node_zoom_x(self, factor, zoom_origin=None):
         if zoom_origin is None:
-            zoom_origin = self.get_origin( )
+            zoom_origin = self.get_origin()
         self._nodes[:, 0] = (self._nodes[:, 0] - zoom_origin[0]) * factor + zoom_origin[0]
         return True
 
     def node_zoom_y(self, factor, zoom_origin=None):
         if zoom_origin is None:
-            zoom_origin = self.get_origin( )
+            zoom_origin = self.get_origin()
         self._nodes[:, 1] = (self._nodes[:, 1] - zoom_origin[1]) * factor + zoom_origin[1]
         return True
 
     def node_zoom_z(self, factor, zoom_origin=None):
         if zoom_origin is None:
-            zoom_origin = self.get_origin( )
+            zoom_origin = self.get_origin()
         self._nodes[:, 2] = (self._nodes[:, 2] - zoom_origin[2]) * factor + zoom_origin[2]
         return True
 
@@ -162,16 +162,16 @@ class geo( ):
         return self._nodes
 
     def get_nodes_petsc(self):
-        nodes_petsc = self.get_dmda( ).createGlobalVector( )
+        nodes_petsc = self.get_dmda().createGlobalVector()
         nodes_petsc[:] = self._nodes.reshape((3, -1))[:]
-        nodes_petsc.assemble( )
+        nodes_petsc.assemble()
         return nodes_petsc
 
     def set_nodes(self, nodes, deltalength, resetVelocity=False):
         nodes = np.array(nodes).reshape((-1, 3))
         self._nodes = nodes
         self._deltaLength = deltalength
-        self.set_dmda( )
+        self.set_dmda()
 
         if resetVelocity:
             self._u = np.zeros(self._nodes.size)
@@ -188,25 +188,25 @@ class geo( ):
 
     def get_nodes_x_petsc(self):
 
-        x_petsc = self._dmda.createGlobalVector( )
-        x_petsc = self.get_dmda( ).createGlobalVector( )
-        t_x = np.matlib.repmat(self._nodes[:, 0].reshape((-1, 1)), 1, 3).flatten( )
+        x_petsc = self._dmda.createGlobalVector()
+        x_petsc = self.get_dmda().createGlobalVector()
+        t_x = np.matlib.repmat(self._nodes[:, 0].reshape((-1, 1)), 1, 3).flatten()
         x_petsc[:] = t_x[:]
-        x_petsc.assemble( )
+        x_petsc.assemble()
         return x_petsc
 
     def get_nodes_y_petsc(self):
-        y_petsc = self.get_dmda( ).createGlobalVector( )
-        t_y = np.matlib.repmat(self._nodes[:, 1].reshape((-1, 1)), 1, 3).flatten( )
+        y_petsc = self.get_dmda().createGlobalVector()
+        t_y = np.matlib.repmat(self._nodes[:, 1].reshape((-1, 1)), 1, 3).flatten()
         y_petsc[:] = t_y[:]
-        y_petsc.assemble( )
+        y_petsc.assemble()
         return y_petsc
 
     def get_nodes_z_petsc(self):
-        z_petsc = self.get_dmda( ).createGlobalVector( )
-        t_z = np.matlib.repmat(self._nodes[:, 2].reshape((-1, 1)), 1, 3).flatten( )
+        z_petsc = self.get_dmda().createGlobalVector()
+        t_z = np.matlib.repmat(self._nodes[:, 2].reshape((-1, 1)), 1, 3).flatten()
         z_petsc[:] = t_z[:]
-        z_petsc.assemble( )
+        z_petsc.assemble()
         return z_petsc
 
     def get_n_nodes(self):
@@ -216,7 +216,7 @@ class geo( ):
         return self._u.size
 
     def get_velocity(self):
-        return self._u.flatten( )
+        return self._u.flatten()
 
     def set_velocity(self, velocity):
         err_msg = 'set nodes first. '
@@ -224,34 +224,41 @@ class geo( ):
 
         err_msg = 'velocity is a numpy array having a similar size of nodes. '
         assert velocity.size == self._nodes.size, err_msg
-        self._u = velocity.flatten( )
+        self._u = velocity.flatten()
         return True
 
-    def set_rigid_velocity(self,
-                           U=np.array((0, 0, 0, 0, 0, 0))):  # [u1, u2, u3, w1, w2, w3], velocity and angular velocity.
+    def set_rigid_velocity(self, U=np.array((0, 0, 0, 0, 0, 0)), center=None):
         """
-
         :type U: np.array
+        :param U: [u1, u2, u3, w1, w2, w3], velocity and angular velocity.
+        :type center: np.array
+        :param center: rotation center.
         """
+        if center is None:
+            center = self._origin
+        err_msg = 'center is a np.array containing 3 scales. '
+        assert center.size == 3, err_msg
+
+        r = self._nodes - center
         self._u = np.zeros(self._nodes.size)
-        self._u[0::3] = U[0] + U[4] * self._nodes[:, 2] - U[5] * self._nodes[:, 1]
-        self._u[1::3] = U[1] + U[5] * self._nodes[:, 0] - U[3] * self._nodes[:, 2]
-        self._u[2::3] = U[2] + U[3] * self._nodes[:, 1] - U[4] * self._nodes[:, 0]
+        self._u[0::3] = U[0] + U[4] * r[:, 2] - U[5] * r[:, 1]
+        self._u[1::3] = U[1] + U[5] * r[:, 0] - U[3] * r[:, 2]
+        self._u[2::3] = U[2] + U[3] * r[:, 1] - U[4] * r[:, 0]
         return True
 
     def get_velocity_x(self):
-        return self._u[0::3].flatten( )
+        return self._u[0::3].flatten()
 
     def get_velocity_y(self):
-        return self._u[1::3].flatten( )
+        return self._u[1::3].flatten()
 
     def get_velocity_z(self):
-        return self._u[2::3].flatten( )
+        return self._u[2::3].flatten()
 
     def get_polar_coord(self):
-        phi = np.arctan2(self.get_nodes_y( ), self.get_nodes_x( ))
-        rho = np.sqrt(self.get_nodes_x( ) ** 2 + self.get_nodes_y( ) ** 2)
-        z = self.get_nodes_z( )
+        phi = np.arctan2(self.get_nodes_y(), self.get_nodes_x())
+        rho = np.sqrt(self.get_nodes_x() ** 2 + self.get_nodes_y() ** 2)
+        z = self.get_nodes_z()
         return phi, rho, z
 
     def get_normal(self):
@@ -276,17 +283,17 @@ class geo( ):
         return True
 
     def copy(self) -> 'geo':
-        self.destroy_dmda( )
+        self.destroy_dmda()
         geo2 = copy.deepcopy(self)
-        self.set_dmda( )
-        geo2.set_dmda( )
+        self.set_dmda()
+        geo2.set_dmda()
         return geo2
 
     def move(self, displacement: np.array):
         displacement = np.array(displacement).reshape((3,))
 
-        self.set_nodes(self.get_nodes( ) + displacement, self.get_deltaLength( ))
-        self.set_origin(self.get_origin( ) + displacement)
+        self.set_nodes(self.get_nodes() + displacement, self.get_deltaLength())
+        self.set_origin(self.get_origin() + displacement)
         return True
 
     def combine(self, geo_list, deltaLength=None):
@@ -294,46 +301,46 @@ class geo( ):
             err_msg = 'some objects in geo_list are not geo object. '
             assert isinstance(geo1, geo), err_msg
             err_msg = 'one or more objects not finished create yet. '
-            assert geo1.get_n_nodes( ) != 0, err_msg
+            assert geo1.get_n_nodes() != 0, err_msg
         if deltaLength is None:
-            deltaLength = geo_list[0].get_deltaLength( )
+            deltaLength = geo_list[0].get_deltaLength()
 
         geo1 = geo_list.pop(0)
-        self.set_nodes(geo1.get_nodes( ), deltalength=deltaLength)
-        self.set_velocity(geo1.get_velocity( ))
+        self.set_nodes(geo1.get_nodes(), deltalength=deltaLength)
+        self.set_velocity(geo1.get_velocity())
         for geo1 in geo_list:
-            self.set_nodes(np.vstack((self.get_nodes( ), geo1.get_nodes( ))), deltalength=deltaLength)
-            self.set_velocity(np.hstack((self.get_velocity( ), geo1.get_velocity( ))))
-        self.set_dmda( )
+            self.set_nodes(np.vstack((self.get_nodes(), geo1.get_nodes())), deltalength=deltaLength)
+            self.set_velocity(np.hstack((self.get_velocity(), geo1.get_velocity())))
+        self.set_dmda()
         return True
 
     def show_velocity(self, length_factor=1, show_nodes=True):
-        comm = PETSc.COMM_WORLD.tompi4py( )
-        rank = comm.Get_rank( )
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
         if rank == 0:
-            fig = plt.figure( )
+            fig = plt.figure()
             ax = fig.gca(projection='3d')
             ax.set_aspect('equal')
             # Be carefull. the axis using in matplotlib is a left-handed coordinate system
             if show_nodes:
-                ax.plot(self.get_nodes_x( ), self.get_nodes_y( ), self.get_nodes_z( ), linestyle='None', c='b',
+                ax.plot(self.get_nodes_x(), self.get_nodes_y(), self.get_nodes_z(), linestyle='None', c='b',
                         marker='o')
-            INDEX = np.zeros_like(self.get_nodes_z( ), dtype=bool)
+            INDEX = np.zeros_like(self.get_nodes_z(), dtype=bool)
             INDEX[:] = True
             length = 1 / self._deltaLength * length_factor
-            ax.quiver(self.get_nodes_x( )[INDEX], self.get_nodes_y( )[INDEX], self.get_nodes_z( )[INDEX],
-                      self.get_velocity_x( )[INDEX], self.get_velocity_y( )[INDEX], self.get_velocity_z( )[INDEX],
+            ax.quiver(self.get_nodes_x()[INDEX], self.get_nodes_y()[INDEX], self.get_nodes_z()[INDEX],
+                      self.get_velocity_x()[INDEX], self.get_velocity_y()[INDEX], self.get_velocity_z()[INDEX],
                       color='r', length=length)
             # ax.quiver(self.get_nodes_x(), self.get_nodes_y(), self.get_nodes_z(),
             #           0, 0, self.get_nodes_z(), length=self._deltaLength * 2)
 
-            X = np.hstack((self.get_nodes_x( )))
-            Y = np.hstack((self.get_nodes_y( )))
-            Z = np.hstack((self.get_nodes_z( )))
-            max_range = np.array([X.max( ) - X.min( ), Y.max( ) - Y.min( ), Z.max( ) - Z.min( )]).max( ) / 2.0
-            mid_x = (X.max( ) + X.min( )) * 0.5
-            mid_y = (Y.max( ) + Y.min( )) * 0.5
-            mid_z = (Z.max( ) + Z.min( )) * 0.5
+            X = np.hstack((self.get_nodes_x()))
+            Y = np.hstack((self.get_nodes_y()))
+            Z = np.hstack((self.get_nodes_z()))
+            max_range = np.array([X.max() - X.min(), Y.max() - Y.min(), Z.max() - Z.min()]).max() / 2.0
+            mid_x = (X.max() + X.min()) * 0.5
+            mid_y = (Y.max() + Y.min()) * 0.5
+            mid_z = (Z.max() + Z.min()) * 0.5
             ax.set_xlim(mid_x - max_range, mid_x + max_range)
             ax.set_ylim(mid_y - max_range, mid_y + max_range)
             ax.set_zlim(mid_z - max_range, mid_z + max_range)
@@ -341,32 +348,32 @@ class geo( ):
             ax.set_ylabel('y')
             ax.set_zlabel('z')
 
-            plt.grid( )
-            plt.get_current_fig_manager( ).window.showMaximized( )
-            plt.show( )
+            plt.grid()
+            plt.get_current_fig_manager().window.showMaximized()
+            plt.show()
         return True
 
     def show_nodes(self, linestyle='-', color='b'):
-        comm = PETSc.COMM_WORLD.tompi4py( )
-        rank = comm.Get_rank( )
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
         if rank == 0:
-            fig = plt.figure( )
+            fig = plt.figure()
             ax = fig.gca(projection='3d')
             ax.set_aspect('equal')
-            ax.plot(self.get_nodes_x( ), self.get_nodes_y( ), self.get_nodes_z( ),
+            ax.plot(self.get_nodes_x(), self.get_nodes_y(), self.get_nodes_z(),
                     linestyle=linestyle,
                     color='b',
                     marker='.')
 
-            X = np.hstack((self.get_nodes_x( )))
-            Y = np.hstack((self.get_nodes_y( )))
-            Z = np.hstack((self.get_nodes_z( )))
-            max_range = np.array([X.max( ) - X.min( ),
-                                  Y.max( ) - Y.min( ),
-                                  Z.max( ) - Z.min( )]).max( ) / 2.0
-            mid_x = (X.max( ) + X.min( )) * 0.5
-            mid_y = (Y.max( ) + Y.min( )) * 0.5
-            mid_z = (Z.max( ) + Z.min( )) * 0.5
+            X = np.hstack((self.get_nodes_x()))
+            Y = np.hstack((self.get_nodes_y()))
+            Z = np.hstack((self.get_nodes_z()))
+            max_range = np.array([X.max() - X.min(),
+                                  Y.max() - Y.min(),
+                                  Z.max() - Z.min()]).max() / 2.0
+            mid_x = (X.max() + X.min()) * 0.5
+            mid_y = (Y.max() + Y.min()) * 0.5
+            mid_z = (Z.max() + Z.min()) * 0.5
             ax.set_xlim(mid_x - max_range, mid_x + max_range)
             ax.set_ylim(mid_y - max_range, mid_y + max_range)
             ax.set_zlim(mid_z - max_range, mid_z + max_range)
@@ -374,9 +381,9 @@ class geo( ):
             ax.set_ylabel('y')
             ax.set_zlabel('z')
 
-            plt.grid( )
-            plt.get_current_fig_manager( ).window.showMaximized( )
-            plt.show( )
+            plt.grid()
+            plt.get_current_fig_manager().window.showMaximized()
+            plt.show()
         return True
 
     def get_mesh(self):
@@ -386,20 +393,20 @@ class geo( ):
         return self._dmda
 
     def set_dmda(self):
-        self._dmda = PETSc.DMDA( ).create(sizes=(self.get_n_nodes( ),), dof=3, stencil_width=self._stencil_width,
-                                          comm=PETSc.COMM_WORLD)
-        self._dmda.setFromOptions( )
-        self._dmda.setUp( )
+        self._dmda = PETSc.DMDA().create(sizes=(self.get_n_nodes(),), dof=3, stencil_width=self._stencil_width,
+                                         comm=PETSc.COMM_WORLD)
+        self._dmda.setFromOptions()
+        self._dmda.setUp()
         # self._dmda.createGlobalVector()
         return True
 
     def destroy_dmda(self):
-        self._dmda.destroy( )
+        self._dmda.destroy()
         self._dmda = None
         return True
 
     def set_glbIdx(self, indices):
-        comm = PETSc.COMM_WORLD.tompi4py( )
+        comm = PETSc.COMM_WORLD.tompi4py()
         self._glbIdx = indices
         self._glbIdx_all = np.hstack(comm.allgather(indices))
         return True
@@ -421,51 +428,51 @@ class geo( ):
 class geoComposit(uniqueList):
     def show_nodes(self, linestyle='-'):
         color_list = ['b', 'g', 'r', 'c', 'm', 'y', 'k', ]
-        comm = PETSc.COMM_WORLD.tompi4py( )
-        rank = comm.Get_rank( )
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
         if len(self) == 0:
             return None
         if rank == 0:
-            fig = plt.figure( )
+            fig = plt.figure()
             ax = fig.gca(projection='3d')
             ax.set_aspect('equal')
             xlim_list = np.zeros((len(self), 2))
             ylim_list = np.zeros((len(self), 2))
             zlim_list = np.zeros((len(self), 2))
             for i0, geo0 in enumerate(self):
-                ax.plot(geo0.get_nodes_x( ), geo0.get_nodes_y( ), geo0.get_nodes_z( ),
+                ax.plot(geo0.get_nodes_x(), geo0.get_nodes_y(), geo0.get_nodes_z(),
                         linestyle=linestyle,
                         color=color_list[i0 % len(color_list)],
                         marker='.')
 
-                X = np.hstack((geo0.get_nodes_x( )))
-                Y = np.hstack((geo0.get_nodes_y( )))
-                Z = np.hstack((geo0.get_nodes_z( )))
-                max_range = np.array([X.max( ) - X.min( ),
-                                      Y.max( ) - Y.min( ),
-                                      Z.max( ) - Z.min( )]).max( ) / 2.0
-                mid_x = (X.max( ) + X.min( )) * 0.5
-                mid_y = (Y.max( ) + Y.min( )) * 0.5
-                mid_z = (Z.max( ) + Z.min( )) * 0.5
+                X = np.hstack((geo0.get_nodes_x()))
+                Y = np.hstack((geo0.get_nodes_y()))
+                Z = np.hstack((geo0.get_nodes_z()))
+                max_range = np.array([X.max() - X.min(),
+                                      Y.max() - Y.min(),
+                                      Z.max() - Z.min()]).max() / 2.0
+                mid_x = (X.max() + X.min()) * 0.5
+                mid_y = (Y.max() + Y.min()) * 0.5
+                mid_z = (Z.max() + Z.min()) * 0.5
                 xlim_list[i0] = (mid_x - max_range, mid_x + max_range)
                 ylim_list[i0] = (mid_y - max_range, mid_y + max_range)
                 zlim_list[i0] = (mid_z - max_range, mid_z + max_range)
-            ax.set_xlim(xlim_list.min( ), xlim_list.max( ))
-            ax.set_ylim(ylim_list.min( ), ylim_list.max( ))
-            ax.set_zlim(zlim_list.min( ), zlim_list.max( ))
+            ax.set_xlim(xlim_list.min(), xlim_list.max())
+            ax.set_ylim(ylim_list.min(), ylim_list.max())
+            ax.set_zlim(zlim_list.min(), zlim_list.max())
             ax.set_xlabel('x')
             ax.set_ylabel('y')
             ax.set_zlabel('z')
 
-            plt.grid( )
-            plt.get_current_fig_manager( ).window.showMaximized( )
-            plt.show( )
+            plt.grid()
+            plt.get_current_fig_manager().window.showMaximized()
+            plt.show()
         return True
 
 
 class _ThickLine_geo(geo):
     def __init__(self):
-        super( ).__init__( )
+        super().__init__()
         self._r = 0  # radius of thick line itself, thick is a cycle.
         self._dth = 0  # anglar between nodes in a cycle.
         self._angleCycle = np.array([])
@@ -480,7 +487,7 @@ class _ThickLine_geo(geo):
             return (ds / (2 * r)) ^ 2 + np.sin(dth / 4) ** 2 - np.sin(dth / 2) ** 2
 
         from scipy import optimize as sop
-        self._dth = sop.brentq(eqr, -1e-3 * np.pi, np.pi, args=(self.get_deltaLength( ), self._r))
+        self._dth = sop.brentq(eqr, -1e-3 * np.pi, np.pi, args=(self.get_deltaLength(), self._r))
         return self._dth
 
     def _get_deltalength(self):
@@ -514,9 +521,9 @@ class _ThickLine_geo(geo):
         self._r = radius
         nc = np.ceil(2 * np.pi / dth).astype(int)
         angleCycle = np.linspace(0, 2 * np.pi, nc, endpoint=False)
-        axisNodes, T_frame, N_frame, B_frame = self._get_axis( )
+        axisNodes, T_frame, N_frame, B_frame = self._get_axis()
         fgeo_axisNodes, fgeo_T_frame, fgeo_N_frame, fgeo_B_frame = self._get_fgeo_axis(epsilon)
-        deltalength = self.get_deltaLength( )
+        deltalength = self.get_deltaLength()
         iscover = []
         vgeo_nodes = []
         fgeo_nodes = []
@@ -585,11 +592,11 @@ class _ThickLine_geo(geo):
 
         self._iscover = np.hstack(iscover)
         self._nodes = np.asfortranarray(np.vstack(vgeo_nodes))
-        self.set_dmda( )
+        self.set_dmda()
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
         self._tunnel_norm = np.array((0, 0, 1))
-        fgeo = geo( )
+        fgeo = geo()
         fgeo.set_nodes(np.asfortranarray(np.vstack(fgeo_nodes)), deltalength=deltalength * epsilon, resetVelocity=True)
         return fgeo
 
@@ -638,7 +645,7 @@ class ellipse_geo(geo):
         self._nodes[:, 0] = headC * xlocH
         self._nodes[:, 1] = headA * tsin * np.cos(spherePhi)
         self._nodes[:, 2] = headA * tsin * np.sin(spherePhi)
-        self.set_dmda( )
+        self.set_dmda()
 
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((n, 2), order='F')
@@ -696,7 +703,7 @@ class ellipse_geo(geo):
             y.append(np.sign(xi) * yi * np.cos(ai))
             z.append(np.sign(xi) * yi * np.sin(ai))
         self._nodes = np.vstack((np.hstack(x), np.hstack(y), np.hstack(z))).T
-        self.set_dmda( )
+        self.set_dmda()
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
         return True
@@ -752,7 +759,7 @@ class ellipse_geo(geo):
             y.append(np.sign(xi) * yi * np.cos(ai))
             z.append(np.sign(xi) * yi * np.sin(ai))
         self._nodes = np.vstack((np.hstack(x), np.hstack(y), np.hstack(z))).T
-        self.set_dmda( )
+        self.set_dmda()
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
         return True
@@ -764,13 +771,13 @@ class sphere_geo(ellipse_geo):
         err_msg = 'aditional paramenters are useless.  '
         assert not args, err_msg
         self._deltaLength = np.sqrt(4 * np.pi * radius * radius / n)
-        return super( ).create_n(n, radius, radius)
+        return super().create_n(n, radius, radius)
 
     def create_delta(self, deltaLength: float,  # length of the mesh
                      radius: float, *args):  # radius
         err_msg = 'aditional paramenters are useless.  '
         assert not args, err_msg
-        return super( ).create_delta(deltaLength, radius, radius)
+        return super().create_delta(deltaLength, radius, radius)
 
     def normal(self):
         self._normal = np.zeros((self._nodes.shape[0],
@@ -786,11 +793,11 @@ class sphere_geo(ellipse_geo):
 # noinspection PyUnresolvedReferences
 class tunnel_geo(_ThickLine_geo):
     def __init__(self):
-        super( ).__init__( )
+        super().__init__()
         self._tunnel_norm = np.zeros((0, 0, 0))  # describing the aspect of tunnel.
         self._length = 0
-        self._cover_strat_list = uniqueList( )
-        self._cover_end_list = uniqueList( )
+        self._cover_strat_list = uniqueList()
+        self._cover_end_list = uniqueList()
 
     def create_n(self, n: int,  # number of nodes.
                  length: float,  # length of the tunnel
@@ -810,7 +817,7 @@ class tunnel_geo(_ThickLine_geo):
         self._nodes[:, 0] = deltaLength * theta / 2 / np.pi
         self._nodes[:, 1] = radius * np.sin(theta)
         self._nodes[:, 2] = radius * np.cos(theta)
-        self.set_dmda( )
+        self.set_dmda()
 
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((n, 2), order='F')
@@ -831,7 +838,7 @@ class tunnel_geo(_ThickLine_geo):
         self._nodes[:, 0] = np.tile(z, n_a).reshape(n_a, -1).flatten(order='F')
         self._nodes[:, 1] = np.tile(x, (n_z, 1)).reshape(-1, 1).flatten(order='F')
         self._nodes[:, 2] = np.tile(y, (n_z, 1)).reshape(-1, 1).flatten(order='F')
-        self.set_dmda( )
+        self.set_dmda()
 
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
@@ -854,7 +861,7 @@ class tunnel_geo(_ThickLine_geo):
         length = self._length
         factor = self._factor
         left_hand = self._left_hand
-        nl = np.ceil(length / self._get_deltalength( )).astype(int)
+        nl = np.ceil(length / self._get_deltalength()).astype(int)
         z = self._factor_fun(nl, factor) * length - length / 2
         if left_hand:
             self._axisNodes = np.vstack((np.zeros_like(z), np.zeros_like(z), z)).T
@@ -873,7 +880,7 @@ class tunnel_geo(_ThickLine_geo):
         factor = self._factor
         left_hand = self._left_hand
         nl = self._axisNodes.shape[0]
-        ds = -self.get_deltaLength( ) * epsilon / 4
+        ds = -self.get_deltaLength() * epsilon / 4
         length = self._length
         z = self._factor_fun(nl, factor) * (length - ds * 2) - length / 2 + ds
         if left_hand:
@@ -925,10 +932,10 @@ class tunnel_geo(_ThickLine_geo):
 
     def node_rotation(self, norm=np.array([0, 0, 1]), theta=0., rotation_origin=None):
         # The rotation is counterclockwise
-        super( ).node_rotation(norm=norm, theta=theta, rotation_origin=rotation_origin)
+        super().node_rotation(norm=norm, theta=theta, rotation_origin=rotation_origin)
 
         if rotation_origin is None:
-            rotation_origin = self.get_origin( )
+            rotation_origin = self.get_origin()
 
         norm = norm / np.linalg.norm(norm)
         a = norm[0]
@@ -958,9 +965,9 @@ class tunnel_geo(_ThickLine_geo):
 
         # zooming geo along radius of tunnel, keep longitude axis.
         # 1. copy
-        temp_geo = geo( )
-        temp_nodes = self.get_nodes( ) - self.get_origin( )
-        temp_geo.set_nodes(temp_nodes, self.get_deltaLength( ))
+        temp_geo = geo()
+        temp_nodes = self.get_nodes() - self.get_origin()
+        temp_geo.set_nodes(temp_nodes, self.get_deltaLength())
         # temp_geo.show_nodes()
         # 2. rotation, tunnel center line along x axis.
         temp_norm = self._tunnel_norm
@@ -970,7 +977,7 @@ class tunnel_geo(_ThickLine_geo):
         if doRotation:
             temp_geo.node_rotation(rotation_norm, temp_theta)
         # 3. zooming
-        temp_nodes = temp_geo.get_nodes( )
+        temp_nodes = temp_geo.get_nodes()
         temp_R, temp_phi = cart2pol(temp_nodes[:, 1], temp_nodes[:, 2])
         factor = (np.max(temp_R) + epsilon * self._deltaLength) / max(temp_R)
         temp_R = temp_R * factor
@@ -979,20 +986,20 @@ class tunnel_geo(_ThickLine_geo):
         factor = 2 * epsilon * self._deltaLength / (X2 - X1)
         temp_nodes[:, 0] = (temp_nodes[:, 0] - (X1 + X2) / 2) * (1 + factor) + (X1 + X2) / 2
         temp_nodes[:, 1], temp_nodes[:, 2] = pol2cart(temp_R, temp_phi)
-        temp_geo.set_nodes(temp_nodes, self.get_deltaLength( ))
+        temp_geo.set_nodes(temp_nodes, self.get_deltaLength())
         # 4. rotation back
         if doRotation:
             temp_geo.node_rotation(rotation_norm, -temp_theta)
         # 5. set
         # temp_geo.show_nodes()
-        self.set_nodes(temp_geo.get_nodes( ) + self.get_origin( ), self.get_deltaLength( ))
+        self.set_nodes(temp_geo.get_nodes() + self.get_origin(), self.get_deltaLength())
         return True
 
 
 class pipe_cover_geo(tunnel_geo):
     def __init__(self):
-        super( ).__init__( )
-        self._cover_node_list = uniqueList( )
+        super().__init__()
+        self._cover_node_list = uniqueList()
 
     def create_with_cover(self, deltaLength: float,  # length of the mesh
                           length: float,  # length of the tunnel
@@ -1010,8 +1017,8 @@ class pipe_cover_geo(tunnel_geo):
         nodes_z = np.linspace(1, -1, nz)
         nodes_z = np.sign(nodes_z) * (np.exp(np.abs(nodes_z) * z_factor) - 1) / (np.exp(z_factor) - 1) * length / 2
         a, nodes_z = np.meshgrid(a, nodes_z)
-        a = a.flatten( )
-        nodes_z = nodes_z.flatten( )
+        a = a.flatten()
+        nodes_z = nodes_z.flatten()
         nodes_x = np.cos(a) * radius
         nodes_y = np.sin(a) * radius
 
@@ -1021,7 +1028,7 @@ class pipe_cover_geo(tunnel_geo):
         # cover
         nc = np.ceil((radius - deltaLength) / deltaLength).astype(int) + 1
         ri = np.linspace(radius, deltaLength / 2, nc)[1:]
-        cover_node_list = uniqueList( )
+        cover_node_list = uniqueList()
         for i0 in range(0, int(nc - 2)):
             ni = np.ceil(2 * np.pi * ri[i0] / deltalength).astype(int)
             ai = np.linspace(0, 2 * np.pi, ni, endpoint=False)
@@ -1045,7 +1052,7 @@ class pipe_cover_geo(tunnel_geo):
         self._nodes[:, 0] = nodes_x
         self._nodes[:, 1] = nodes_y
         self._nodes[:, 2] = nodes_z
-        self.set_dmda( )
+        self.set_dmda()
         self._iscover = iscover
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
@@ -1062,9 +1069,9 @@ class stokeslets_tunnel_geo(tunnel_geo):
     def stokeslets_velocity(self, problem: 'sf.stokesletsProblem'):
         from src.StokesFlowMethod import light_stokeslets_matrix_3d
 
-        stokeslets_post = problem.get_stokeslets_post( )
-        stokeslets_f = problem.get_stokeslets_f( )
-        m = light_stokeslets_matrix_3d(self.get_nodes( ), stokeslets_post)
+        stokeslets_post = problem.get_stokeslets_post()
+        stokeslets_f = problem.get_stokeslets_f()
+        m = light_stokeslets_matrix_3d(self.get_nodes(), stokeslets_post)
         self._u = -1 * m.dot(stokeslets_f)
         return True
 
@@ -1103,7 +1110,7 @@ class supHelix(_ThickLine_geo):
              (-1) * R * (B ** 2 + R ** 2) ** (-1 / 2) * np.ones_like(s))).T
 
     def __init__(self):
-        super( ).__init__( )
+        super().__init__()
         self._R = 0
         self._B = 0
         self._n_c = 0
@@ -1155,7 +1162,7 @@ class supHelix(_ThickLine_geo):
         si = np.arange(n_node) * b * 2 * np.pi
         nodes = np.vstack((sH1(si), sH2(si), sH3(si) - B * 2 * np.pi * n_c / 2)).T
         self._nodes = nodes
-        self.set_dmda( )
+        self.set_dmda()
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((n_node, 2), order='F')
         self.set_deltaLength(2 * np.pi * b)
@@ -1163,7 +1170,7 @@ class supHelix(_ThickLine_geo):
         af = r - 2 * np.pi * b * eh
         err_msg = 'epsilon of helix eh is too big, cause minor radius of force geo < 0. '
         assert r > 0, err_msg
-        fgeo = geo( )
+        fgeo = geo()
         fgeo.set_nodes(np.vstack((sHf1(si), sHf2(si), sHf3(si) - B * 2 * np.pi * n_c / 2,)).T,
                        deltalength=2 * np.pi * b, resetVelocity=True)
         return fgeo
@@ -1189,7 +1196,7 @@ class supHelix(_ThickLine_geo):
         factor = self._factor
         left_hand = self._left_hand
         length = np.sqrt(R ** 2 + B ** 2) * 2 * np.pi * n_c
-        nl = np.ceil(length / self._get_deltalength( )).astype(int)
+        nl = np.ceil(length / self._get_deltalength()).astype(int)
         s = self._factor_fun(nl, factor) * length - length / 2
         if left_hand:
             self._frenetFrame = (
@@ -1208,7 +1215,7 @@ class supHelix(_ThickLine_geo):
         left_hand = self._left_hand
         length = np.sqrt(R ** 2 + B ** 2) * 2 * np.pi * n_c
         nl = self._axisNodes.shape[0]
-        ds = -self.get_deltaLength( ) * epsilon / 1
+        ds = -self.get_deltaLength() * epsilon / 1
         s = self._factor_fun(nl, factor) * (length - ds / 2) + ds / 4 - length / 2
         if left_hand:
             frenetFrame = (
@@ -1278,4 +1285,3 @@ class region:
         full_region_z = temp_r * np.sin(temp_theta)
 
         return full_region_x, full_region_y, full_region_z
-

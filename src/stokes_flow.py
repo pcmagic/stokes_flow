@@ -99,8 +99,9 @@ class stokesFlowProblem:
     def __str__(self):
         return self.get_name()
 
-    def create_matrix_obj(self, obj1, m_petsc, *args):
+    def create_matrix_obj(self, obj1, m_petsc, INDEX='', *args):
         kwargs = self._kwargs
+        kwargs['INDEX'] = INDEX
         for obj2 in self.get_all_obj_list():
             self._method_dict[self.get_matrix_method()](obj1, obj2, m_petsc, **kwargs)
         m_petsc.assemble()
@@ -131,6 +132,7 @@ class stokesFlowProblem:
 
         # force
         self._force_petsc = self._f_pkg.createGlobalVector()
+        self._force_petsc.set(0)
         return True
 
     def create_matrix(self):
@@ -205,9 +207,7 @@ class stokesFlowProblem:
         solve_method = kwargs['solve_method']
         precondition_method = kwargs['precondition_method']
 
-        if ini_guess is None:
-            self._force_petsc.set(0)
-        else:
+        if ini_guess is not None:
             err_msg = 'size of initial guess for force vector must equal to the number of M matrix rows. '
             assert self._force_petsc.getSize() == ini_guess.getSize(), err_msg
             self._force_petsc[:] = ini_guess[:]
@@ -323,10 +323,6 @@ class stokesFlowProblem:
         # Todo: special case: ForceFreeComposite.
         if isinstance(obj, stokesFlowObj):
             err = self._vtk_check(filename, obj, ref_slt)
-        elif isinstance(obj, forceFreeComposite):
-            err_msg = 'ref_slt must be None if imput is a forceFreeComposite. '
-            assert ref_slt is None, err_msg
-            err = self._vtk_composite_check(filename, obj)
         else:
             err_msg = 'unknown obj type. '
             raise err_msg
@@ -377,15 +373,6 @@ class stokesFlowProblem:
         errory = np.sqrt(np.sum((obj_u[1::3] - u_exact[1::3]) ** 2) / np.sum(u_exact[1::3] ** 2))
         errorz = np.sqrt(np.sum((obj_u[2::3] - u_exact[2::3]) ** 2) / np.sum(u_exact[2::3] ** 2))
         error = np.hstack((errorall, errorx, errory, errorz))
-        return error
-
-    def _vtk_composite_check(self, filename: str, obj: "forceFreeComposite"):
-        error = []
-        ref_U = obj.get_ref_U()
-        for subobj, rel_U in zip(obj.get_obj_list(), obj.get_rel_U_list()):
-            U = ref_U + rel_U
-            subobj.get_u_geo().set_rigid_velocity(U)
-            error.append(self._vtk_check(filename + str(subobj) + '_check', subobj))
         return error
 
     def check_vtk_velocity(self):
@@ -708,6 +695,22 @@ class stokesFlowProblem:
     def get_force(self):
         return self._force
 
+    def get_force_x(self):
+        return self._force[0::self._n_unknown]
+
+    def get_force_y(self):
+        return self._force[1::self._n_unknown]
+
+    def get_force_z(self):
+        return self._force[2::self._n_unknown]
+
+    def get_total_force(self, center=np.zeros(3)):
+        F = np.zeros(6)
+        for obj0 in self.get_all_obj_list():
+            assert isinstance(obj0, stokesFlowObj)
+            F = F + obj0.get_total_force(center=center)
+        return F
+
     def set_kwargs(self, **kwargs):
         self._kwargs = kwargs  # kwargs associate with solving method,
         return True
@@ -833,8 +836,8 @@ class stokesFlowObj:
     def set_velocity(self, velocity: np.array):
         return self.get_u_geo().set_velocity(velocity)
 
-    def set_rigid_velocity(self, U):
-        return self.get_u_geo().set_rigid_velocity(U)
+    def set_rigid_velocity(self, U, center=None):
+        return self.get_u_geo().set_rigid_velocity(U, center)
 
     def get_problem(self):
         return self._problem
@@ -946,6 +949,16 @@ class stokesFlowObj:
 
     def get_force_z(self):
         return self._force[2::self._n_unknown]
+
+    def get_total_force(self, center=None):
+        if center is None:
+            center = self.get_u_geo().get_origin()
+
+        f = self.get_force().reshape((-1, 3))
+        r = self.get_f_geo().get_nodes() - center
+        t = np.cross(r, f)
+        F = np.hstack((f, t)).sum(axis=0)
+        return F
 
     def set_force(self, force):
         self._force = force
@@ -1330,9 +1343,15 @@ class stokesletsInPipeProblem(stokesFlowProblem):
             #     u_fy_petsc[u_glbIdx_the] = u_fy_the
             #     u_fz_petsc[u_glbIdx_the] = u_fz_the
             t_range = range(u_fx_petsc_the.getOwnershipRange()[0], u_fx_petsc_the.getOwnershipRange()[1])
-            u_fx_petsc[u_glbIdx_the[t_range]] = u_fx_petsc_the
-            u_fy_petsc[u_glbIdx_the[t_range]] = u_fy_petsc_the
-            u_fz_petsc[u_glbIdx_the[t_range]] = u_fz_petsc_the
+            temp2 = np.dstack((z, z, z)).flatten()
+            temp3 = np.abs(temp2[u_glbIdx_the[t_range]])
+            t_factor = (temp3 - self._z_the_threshold) / (self._lp / 2 - self._z_the_threshold)
+            u_fx_petsc[u_glbIdx_the[t_range]] = u_fx_petsc_the.getArray() * t_factor + \
+                                                u_fx_petsc[u_glbIdx_the[t_range]] * (1 - t_factor)
+            u_fy_petsc[u_glbIdx_the[t_range]] = u_fy_petsc_the.getArray() * t_factor + \
+                                                u_fy_petsc[u_glbIdx_the[t_range]] * (1 - t_factor)
+            u_fz_petsc[u_glbIdx_the[t_range]] = u_fz_petsc_the.getArray() * t_factor + \
+                                                u_fz_petsc[u_glbIdx_the[t_range]] * (1 - t_factor)
 
         u_fx_loc = u_fx_petsc.getArray()
         u_fy_loc = u_fy_petsc.getArray()
@@ -1913,6 +1932,7 @@ class forceFreeComposite:
         self._obj_list.append(obj)
         obj.set_index(self.get_n_obj())
         obj.set_problem(self)
+        obj.set_rigid_velocity(rel_U, self.get_center())
         self._rel_U_list.append(rel_U)
         self._n_fnode += obj.get_n_f_node()
         self._n_unode += obj.get_n_u_node()
@@ -2035,6 +2055,18 @@ class forceFreeComposite:
             composite2.add_obj(obj1, rel_U)
         return composite2
 
+    def move(self, displacement):
+        for subobj in self.get_obj_list():
+            subobj.move(displacement=displacement)
+        return True
+
+    def node_rotation(self, norm=np.array([0, 0, 1]), theta=0, rotation_origin=None):
+        rotation_origin = self._center if rotation_origin is None else rotation_origin
+        for subobj, rel_U in zip(self.get_obj_list(), self.get_rel_U_list()):
+            subobj.node_rotation(norm=norm, theta=theta, rotation_origin=rotation_origin)
+            subobj.set_rigid_velocity(rel_U, self.get_center())
+        return True
+
     def set_ref_U(self, U):
         self._ref_U = U
         return True
@@ -2128,6 +2160,13 @@ class forceFreeProblem(stokesFlowProblem):
         super().__init__(**kwargs)
         self._all_obj_list = uniqueList()  # contain all objects, including subobj within forceFreeComposite.
         self._compst_list = uniqueList()  # forceFreeComposite list.
+        ffweightx = kwargs['ffweightx'] / kwargs['zoom_factor']
+        ffweighty = kwargs['ffweighty'] / kwargs['zoom_factor']
+        ffweightz = kwargs['ffweightz'] / kwargs['zoom_factor']
+        ffweightT = kwargs['ffweightT'] / kwargs['zoom_factor']
+        self._ffweigth = [ffweightx, ffweighty, ffweightz, ffweightT ** 2, ffweightT ** 2, ffweightT ** 2]
+        assert self._ffweigth[3] == self._ffweigth[4] == self._ffweigth[5], \
+            ' # IMPORTANT!!!   _ffweigth[3]==_ffweigth[4]==_ffweigth[5]'
 
     def add_obj(self, obj):
         if isinstance(obj, forceFreeComposite):
@@ -2190,6 +2229,7 @@ class forceFreeProblem(stokesFlowProblem):
                 center = obj0.get_center()
                 for sub_obj, rel_U in zip(obj0.get_obj_list(), obj0.get_rel_U_list()):
                     sub_nodes = sub_obj.get_u_geo().get_nodes()
+                    # sub_obj.show_velocity(length_factor=0.1, show_nodes=True)
                     r = sub_nodes - center
                     t_u = (rel_U[:3] + np.cross(rel_U[3:], r)).flatten()
                     _, u_glbIdx_all = sub_obj.get_u_geo().get_glbIdx()
@@ -2205,13 +2245,12 @@ class forceFreeProblem(stokesFlowProblem):
 
         # force
         self._force_petsc = self._f_pkg.createGlobalVector()
+        self._force_petsc.set(0)
         return True
 
     def set_force_free(self):
         import numpy.matlib as npm
-        kwargs = self._kwargs
-        zoom_factor = kwargs['zoom_factor']
-        ffweight = kwargs['ffweight'] / zoom_factor
+        ffweight = self._ffweigth
 
         for obj1 in self.get_obj_list():
             if isinstance(obj1, forceFreeComposite):
@@ -2224,19 +2263,19 @@ class forceFreeProblem(stokesFlowProblem):
                 for sub_obj in obj1.get_obj_list():
                     r_u = sub_obj.get_u_geo().get_nodes() - center
                     r_f = sub_obj.get_f_geo().get_nodes() - center
-                    t_I = np.array(((-ffweight, 0, 0),
-                                    (0, -ffweight, 0),
-                                    (0, 0, -ffweight ** 2 * 10)))
+                    t_I = np.array(((-ffweight[0], 0, 0),
+                                    (0, -ffweight[1], 0),
+                                    (0, 0, -ffweight[2])))
                     tmu1 = npm.repmat(t_I, sub_obj.get_n_u_node(), 1)
                     tmu2 = np.vstack([((0, -ri[2], ri[1]),
                                        (ri[2], 0, -ri[0]),
                                        (-ri[1], ri[0], 0))
-                                      for ri in r_u]) * ffweight ** 2
+                                      for ri in r_u]) * ffweight[3]
                     tmf1 = npm.repmat(t_I, 1, sub_obj.get_n_f_node())
                     tmf2 = np.hstack([((0, -ri[2], ri[1]),
                                        (ri[2], 0, -ri[0]),
                                        (-ri[1], ri[0], 0))
-                                      for ri in r_f]) * ffweight ** 2
+                                      for ri in r_f]) * ffweight[3]
                     tmu = np.hstack((tmu1, tmu2))
                     tmf = np.vstack((tmf1, tmf2))
                     _, sub_u_glbIdx_all = sub_obj.get_u_geo().get_glbIdx()
@@ -2293,10 +2332,8 @@ class forceFreeProblem(stokesFlowProblem):
 
     def _solve_force(self, ksp):
         kwargs = self._kwargs
-        zoom_factor = kwargs['zoom_factor']
-        ffweight = kwargs['ffweight'] / zoom_factor
-        zoom_factor = kwargs['zoom_factor']
         getConvergenceHistory = kwargs['getConvergenceHistory']
+        ffweight = self._ffweigth
         if getConvergenceHistory:
             ksp.setConvergenceHistory()
             ksp.solve(self._velocity_petsc, self._force_petsc)
@@ -2311,8 +2348,7 @@ class forceFreeProblem(stokesFlowProblem):
                     _, f_glbIdx_all = sub_obj.get_f_geo().get_glbIdx()
                     sub_obj.set_force(self._force[f_glbIdx_all])
                 _, f_glbIdx_all = obj0.get_f_glbIdx()
-                ref_U = self._force[f_glbIdx_all] * [ffweight, ffweight, ffweight ** 2 * 10,
-                                                     ffweight ** 2, ffweight ** 2, ffweight ** 2]
+                ref_U = self._force[f_glbIdx_all] * ffweight
                 obj0.set_ref_U(ref_U)
                 # absolute speed
                 for sub_obj, rel_U in zip(obj0.get_obj_list(), obj0.get_rel_U_list()):
@@ -2324,6 +2360,7 @@ class forceFreeProblem(stokesFlowProblem):
         return True
 
     def _resolve_velocity(self, ksp):
+        ffweight = self._ffweigth
         re_velocity_petsc = self._M_petsc.createVecLeft()
         # re_velocity_petsc.set(0)
         self._M_petsc.mult(self._force_petsc, re_velocity_petsc)
@@ -2341,12 +2378,26 @@ class forceFreeProblem(stokesFlowProblem):
                     re_abs_U = t_u + re_rel_U
                     sub_obj.set_re_velocity(re_abs_U)
                 _, u_glbIdx_all = obj0.get_u_glbIdx()
-                obj0.set_re_sum(self._re_velocity[u_glbIdx_all])  # force free, analytically they are zero.
+                re_sum = self._re_velocity[u_glbIdx_all] / ffweight
+                obj0.set_re_sum(re_sum)  # force free, analytically they are zero.
             else:
                 _, u_glbIdx_all = obj0.get_u_geo().get_glbIdx()
                 obj0.set_re_velocity(self._re_velocity[u_glbIdx_all])
         self._finish_solve = True
         return ksp.getResidualNorm()
+
+    def show_velocity(self, length_factor=1, show_nodes=True):
+        geo_list = uniqueList()
+        for obj1 in self.get_obj_list():
+            if isinstance(obj1, forceFreeComposite):
+                for obj2 in obj1.get_obj_list():
+                    geo_list.append(obj2.get_u_geo())
+            else:
+                geo_list.append(obj1.get_u_geo())
+        temp_geo = geo()
+        temp_geo.combine(geo_list)
+        temp_geo.show_velocity(length_factor=length_factor, show_nodes=show_nodes)
+        return True
 
     def vtk_self(self, filename):
         self.check_finish_solve()
@@ -2362,6 +2413,31 @@ class forceFreeProblem(stokesFlowProblem):
         obj0.set_name('Prb')
         obj0.vtk(filename)
         return True
+
+    def vtk_check(self, filename: str,
+                  obj: "stokesFlowObj",
+                  ref_slt=None):
+        # Todo: special case: ForceFreeComposite.
+        if isinstance(obj, stokesFlowObj):
+            err = self._vtk_check(filename, obj, ref_slt)
+        elif isinstance(obj, forceFreeComposite):
+            err_msg = 'ref_slt must be None if imput is a forceFreeComposite. '
+            assert ref_slt is None, err_msg
+            err = self._vtk_composite_check(filename, obj)
+        else:
+            err_msg = 'unknown obj type. '
+            raise err_msg
+        return err
+
+    def _vtk_composite_check(self, filename: str, obj: "forceFreeComposite"):
+        error = []
+        ref_U = obj.get_ref_U()
+        center = obj.get_center()
+        for subobj, rel_U in zip(obj.get_obj_list(), obj.get_rel_U_list()):
+            U = ref_U + rel_U
+            subobj.get_u_geo().set_rigid_velocity(U, center=center)
+            error.append(self._vtk_check(filename + str(subobj) + '_check', subobj))
+        return error
 
     def unpickmyself(self):
         filename = self._pick_filename
@@ -2423,6 +2499,16 @@ class stokesletsInPipeForceFreeProblem(stokesletsInPipeProblem, forceFreeProblem
             self._all_obj_list.append(obj)
             super(stokesletsInPipeProblem).add_obj(obj)
         return True
+
+
+class stokesletsTwoPlateProblem(stokesFlowProblem):
+    def donothing(self):
+        pass
+
+
+class stokesletsTwoPlateForceFreeProblem(stokesletsTwoPlateProblem, forceFreeProblem):
+    def donothing(self):
+        pass
 
 
 problem_dic = {

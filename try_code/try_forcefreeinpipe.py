@@ -174,7 +174,7 @@ def main_fun(**main_kwargs):
     problem.create_matrix()
 
     problem.print_info()
-    residualNorm = problem.solve()
+    problem.solve()
 
     problem.pickmyself(fileHeadle)
     with open(fileHeadle + '_pick.bin', 'rb') as input:
@@ -183,7 +183,7 @@ def main_fun(**main_kwargs):
         problem.unpickmyself()
     problem.create_matrix()
     problem.print_info()
-    residualNorm = problem.solve()
+    problem.solve()
     problem.pickmyself(fileHeadle)
 
     PETSc.Sys.Print(obj_composite.get_ref_U())

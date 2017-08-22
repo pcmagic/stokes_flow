@@ -1,18 +1,20 @@
 from time import time
 from petsc4py import PETSc
 from src import stokes_flow as sf
-from src.objComposite import createEcoli_tunnel
+from src.objComposite import createEcoliComp_tunnel, createEcoliComp_ellipse
 from src.stokes_flow import obj_dic
 
 __all__ = ['save_singleEcoli_vtk', ]
 
 
-def save_singleEcoli_vtk(problem: sf.stokesFlowProblem):
+def save_singleEcoli_vtk(problem: sf.stokesFlowProblem, ref_U=None, createHandle=createEcoliComp_tunnel):
     t0 = time( )
     problem_kwargs = problem.get_kwargs( )
     fileHeadle = problem_kwargs['fileHeadle']
     matrix_method = problem_kwargs['matrix_method']
-    with_T_geo = problem_kwargs['with_T_geo']
+    ecoli_comp = problem.get_obj_list()[0]
+    with_T_geo = len(ecoli_comp.get_obj_list()) == 4
+    ref_U = ecoli_comp.get_ref_U() if ref_U is None else ref_U
 
     problem.vtk_obj(fileHeadle)
 
@@ -31,9 +33,9 @@ def save_singleEcoli_vtk(problem: sf.stokesFlowProblem):
     check_kwargs['hfct'] = 1
     check_kwargs['Tfct'] = 1
     objtype = obj_dic[matrix_method]
-    ecoli_comp = problem.get_obj_list( )[0]
-    ecoli_comp_check = createEcoli_tunnel(objtype, **check_kwargs)
-    ecoli_comp_check.set_ref_U(ecoli_comp.get_ref_U( ))
+    ecoli_comp_check = createHandle(objtype, **check_kwargs)
+
+    ecoli_comp_check.set_ref_U(ref_U)
     if with_T_geo:
         velocity_err_sphere, velocity_err_helix0, velocity_err_helix1, velocity_err_Tgeo = \
             problem.vtk_check(fileHeadle, ecoli_comp_check)

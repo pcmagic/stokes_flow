@@ -100,7 +100,7 @@ def get_problem_kwargs(**main_kwargs):
     fileHeadle = OptDB.getString('f', 'sphere')
     solve_method = OptDB.getString('s', 'gmres')
     precondition_method = OptDB.getString('g', 'none')
-    plot = OptDB.getBool('plot', False)
+    plot_geo = OptDB.getBool('plot_geo', False)
     debug_mode = OptDB.getBool('debug', False)
     matrix_method = OptDB.getString('sm', 'pf')
     restart = OptDB.getBool('restart', False)
@@ -136,7 +136,7 @@ def get_problem_kwargs(**main_kwargs):
         'precondition_method':   precondition_method,
         'field_range':           field_range,
         'n_grid':                n_grid,
-        'plot':                  plot,
+        'plot_geo':              plot_geo,
         'debug_mode':            debug_mode,
         'fileHeadle':            fileHeadle,
         'region_type':           'rectangle',
@@ -176,25 +176,26 @@ def print_case_info(**problem_kwargs):
     PETSc.Sys.Print('sphere radius: %f, delta length: %f, velocity: %f' % (radius, deltaLength, u))
 
     err_msg = "Only 'pf', 'rs', 'tp_rs', and 'lg_rs' methods are accept for this main code. "
-    assert matrix_method in ('rs', 'tp_rs', 'lg_rs', 'rs_precondition', 'tp_rs_precondition', 'lg_rs_precondition', 'pf'), err_msg
+    assert matrix_method in (
+    'rs', 'tp_rs', 'lg_rs', 'rs_precondition', 'tp_rs_precondition', 'lg_rs_precondition', 'pf'), err_msg
     epsilon = problem_kwargs['epsilon']
     if matrix_method in ('rs', 'rs_precondition', 'pf'):
         PETSc.Sys.Print('create matrix method: %s, epsilon: %f'
-              % (matrix_method, epsilon))
+                        % (matrix_method, epsilon))
     elif matrix_method in ('tp_rs', 'tp_rs_precondition'):
         twoPara_n = problem_kwargs['twoPara_n']
         PETSc.Sys.Print('create matrix method: %s, epsilon: %f, order: %d'
-              % (matrix_method, epsilon, twoPara_n))
+                        % (matrix_method, epsilon, twoPara_n))
     elif matrix_method in ('lg_rs', 'lg_rs_precondition'):
         legendre_m = problem_kwargs['legendre_m']
         legendre_k = problem_kwargs['legendre_k']
         PETSc.Sys.Print('create matrix method: %s, epsilon: %f, m: %d, k: %d, p: %d'
-              % (matrix_method, epsilon, legendre_m, legendre_k, (legendre_m + 2 * legendre_k + 1)))
+                        % (matrix_method, epsilon, legendre_m, legendre_k, (legendre_m + 2 * legendre_k + 1)))
 
     solve_method = problem_kwargs['solve_method']
     precondition_method = problem_kwargs['precondition_method']
     PETSc.Sys.Print('solve method: %s, precondition method: %s'
-          % (solve_method, precondition_method))
+                    % (solve_method, precondition_method))
     PETSc.Sys.Print('output file headle: ' + fileHeadle)
     PETSc.Sys.Print('MPI size: %d' % size)
 
@@ -233,7 +234,8 @@ def main_fun(**main_kwargs):
 
         problem = problem_dic[matrix_method](**problem_kwargs)
         if pickProblem:
-            problem.pickmyself(fileHeadle, check=True)  # not save anything really, just check if the path is correct, to avoid this error after long time calculation.
+            problem.pickmyself(fileHeadle,
+                               check=True)  # not save anything really, just check if the path is correct, to avoid this error after long time calculation.
         obj_sphere = obj_dic[matrix_method]()
         obj_sphere_kwargs = {'name': 'sphereObj_0_0'}
         sphere_geo1 = sphere_geo0.copy()
@@ -299,7 +301,8 @@ def two_step_main_fun(**main_kwargs):
         print_case_info(**problem_kwargs)
 
         problem = problem_dic[matrix_method](**problem_kwargs)
-        problem.pickmyself(fileHeadle)  # not save anything really, just check if the path is correct, to avoid this error after long time calculation.
+        problem.pickmyself(
+            fileHeadle)  # not save anything really, just check if the path is correct, to avoid this error after long time calculation.
         obj_sphere = obj_dic[matrix_method]()
         obj_sphere_kwargs = {'name': 'sphereObj'}
         obj_sphere.set_data(sphere_geo0, sphere_geo0, **obj_sphere_kwargs)
