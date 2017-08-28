@@ -239,7 +239,6 @@ def restart_solve(**main_kwargs):
         unpick = pickle.Unpickler(input)
         problem = unpick.load()
         problem.unpickmyself()
-        PETSc.Sys.Print('---->>>unpick the problem from file %s_pick.bin' % (fileHeadle))
 
     problem_kwargs_old = problem.get_kwargs()
     radius = problem_kwargs_old['radius']
@@ -271,6 +270,22 @@ def restart_solve(**main_kwargs):
     PETSc.Sys.Print('err: ', err)
 
 
+def export_data(**main_kwargs):
+    problem_kwargs = get_problem_kwargs(**main_kwargs)
+    fileHeadle = problem_kwargs['fileHeadle']
+    with open(fileHeadle + '_pick.bin', 'rb') as input:
+        unpick = pickle.Unpickler(input)
+        problem = unpick.load()
+        problem.unpickmyself()
+
+    obj_sphere = problem.get_obj_list()[0]
+    obj_sphere.save_mat()
+    # problem.saveM_mat(fileHeadle + '_M')
+    problem.saveM_ASCII(fileHeadle + '_M')
+    # problem.saveM_HDF5(fileHeadle + '_M')
+    PETSc.Sys.Print('finish')
+
+
 if __name__ == '__main__':
     OptDB = PETSc.Options()
     mode = OptDB.getString('mode', 'main')
@@ -280,6 +295,8 @@ if __name__ == '__main__':
         create_M()
     elif mode == 'resolve':
         restart_solve()
+    elif mode == 'export':
+        export_data()
     else:
         err_msg = 'wrong program mode'
         raise err_msg

@@ -28,17 +28,17 @@ def regularized_stokeslets_matrix_3d(vnodes: np.ndarray,  # nodes contain veloci
     # U = M * F.
     # Cortez R. The method of regularized Stokeslets[J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
 
-    comm = PETSc.COMM_WORLD.tompi4py( )
-    size = comm.Get_size( )
-    rank = comm.Get_rank( )
+    comm = PETSc.COMM_WORLD.tompi4py()
+    size = comm.Get_size()
+    rank = comm.Get_rank()
     if rank == 0:
         n_vnode = vnodes.shape
         if n_vnode[0] < n_vnode[1]:
-            vnodes = vnodes.transpose( )
+            vnodes = vnodes.transpose()
             n_vnode = vnodes.shape
         n_fnode = fnodes.shape
         if n_fnode[0] < n_fnode[1]:
-            fnodes = fnodes.transpose( )
+            fnodes = fnodes.transpose()
             n_fnode = fnodes.shape
 
         split = np.array_split(vnodes, size)
@@ -99,13 +99,13 @@ def regularized_stokeslets_matrix_3d(vnodes: np.ndarray,  # nodes contain veloci
 def light_stokeslets_matrix_3d(u_nodes: np.ndarray, f_nodes: np.ndarray) -> np.ndarray:
     from src.geo import geo
 
-    temp_geo1 = geo( )  # velocity nodes
+    temp_geo1 = geo()  # velocity nodes
     temp_geo1.set_nodes(u_nodes, deltalength=0)
-    temp_obj1 = sf.stokesFlowObj( )
+    temp_obj1 = sf.stokesFlowObj()
     temp_obj1.set_data(temp_geo1, temp_geo1, np.zeros(u_nodes.size))
-    temp_geo2 = geo( )  # force nodes
+    temp_geo2 = geo()  # force nodes
     temp_geo2.set_nodes(f_nodes, deltalength=0)
-    temp_obj2 = sf.stokesFlowObj( )
+    temp_obj2 = sf.stokesFlowObj()
     temp_obj2.set_data(temp_geo2, temp_geo2, np.zeros(3))
     m = stokeslets_matrix_3d(temp_obj1, temp_obj2)
 
@@ -172,11 +172,11 @@ def stokeslets_matrix_3d(obj1: 'sf.stokesFlowObj',  # objct contain velocity inf
                          obj2: 'sf.stokesFlowObj'):  # objct contain force information
     # Solve m matrix: (delta(i,i)/r + (x_i*x_j)/r^3
 
-    u_nodes = obj1.get_u_nodes( )
-    n_unode = obj1.get_n_u_node( )
-    f_nodes = obj2.get_f_nodes( )
-    n_fnode = obj2.get_n_f_node( )
-    n_unknown = obj2.get_n_unknown( )
+    u_nodes = obj1.get_u_nodes()
+    n_unode = obj1.get_n_u_node()
+    f_nodes = obj2.get_f_nodes()
+    n_fnode = obj2.get_n_f_node()
+    n_unknown = obj2.get_n_unknown()
     assert n_unknown == 3
     m = np.ones((n_unode * n_unknown, n_fnode * n_unknown))
 
@@ -274,11 +274,11 @@ def stokeslets_matrix_3d(obj1: 'sf.stokesFlowObj',  # objct contain velocity inf
 def light_stokeslets_matrix_3d_petsc(u_nodes: np.ndarray, f_nodes: np.ndarray):
     from src.geo import geo
 
-    temp_geo1 = geo( )  # velocity nodes
+    temp_geo1 = geo()  # velocity nodes
     temp_geo1.set_nodes(u_nodes)
-    temp_geo2 = geo( )  # force nodes
+    temp_geo2 = geo()  # force nodes
     temp_geo2.set_nodes(f_nodes)
-    temp_obj1 = sf.stokesFlowObj( )
+    temp_obj1 = sf.stokesFlowObj()
     temp_obj1.set_data(temp_geo2, temp_geo1)
     m = stokeslets_matrix_3d_petsc(temp_obj1, temp_obj1)
     return m
@@ -288,18 +288,18 @@ def stokeslets_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # object contain veloc
                                obj2: 'sf.stokesFlowObj'):  # object contain force information
     # Solve m matrix: (delta(i,i)/r + (x_i*x_j)/r^3
 
-    vnodes = obj1.get_u_nodes( )
-    n_vnode = obj1.get_n_velocity( )
-    fnodes = obj2.get_f_nodes( )
-    n_fnode = obj2.get_n_force( )
+    vnodes = obj1.get_u_nodes()
+    n_vnode = obj1.get_n_velocity()
+    fnodes = obj2.get_f_nodes()
+    n_fnode = obj2.get_n_force()
 
-    n_unknown = obj2.get_n_unknown( )
-    m = PETSc.Mat( ).create(comm=PETSc.COMM_WORLD)
+    n_unknown = obj2.get_n_unknown()
+    m = PETSc.Mat().create(comm=PETSc.COMM_WORLD)
     m.setSizes(((None, n_vnode), (None, n_fnode)))
     m.setType('dense')
-    m.setFromOptions( )
-    m.setUp( )
-    m_start, m_end = m.getOwnershipRange( )
+    m.setFromOptions()
+    m.setUp()
+    m_start, m_end = m.getOwnershipRange()
     for i0 in range(m_start, m_end):
         delta_xi = fnodes - vnodes[i0 // 3]
         temp1 = delta_xi ** 2
@@ -319,7 +319,7 @@ def stokeslets_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # object contain veloc
             m[i0, 0::n_unknown] = delta_xi[:, 0] * delta_xi[:, 2] * temp3 / (8 * np.pi)  # Mxz
             m[i0, 1::n_unknown] = delta_xi[:, 1] * delta_xi[:, 2] * temp3 / (8 * np.pi)  # Myz
             m[i0, 2::n_unknown] = (temp2 + np.square(delta_xi[:, 2]) * temp3) / (8 * np.pi)  # Mzz
-    m.assemble( )
+    m.assemble()
 
     return m  # stokeslets matrix, U = M * F
 
@@ -357,16 +357,15 @@ def regularized_stokeslets_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct co
     # U = M * F.
     # Cortez R. The method of regularized Stokeslets[J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
     delta_2 = kwargs['delta'] ** 2  # correction factor
-    u_nodes = obj1.get_u_nodes( )
-    f_nodes = obj2.get_f_nodes( )
-    _, u_glbIdx_all = obj1.get_u_geo( ).get_glbIdx( )
-    _, f_glbIdx_all = obj2.get_f_geo( ).get_glbIdx( )
-    u_dmda = obj1.get_u_geo( ).get_dmda( )
+    u_nodes = obj1.get_u_nodes()
+    f_nodes = obj2.get_f_nodes()
+    _, u_glbIdx_all = obj1.get_u_geo().get_glbIdx()
+    _, f_glbIdx_all = obj2.get_f_geo().get_glbIdx()
+    u_dmda = obj1.get_u_geo().get_dmda()
 
-    for i0 in range(u_dmda.getRanges( )[0][0], u_dmda.getRanges( )[0][1]):
-        m00, m01, m02, m10, m11, m12, m20, m21, m22, i1 = regularized_stokeslets_matrix_3d_petsc_mij(u_nodes[i0],
-                                                                                                     f_nodes, delta_2,
-                                                                                                     i0)
+    for i0 in range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1]):
+        m00, m01, m02, m10, m11, m12, m20, m21, m22, i1 = \
+            regularized_stokeslets_matrix_3d_petsc_mij(u_nodes[i0], f_nodes, delta_2, i0)
         u_glb = u_glbIdx_all[i1 * 3]
         m.setValues(u_glb + 0, f_glbIdx_all[0::3], m00, addv=False)
         m.setValues(u_glb + 0, f_glbIdx_all[1::3], m01, addv=False)
@@ -379,12 +378,170 @@ def regularized_stokeslets_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct co
         m.setValues(u_glb + 2, f_glbIdx_all[2::3], m22, addv=False)
         # if i0 % 1000==0:
         #     m.assemble()
-    m.assemble( )
+    m.assemble()
 
     return m  # ' regularized stokeslets matrix, U = M * F '
 
 
 def check_regularized_stokeslets_matrix_3d(**kwargs):
+    err_msg = 'the reguralized stokeslets method needs parameter, delta. '
+    assert 'delta' in kwargs, err_msg
+
+
+def regularized_stokeslets_plane_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # velocity node
+                                                     f_nodes: np.ndarray,  # force nodes
+                                                     e2,  # e2 = e^2
+                                                     i0, **kwargs):
+    # ZhengPeiyan version
+    delta_xi = (f_nodes - t_u_node).T
+    zwall = f_nodes[:, 2]
+    dx = delta_xi[0]
+    dy = delta_xi[1]
+    dzs = delta_xi[2]
+    dz = dzs - 2 * zwall
+    r2sk = dx ** 2 + dzs ** 2 + dy ** 2  # r squared
+    # rsk = r2sk ** 0.5
+    rske = (r2sk + e2) ** 0.5
+    H2sk = 1 / (rske ** 3)
+    H1sk = 1 / rske + e2 * H2sk
+    # D2sk = -6 / (rske ** 5)
+    # D1sk = 2 / (rske ** 3) + e2 * D2sk
+    r2k = dx ** 2 + dz ** 2 + dy ** 2  # r squared
+    rk = r2k ** 0.5
+    rke = (r2k + e2) ** 0.5
+    H2k = 1 / (rke ** 3)
+    H1k = 1 / rke + e2 * H2k
+    D2k = -6 / (rke ** 5)
+    D1k = 2 / (rke ** 3) + e2 * D2k
+    dH2k = -3 * rk / (rke ** 5)
+    dH1k = -rk / (rke ** 3) + e2 * dH2k
+    m00 = H1sk + dx ** 2 * H2sk - H1k - dx ** 2 * H2k - zwall * zwall * (-1 * D1k - dx ** 2 * D2k) - 2 * zwall * (
+        dH1k / rk + H2k) * zwall - 2 * zwall * (-dz * H2k - dz * dx ** 2 * dH2k / rk)  # Mxx
+    m20 = dx * dzs * H2sk - dx * dz * H2k - zwall * zwall * (-dz * dx * D2k) - 2 * zwall * (
+        dH1k / rk + H2k) * dx - 2 * zwall * (-dx * dH1k / rk - dx * dz ** 2 * dH2k / rk)  # Mzx
+    m02 = dx * dzs * H2sk - dx * dz * H2k - zwall * zwall * (dx * dz * D2k) - 2 * zwall * (
+        dx * H2k + dz ** 2 * dx * dH2k / rk)  # Mxz
+    m22 = H1sk + dzs ** 2 * H2sk - H1k - dz ** 2 * H2k - zwall * zwall * (1 * D1k + dz ** 2 * D2k) - 2 * zwall * (
+        dz * H2k + dz * H2k + dz * dH1k / rk + dz ** 3 * dH2k / rk)  # Mzz
+    m01 = dx * dy * H2sk - dx * dy * H2k - zwall * zwall * (-dx * dy * D2k) - 2 * zwall * (
+        -dz * dx * dy * dH2k / rk)  # Mxy
+    m21 = dzs * dy * H2sk - dz * dy * H2k - zwall * zwall * (-dz * dy * D2k) - 2 * zwall * (
+        dH1k / rk + H2k) * dy - 2 * zwall * (-dy * dH1k / rk - dz * dy * dz * dH2k / rk)  # Mzy
+    m10 = dx * dy * H2sk - dx * dy * H2k - zwall * zwall * (-dx * dy * D2k) - 2 * zwall * (
+        -dx * dy * dz * dH2k / rk)  # Myx
+    m12 = dzs * dy * H2sk - dz * dy * H2k - zwall * zwall * (dy * dz * D2k) - 2 * zwall * (
+        dy * H2k + dy * dz * dz * dH2k / rk)  # Myz
+    m11 = H1sk + dy * dy * H2sk - H1k - dy * dy * H2k - zwall * zwall * (-D1k - dy ** 2 * D2k) - 2 * zwall * (
+        dH1k / rk + H2k) * zwall - 2 * zwall * (-dz * H2k - dy ** 2 * dz * dH2k / rk)  # Myy
+    m00 = m00 / (8 * np.pi)
+    m01 = m01 / (8 * np.pi)
+    m02 = m02 / (8 * np.pi)
+    m10 = m10 / (8 * np.pi)
+    m11 = m11 / (8 * np.pi)
+    m12 = m12 / (8 * np.pi)
+    m20 = m20 / (8 * np.pi)
+    m21 = m21 / (8 * np.pi)
+    m22 = m22 / (8 * np.pi)
+    return m00, m01, m02, m10, m11, m12, m20, m21, m22, i0
+
+
+# def regularized_stokeslets_plane_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # velocity node
+#                                                      f_nodes: np.ndarray,  # force nodes
+#                                                      e2,  # e2 = e^2
+#                                                      i0, **kwargs):
+#     # Ding version
+#     xgridb = t_u_node[0]
+#     ygridb = t_u_node[1]
+#     zgridb = t_u_node[2]
+#     xwall = f_nodes[:, 0]
+#     ywall = f_nodes[:, 1]
+#     zwall = f_nodes[:, 2]
+#
+#     dx = xgridb - xwall
+#     dys = ygridb - ywall
+#     dy = ygridb + ywall
+#     dz = zgridb - zwall
+#
+#     r2sk = dx ** 2 + dys ** 2 + dz ** 2  # r squared
+#     # rsk = r2sk ** 0.5
+#     rske = (r2sk + e2) ** 0.5
+#     H2sk = 1 / (rske ** 3)
+#     H1sk = 1 / rske + e2 * H2sk
+#     D2sk = -6 / (rske ** 5)
+#     # D1sk = 2 / (rske ** 3) + e2 * D2sk
+#
+#     r2k = dx ** 2 + dy ** 2 + dz ** 2
+#     rk = r2k ** 0.5
+#     rke = (r2k + e2) ** 0.5
+#     H2k = 1 / (rke ** 3)
+#     H1k = 1 / rke + e2 * H2k
+#     D2k = -6 / (rke ** 5)
+#     D1k = 2 / (rke ** 3) + e2 * D2k
+#     dH2k = -3 * rk / (rke ** 5)
+#     dH1k = -rk / (rke ** 3) + e2 * dH2k
+#
+#     m00 = H1sk + dx ** 2 * H2sk - H1k - dx ** 2 * H2k - ywall * ywall * (-1 * D1k - dx ** 2 * D2k) - 2 * ywall * (
+#         dH1k / rk + H2k) * dy + 2 * ywall * (-dy * H2k - dy * dx ** 2 * dH2k / rk)
+#     m10 = dx * dys * H2sk - dx * dy * H2k - ywall * ywall * (-dy * dx * D2k) + 2 * ywall * (
+#         dH1k / rk + H2k) * dx + 2 * ywall * (-dx * dH1k / rk - dx * dy ** 2 * dH2k / rk)
+#     m01 = dx * dys * H2sk - dx * dy * H2k - ywall * ywall * (dx * dy * D2k) + 2 * ywall * (
+#         dx * H2k + dy ** 2 * dx * dH2k / rk)
+#     m11 = H1sk + dys ** 2 * H2sk - H1k - dy ** 2 * H2k - ywall * ywall * (1 * D1k + dy ** 2 * D2k) + 2 * ywall * (
+#         dy * H2k + dy * H2k + dy * dH1k / rk + dy ** 3 * dH2k / rk)
+#     m02 = dx * dz * H2sk - dx * dz * H2k - ywall * ywall * (-dx * dz * D2k) + 2 * ywall * (
+#         -dy * dx * dz * dH2k / rk)
+#     m12 = dys * dz * H2sk - dy * dz * H2k - ywall * ywall * (-dy * dz * D2k) + 2 * ywall * (
+#         dH1k / rk + H2k) * dz + 2 * ywall * (-dz * dH1k / rk - dy * dz * dy * dH2k / rk)
+#     m20 = dx * dz * H2sk - dx * dz * H2k - ywall * ywall * (-dx * dz * D2k) + 2 * ywall * (
+#         -dx * dz * dy * dH2k / rk)
+#     m21 = dys * dz * H2sk - dy * dz * H2k - ywall * ywall * (dz * dy * D2k) + 2 * ywall * (
+#         dz * H2k + dz * dy * dy * dH2k / rk)
+#     m22 = H1sk + dz * dz * H2sk - H1k - dz * dz * H2k - ywall * ywall * (-D1k - dz ** 2 * D2k) - 2 * ywall * (
+#         dH1k / rk + H2k) * dy + 2 * ywall * (-dy * H2k - dz ** 2 * dy * dH2k / rk)
+#     m00 = m00 / (8 * np.pi)
+#     m01 = m01 / (8 * np.pi)
+#     m02 = m02 / (8 * np.pi)
+#     m10 = m10 / (8 * np.pi)
+#     m11 = m11 / (8 * np.pi)
+#     m12 = m12 / (8 * np.pi)
+#     m20 = m20 / (8 * np.pi)
+#     m21 = m21 / (8 * np.pi)
+#     m22 = m22 / (8 * np.pi)
+#     return m00, m01, m02, m10, m11, m12, m20, m21, m22, i0
+
+
+def regularized_stokeslets_plane_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
+                                                 obj2: 'sf.stokesFlowObj',  # objct contain force information
+                                                 m, **kwargs):
+    # Solve m matrix using regularized stokeslets method
+    # U = M * F.
+    # Cortez R. The method of regularized Stokeslets[J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
+    delta_2 = kwargs['delta'] ** 2  # correction factor
+    u_nodes = obj1.get_u_nodes()
+    f_nodes = obj2.get_f_nodes()
+    _, u_glbIdx_all = obj1.get_u_geo().get_glbIdx()
+    _, f_glbIdx_all = obj2.get_f_geo().get_glbIdx()
+    u_dmda = obj1.get_u_geo().get_dmda()
+
+    for i0 in range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1]):
+        m00, m01, m02, m10, m11, m12, m20, m21, m22, i1 = \
+            regularized_stokeslets_plane_matrix_3d_petsc_mij(u_nodes[i0], f_nodes, delta_2, i0)
+        u_glb = u_glbIdx_all[i1 * 3]
+        m.setValues(u_glb + 0, f_glbIdx_all[0::3], m00, addv=False)
+        m.setValues(u_glb + 0, f_glbIdx_all[1::3], m01, addv=False)
+        m.setValues(u_glb + 0, f_glbIdx_all[2::3], m02, addv=False)
+        m.setValues(u_glb + 1, f_glbIdx_all[0::3], m10, addv=False)
+        m.setValues(u_glb + 1, f_glbIdx_all[1::3], m11, addv=False)
+        m.setValues(u_glb + 1, f_glbIdx_all[2::3], m12, addv=False)
+        m.setValues(u_glb + 2, f_glbIdx_all[0::3], m20, addv=False)
+        m.setValues(u_glb + 2, f_glbIdx_all[1::3], m21, addv=False)
+        m.setValues(u_glb + 2, f_glbIdx_all[2::3], m22, addv=False)
+    m.assemble()
+
+    return m  # ' regularized stokeslets matrix, U = M * F '
+
+
+def check_regularized_stokeslets_plane_matrix_3d(**kwargs):
     err_msg = 'the reguralized stokeslets method needs parameter, delta. '
     assert 'delta' in kwargs, err_msg
 
@@ -524,19 +681,19 @@ def legendre_regularized_stokeslets_matrix_3d(obj1: 'sf.stokesFlowObj',  # objct
     m = kwargs['legendre_m']
     k = kwargs['legendre_k']
     key = "m=%d,k=%d" % (m, k)
-    vnodes = obj1.get_u_nodes( )
-    n_vnode = obj1.get_n_velocity( )
-    fnodes = obj2.get_f_nodes( )
-    n_fnode = obj2.get_n_force( )
+    vnodes = obj1.get_u_nodes()
+    n_vnode = obj1.get_n_velocity()
+    fnodes = obj2.get_f_nodes()
+    n_fnode = obj2.get_n_force()
 
-    n_unknown = obj2.get_n_unknown( )
-    m = PETSc.Mat( ).create(comm=PETSc.COMM_WORLD)
+    n_unknown = obj2.get_n_unknown()
+    m = PETSc.Mat().create(comm=PETSc.COMM_WORLD)
     m.setSizes(((None, n_vnode), (None, n_fnode)))
     m.setType('dense')
-    m.setFromOptions( )
-    m.setUp( )
-    m_start, m_end = m.getOwnershipRange( )
-    mi = np.zeros(obj2.get_n_f_node( ))
+    m.setFromOptions()
+    m.setUp()
+    m_start, m_end = m.getOwnershipRange()
+    mi = np.zeros(obj2.get_n_f_node())
     for i0 in range(m_start, m_end):
         delta_xi = fnodes - vnodes[i0 // 3]
         temp1 = delta_xi ** 2
@@ -551,7 +708,7 @@ def legendre_regularized_stokeslets_matrix_3d(obj1: 'sf.stokesFlowObj',  # objct
                 8 * pi * delta_r[INDEX2] ** 3)
             m[i0, j::n_unknown] = mi
             pass
-    m.assemble( )
+    m.assemble()
 
     return m  # ' regularized stokeslets matrix, U = M * F '
 
@@ -617,18 +774,18 @@ def two_para_regularized_stokeslets_matrix_3d(obj1: 'sf.stokesFlowObj',  # objct
 
     e = kwargs['delta']  # correction factor
     n = str(kwargs['twoPara_n'])
-    vnodes = obj1.get_u_nodes( )
-    n_vnode = obj1.get_n_velocity( )
-    fnodes = obj2.get_f_nodes( )
-    n_fnode = obj2.get_n_force( )
+    vnodes = obj1.get_u_nodes()
+    n_vnode = obj1.get_n_velocity()
+    fnodes = obj2.get_f_nodes()
+    n_fnode = obj2.get_n_force()
 
-    n_unknown = obj2.get_n_unknown( )
-    m = PETSc.Mat( ).create(comm=PETSc.COMM_WORLD)
+    n_unknown = obj2.get_n_unknown()
+    m = PETSc.Mat().create(comm=PETSc.COMM_WORLD)
     m.setSizes(((None, n_vnode), (None, n_fnode)))
     m.setType('dense')
-    m.setFromOptions( )
-    m.setUp( )
-    m_start, m_end = m.getOwnershipRange( )
+    m.setFromOptions()
+    m.setUp()
+    m_start, m_end = m.getOwnershipRange()
     for i0 in range(m_start, m_end):
         delta_xi = fnodes - vnodes[i0 // 3]
         temp1 = delta_xi ** 2
@@ -636,7 +793,7 @@ def two_para_regularized_stokeslets_matrix_3d(obj1: 'sf.stokesFlowObj',  # objct
         i = i0 % 3
         for j in range(3):
             m[i0, j::n_unknown] = delta(i, j) * h1[n](delta_r, e) + delta_xi[:, i] * delta_xi[:, j] * h2[n](delta_r, e)
-    m.assemble( )
+    m.assemble()
 
     return m  # ' regularized stokeslets matrix, U = M * F '
 
@@ -657,18 +814,18 @@ def surf_force_matrix_3d_debug(obj1: 'sf.surf_forceObj',  # objct contain veloci
 
     delta = kwargs['delta']  # correction factor
     d_radia = kwargs['d_radia']  # the radial of the integral surface.
-    vnodes = obj1.get_u_nodes( )
-    n_vnode = obj1.get_n_velocity( )
-    fnodes = obj2.get_f_nodes( )
-    n_fnode = obj2.get_n_force( )
+    vnodes = obj1.get_u_nodes()
+    n_vnode = obj1.get_n_velocity()
+    fnodes = obj2.get_f_nodes()
+    n_fnode = obj2.get_n_force()
 
-    n_unknown = obj2.get_n_unknown( )
-    m = PETSc.Mat( ).create(comm=PETSc.COMM_WORLD)
+    n_unknown = obj2.get_n_unknown()
+    m = PETSc.Mat().create(comm=PETSc.COMM_WORLD)
     m.setSizes(((None, n_vnode), (None, n_fnode)))
     m.setType('dense')
-    m.setFromOptions( )
-    m.setUp( )
-    m_start, m_end = m.getOwnershipRange( )
+    m.setFromOptions()
+    m.setUp()
+    m_start, m_end = m.getOwnershipRange()
     for i0 in range(m_start, m_end):
         delta_xi = fnodes - vnodes[i0 // 3]
         temp1 = delta_xi ** 2
@@ -690,7 +847,7 @@ def surf_force_matrix_3d_debug(obj1: 'sf.surf_forceObj',  # objct contain veloci
             m[i0, 2::n_unknown] = (temp2 + np.square(delta_xi[:, 2]) / delta_r3) / (8 * np.pi)  # Mzz
     if obj1 is obj2:  # self-interaction
         for i0 in range(m_start, m_end):
-            norm = obj1.get_norm( )[i0 // 3, :]
+            norm = obj1.get_norm()[i0 // 3, :]
             if i0 % 3 == 0:  # x axis
                 m[i0, i0 + 0] = (
                                     3 * np.cos(norm[0]) ** 2 + 1 / 2 * (5 + np.cos(2 * norm[1])) * np.sin(
@@ -709,7 +866,7 @@ def surf_force_matrix_3d_debug(obj1: 'sf.surf_forceObj',  # objct contain veloci
                 m[i0, i0 - 2] = (-np.cos(norm[1]) * np.sin(norm[0]) * np.sin(norm[1])) / (8 * np.pi * d_radia)  # Mxz
                 m[i0, i0 - 1] = (np.cos(norm[0]) * np.cos(norm[1]) * np.sin(norm[1])) / (8 * np.pi * d_radia)  # Myz
                 m[i0, i0 + 0] = (1 / 2 * (5 - np.cos(2 * norm[1]))) / (8 * np.pi * d_radia)  # Mzz
-    m.assemble( )
+    m.assemble()
     return m  # ' regularized stokeslets matrix, U = M * F '
 
 
@@ -722,18 +879,18 @@ def surf_force_matrix_3d(obj1: 'sf.surf_forceObj',  # objct contain velocity inf
     # Zhang Ji, 20160928
 
     d_radia = kwargs['d_radia']  # the radial of the integral surface.
-    vnodes = obj1.get_u_nodes( )
-    n_vnode = obj1.get_n_velocity( )
-    fnodes = obj2.get_f_nodes( )
-    n_fnode = obj2.get_n_force( )
+    vnodes = obj1.get_u_nodes()
+    n_vnode = obj1.get_n_velocity()
+    fnodes = obj2.get_f_nodes()
+    n_fnode = obj2.get_n_force()
 
-    n_unknown = obj2.get_n_unknown( )
-    m = PETSc.Mat( ).create(comm=PETSc.COMM_WORLD)
+    n_unknown = obj2.get_n_unknown()
+    m = PETSc.Mat().create(comm=PETSc.COMM_WORLD)
     m.setSizes(((None, n_vnode), (None, n_fnode)))
     m.setType('dense')
-    m.setFromOptions( )
-    m.setUp( )
-    m_start, m_end = m.getOwnershipRange( )
+    m.setFromOptions()
+    m.setUp()
+    m_start, m_end = m.getOwnershipRange()
     for i0 in range(m_start, m_end):  # interaction between different nodes.
         delta_xi = fnodes - vnodes[i0 // 3]  # [delta_x, delta_y, delta_z]
         temp1 = delta_xi ** 2
@@ -757,7 +914,7 @@ def surf_force_matrix_3d(obj1: 'sf.surf_forceObj',  # objct contain velocity inf
             m[i0, 2::n_unknown] = (temp2 + delta_xi[:, 2] * delta_xi[:, 2] / delta_r3) / (8 * np.pi)  # Mzz
     if obj1 is obj2:  # self-interaction
         for i0 in range(m_start, m_end):
-            norm = obj1.get_norm( )[i0 // 3, :]
+            norm = obj1.get_norm()[i0 // 3, :]
             if i0 % 3 == 0:  # x axis
                 m[i0, i0 + 0] = (
                                     3 * np.cos(norm[0]) ** 2 + 1 / 2 * (5 + np.cos(2 * norm[1])) * np.sin(
@@ -782,7 +939,7 @@ def surf_force_matrix_3d(obj1: 'sf.surf_forceObj',  # objct contain velocity inf
                 m[i0, i0 - 1] = (np.cos(norm[0]) * np.cos(norm[1]) * np.sin(norm[1])) / (
                     8 * np.pi * d_radia)  # Myz
                 m[i0, i0 + 0] = (1 / 2 * (5 - np.cos(2 * norm[1]))) / (8 * np.pi * d_radia)  # Mzz
-    m.assemble( )
+    m.assemble()
     # import matplotlib.pyplot as plt
     # M = m.getDenseArray()
     # fig, ax = plt.subplots()
@@ -805,18 +962,18 @@ def point_source_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velo
     # U = M * F.
     # Cortez R. The method of regularized Stokeslets[J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
 
-    vnodes = obj1.get_u_nodes( )
-    n_vnode = obj1.get_n_velocity( )
-    fnodes = obj2.get_f_nodes( )
-    n_fnode = obj2.get_n_force( )
+    vnodes = obj1.get_u_nodes()
+    n_vnode = obj1.get_n_velocity()
+    fnodes = obj2.get_f_nodes()
+    n_fnode = obj2.get_n_force()
 
-    m = PETSc.Mat( ).create(comm=PETSc.COMM_WORLD)
-    n_unknown = obj2.get_n_unknown( )
+    m = PETSc.Mat().create(comm=PETSc.COMM_WORLD)
+    n_unknown = obj2.get_n_unknown()
     m.setSizes(((None, n_vnode), (None, n_fnode)))
     m.setType('dense')
-    m.setFromOptions( )
-    m.setUp( )
-    m_start, m_end = m.getOwnershipRange( )
+    m.setFromOptions()
+    m.setUp()
+    m_start, m_end = m.getOwnershipRange()
     for i0 in range(m_start, m_end):  # interaction between different nodes.
         delta_xi = fnodes - vnodes[i0 // 3]  # [delta_x, delta_y, delta_z]
         temp1 = delta_xi ** 2
@@ -839,7 +996,7 @@ def point_source_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velo
             m[i0, 1::n_unknown] = (delta_xi[:, 1] * delta_xi[:, 2] / delta_r3) / (8 * np.pi)  # Myz
             m[i0, 2::n_unknown] = (temp2 + delta_xi[:, 2] * delta_xi[:, 2] / delta_r3) / (8 * np.pi)  # Mzz
             m[i0, 3::n_unknown] = delta_xi[:, 2] / delta_r3 / (4 * np.pi)  # Mz_source
-    m.assemble( )
+    m.assemble()
 
     return m  # ' regularized stokeslets matrix, U = M * F '
 
@@ -854,19 +1011,19 @@ def point_source_dipole_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct conta
     # Solve m matrix using regularized stokeslets method
     # U = M * F.
 
-    vnodes = obj1.get_u_nodes( )
-    n_vnode = obj1.get_n_velocity( )
-    fnodes = obj2.get_f_nodes( )
-    n_fnode = obj2.get_n_force( )
+    vnodes = obj1.get_u_nodes()
+    n_vnode = obj1.get_n_velocity()
+    fnodes = obj2.get_f_nodes()
+    n_fnode = obj2.get_n_force()
     ps_ds_para = kwargs['ps_ds_para']  # weight factor of dipole for ps_ds method
 
-    m = PETSc.Mat( ).create(comm=PETSc.COMM_WORLD)
-    n_unknown = obj2.get_n_unknown( )
+    m = PETSc.Mat().create(comm=PETSc.COMM_WORLD)
+    n_unknown = obj2.get_n_unknown()
     m.setSizes(((None, n_vnode), (None, n_fnode)))
     m.setType('dense')
-    m.setFromOptions( )
-    m.setUp( )
-    m_start, m_end = m.getOwnershipRange( )
+    m.setFromOptions()
+    m.setUp()
+    m_start, m_end = m.getOwnershipRange()
     for i0 in range(m_start, m_end):  # interaction between different nodes.
         delta_xi = fnodes - vnodes[i0 // 3]  # [delta_x, delta_y, delta_z]
         temp1 = delta_xi ** 2
@@ -883,7 +1040,7 @@ def point_source_dipole_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct conta
             m[i0, j::n_unknown] = delta(i, j) * temp2 + delta_xi[:, i] * delta_xi[:, j] * temp3
         for j in range(3):
             m[i0, (j + 3)::n_unknown] = delta(i, j) * temp4 + delta_xi[:, i] * delta_xi[:, j] * temp5
-    m.assemble( )
+    m.assemble()
 
     return m  # ' regularized stokeslets matrix, U = M * F '
 
@@ -922,13 +1079,13 @@ def point_force_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain veloc
                                 m, **kwargs):
     # Solve m matrix using point force stokeslets method
     # U = M * F.
-    u_nodes = obj1.get_u_nodes( )
-    f_nodes = obj2.get_f_nodes( )
-    _, u_glbIdx_all = obj1.get_u_geo( ).get_glbIdx( )
-    _, f_glbIdx_all = obj2.get_f_geo( ).get_glbIdx( )
-    u_dmda = obj1.get_u_geo( ).get_dmda( )
+    u_nodes = obj1.get_u_nodes()
+    f_nodes = obj2.get_f_nodes()
+    _, u_glbIdx_all = obj1.get_u_geo().get_glbIdx()
+    _, f_glbIdx_all = obj2.get_f_geo().get_glbIdx()
+    u_dmda = obj1.get_u_geo().get_dmda()
 
-    for i0 in range(u_dmda.getRanges( )[0][0], u_dmda.getRanges( )[0][1]):
+    for i0 in range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1]):
         m00, m01, m02, m10, m11, m12, m20, m21, m22, i1 = point_force_matrix_3d_petsc_mij(u_nodes[i0], f_nodes, i0)
         u_glb = u_glbIdx_all[i1 * 3]
         m.setValues(u_glb + 0, f_glbIdx_all[0::3], m00, addv=False)
@@ -940,7 +1097,7 @@ def point_force_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain veloc
         m.setValues(u_glb + 2, f_glbIdx_all[0::3], m20, addv=False)
         m.setValues(u_glb + 2, f_glbIdx_all[1::3], m21, addv=False)
         m.setValues(u_glb + 2, f_glbIdx_all[2::3], m22, addv=False)
-    m.assemble( )
+    m.assemble()
     return True  # ' point_force_matrix, U = M * F '
 
 
@@ -954,18 +1111,18 @@ def two_plate_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocit
     # see Liron, N., & Mochon, S. (1976). Stokes flow for a stokeslet between two parallel flat plates. Journal of Engineering Mathematics, 10(4), 287-303.
     # U = M * F.
     from src.stokesTwoPlate import tank
-    u_nodes = obj1.get_u_nodes( )
-    f_nodes = obj2.get_f_nodes( )
-    _, u_glbIdx_all = obj1.get_u_geo( ).get_glbIdx( )
-    _, f_glbIdx_all = obj2.get_f_geo( ).get_glbIdx( )
-    f_dmda = obj2.get_f_geo( ).get_dmda( )
+    u_nodes = obj1.get_u_nodes()
+    f_nodes = obj2.get_f_nodes()
+    _, u_glbIdx_all = obj1.get_u_geo().get_glbIdx()
+    _, f_glbIdx_all = obj2.get_f_geo().get_glbIdx()
+    f_dmda = obj2.get_f_geo().get_dmda()
     Height = kwargs['twoPlateHeight']
     INDEX = kwargs['INDEX']
     greenFun = tank(Height=Height)
 
-    for i0 in tqdm(range(f_dmda.getRanges( )[0][0], f_dmda.getRanges( )[0][1]), desc=INDEX, leave=False):
+    for i0 in tqdm(range(f_dmda.getRanges()[0][0], f_dmda.getRanges()[0][1]), desc=INDEX, leave=False):
         greenFun.set_locF(f_nodes[i0, 0], f_nodes[i0, 1], f_nodes[i0, 2])
-        m00, m01, m02, m10, m11, m12, m20, m21, m22 = greenFun.get_Ufunc(u_nodes)
+        m00, m01, m02, m10, m11, m12, m20, m21, m22 = greenFun.get_Ufunc_integral_near(u_nodes)
         # m00, m01, m02, m10, m11, m12, m20, m21, m22 = np.random.sample(obj1.get_n_u_node()*9).reshape((9, -1))
         f_glb = f_glbIdx_all[i0 * 3]
         m.setValues(u_glbIdx_all[0::3], f_glb + 0, m00, addv=False)
@@ -977,13 +1134,14 @@ def two_plate_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocit
         m.setValues(u_glbIdx_all[2::3], f_glb + 0, m20, addv=False)
         m.setValues(u_glbIdx_all[2::3], f_glb + 1, m21, addv=False)
         m.setValues(u_glbIdx_all[2::3], f_glb + 2, m22, addv=False)
-    m.assemble( )
+    m.assemble()
     return True  # ' point_force_matrix, U = M * F '
 
 
 def check_two_plate_matrix_3d_petsc(**kwargs):
     err_msg = 'The height of two plate system is necessary. '
     assert 'twoPlateHeight' in kwargs, err_msg
+
 
 def check_pass(**kwargs):
     pass

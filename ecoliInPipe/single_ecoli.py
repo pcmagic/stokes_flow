@@ -76,7 +76,7 @@ def main_fun(**main_kwargs):
 
         print_single_ecoli_forceFree_result(ecoli_comp, **problem_kwargs)
         # PETSc.Sys.Print(problem.get_total_force(center=center))
-        # PETSc.Sys.Print(ecoli_comp.get_re_sum())
+        # PETSc.Sys.Print(ecoli_comp.get_total_force())
 
         if problem_kwargs['pickProblem']:
             problem.pickmyself(fileHeadle)

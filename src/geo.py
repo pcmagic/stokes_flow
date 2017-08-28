@@ -297,6 +297,8 @@ class geo():
         return True
 
     def combine(self, geo_list, deltaLength=None):
+        if len(geo_list) == 0:
+            return False
         for geo1 in geo_list:
             err_msg = 'some objects in geo_list are not geo object. '
             assert isinstance(geo1, geo), err_msg
@@ -440,26 +442,31 @@ class geoComposit(uniqueList):
             ylim_list = np.zeros((len(self), 2))
             zlim_list = np.zeros((len(self), 2))
             for i0, geo0 in enumerate(self):
-                ax.plot(geo0.get_nodes_x(), geo0.get_nodes_y(), geo0.get_nodes_z(),
-                        linestyle=linestyle,
-                        color=color_list[i0 % len(color_list)],
-                        marker='.')
+                if geo0.get_n_nodes() > 0:
+                    ax.plot(geo0.get_nodes_x(), geo0.get_nodes_y(), geo0.get_nodes_z(),
+                            linestyle=linestyle,
+                            color=color_list[i0 % len(color_list)],
+                            marker='.')
 
-                X = np.hstack((geo0.get_nodes_x()))
-                Y = np.hstack((geo0.get_nodes_y()))
-                Z = np.hstack((geo0.get_nodes_z()))
-                max_range = np.array([X.max() - X.min(),
-                                      Y.max() - Y.min(),
-                                      Z.max() - Z.min()]).max() / 2.0
-                mid_x = (X.max() + X.min()) * 0.5
-                mid_y = (Y.max() + Y.min()) * 0.5
-                mid_z = (Z.max() + Z.min()) * 0.5
-                xlim_list[i0] = (mid_x - max_range, mid_x + max_range)
-                ylim_list[i0] = (mid_y - max_range, mid_y + max_range)
-                zlim_list[i0] = (mid_z - max_range, mid_z + max_range)
-            ax.set_xlim(xlim_list.min(), xlim_list.max())
-            ax.set_ylim(ylim_list.min(), ylim_list.max())
-            ax.set_zlim(zlim_list.min(), zlim_list.max())
+                    X = np.hstack((geo0.get_nodes_x()))
+                    Y = np.hstack((geo0.get_nodes_y()))
+                    Z = np.hstack((geo0.get_nodes_z()))
+                    max_range = np.array([X.max() - X.min(),
+                                          Y.max() - Y.min(),
+                                          Z.max() - Z.min()]).max() / 2.0
+                    mid_x = (X.max() + X.min()) * 0.5
+                    mid_y = (Y.max() + Y.min()) * 0.5
+                    mid_z = (Z.max() + Z.min()) * 0.5
+                    xlim_list[i0] = (mid_x - max_range, mid_x + max_range)
+                    ylim_list[i0] = (mid_y - max_range, mid_y + max_range)
+                    zlim_list[i0] = (mid_z - max_range, mid_z + max_range)
+                else:
+                    xlim_list[i0] = (np.nan, np.nan)
+                    ylim_list[i0] = (np.nan, np.nan)
+                    zlim_list[i0] = (np.nan, np.nan)
+            ax.set_xlim(np.nanmin(xlim_list), np.nanmax(xlim_list))
+            ax.set_ylim(np.nanmin(ylim_list), np.nanmax(ylim_list))
+            ax.set_zlim(np.nanmin(zlim_list), np.nanmax(zlim_list))
             ax.set_xlabel('x')
             ax.set_ylabel('y')
             ax.set_zlabel('z')
@@ -1065,7 +1072,6 @@ class pipe_cover_geo(tunnel_geo):
 
 
 class stokeslets_tunnel_geo(tunnel_geo):
-    from src import stokes_flow as sf
     def stokeslets_velocity(self, problem: 'sf.stokesletsProblem'):
         from src.StokesFlowMethod import light_stokeslets_matrix_3d
 

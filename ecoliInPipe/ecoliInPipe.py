@@ -87,7 +87,6 @@ def main_fun(**main_kwargs):
         #     unpick = pickle.Unpickler(input)
         #     problem = unpick.load( )
         #     problem.unpickmyself( )
-        #     PETSc.Sys.Print('---->>>unpick the problem from file %s_pick.bin' % (fileHeadle))
         # problem_kwargs = problem.get_kwargs( )
         # forcepipe = problem_kwargs['forcepipe']
         # rh1 = problem_kwargs['rh1']

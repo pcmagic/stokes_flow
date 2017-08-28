@@ -281,7 +281,6 @@ def main_fun(**main_kwargs):
             unpick = pickle.Unpickler(input)
             problem = unpick.load()
             problem.unpickmyself()
-        PETSc.Sys.Print('---->>>unpick the problem from file %s_pick.bin' % (fileHeadle))
 
         residualNorm = problem.get_residualNorm()
         problem_kwargs1 = get_problem_kwargs(**main_kwargs)

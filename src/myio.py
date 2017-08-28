@@ -7,9 +7,12 @@ import numpy as np
 from petsc4py import PETSc
 from src import stokes_flow as sf
 
-__all__ = ['print_ecoli_info', 'print_solver_info_forceFree', 'print_forceFree_info',
-           'get_ecoli_kwargs', 'get_vtk_tetra_kwargs', 'get_solver_kwargs', 'get_forceFree_kwargs',
-           'print_single_ecoli_forceFree_result', ]
+__all__ = ['print_ecoli_info',
+           'print_solver_info_forceFree', 'print_forceFree_info', 'print_givenForce_info',
+           'print_single_ecoli_forceFree_result',
+           'get_ecoli_kwargs', 'get_rod_kwargs',
+           'get_vtk_tetra_kwargs',
+           'get_solver_kwargs', 'get_forceFree_kwargs', 'get_givenForce_kwargs']
 
 
 def print_ecoli_info(ecoName, **problem_kwargs):
@@ -47,6 +50,7 @@ def print_ecoli_info(ecoName, **problem_kwargs):
     PETSc.Sys.Print('  geometry zoom factor is %f' % zoom_factor)
     return True
 
+# def print_Rod_info(RodName, **problem_kwargs):
 
 def print_forceFree_info(**problem_kwargs):
     ffweightx = problem_kwargs['ffweightx']
@@ -57,6 +61,11 @@ def print_forceFree_info(**problem_kwargs):
                     (ffweightx, ffweighty, ffweightz, ffweightT))
     return True
 
+def print_givenForce_info(**problem_kwargs):
+    print_forceFree_info(**problem_kwargs)
+    givenF = problem_kwargs['givenF']
+    PETSc.Sys.Print('  given Force:', givenF)
+    return True
 
 def print_solver_info_forceFree(**problem_kwargs):
     comm = PETSc.COMM_WORLD.tompi4py()
@@ -69,11 +78,11 @@ def print_solver_info_forceFree(**problem_kwargs):
 
     err_msg = "Only 'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlate'" \
               " and 'rs' methods are accept for this main code. "
-    acceptType = ('rs', 'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlate')
+    acceptType = ('rs', 'rs_plane', 'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlate')
     assert matrix_method in acceptType, err_msg
     PETSc.Sys.Print('output file headle: ' + fileHeadle)
     PETSc.Sys.Print('  create matrix method: %s, ' % matrix_method)
-    if matrix_method in ('rs', 'pf'):
+    if matrix_method in ('rs', 'pf', 'rs_plane'):
         pass
     elif matrix_method in ('pf_stokesletsInPipe',):
         forcepipe = problem_kwargs['forcepipe']
@@ -109,8 +118,8 @@ def print_single_ecoli_forceFree_result(ecoli_comp: sf.forceFreeComposite, **kwa
                         np.abs(vhobj0.get_force().reshape((-1, 3)).sum(axis=0) +
                                vhobj1.get_force().reshape((-1, 3)).sum(axis=0)))
     temp_F = np.hstack((temp_f, temp_f * zoom_factor))
-    non_dim_F = ecoli_comp.get_re_sum() / temp_F
-    t_nondim = np.sqrt(np.sum((rel_Uh[-3:] + rel_Us[-3:])**2))
+    non_dim_F = ecoli_comp.get_total_force() / temp_F
+    t_nondim = np.sqrt(np.sum((rel_Uh[-3:] + rel_Us[-3:]) ** 2))
     non_dim_U = ecoli_comp.get_ref_U() / np.array(
             (zoom_factor * rh1, zoom_factor * rh1, zoom_factor * rh1, 1, 1, 1)) / t_nondim
     PETSc.Sys.Print('non_dim_U', non_dim_U)
@@ -246,3 +255,52 @@ def get_forceFree_kwargs():
     }
     return problem_kwargs
 
+
+def get_givenForce_kwargs():
+    problem_kwargs = get_forceFree_kwargs()
+    OptDB = PETSc.Options()
+    givenf = OptDB.getReal('givenf', 0)
+    givenfx = OptDB.getReal('givenfx', givenf)
+    givenfy = OptDB.getReal('givenfy', givenf)
+    givenfz = OptDB.getReal('givenfz', givenf)
+    givent = OptDB.getReal('givent', 0)
+    giventx = OptDB.getReal('giventx', givent)
+    giventy = OptDB.getReal('giventy', givent)
+    giventz = OptDB.getReal('giventz', givent)
+    givenF = np.array((givenfx, givenfy, givenfz, giventx, giventy, giventz))
+    problem_kwargs['givenF'] = givenF
+    return problem_kwargs
+
+
+def get_rod_kwargs():
+    OptDB = PETSc.Options()
+    rRod = OptDB.getReal('rRod', 1)  # radius of Rod
+    lRod = OptDB.getReal('lRod', 5)  # length of Rod
+    ntRod = OptDB.getReal('ntRod', 3)  # amount of nodes on each cycle of Rod
+    eRod = OptDB.getReal('eRod', -0.1)  # epsilon of Rod
+    Rodfct = OptDB.getReal('Rodfct', 1)  # Rod axis line factor, put more nodes near both tops
+    RodThe = OptDB.getReal('RodThe', 0) # Angle between the rod and XY plane.
+    rel_uRodx = OptDB.getReal('rel_uRodx', 0)
+    rel_uRody = OptDB.getReal('rel_uRody', 0)
+    rel_uRodz = OptDB.getReal('rel_uRodz', 0)
+    rel_wRodx = OptDB.getReal('rel_wRodx', 0)
+    rel_wRody = OptDB.getReal('rel_wRody', 0)
+    rel_wRodz = OptDB.getReal('rel_wRodz', 0)
+    rel_URod = np.array((rel_uRodx, rel_uRody, rel_uRodz, rel_wRodx, rel_wRody, rel_wRodz))  # relative velocity of Rod
+    centerx = OptDB.getReal('centerx', 0)
+    centery = OptDB.getReal('centery', 0)
+    centerz = OptDB.getReal('centerz', 2)
+    center = np.array((centerx, centery, centerz))  # center of Rod
+    zoom_factor = OptDB.getReal('zoom_factor', 1)
+    rod_kwargs = {
+        'rRod':        rRod,
+        'lRod':        lRod,
+        'ntRod':       ntRod,
+        'eRod':        eRod,
+        'Rodfct':      Rodfct,
+        'RodThe':      RodThe,
+        'rel_URod':    rel_URod,
+        'center':      center,
+        'zoom_factor': zoom_factor,
+    }
+    return rod_kwargs

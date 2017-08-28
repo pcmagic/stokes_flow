@@ -237,7 +237,6 @@ def main_fun(**main_kwargs):
             problem = unpick.load()
             problem.unpickmyself()
             residualNorm = problem.get_residualNorm()
-            PETSc.Sys.Print('---->>>unpick the problem from file %s_pick.bin' % (fileHeadle))
 
             problem_kwargs1 = get_problem_kwargs(**main_kwargs)
             problem_kwargs = problem.get_kwargs()

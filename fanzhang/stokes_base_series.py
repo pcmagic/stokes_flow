@@ -4,15 +4,24 @@
 # pre-calculate pi first.
 import mpmath as mp
 import numpy as np
-from mpmath import sinh, cosh, sqrt
 import scipy.special as sps
-#import time as time
+from mpmath import sinh, cosh, sqrt
 
+'''
+r: 		horizental distance from velocity point to the force point.
+x3: 	the height of velocity point.
+h:		the height of force point.
+H:		the height of second plate.
+n: 		the nth term in the series.   
+z(m):	the m-th root of sinh(z)**2 = z**2, already made into a table.
+Note n * r = 20 may give a good result.
+'''      
 
 mp.dps = 30
 mp.pretty = True
 
 pi = mp.pi
+'''Import z(m), have 500 roots.'''
 zm_list = np.load('zm_list.npy')
 zm = lambda n: zm_list[int(n-1)]
 

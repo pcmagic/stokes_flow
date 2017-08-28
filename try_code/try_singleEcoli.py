@@ -285,7 +285,7 @@ def main_fun(**main_kwargs):
     problem.create_matrix()
     residualNorm = problem.solve()
     PETSc.Sys.Print(ecoli_comp.get_ref_U())
-    PETSc.Sys.Print(ecoli_comp.get_re_sum())
+    PETSc.Sys.Print(ecoli_comp.get_total_force())
     # # debug
     # problem.saveM_ASCII('%s_M.txt' % fileHeadle)
     # dbg_M = problem.get_M()

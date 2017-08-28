@@ -1,5 +1,5 @@
-import src.stokesTwoPlate_integral as sk
-import src.stokesTwoPlate_series as sks 
+import stokes_base_integral as sk
+import stokes_base_series as sks 
 '''
 stokes_base_integral: use integral method to get the green function.
 sotkes_base_series: use series method to get the green function.

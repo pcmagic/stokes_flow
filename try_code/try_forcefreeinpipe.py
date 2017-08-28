@@ -187,7 +187,7 @@ def main_fun(**main_kwargs):
     problem.pickmyself(fileHeadle)
 
     PETSc.Sys.Print(obj_composite.get_ref_U())
-    PETSc.Sys.Print(obj_composite.get_re_sum())
+    PETSc.Sys.Print(obj_composite.get_total_force())
 
     problem.vtk_obj(fileHeadle)
     geo_check = sphere_geo()  # force geo

@@ -95,14 +95,14 @@ def get_problem_kwargs(**main_kwargs):
     OptDB = PETSc.Options()
     radius = OptDB.getReal('r', 1)
     deltaLength = OptDB.getReal('d', 0.3)
-    epsilon = OptDB.getReal('e', -0.3)
+    epsilon = OptDB.getReal('e', 0.3)
     u = OptDB.getReal('u', 1)
     fileHeadle = OptDB.getString('f', 'sphere')
     solve_method = OptDB.getString('s', 'gmres')
     precondition_method = OptDB.getString('g', 'none')
     plot_geo = OptDB.getBool('plot_geo', False)
     debug_mode = OptDB.getBool('debug', False)
-    matrix_method = OptDB.getString('sm', 'pf')
+    matrix_method = OptDB.getString('sm', 'rs_plane')
     restart = OptDB.getBool('restart', False)
     twoPara_n = OptDB.getInt('tp_n', 1)
     legendre_m = OptDB.getInt('legendre_m', 3)
@@ -177,9 +177,10 @@ def print_case_info(**problem_kwargs):
 
     err_msg = "Only 'pf', 'rs', 'tp_rs', and 'lg_rs' methods are accept for this main code. "
     assert matrix_method in (
-    'rs', 'tp_rs', 'lg_rs', 'rs_precondition', 'tp_rs_precondition', 'lg_rs_precondition', 'pf'), err_msg
+        'rs', 'rs_plane', 'tp_rs', 'lg_rs', 'rs_precondition', 'tp_rs_precondition', 'lg_rs_precondition',
+        'pf'), err_msg
     epsilon = problem_kwargs['epsilon']
-    if matrix_method in ('rs', 'rs_precondition', 'pf'):
+    if matrix_method in ('rs', 'rs_plane', 'rs_precondition', 'pf'):
         PETSc.Sys.Print('create matrix method: %s, epsilon: %f'
                         % (matrix_method, epsilon))
     elif matrix_method in ('tp_rs', 'tp_rs_precondition'):
@@ -223,13 +224,18 @@ def main_fun(**main_kwargs):
     if not restart:
         print_case_info(**problem_kwargs)
 
-        n = int(16 * radius * radius / deltaLength / deltaLength)
         sphere_geo0 = sphere_geo()  # force geo
-        sphere_geo0.create_n(n, radius)
+        sphere_geo0.create_delta(deltaLength, radius)
+        # # DBG
+        # nodes = ((0.17389, 0.2938, 0.37454),
+        #          (0.76774, 0.87325, 0.50809),
+        #          (0.17557, 0.82348, 0.7485),
+        #          (0.50734, 0.99882, 0.39992))
+        # sphere_geo0.set_nodes(nodes=nodes, deltalength=deltaLength)
         if random_velocity:
             sphere_velocity = np.random.sample(6) * u
         else:
-            sphere_velocity = np.array([u, 0, 0, 0, 0, 0])
+            sphere_velocity = np.array([0, 0, u, 0, 0, 0])
         sphere_geo0.set_rigid_velocity(sphere_velocity)
 
         problem = problem_dic[matrix_method](**problem_kwargs)
@@ -242,6 +248,7 @@ def main_fun(**main_kwargs):
         if matrix_method in ('pf',):
             sphere_geo1.create_n(n, radius + deltaLength * epsilon)
         obj_sphere.set_data(sphere_geo1, sphere_geo0, **obj_sphere_kwargs)
+        obj_sphere.move((0, 0, 1.5))
         for i in range(n_obj_x * n_obj_y):
             ix = i // n_obj_x
             iy = i % n_obj_x
@@ -273,8 +280,8 @@ def main_fun(**main_kwargs):
 
     sphere_err = 0
     # sphere_err = save_vtk(problem, **main_kwargs)
-    force_sphere = obj2.get_force_x()
-    PETSc.Sys.Print('---->>>Resultant at x axis is %f' % (np.sum(force_sphere) / 6 / np.pi / radius))
+    force_sphere = obj2.get_total_force()
+    PETSc.Sys.Print('---->>>Resultant is', force_sphere / 6 / np.pi / radius / u)
 
     return problem, sphere_err
 
@@ -302,7 +309,7 @@ def two_step_main_fun(**main_kwargs):
 
         problem = problem_dic[matrix_method](**problem_kwargs)
         problem.pickmyself(
-            fileHeadle)  # not save anything really, just check if the path is correct, to avoid this error after long time calculation.
+                fileHeadle)  # not save anything really, just check if the path is correct, to avoid this error after long time calculation.
         obj_sphere = obj_dic[matrix_method]()
         obj_sphere_kwargs = {'name': 'sphereObj'}
         obj_sphere.set_data(sphere_geo0, sphere_geo0, **obj_sphere_kwargs)

@@ -11,7 +11,7 @@ Zhang Ji, 20160409
 from pyvtk import *
 import copy
 import numpy as np
-import scipy.io as sio
+from scipy.io import savemat, loadmat
 from evtk.hl import pointsToVTK, gridToVTK
 from petsc4py import PETSc
 import pickle
@@ -47,6 +47,7 @@ class stokesFlowProblem:
         from src import StokesFlowMethod
         self._method_dict = {
             'rs':                    StokesFlowMethod.regularized_stokeslets_matrix_3d_petsc,
+            'rs_plane':              StokesFlowMethod.regularized_stokeslets_plane_matrix_3d_petsc,
             'tp_rs':                 StokesFlowMethod.two_para_regularized_stokeslets_matrix_3d,
             'lg_rs':                 StokesFlowMethod.legendre_regularized_stokeslets_matrix_3d,
             'pf':                    StokesFlowMethod.point_force_matrix_3d_petsc,
@@ -56,6 +57,7 @@ class stokesFlowProblem:
         }
         self._check_args_dict = {
             'rs':                    StokesFlowMethod.check_regularized_stokeslets_matrix_3d,
+            'rs_plane':              StokesFlowMethod.check_regularized_stokeslets_plane_matrix_3d,
             'tp_rs':                 StokesFlowMethod.check_two_para_regularized_stokeslets_matrix_3d,
             'lg_rs':                 StokesFlowMethod.check_legendre_regularized_stokeslets_matrix_3d,
             'pf':                    StokesFlowMethod.check_point_force_matrix_3d_petsc,
@@ -107,29 +109,39 @@ class stokesFlowProblem:
         m_petsc.assemble()
         return True
 
-    def create_F_U(self):
+    def _create_U(self):
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
-        # create f and u DMComposite
-        self._f_pkg.setFromOptions()
-        self._f_pkg.setUp()
-        self._u_pkg.setFromOptions()
-        self._u_pkg.setUp()
-
-        # velocity of problem and global index of force and velocity geometries.
         velocity = self._u_pkg.createGlobalVector()
-        f_isglb = self._f_pkg.getGlobalISs()
-        u_isglb = self._u_pkg.getGlobalISs()
+        velocity.zeroEntries()
         for i0, obj0 in enumerate(self.get_obj_list()):
-            obj0.get_f_geo().set_glbIdx(f_isglb[i0].getIndices())
-            obj0.get_u_geo().set_glbIdx(u_isglb[i0].getIndices())
             u0 = obj0.get_velocity()
             _, u_glbIdx_all = obj0.get_u_geo().get_glbIdx()
             if rank == 0:
                 velocity[u_glbIdx_all] = u0[:]
         velocity.assemble()
         self._velocity_petsc = velocity
+        return True
 
+    def _set_glbIdx(self):
+        # global index
+        f_isglb = self._f_pkg.getGlobalISs()
+        u_isglb = self._u_pkg.getGlobalISs()
+        for i0, obj0 in enumerate(self.get_obj_list()):
+            obj0.get_f_geo().set_glbIdx(f_isglb[i0].getIndices())
+            obj0.get_u_geo().set_glbIdx(u_isglb[i0].getIndices())
+        return True
+
+    def create_F_U(self):
+        # create f and u DMComposite
+        self._f_pkg.setFromOptions()
+        self._f_pkg.setUp()
+        self._u_pkg.setFromOptions()
+        self._u_pkg.setUp()
+        # glbIdx
+        self._set_glbIdx()
+        # velocity
+        self._create_U()
         # force
         self._force_petsc = self._f_pkg.createGlobalVector()
         self._force_petsc.set(0)
@@ -483,11 +495,36 @@ class stokesFlowProblem:
         PETSc.Sys.Print('%s: save M matrix to %s' % (str(self), filename))
         return True
 
+    def saveM_HDF5(self, filename: str = '..', ):
+        if filename[-3:] != '.h5':
+            filename = filename + '.h5'
+        viewer = PETSc.Viewer().createHDF5(filename, 'w', comm=PETSc.COMM_WORLD)
+        viewer(self._M_petsc)
+        viewer.destroy()
+        PETSc.Sys.Print('%s: save M matrix to %s' % (str(self), filename))
+        return True
+
+    def _save_M_mat_dict(self, M_dict, obj):
+        t_name_all = str(obj) + '_Idx_all'
+        t_name = str(obj) + '_Idx'
+        u_glbIdx, u_glbIdx_all = obj.get_u_geo().get_glbIdx()
+        M_dict[t_name_all] = u_glbIdx_all
+        M_dict[t_name] = u_glbIdx
+        return True
+
     def saveM_mat(self, filename: str = '..', ):
-        from scipy.io import savemat
-        if filename[-4:] != '.mat':
-            filename = filename + '.mat'
-        savemat(filename, {'M': self._M_petsc.getDenseArray()})
+        if filename[-4:] == '.mat':
+            filename = filename[:-4]
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
+
+        M_dict = {'M': self._M_petsc.getDenseArray(), }
+        for obj in self.get_obj_list():
+            self._save_M_mat_dict(M_dict, obj)
+
+        savemat(filename + '_rank%03d' % rank,
+                M_dict,
+                oned_as='column')
         return True
 
     def saveF_ASCII(self, filename: str = '..', ):
@@ -817,6 +854,27 @@ class stokesFlowObj:
         PETSc.Sys.Print('%s: father %s, type %s, index %d, force nodes %d, velocity nodes %d'
                         % (self.get_name(), self._problem.get_name(), self._type, self.get_index(),
                            self.get_n_f_node(), self.get_n_u_node()))
+        return True
+
+    def save_mat(self, addInfo=''):
+        filename = addInfo + self._problem.get_name() + '_' + self.get_name() + '.mat'
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
+        u_glbIdx, u_glbIdx_all = self.get_u_geo().get_glbIdx()
+        f_glbIdx, f_glbIdx_all = self.get_f_geo().get_glbIdx()
+        if rank == 0:
+            savemat(filename,
+                    {'fnodes':       self.get_f_geo().get_nodes(),
+                     'unodes':       self.get_u_geo().get_nodes(),
+                     'u_glbIdx':     u_glbIdx,
+                     'u_glbIdx_all': u_glbIdx_all,
+                     'f_glbIdx':     f_glbIdx,
+                     'f_glbIdx_all': f_glbIdx_all,
+                     'force':        self._force,
+                     're_velocity':  self._re_velocity,
+                     'velocity':     self.get_u_geo().get_velocity(), },
+                    oned_as='column')
+        PETSc.Sys.Print('%s: save information to %s' % (str(self), filename))
         return True
 
     def set_data(self,
@@ -1335,17 +1393,10 @@ class stokesletsInPipeProblem(stokesFlowProblem):
             t_node_rpz = np.vstack((R[temp1], phi[temp1], z[temp1])).T
             u_glbIdx_the = u_glbIdx_all[theIdx]
             u_fx_petsc_the, u_fy_petsc_the, u_fz_petsc_the = self._solve_stokeslets_b_the(b, t_node_rpz, True)
-            # u_fx_the = self.vec_scatter(u_fx_petsc_the)
-            # u_fy_the = self.vec_scatter(u_fy_petsc_the)
-            # u_fz_the = self.vec_scatter(u_fz_petsc_the)
-            # if rank == 0:
-            #     u_fx_petsc[u_glbIdx_the] = u_fx_the
-            #     u_fy_petsc[u_glbIdx_the] = u_fy_the
-            #     u_fz_petsc[u_glbIdx_the] = u_fz_the
             t_range = range(u_fx_petsc_the.getOwnershipRange()[0], u_fx_petsc_the.getOwnershipRange()[1])
             temp2 = np.dstack((z, z, z)).flatten()
             temp3 = np.abs(temp2[u_glbIdx_the[t_range]])
-            t_factor = (temp3 - self._z_the_threshold) / (self._lp / 2 - self._z_the_threshold)
+            t_factor = np.abs((temp3 - self._z_the_threshold) / (self._lp / 2 - self._z_the_threshold)) ** 0.5
             u_fx_petsc[u_glbIdx_the[t_range]] = u_fx_petsc_the.getArray() * t_factor + \
                                                 u_fx_petsc[u_glbIdx_the[t_range]] * (1 - t_factor)
             u_fy_petsc[u_glbIdx_the[t_range]] = u_fy_petsc_the.getArray() * t_factor + \
@@ -1412,7 +1463,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         t_headle = '_force_pipe.mat'
         if fileHeadle[-len(t_headle):] != t_headle:
             fileHeadle = fileHeadle + t_headle
-        mat_contents = sio.loadmat(fileHeadle)
+        mat_contents = loadmat(fileHeadle)
 
         self.set_b_list(mat_contents['b'].flatten())
         self._f1_list = [f1 for f1 in mat_contents['f1_list']]
@@ -1900,7 +1951,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
 
 
 class forceFreeComposite:
-    def __init__(self, center=np.zeros(3), name='...'):
+    def __init__(self, center=np.zeros(3), name='...', *args):
         self._obj_list = uniqueList()
         self._rel_U_list = []
         self._index = -1  # index of object
@@ -1915,7 +1966,7 @@ class forceFreeComposite:
         self._type = 'forceFreeComposite'  # object type
         self._name = name  # object name
         self._ref_U = np.zeros(6)  # ux, uy, uz, omega_x, omega_y, omega_z
-        self._re_sum = np.ones(6)  # [sum(fi), sum(cross(ri, fi))] (==np.zeros(6) to satisfy the force free equations).
+        self._sum_force = np.ones(6)  # [sum(fi), sum(cross(ri, fi))] (==np.zeros(6) to satisfy the force free equations).
         self._min_ds = np.inf  # min deltalength of objects in the composite
 
         self._f_dmda = None
@@ -2092,12 +2143,12 @@ class forceFreeComposite:
     def get_ref_Omegaz(self):
         return self._ref_U[5]
 
-    def set_re_sum(self, re_sum):
-        self._re_sum = re_sum
+    def set_total_force(self, sum_force):
+        self._sum_force = sum_force
         return True
 
-    def get_re_sum(self):
-        return self._re_sum
+    def get_total_force(self):
+        return self._sum_force
 
     def show_velocity(self, length_factor=1, show_nodes=True):
         geo_list = uniqueList()
@@ -2143,6 +2194,32 @@ class forceFreeComposite:
         temp_geo.show_nodes(linestyle)
         return True
 
+    def save_mat(self):
+        addInfo = self._problem.get_name() + '_'
+        for subobj in self.get_obj_list():
+            subobj.save_mat(addInfo)
+
+        filename = self._problem.get_name() + '_' + self.get_name() + '.mat'
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
+        u_glbIdx, u_glbIdx_all = self.get_u_glbIdx()
+        f_glbIdx, f_glbIdx_all = self.get_f_glbIdx()
+        t_nodes = np.full(6, np.nan).reshape((2, 3))
+        if rank == 0:
+            savemat(filename,
+                    {'fnodes':       t_nodes,
+                     'unodes':       t_nodes,
+                     'u_glbIdx':     u_glbIdx,
+                     'u_glbIdx_all': u_glbIdx_all,
+                     'f_glbIdx':     f_glbIdx,
+                     'f_glbIdx_all': f_glbIdx_all,
+                     'force':        np.zeros(6),
+                     're_velocity':  self._sum_force,
+                     'velocity':     self._ref_U, },
+                    oned_as='column')
+        PETSc.Sys.Print('%s: save information to %s' % (str(self), filename))
+        return True
+
     def vtk(self, filename):
         for obj0 in self._obj_list:
             obj0.vtk(filename)
@@ -2155,14 +2232,27 @@ class forceFreeComposite:
         return True
 
 
+class givenForceComposite(forceFreeComposite):
+    def __init__(self, center=np.zeros(3), name='...', givenF=np.zeros(3), *args):
+        super().__init__(center=center, name=name, *args)
+        self._givenF = givenF
+
+    def get_givenF(self):
+        return self._givenF
+
+    def set_givenF(self, givenF):
+        self._givenF = givenF
+        return True
+
+
 class forceFreeProblem(stokesFlowProblem):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._all_obj_list = uniqueList()  # contain all objects, including subobj within forceFreeComposite.
         self._compst_list = uniqueList()  # forceFreeComposite list.
-        ffweightx = kwargs['ffweightx'] / kwargs['zoom_factor']
-        ffweighty = kwargs['ffweighty'] / kwargs['zoom_factor']
-        ffweightz = kwargs['ffweightz'] / kwargs['zoom_factor']
+        ffweightx = -kwargs['ffweightx'] / kwargs['zoom_factor']
+        ffweighty = -kwargs['ffweighty'] / kwargs['zoom_factor']
+        ffweightz = -kwargs['ffweightz'] / kwargs['zoom_factor']
         ffweightT = kwargs['ffweightT'] / kwargs['zoom_factor']
         self._ffweigth = [ffweightx, ffweighty, ffweightz, ffweightT ** 2, ffweightT ** 2, ffweightT ** 2]
         assert self._ffweigth[3] == self._ffweigth[4] == self._ffweigth[5], \
@@ -2190,38 +2280,9 @@ class forceFreeProblem(stokesFlowProblem):
     def get_all_obj_list(self, ):
         return self._all_obj_list
 
-    def create_F_U(self):
+    def _create_U(self):
         comm = PETSc.COMM_WORLD.tompi4py()
-        size = comm.Get_size()
         rank = comm.Get_rank()
-        kwargs = self._kwargs
-        # create f and u DMComposite
-        self._f_pkg.setFromOptions()
-        self._f_pkg.setUp()
-        self._u_pkg.setFromOptions()
-        self._u_pkg.setUp()
-
-        # global index
-        f_isglb = self._f_pkg.getGlobalISs()
-        u_isglb = self._u_pkg.getGlobalISs()
-        for obj0 in self.get_obj_list():
-            if isinstance(obj0, forceFreeComposite):
-                for sub_obj in obj0.get_obj_list():
-                    t_f_isglb = f_isglb.pop(0)
-                    t_u_isglb = u_isglb.pop(0)
-                    sub_obj.get_f_geo().set_glbIdx(t_f_isglb.getIndices())
-                    sub_obj.get_u_geo().set_glbIdx(t_u_isglb.getIndices())
-                t_f_isglb = f_isglb.pop(0)  # force free additional degree of freedomes
-                t_u_isglb = u_isglb.pop(0)  # velocity free additional degree of freedomes
-                obj0.set_f_glbIdx(t_f_isglb.getIndices())
-                obj0.set_u_glbIdx(t_u_isglb.getIndices())
-            else:
-                t_f_isglb = f_isglb.pop(0)
-                t_u_isglb = u_isglb.pop(0)
-                obj0.get_f_geo().set_glbIdx(t_f_isglb.getIndices())
-                obj0.get_u_geo().set_glbIdx(t_u_isglb.getIndices())
-
-        # velocity
         velocity = self._u_pkg.createGlobalVector()
         velocity.zeroEntries()
         for obj0 in self.get_obj_list():
@@ -2242,10 +2303,28 @@ class forceFreeProblem(stokesFlowProblem):
                     velocity[u_glbIdx_all] = u0[:]
         velocity.assemble()
         self._velocity_petsc = velocity
+        return True
 
-        # force
-        self._force_petsc = self._f_pkg.createGlobalVector()
-        self._force_petsc.set(0)
+    def _set_glbIdx(self):
+        # global index
+        f_isglb = self._f_pkg.getGlobalISs()
+        u_isglb = self._u_pkg.getGlobalISs()
+        for obj0 in self.get_obj_list():
+            if isinstance(obj0, forceFreeComposite):
+                for sub_obj in obj0.get_obj_list():
+                    t_f_isglb = f_isglb.pop(0)
+                    t_u_isglb = u_isglb.pop(0)
+                    sub_obj.get_f_geo().set_glbIdx(t_f_isglb.getIndices())
+                    sub_obj.get_u_geo().set_glbIdx(t_u_isglb.getIndices())
+                t_f_isglb = f_isglb.pop(0)  # force free additional degree of freedomes
+                t_u_isglb = u_isglb.pop(0)  # velocity free additional degree of freedomes
+                obj0.set_f_glbIdx(t_f_isglb.getIndices())
+                obj0.set_u_glbIdx(t_u_isglb.getIndices())
+            else:
+                t_f_isglb = f_isglb.pop(0)
+                t_u_isglb = u_isglb.pop(0)
+                obj0.get_f_geo().set_glbIdx(t_f_isglb.getIndices())
+                obj0.get_u_geo().set_glbIdx(t_u_isglb.getIndices())
         return True
 
     def set_force_free(self):
@@ -2263,9 +2342,9 @@ class forceFreeProblem(stokesFlowProblem):
                 for sub_obj in obj1.get_obj_list():
                     r_u = sub_obj.get_u_geo().get_nodes() - center
                     r_f = sub_obj.get_f_geo().get_nodes() - center
-                    t_I = np.array(((-ffweight[0], 0, 0),
-                                    (0, -ffweight[1], 0),
-                                    (0, 0, -ffweight[2])))
+                    t_I = np.array(((ffweight[0], 0, 0),
+                                    (0, ffweight[1], 0),
+                                    (0, 0, ffweight[2])))
                     tmu1 = npm.repmat(t_I, sub_obj.get_n_u_node(), 1)
                     tmu2 = np.vstack([((0, -ri[2], ri[1]),
                                        (ri[2], 0, -ri[0]),
@@ -2379,7 +2458,7 @@ class forceFreeProblem(stokesFlowProblem):
                     sub_obj.set_re_velocity(re_abs_U)
                 _, u_glbIdx_all = obj0.get_u_glbIdx()
                 re_sum = self._re_velocity[u_glbIdx_all] / ffweight
-                obj0.set_re_sum(re_sum)  # force free, analytically they are zero.
+                obj0.set_total_force(re_sum)  # force free, analytically they are zero.
             else:
                 _, u_glbIdx_all = obj0.get_u_geo().get_glbIdx()
                 obj0.set_re_velocity(self._re_velocity[u_glbIdx_all])
@@ -2436,8 +2515,21 @@ class forceFreeProblem(stokesFlowProblem):
         for subobj, rel_U in zip(obj.get_obj_list(), obj.get_rel_U_list()):
             U = ref_U + rel_U
             subobj.get_u_geo().set_rigid_velocity(U, center=center)
-            error.append(self._vtk_check(filename + str(subobj) + '_check', subobj))
+            error.append(self._vtk_check(filename + '_' + str(subobj) + '_check', subobj))
         return error
+
+    def _save_M_mat_dict(self, M_dict, obj):
+        if isinstance(obj, forceFreeComposite):
+            for subobj in obj.get_obj_list():
+                super()._save_M_mat_dict(M_dict, subobj)
+            t_name_all = str(obj) + '_Idx_all'
+            t_name = str(obj) + '_Idx'
+            u_glbIdx, u_glbIdx_all = obj.get_u_glbIdx()
+            M_dict[t_name_all] = u_glbIdx_all
+            M_dict[t_name] = u_glbIdx
+        else:
+            super()._save_M_mat_dict(M_dict, obj)
+        return True
 
     def unpickmyself(self):
         filename = self._pick_filename
@@ -2471,6 +2563,38 @@ class forceFreeProblem(stokesFlowProblem):
             # self._force_petsc.view()
         if self._finish_solve and self._pick_M:
             self.loadM_Binary(filename + '_M')
+        return True
+
+
+class givenForceProblem(forceFreeProblem):
+    def _create_U(self):
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
+        ffweight = self._ffweigth
+        velocity = self._u_pkg.createGlobalVector()
+        velocity.zeroEntries()
+        for obj0 in self.get_obj_list():
+            if isinstance(obj0, givenForceComposite):
+                center = obj0.get_center()
+                for sub_obj, rel_U in zip(obj0.get_obj_list(), obj0.get_rel_U_list()):
+                    sub_nodes = sub_obj.get_u_geo().get_nodes()
+                    # sub_obj.show_velocity(length_factor=0.1, show_nodes=True)
+                    r = sub_nodes - center
+                    t_u = (rel_U[:3] + np.cross(rel_U[3:], r)).flatten()
+                    _, u_glbIdx_all = sub_obj.get_u_geo().get_glbIdx()
+                    if rank == 0:
+                        velocity[u_glbIdx_all] = t_u[:]
+                _, u_glbIdx_all =  obj0.get_u_glbIdx()
+                givenF = obj0.get_givenF()
+                if rank == 0:
+                    velocity[u_glbIdx_all] = givenF * ffweight
+            else:
+                u0 = obj0.get_velocity()
+                _, u_glbIdx_all = obj0.get_u_geo().get_glbIdx()
+                if rank == 0:
+                    velocity[u_glbIdx_all] = u0[:]
+        velocity.assemble()
+        self._velocity_petsc = velocity
         return True
 
 
@@ -2513,6 +2637,7 @@ class stokesletsTwoPlateForceFreeProblem(stokesletsTwoPlateProblem, forceFreePro
 
 problem_dic = {
     'rs':                    stokesFlowProblem,
+    'rs_plane':              stokesFlowProblem,
     'lg_rs':                 stokesFlowProblem,
     'tp_rs':                 stokesFlowProblem,
     'pf':                    stokesFlowProblem,
@@ -2523,6 +2648,7 @@ problem_dic = {
 
 obj_dic = {
     'rs':                    stokesFlowObj,
+    'rs_plane':              stokesFlowObj,
     'lg_rs':                 stokesFlowObj,
     'tp_rs':                 stokesFlowObj,
     'pf':                    stokesFlowObj,
