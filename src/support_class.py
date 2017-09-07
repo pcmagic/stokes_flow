@@ -3,7 +3,9 @@ from collections import UserList
 import numpy as np
 
 __all__ = ['uniqueList', 'typeList', 'intList', 'floatList',
-           'abs_comp', 'abs_construct_matrix']
+           'abs_comp', 'abs_construct_matrix',
+           'check_file_extension', ]
+
 
 class uniqueList(UserList):
     def __init__(self, acceptType=None):
@@ -54,7 +56,7 @@ class floatList(typeList):
         super().__init__(float)
 
 
-class abs_comp():
+class abs_comp:
     def __init__(self, **kwargs):
         need_args = ['name']
         opt_args = {'childType': abs_comp}
@@ -169,3 +171,9 @@ class abs_comp():
 class abs_construct_matrix(abs_comp):
     def __init__(self):
         super().__init__(childType=abs_comp)
+
+
+def check_file_extension(filename, extension):
+    if filename[-len(extension):] != extension:
+        filename = filename + extension
+    return filename

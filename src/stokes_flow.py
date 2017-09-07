@@ -9,6 +9,8 @@ Zhang Ji, 20160409
 # from math import sin, cos
 # import warnings
 from pyvtk import *
+import os
+import matplotlib.pyplot as plt
 import copy
 import numpy as np
 from scipy.io import savemat, loadmat
@@ -36,7 +38,6 @@ class stokesFlowProblem:
         self._u_pkg = PETSc.DMComposite().create(comm=PETSc.COMM_WORLD)
         self._M_petsc = PETSc.Mat().create(comm=PETSc.COMM_WORLD)  # M matrix
         self._M_destroyed = False  # weather Mat().destroy() have been called.
-        self._dimension = -1  # 2 dimension or 3 dimension
         self._finish_solve = False
         self._pick_M = False  # weather save M matrix and F vector in binary files.
         self._n_unknown = 3  # number of unknowns at each  node.
@@ -46,26 +47,29 @@ class stokesFlowProblem:
 
         from src import StokesFlowMethod
         self._method_dict = {
-            'rs':                    StokesFlowMethod.regularized_stokeslets_matrix_3d_petsc,
-            'rs_plane':              StokesFlowMethod.regularized_stokeslets_plane_matrix_3d_petsc,
-            'tp_rs':                 StokesFlowMethod.two_para_regularized_stokeslets_matrix_3d,
-            'lg_rs':                 StokesFlowMethod.legendre_regularized_stokeslets_matrix_3d,
-            'pf':                    StokesFlowMethod.point_force_matrix_3d_petsc,
-            'rs_stokesletsInPipe':   StokesFlowMethod.regularized_stokeslets_matrix_3d_petsc,
-            'pf_stokesletsInPipe':   StokesFlowMethod.point_force_matrix_3d_petsc,
-            'pf_stokesletsTwoPlate': StokesFlowMethod.two_plate_matrix_3d_petsc,
+            'rs':                     StokesFlowMethod.regularized_stokeslets_matrix_3d_petsc,
+            'rs_plane':               StokesFlowMethod.regularized_stokeslets_plane_matrix_3d_petsc,
+            'tp_rs':                  StokesFlowMethod.two_para_regularized_stokeslets_matrix_3d,
+            'lg_rs':                  StokesFlowMethod.legendre_regularized_stokeslets_matrix_3d,
+            'pf':                     StokesFlowMethod.point_force_matrix_3d_petsc,
+            'rs_stokesletsInPipe':    StokesFlowMethod.regularized_stokeslets_matrix_3d_petsc,
+            'pf_stokesletsInPipe':    StokesFlowMethod.point_force_matrix_3d_petsc,
+            'pf_stokesletsShearFlow': StokesFlowMethod.two_plate_matrix_3d_petsc,
         }
         self._check_args_dict = {
-            'rs':                    StokesFlowMethod.check_regularized_stokeslets_matrix_3d,
-            'rs_plane':              StokesFlowMethod.check_regularized_stokeslets_plane_matrix_3d,
-            'tp_rs':                 StokesFlowMethod.check_two_para_regularized_stokeslets_matrix_3d,
-            'lg_rs':                 StokesFlowMethod.check_legendre_regularized_stokeslets_matrix_3d,
-            'pf':                    StokesFlowMethod.check_point_force_matrix_3d_petsc,
-            'rs_stokesletsInPipe':   StokesFlowMethod.check_regularized_stokeslets_matrix_3d,
-            'pf_stokesletsInPipe':   StokesFlowMethod.check_point_force_matrix_3d_petsc,
-            'pf_stokesletsTwoPlate': StokesFlowMethod.check_two_plate_matrix_3d_petsc,
+            'rs':                     StokesFlowMethod.check_regularized_stokeslets_matrix_3d,
+            'rs_plane':               StokesFlowMethod.check_regularized_stokeslets_plane_matrix_3d,
+            'tp_rs':                  StokesFlowMethod.check_two_para_regularized_stokeslets_matrix_3d,
+            'lg_rs':                  StokesFlowMethod.check_legendre_regularized_stokeslets_matrix_3d,
+            'pf':                     StokesFlowMethod.check_point_force_matrix_3d_petsc,
+            'rs_stokesletsInPipe':    StokesFlowMethod.check_regularized_stokeslets_matrix_3d,
+            'pf_stokesletsInPipe':    StokesFlowMethod.check_point_force_matrix_3d_petsc,
+            'pf_stokesletsShearFlow': StokesFlowMethod.check_two_plate_matrix_3d_petsc,
         }
         self._check_args_dict[kwargs['matrix_method']](**kwargs)
+
+    def _check_add_obj(self, obj):
+        pass
 
     def add_obj(self, obj):
         """
@@ -75,6 +79,7 @@ class stokesFlowProblem:
         :param obj: added object
         :return: none.
         """
+        self._check_add_obj(obj)
         self._obj_list.append(obj)
         obj.set_index(self.get_n_obj())
         obj.set_problem(self)
@@ -84,7 +89,7 @@ class stokesFlowProblem:
         self._n_unode += obj.get_n_u_node()
         return True
 
-    def do_solve_process(self, obj_list):
+    def do_solve_process(self, obj_list, pick_M=False):
         for obj in obj_list:
             self.add_obj(obj)
         if self._kwargs['pickProblem']:
@@ -93,6 +98,8 @@ class stokesFlowProblem:
         self.print_info()
         self.create_matrix()
         residualNorm = self.solve()
+        if self._kwargs['pickProblem']:
+            self.pickmyself(fileHeadle, pick_M=pick_M)
         return residualNorm
 
     def __repr__(self):
@@ -147,28 +154,30 @@ class stokesFlowProblem:
         self._force_petsc.set(0)
         return True
 
-    def create_matrix(self):
-        t0 = time()
-        err_msg = 'at least one object is necessary. '
-        assert len(self._obj_list) != 0, err_msg
+    def create_empty_M(self):
         kwargs = self._kwargs
         solve_method = kwargs['solve_method']
-
+        err_msg = 'at least one object is necessary. '
+        assert len(self._obj_list) != 0, err_msg
         err_msg = 'unequal force and velocity degrees of freedom, only lsqr method is accept. '
         for obj1 in self.get_obj_list():
             assert obj1.get_n_force() == obj1.get_n_velocity() or solve_method == 'lsqr', err_msg
 
-        self.create_F_U()
         # create matrix
+        self._M_petsc.setSizes((self._velocity_petsc.getSizes(), self._force_petsc.getSizes()))
+        self._M_petsc.setType('dense')
+        self._M_petsc.setFromOptions()
+        self._M_petsc.setUp()
+        return self._M_petsc
+
+    def create_matrix(self):
+        t0 = time()
+        self.create_F_U()
         if not self._M_petsc.isAssembled():
-            self._M_petsc.setSizes((self._velocity_petsc.getSizes(), self._force_petsc.getSizes()))
-            self._M_petsc.setType('dense')
-            self._M_petsc.setFromOptions()
-            self._M_petsc.setUp()
+            self.create_empty_M()
         for obj1 in self.get_obj_list():
             self.create_matrix_obj(obj1, self._M_petsc)
         # self._M_petsc.view()
-
         t1 = time()
         PETSc.Sys.Print('%s: create matrix use: %fs' % (str(self), (t1 - t0)))
         return True
@@ -176,6 +185,43 @@ class stokesFlowProblem:
     def set_matrix(self, m_petsc):
         self.create_F_U()
         self._M_petsc = m_petsc
+        return True
+
+    def create_part_matrix(self, uobj_old, fobj_old, uobj_new, fobj_new, M):
+        # assuming the problem have n+1 objects named obj_0, obj_1, ... obj_n. After create the M matrix of the problem
+        #   we may need to create a mini M matrix associated with part of objects {obj_k, k in [0, n]}, this method get
+        #   values of mini_M matrix from the main M matrix of the problem, to save the creating time.
+        """
+        :type uobj_old: stokesFlowObj
+        :type uobj_new: stokesFlowObj
+        :type fobj_old: stokesFlowObj
+        :type fobj_new: stokesFlowObj
+        :param uobj_old:
+        :param fobj_old:
+        :param uobj_new:
+        :param fobj_new:
+        :param M:
+        :return:
+        """
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
+        err_msg = 'uobj_old and uobj_new are not same objects. '
+        assert (uobj_old.get_u_geo().get_nodes() == uobj_new.get_u_geo().get_nodes()).all(), err_msg
+        err_msg = 'fobj_old and fobj_new are not same objects. '
+        assert (fobj_old.get_f_geo().get_nodes() == fobj_new.get_f_geo().get_nodes()).all(), err_msg
+        _, u_glbIdx_all_old = uobj_old.get_u_geo().get_glbIdx()
+        _, f_glbIdx_all_old = fobj_old.get_f_geo().get_glbIdx()
+        _, u_glbIdx_all_new = uobj_new.get_u_geo().get_glbIdx()
+        _, f_glbIdx_all_new = fobj_new.get_f_geo().get_glbIdx()
+
+        M_range = self._M_petsc.getOwnershipRange()
+        for i0 in range(M_range[0], M_range[1]):
+            if i0 in u_glbIdx_all_old:
+                Idx = np.where(u_glbIdx_all_old == i0)[0][0]
+                u_glb_new = u_glbIdx_all_new[Idx]
+                temp0 = self._M_petsc.getValues(i0, f_glbIdx_all_old)
+                M.setValues(u_glb_new, f_glbIdx_all_new, temp0, addv=False)
+        M.assemble()
         return True
 
     def create_obj_matrix(self, objf: 'stokesFlowObj',  # force object
@@ -334,7 +380,7 @@ class stokesFlowProblem:
                   ref_slt=None):
         # Todo: special case: ForceFreeComposite.
         if isinstance(obj, stokesFlowObj):
-            err = self._vtk_check(filename, obj, ref_slt)
+            err = self._vtk_check(filename + '_check', obj, ref_slt)
         else:
             err_msg = 'unknown obj type. '
             raise err_msg
@@ -489,6 +535,8 @@ class stokesFlowProblem:
     def saveM_ASCII(self, filename: str = '..', ):
         if filename[-4:] != '.txt':
             filename = filename + '.txt'
+        err_msg = 'M matrix is been destroyed. '
+        assert not self._M_destroyed, err_msg
         viewer = PETSc.Viewer().createASCII(filename, 'w', comm=PETSc.COMM_WORLD)
         viewer(self._M_petsc)
         viewer.destroy()
@@ -498,6 +546,8 @@ class stokesFlowProblem:
     def saveM_HDF5(self, filename: str = '..', ):
         if filename[-3:] != '.h5':
             filename = filename + '.h5'
+        err_msg = 'M matrix is been destroyed. '
+        assert not self._M_destroyed, err_msg
         viewer = PETSc.Viewer().createHDF5(filename, 'w', comm=PETSc.COMM_WORLD)
         viewer(self._M_petsc)
         viewer.destroy()
@@ -517,6 +567,8 @@ class stokesFlowProblem:
             filename = filename[:-4]
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
+        err_msg = 'M matrix is been destroyed. '
+        assert not self._M_destroyed, err_msg
 
         M_dict = {'M': self._M_petsc.getDenseArray(), }
         for obj in self.get_obj_list():
@@ -566,6 +618,9 @@ class stokesFlowProblem:
     def saveM_Binary(self, filename: str = '..', ):
         if filename[-4:] != '.bin':
             filename = filename + '.bin'
+        err_msg = 'M matrix is been destroyed. '
+        assert not self._M_destroyed, err_msg
+
         viewer = PETSc.Viewer().createBinary(filename, 'w', comm=PETSc.COMM_WORLD)
         viewer.pushFormat(viewer.Format.NATIVE)
         viewer(self._M_petsc)
@@ -594,6 +649,9 @@ class stokesFlowProblem:
             self._M_destroyed = True
         return True
 
+    def _pickmyself_prepare(self):
+        pass
+
     def pickmyself(self, filename: str, check=False, pick_M=False):
         t0 = time()
         comm = PETSc.COMM_WORLD.tompi4py()
@@ -605,6 +663,7 @@ class stokesFlowProblem:
             self.saveM_Binary(filename + '_M')
         if not check:
             # self._force_petsc.view()
+            self._pickmyself_prepare()
             self.destroy()
 
         if rank == 0:
@@ -618,18 +677,33 @@ class stokesFlowProblem:
         PETSc.Sys().Print('%s: pick the problem use: %fs' % (str(self), (t1 - t0)))
         return True
 
+    def _unpickmyself_addDM(self, obj1):
+        self._f_pkg.addDM(obj1.get_f_geo().get_dmda())
+        self._u_pkg.addDM(obj1.get_u_geo().get_dmda())
+        return True
+
     def unpickmyself(self):
         filename = self._pick_filename
+        OptDB = PETSc.Options()
+        kwargs = self._kwargs
+        comm = PETSc.COMM_WORLD.tompi4py()
+        MPISIZE = comm.Get_size()
+
         err_msg = 'call pickmyself() before unpickmyself(). i.e. store date first and reload them at restart mode. '
         assert filename != '..', err_msg
+        if OptDB.getBool('check_MPISIZE', True):
+            err_msg = 'problem was picked with MPI size %d, current MPI size %d is wrong. ' \
+                      % (kwargs['MPISIZE'], MPISIZE,)
+            assert kwargs['MPISIZE'] == MPISIZE, err_msg
+        else:
+            PETSc.Sys.Print('Warning, make sure the mpi size %d is correct. ' % MPISIZE)
 
         self._f_pkg = PETSc.DMComposite().create(comm=PETSc.COMM_WORLD)
         self._u_pkg = PETSc.DMComposite().create(comm=PETSc.COMM_WORLD)
         self._M_petsc = PETSc.Mat().create(comm=PETSc.COMM_WORLD)  # M matrix
         for obj1 in self._obj_list:
             obj1.unpickmyself()
-            self._f_pkg.addDM(obj1.get_f_geo().get_dmda())
-            self._u_pkg.addDM(obj1.get_u_geo().get_dmda())
+            self._unpickmyself_addDM(obj1)
         self._f_pkg.setFromOptions()
         self._u_pkg.setFromOptions()
         # Todo: setUp f_pkg and u_pkg at a appropriate time
@@ -1151,6 +1225,14 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         self._residualNorm_list = []  # residualNorm of f1, f2, and f3 of different b
         self._err_list = []  # relative velocity error solved using check geo.
 
+        # set values later
+        self._dp = np.nan
+        self._rp = np.nan
+        self._lp = np.nan
+        self._ep = np.nan
+        self._th = np.nan
+        self._stokesletsInPipe_pipeFactor = np.nan
+
     def _set_f123(self):
         # set point source vector f1, f2, f3.
         fgeo = geo()
@@ -1176,14 +1258,13 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         self._stokeslet_geo = fgeo
         return True
 
-    def add_obj(self, obj):
+    def _check_add_obj(self, obj):
         _, b, _ = obj.get_f_geo().get_polar_coord()
         b_list = self.get_b_list()
         b1 = np.max(b_list)
         err_msg = 'b is out of maximum %f' % b1
         assert all(b <= b1), err_msg
-
-        return super().add_obj(obj)
+        return True
 
     def get_b_list(self):
         return self._b_list
@@ -1396,7 +1477,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
             t_range = range(u_fx_petsc_the.getOwnershipRange()[0], u_fx_petsc_the.getOwnershipRange()[1])
             temp2 = np.dstack((z, z, z)).flatten()
             temp3 = np.abs(temp2[u_glbIdx_the[t_range]])
-            t_factor = np.abs((temp3 - self._z_the_threshold) / (self._lp / 2 - self._z_the_threshold)) ** 0.5
+            t_factor = np.abs((temp3 - self._z_the_threshold) / (self._lp / 2 - self._z_the_threshold))
             u_fx_petsc[u_glbIdx_the[t_range]] = u_fx_petsc_the.getArray() * t_factor + \
                                                 u_fx_petsc[u_glbIdx_the[t_range]] * (1 - t_factor)
             u_fy_petsc[u_glbIdx_the[t_range]] = u_fy_petsc_the.getArray() * t_factor + \
@@ -1433,23 +1514,17 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         a_u11, a_u21, a_u31 = self._solve_u1_pipe(cpgeo, outputHandle, greenFun, waitBar)
         m_petsc = self._m_pipe_check
 
-        f1_petsc, c_u11_petsc = m_petsc.createVecs()
-        f1_petsc[:] = self._f1_list[-1][:]
-        f1_petsc.assemble()
+        c_u11_petsc = m_petsc.createVecLeft()
         # c_u11_petsc.set(0)
-        m_petsc.mult(f1_petsc, c_u11_petsc)
+        m_petsc.mult(self._f1_list[-1], c_u11_petsc)
         c_u11 = self.vec_scatter(c_u11_petsc)
-        f2_petsc, c_u21_petsc = m_petsc.createVecs()
-        f2_petsc[:] = self._f2_list[-1][:]
-        f2_petsc.assemble()
+        c_u21_petsc = m_petsc.createVecLeft()
         # c_u21_petsc.set(0)
-        m_petsc.mult(f2_petsc, c_u21_petsc)
+        m_petsc.mult(self._f2_list[-1], c_u21_petsc)
         c_u21 = self.vec_scatter(c_u21_petsc)
-        f3_petsc, c_u31_petsc = m_petsc.createVecs()
-        f3_petsc[:] = self._f3_list[-1][:]
-        f3_petsc.assemble()
+        c_u31_petsc = m_petsc.createVecLeft()
         # c_u31_petsc.set(0)
-        m_petsc.mult(f3_petsc, c_u31_petsc)
+        m_petsc.mult(self._f3_list[-1], c_u31_petsc)
         c_u31 = self.vec_scatter(c_u31_petsc)
 
         err1 = np.sqrt(np.sum((a_u11 - c_u11) ** 2) / np.sum(a_u11 ** 2))
@@ -1460,10 +1535,10 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         return True
 
     def set_prepare(self, fileHeadle):
-        t_headle = '_force_pipe.mat'
-        if fileHeadle[-len(t_headle):] != t_headle:
-            fileHeadle = fileHeadle + t_headle
-        mat_contents = loadmat(fileHeadle)
+        check_file_extension(fileHeadle, '_force_pipe.mat')
+        t_path = os.path.dirname(os.path.abspath(__file__))
+        full_path = os.path.normpath(t_path + '/' + fileHeadle)
+        mat_contents = loadmat(full_path)
 
         self.set_b_list(mat_contents['b'].flatten())
         self._f1_list = [f1 for f1 in mat_contents['f1_list']]
@@ -1476,7 +1551,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         self._lp = mat_contents['lp'][0, 0]
         self._ep = mat_contents['ep'][0, 0]
         self._th = mat_contents['th'][0, 0]
-        self._factor = mat_contents['factor'][0, 0]
+        self._stokesletsInPipe_pipeFactor = mat_contents['stokesletsInPipe_pipeFactor'][0, 0]
 
         kwargs = self.get_kwargs()
         kwargs['dp'] = self._dp
@@ -1484,7 +1559,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         kwargs['lp'] = self._lp
         kwargs['ep'] = self._ep
         kwargs['th'] = self._th
-        kwargs['factor'] = self._factor
+        kwargs['stokesletsInPipe_pipeFactor'] = self._stokesletsInPipe_pipeFactor
         kwargs['check_acc'] = False
         self._kwargs['unpickedPrb'] = True
         self._pipe_geo(**kwargs)
@@ -1501,7 +1576,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         self._lp = kwargs['lp']
         self._ep = kwargs['ep']
         self._th = kwargs['th']
-        self._factor = kwargs['factor']
+        self._stokesletsInPipe_pipeFactor = kwargs['stokesletsInPipe_pipeFactor']
         self._b_list = np.linspace(kwargs['b0'], kwargs['b1'], kwargs['nb'])  # list of b (force location).
 
         PETSc.Sys.Print('                b_list: ')
@@ -1545,16 +1620,17 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         rp = self._rp
         lp = self._lp
         ep = self._ep
-        factor = self._factor
+        stokesletsInPipe_pipeFactor = self._stokesletsInPipe_pipeFactor
 
         vpgeo = tunnel_geo()  # velocity node geo of pipe
         dth = 2 * np.arcsin(dp / 2 / rp)
 
         # debug
         # OptDB = PETSc.Options()
-        # factor = OptDB.getReal('dbg_factor', 2.5)
-        # PETSc.Sys.Print('--------------------> DBG: factor=%f' % factor)
-        fpgeo = vpgeo.create_deltatheta(dth=dth, radius=rp, length=lp, epsilon=ep, with_cover=True, factor=factor)
+        # stokesletsInPipe_pipeFactor = OptDB.getReal('dbg_factor', 2.5)
+        # PETSc.Sys.Print('--------------------> DBG: stokesletsInPipe_pipeFactor=%f' % stokesletsInPipe_pipeFactor)
+        fpgeo = vpgeo.create_deltatheta(dth=dth, radius=rp, length=lp, epsilon=ep, with_cover=True,
+                                        factor=stokesletsInPipe_pipeFactor)
         t_pkg = PETSc.DMComposite().create(comm=PETSc.COMM_WORLD)
         t_pkg.addDM(fpgeo.get_dmda())
         t_pkg.setFromOptions()
@@ -1569,13 +1645,14 @@ class stokesletsInPipeProblem(stokesFlowProblem):
 
         if kwargs['check_acc']:
             cpgeo = tunnel_geo()
-            cpgeo.create_deltatheta(dth=dth * 0.79, radius=rp, length=lp, epsilon=0, with_cover=True, factor=1)
+            cpgeo.create_deltatheta(dth=dth * 1.3, radius=rp, length=lp, epsilon=0, with_cover=True, factor=1)
             self._cpgeo = cpgeo
 
-        # if kwargs['plot_geo']:
-        #     cbd_geo = geo()
-        #     cbd_geo.combine(geo_list=[vpgeo, fpgeo, ])
-        #     cbd_geo.show_nodes(linestyle='-')
+        if kwargs['plot_geo']:
+            temp_geo = geoComposit()
+            temp_geo.append(vpgeo)
+            temp_geo.append(fpgeo)
+            temp_geo.show_nodes(linestyle='-')
         return True
 
     def _solve_m_pipe(self, **kwargs):
@@ -1898,31 +1975,8 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         self._f3_list = t_f3_list
         return True
 
-    def pickmyself(self, filename: str, check=False, pick_M=False):
-        t0 = time()
-        comm = PETSc.COMM_WORLD.tompi4py()
-        rank = comm.Get_rank()
-        self._pick_filename = filename
-        self._pick_M = pick_M
-
-        if not check and self._finish_solve and pick_M:
-            self.saveM_Binary(filename + '_M')
-        # PETSC based version
-        if not check:
-            self._f_list_PETSC2numpy()
-            self.destroy()
-
-        if rank == 0:
-            with open(filename + '_pick.bin', 'wb') as output:
-                pickler = pickle.Pickler(output, -1)
-                pickler.dump(self)
-
-        # if not check and self._finish_solve:
-        #     self.saveF_Binary(filename + '_F')
-        if not check:
-            self.unpickmyself()
-        t1 = time()
-        PETSc.Sys().Print('%s: pick the problem use: %fs' % (str(self), (t1 - t0)))
+    def _pickmyself_prepare(self):
+        self._f_list_PETSC2numpy()
         return True
 
     def destroy(self):
@@ -1966,7 +2020,8 @@ class forceFreeComposite:
         self._type = 'forceFreeComposite'  # object type
         self._name = name  # object name
         self._ref_U = np.zeros(6)  # ux, uy, uz, omega_x, omega_y, omega_z
-        self._sum_force = np.ones(6)  # [sum(fi), sum(cross(ri, fi))] (==np.zeros(6) to satisfy the force free equations).
+        self._sum_force = np.ones(
+                6)  # [sum(fi), sum(cross(ri, fi))] (==np.zeros(6) to satisfy the force free equations).
         self._min_ds = np.inf  # min deltalength of objects in the composite
 
         self._f_dmda = None
@@ -1977,7 +2032,11 @@ class forceFreeComposite:
         return self.get_obj_name()
 
     def __str__(self):
-        return self.get_name()
+        t_str = self.get_name() + ': {'
+        for subobj in self.get_obj_list():
+            t_str = t_str + subobj.get_name() + '; '
+        t_str = t_str + '}'
+        return t_str
 
     def add_obj(self, obj, rel_U):
         self._obj_list.append(obj)
@@ -2244,15 +2303,58 @@ class givenForceComposite(forceFreeComposite):
         self._givenF = givenF
         return True
 
+    def core_show_givenF(self, arrowFactor=1):
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
+        center = self.get_center()
+        givenF = self.get_givenF()
+
+        geo_list = uniqueList()
+        for obj1 in self.get_obj_list():
+            geo_list.append(obj1.get_u_geo())
+        temp_geo = geo()
+        temp_geo.combine(geo_list)
+
+        fig = temp_geo.core_show_nodes()
+        if rank == 0:
+            temp1 = arrowFactor * givenF[:3] / np.sqrt(np.sum(givenF[:3] ** 2))  # normalized, for show.
+            temp2 = arrowFactor * givenF[3:] / np.sqrt(np.sum(givenF[3:] ** 2))  # normalized, for show.
+            ax = fig.gca()
+            ax.quiver(center[0], center[1], center[2], temp1[0], temp1[1], temp1[2], color='r')
+            ax.quiver(center[0], center[1], center[2], temp2[0], temp2[1], temp2[2], color='k')
+        return fig
+
+    def show_givenF(self, arrowFactor=1):
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
+        self.core_show_givenF(arrowFactor=arrowFactor)
+        if rank == 0:
+            plt.grid()
+            plt.get_current_fig_manager().window.showMaximized()
+            plt.show()
+        return True
+
+    def png_nodes(self, finename, arrowFactor=1):
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
+        finename = check_file_extension(finename, '.png')
+
+        fig = self.core_show_givenF(arrowFactor=arrowFactor)
+        if rank == 0:
+            fig.set_size_inches(18.5, 10.5)
+            fig.savefig(finename, dpi=100)
+            plt.close()
+        return True
+
 
 class forceFreeProblem(stokesFlowProblem):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._all_obj_list = uniqueList()  # contain all objects, including subobj within forceFreeComposite.
         self._compst_list = uniqueList()  # forceFreeComposite list.
-        ffweightx = -kwargs['ffweightx'] / kwargs['zoom_factor']
-        ffweighty = -kwargs['ffweighty'] / kwargs['zoom_factor']
-        ffweightz = -kwargs['ffweightz'] / kwargs['zoom_factor']
+        ffweightx = kwargs['ffweightx'] / kwargs['zoom_factor']
+        ffweighty = kwargs['ffweighty'] / kwargs['zoom_factor']
+        ffweightz = kwargs['ffweightz'] / kwargs['zoom_factor']
         ffweightT = kwargs['ffweightT'] / kwargs['zoom_factor']
         self._ffweigth = [ffweightx, ffweighty, ffweightz, ffweightT ** 2, ffweightT ** 2, ffweightT ** 2]
         assert self._ffweigth[3] == self._ffweigth[4] == self._ffweigth[5], \
@@ -2264,6 +2366,7 @@ class forceFreeProblem(stokesFlowProblem):
             obj.set_index(self.get_n_obj())
             obj.set_problem(self)
             for sub_obj in obj.get_obj_list():
+                self._check_add_obj(sub_obj)
                 self._all_obj_list.append(sub_obj)
                 self._f_pkg.addDM(sub_obj.get_f_geo().get_dmda())
                 self._u_pkg.addDM(sub_obj.get_u_geo().get_dmda())
@@ -2342,9 +2445,9 @@ class forceFreeProblem(stokesFlowProblem):
                 for sub_obj in obj1.get_obj_list():
                     r_u = sub_obj.get_u_geo().get_nodes() - center
                     r_f = sub_obj.get_f_geo().get_nodes() - center
-                    t_I = np.array(((ffweight[0], 0, 0),
-                                    (0, ffweight[1], 0),
-                                    (0, 0, ffweight[2])))
+                    t_I = np.array(((-ffweight[0], 0, 0),
+                                    (0, -ffweight[1], 0),
+                                    (0, 0, -ffweight[2])))
                     tmu1 = npm.repmat(t_I, sub_obj.get_n_u_node(), 1)
                     tmu2 = np.vstack([((0, -ri[2], ri[1]),
                                        (ri[2], 0, -ri[0]),
@@ -2531,38 +2634,14 @@ class forceFreeProblem(stokesFlowProblem):
             super()._save_M_mat_dict(M_dict, obj)
         return True
 
-    def unpickmyself(self):
-        filename = self._pick_filename
-        err_msg = 'call pickmyself() before unpickmyself(). i.e. store date first and reload them at restart mode. '
-        assert filename != '..', err_msg
-
-        self._f_pkg = PETSc.DMComposite().create(comm=PETSc.COMM_WORLD)
-        self._u_pkg = PETSc.DMComposite().create(comm=PETSc.COMM_WORLD)
-        self._M_petsc = PETSc.Mat().create(comm=PETSc.COMM_WORLD)  # M matrix
-        for obj1 in self._obj_list:
-            obj1.unpickmyself()
-            if isinstance(obj1, forceFreeComposite):
-                for sub_obj in obj1.get_obj_list():
-                    self._f_pkg.addDM(sub_obj.get_f_geo().get_dmda())
-                    self._u_pkg.addDM(sub_obj.get_u_geo().get_dmda())
-                self._f_pkg.addDM(obj1.get_f_dmda())
-                self._u_pkg.addDM(obj1.get_u_dmda())
-            else:
-                self._f_pkg.addDM(obj1.get_f_geo().get_dmda())
-                self._u_pkg.addDM(obj1.get_u_geo().get_dmda())
-        self._f_pkg.setFromOptions()
-        self._u_pkg.setFromOptions()
-        # Todo: setUp f_pkg and u_pkg at a appropriate time
-        # self._f_pkg.setUp()
-        # self._u_pkg.setUp()
-
-        if self._finish_solve:
-            self.create_F_U()
-            self._force_petsc[:] = self._force[:]
-            self._force_petsc.assemble()
-            # self._force_petsc.view()
-        if self._finish_solve and self._pick_M:
-            self.loadM_Binary(filename + '_M')
+    def _unpickmyself_addDM(self, obj1):
+        if isinstance(obj1, forceFreeComposite):
+            for sub_obj in obj1.get_obj_list():
+                super()._unpickmyself_addDM(sub_obj)
+            self._f_pkg.addDM(obj1.get_f_dmda())
+            self._u_pkg.addDM(obj1.get_u_dmda())
+        else:
+            super()._unpickmyself_addDM(obj1)
         return True
 
 
@@ -2584,7 +2663,7 @@ class givenForceProblem(forceFreeProblem):
                     _, u_glbIdx_all = sub_obj.get_u_geo().get_glbIdx()
                     if rank == 0:
                         velocity[u_glbIdx_all] = t_u[:]
-                _, u_glbIdx_all =  obj0.get_u_glbIdx()
+                _, u_glbIdx_all = obj0.get_u_glbIdx()
                 givenF = obj0.get_givenF()
                 if rank == 0:
                     velocity[u_glbIdx_all] = givenF * ffweight
@@ -2599,64 +2678,99 @@ class givenForceProblem(forceFreeProblem):
 
 
 class stokesletsInPipeForceFreeProblem(stokesletsInPipeProblem, forceFreeProblem):
-    def add_obj(self, obj):
-        b_list = self.get_b_list()
-        b1 = np.max(b_list)
-        err_msg = 'b is out of maximun %f' % b1
-
-        if isinstance(obj, forceFreeComposite):
-            self._obj_list.append(obj)
-            obj.set_index(self.get_n_obj())
-            obj.set_problem(self)
-            for sub_obj in obj.get_obj_list():
-                _, b, _ = sub_obj.get_f_geo().get_polar_coord()
-                assert all(b <= b1), err_msg
-                self._all_obj_list.append(sub_obj)
-                self._f_pkg.addDM(sub_obj.get_f_geo().get_dmda())
-                self._u_pkg.addDM(sub_obj.get_u_geo().get_dmda())
-                self._n_fnode += sub_obj.get_n_f_node()
-                self._n_unode += sub_obj.get_n_u_node()
-            self._f_pkg.addDM(obj.get_f_dmda())
-            self._u_pkg.addDM(obj.get_u_dmda())
-            self._compst_list.append(obj)
-        else:
-            self._all_obj_list.append(obj)
-            super(stokesletsInPipeProblem).add_obj(obj)
-        return True
-
-
-class stokesletsTwoPlateProblem(stokesFlowProblem):
-    def donothing(self):
+    # def add_obj(self, obj):
+    #     b_list = self.get_b_list()
+    #     b1 = np.max(b_list)
+    #     err_msg = 'b is out of maximun %f' % b1
+    #
+    #     if isinstance(obj, forceFreeComposite):
+    #         self._obj_list.append(obj)
+    #         obj.set_index(self.get_n_obj())
+    #         obj.set_problem(self)
+    #         for sub_obj in obj.get_obj_list():
+    #             _, b, _ = sub_obj.get_f_geo().get_polar_coord()
+    #             assert all(b <= b1), err_msg
+    #             self._all_obj_list.append(sub_obj)
+    #             self._f_pkg.addDM(sub_obj.get_f_geo().get_dmda())
+    #             self._u_pkg.addDM(sub_obj.get_u_geo().get_dmda())
+    #             self._n_fnode += sub_obj.get_n_f_node()
+    #             self._n_unode += sub_obj.get_n_u_node()
+    #         self._f_pkg.addDM(obj.get_f_dmda())
+    #         self._u_pkg.addDM(obj.get_u_dmda())
+    #         self._compst_list.append(obj)
+    #     else:
+    #         self._all_obj_list.append(obj)
+    #         super(stokesletsInPipeProblem).add_obj(obj)
+    #     return True
+    def nothing(self):
         pass
 
 
-class stokesletsTwoPlateForceFreeProblem(stokesletsTwoPlateProblem, forceFreeProblem):
+class stokesletsShearFlowProblem(stokesFlowProblem):
+    # stokes flow between two plane, one is move in a constant velocity.
+    # U_all = U_shear + U_twoPlane.
+    # two planes are paralleled with XY plane, shear flow is vertical to z axis.
+    # see Liron, Nadav, and S. Mochon. "Stokes flow for a stokeslets between two parallel flat plates." Journal of Engineering Mathematics 10.4 (1976): 287-303.
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._twoPlateHeight = kwargs['twoPlateHeight']
+        self._planeShearU = kwargs['planeShearU']
+        err_msg = 'shear flow velocity is must vertical to z axis. '
+        assert self._planeShearU[-1] == 0. and self._planeShearU.size == 3, err_msg
+
+    def _create_U(self):
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
+        h = self._twoPlateHeight
+        u_weight = (1 / h, 1 / h, 0)  # for shear flow
+        u = self._planeShearU
+        velocity = self._u_pkg.createGlobalVector()
+        velocity.zeroEntries()
+        for i0, obj0 in enumerate(self.get_obj_list()):
+            u_shear = obj0.get_u_geo().get_nodes() * u * u_weight
+            u0 = obj0.get_velocity() - u_shear.flatten()
+            _, u_glbIdx_all = obj0.get_u_geo().get_glbIdx()
+            if rank == 0:
+                velocity[u_glbIdx_all] = u0[:]
+        velocity.assemble()
+        self._velocity_petsc = velocity
+        return True
+
+    def _check_add_obj(self, obj):
+        h = self._twoPlateHeight
+        nodes = obj.get_u_geo().get_nodes()
+        err_msg = 'z coordinate of nodes is out of range (%f, %f)' % (0, h)
+        assert all(nodes[:, 2] < h) and all(nodes[:, 2] > 0), err_msg
+        return True
+
+
+class stokesletsShearFlowForceFreeProblem(stokesletsShearFlowProblem, forceFreeProblem):
     def donothing(self):
         pass
 
 
 problem_dic = {
-    'rs':                    stokesFlowProblem,
-    'rs_plane':              stokesFlowProblem,
-    'lg_rs':                 stokesFlowProblem,
-    'tp_rs':                 stokesFlowProblem,
-    'pf':                    stokesFlowProblem,
-    'rs_stokesletsInPipe':   stokesletsInPipeProblem,
-    'pf_stokesletsInPipe':   stokesletsInPipeProblem,
-    'pf_stokesletsTwoPlate': stokesFlowProblem,
+    'rs':                     stokesFlowProblem,
+    'rs_plane':               stokesFlowProblem,
+    'lg_rs':                  stokesFlowProblem,
+    'tp_rs':                  stokesFlowProblem,
+    'pf':                     stokesFlowProblem,
+    'rs_stokesletsInPipe':    stokesletsInPipeProblem,
+    'pf_stokesletsInPipe':    stokesletsInPipeProblem,
+    'pf_stokesletsShearFlow': stokesletsShearFlowProblem,
 }
 
 obj_dic = {
-    'rs':                    stokesFlowObj,
-    'rs_plane':              stokesFlowObj,
-    'lg_rs':                 stokesFlowObj,
-    'tp_rs':                 stokesFlowObj,
-    'pf':                    stokesFlowObj,
-    'rs_stokesletsInPipe':   stokesFlowObj,
-    'pf_stokesletsInPipe':   stokesFlowObj,
-    'pf_stokesletsTwoPlate': stokesFlowObj,
+    'rs':                     stokesFlowObj,
+    'rs_plane':               stokesFlowObj,
+    'lg_rs':                  stokesFlowObj,
+    'tp_rs':                  stokesFlowObj,
+    'pf':                     stokesFlowObj,
+    'rs_stokesletsInPipe':    stokesFlowObj,
+    'pf_stokesletsInPipe':    stokesFlowObj,
+    'pf_stokesletsShearFlow': stokesFlowObj,
 }
 
 # names of models that need two geometries.
 two_geo_method_list = ('pf', 'ps', 'ps_ds', 'pf_ds',
-                       'pf_stokesletsInPipe', 'pf_stokesletsTwoPlate')
+                       'pf_stokesletsInPipe', 'pf_stokesletsShearFlow')

@@ -1,14 +1,5 @@
-from os import path as ospath
-import sys
 import numpy as np
 
-t_path = sys.path[0]
-t_path = ospath.dirname(t_path)
-if ospath.isdir(t_path):
-    sys.path = [t_path] + sys.path
-else:
-    err_msg = "can not add path father path"
-    raise ValueError(err_msg)
 from src.StokesFlowMethod import stokeslets_matrix_3d
 from src.geo import *
 from src.stokes_flow import stokesFlowObj

@@ -1,3 +1,4 @@
+import os
 from sympy import symbols, diff, lambdify
 from sympy import sinh,cosh, besselj
 #import matplotlib.pyplot as plt
@@ -11,17 +12,17 @@ mp.pretty = True
 
 '''
 
-It's a file that contains the funcions used in stokes_main.py.
+It's a file that contains the funcions used in stokesTwoPlate.py.
 Here the index of v and w obeys the following rule.
-The  Green function compnent vij = ith component of v caused by jth component of force.
+The  Green function component vij = ith component of v caused by jth component of force.
 So the ith velocity component is V_i = v_ij * F_j
 Since the x-y plane is infinitely large, the green funciton is symmetric of x, y which means
-u21(x, y) = u12(y, x). For this consideration, we only define five componen of Green fucntion tensor.
+u21(x, y) = u12(y, x). For this consideration, we only define five component of Green function tensor.
 
 The relation of u, v and w.
 Real velocity field is u. v and w represent two different contributions.
 So u = v + w.
-v is rooted from image method while w is the correction term in order to satisfity boundary condition.
+v is rooted from image method while w is the correction term in order to satisfies boundary condition.
 
 '''
 
@@ -38,7 +39,9 @@ rational_sinh = sinh(h*x)/sinh(H*x)
 d_rational_sinh = diff(rational_sinh,x)
 sh = sinh(h*x) / sinh(H*x) * sinh((H-x3)*x)
 d_sh = diff(sh, x)
-zeros_j = np.load('zeros_j.npy')
+t_path = os.path.dirname(os.path.abspath(__file__))
+full_path = os.path.normpath(t_path + '/' + 'zeros_j.npy')
+zeros_j = np.load(full_path)
 
 '''Part of integral expressions.'''
 a1 = 1/(sinh(x*H)**2 - (x*H)**2)*(

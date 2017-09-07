@@ -1122,8 +1122,16 @@ def two_plate_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocit
 
     for i0 in tqdm(range(f_dmda.getRanges()[0][0], f_dmda.getRanges()[0][1]), desc=INDEX, leave=False):
         greenFun.set_locF(f_nodes[i0, 0], f_nodes[i0, 1], f_nodes[i0, 2])
-        m00, m01, m02, m10, m11, m12, m20, m21, m22 = greenFun.get_Ufunc_integral_near(u_nodes)
-        # m00, m01, m02, m10, m11, m12, m20, m21, m22 = np.random.sample(obj1.get_n_u_node()*9).reshape((9, -1))
+        m00, m01, m02, m10, m11, m12, m20, m21, m22 = greenFun.get_Ufunc_series(u_nodes)
+        m00 = m00 / (4 * np.pi)
+        m01 = m01 / (4 * np.pi)
+        m02 = m02 / (4 * np.pi)
+        m10 = m10 / (4 * np.pi)
+        m11 = m11 / (4 * np.pi)
+        m12 = m12 / (4 * np.pi)
+        m20 = m20 / (4 * np.pi)
+        m21 = m21 / (4 * np.pi)
+        m22 = m22 / (4 * np.pi)
         f_glb = f_glbIdx_all[i0 * 3]
         m.setValues(u_glbIdx_all[0::3], f_glb + 0, m00, addv=False)
         m.setValues(u_glbIdx_all[0::3], f_glb + 1, m01, addv=False)

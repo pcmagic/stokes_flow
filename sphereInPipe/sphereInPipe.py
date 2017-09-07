@@ -10,15 +10,6 @@ import sys
 import petsc4py
 
 petsc4py.init(sys.argv)
-from os import path as ospath
-
-t_path = sys.path[0]
-t_path = ospath.dirname(t_path)
-if ospath.isdir(t_path):
-    sys.path = [t_path] + sys.path
-else:
-    err_msg = "can not add path father path"
-    raise ValueError(err_msg)
 
 import numpy as np
 from src import stokes_flow as sf
@@ -225,14 +216,13 @@ def main_fun(**main_kwargs):
         problem.print_info()
         problem.create_matrix()
         # dbg
-        problem.saveM_ASCII(fileHeadle + '_M')
+        # problem.saveM_ASCII(fileHeadle + '_M')
         residualNorm = problem.solve()
         if problem_kwargs['pickProblem']:
             problem.pickmyself(fileHeadle)
 
-        if rank == 0:
-            force_sphere = vsobj.get_force_z()
-            PETSc.Sys.Print('---->>>Resultant at z axis is %f' % (np.sum(force_sphere) / (6 * np.pi * rs)))
+        force_sphere = vsobj.get_total_force()
+        PETSc.Sys.Print('---->>>Resultant at z axis is %s' % str(force_sphere[:3] / (6 * np.pi * rs)))
         # save_vtk(problem)
         problem.vtk_obj(fileHeadle)
 
@@ -240,8 +230,8 @@ def main_fun(**main_kwargs):
     else:
         t_headle = '_pick.bin'
         fileHeadle = fileHeadle if fileHeadle[-len(t_headle):] == fileHeadle else fileHeadle + t_headle
-        with open(fileHeadle, 'rb') as input:
-            unpick = pickle.Unpickler(input)
+        with open(fileHeadle, 'rb') as myinput:
+            unpick = pickle.Unpickler(myinput)
             problem = unpick.load()
             problem.unpickmyself()
             residualNorm = problem.get_residualNorm()

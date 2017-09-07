@@ -10,16 +10,6 @@ import sys
 import petsc4py
 
 petsc4py.init(sys.argv)
-from os import path as ospath
-
-t_path = sys.path[0]
-t_path = ospath.dirname(t_path)
-if ospath.isdir(t_path):
-    sys.path = [t_path] + sys.path
-else:
-    err_msg = "can not add path father path"
-    raise ValueError(err_msg)
-# sys.path = ['/home/zhangji/stokes_flow-master'] + sys.path
 
 import numpy as np
 # import pickle
@@ -50,7 +40,7 @@ def get_problem_kwargs(**main_kwargs):
 
 def print_case_info(**problem_kwargs):
     fileHeadle = problem_kwargs['fileHeadle']
-    print_solver_info_forceFree(**problem_kwargs)
+    print_solver_info(**problem_kwargs)
     print_forceFree_info(**problem_kwargs)
     print_ecoli_info(fileHeadle, **problem_kwargs)
     return True
@@ -63,28 +53,10 @@ def main_fun(**main_kwargs):
 
     if not problem_kwargs['restart']:
         print_case_info(**problem_kwargs)
-        problem_kwargs['rot_norm'] = np.array((1, 0, 0))
-        problem_kwargs['rot_theta'] = np.pi / 2
-        # problem_kwargs['rot_theta'] = 0
         ecoli_comp = createEcoliComp_ellipse(name='ecoli_0', **problem_kwargs)
-
         problem = sf.forceFreeProblem(**problem_kwargs)
-        problem.add_obj(ecoli_comp)
-        problem.print_info()
-        # problem.show_f_u_nodes()
-        # problem.show_velocity(length_factor=1, show_nodes=True)
-
-        if problem_kwargs['pickProblem']:
-            problem.pickmyself(fileHeadle, check=True)
-        problem.create_matrix()
-        problem.solve()
-        # debug
-        # problem.saveM_ASCII('%s_M.txt' % fileHeadle)
-
-        print_single_ecoli_forceFree_result(ecoli_comp, **problem_kwargs)
-
-        if problem_kwargs['pickProblem']:
-            problem.pickmyself(fileHeadle, pick_M=True)
+        problem.do_solve_process((ecoli_comp,), pick_M=True)
+        head_U, tail_U = print_single_ecoli_forceFree_result(ecoli_comp, **problem_kwargs)
         save_singleEcoli_vtk(problem, createHandle=createEcoliComp_ellipse)
     else:
         pass

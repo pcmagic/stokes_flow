@@ -1,4 +1,5 @@
 import numpy as np
+import os
 from scipy.io import loadmat
 from scipy.special import kv, iv
 from numpy import pi, real, imag, exp, sqrt, sum, sin, cos
@@ -7,7 +8,7 @@ from numpy import pi, real, imag, exp, sqrt, sum, sin, cos
 # see Liron, N., and R. Shahar. "Stokes flow due to a Stokeslet in a pipe." Journal of Fluid Mechanics 86.04 (1978): 727-744.
 # class containing functions for detailed expression
 # noinspection PyTypeChecker
-class detail( ):
+class detail:
     def __init__(self, threshold, b):
         self._threshold = threshold
         self._b = b
@@ -64,9 +65,13 @@ class detail( ):
         INDEX[kmax, :] = 0
         k_use = k_use[INDEX]
         n_use = n_use[INDEX]
-        mat_contents = loadmat('xn.mat')
+
+        t_path = os.path.dirname(os.path.abspath(__file__))
+        full_path = os.path.normpath(t_path + '/' + 'xn.mat')
+        mat_contents = loadmat(full_path)
         xn = mat_contents['xn']
-        mat_contents = loadmat('yn.mat')
+        full_path = os.path.normpath(t_path + '/' + 'yn.mat')
+        mat_contents = loadmat(full_path)
         yn = mat_contents['yn']
         xn_use = np.vstack((xn[kmax:0:-1, 0: nmax], xn[0: kmax + 1, 0: nmax]))
         yn_use = np.vstack((yn[kmax:0:-1, 0: nmax], yn[0: kmax + 1, 0: nmax]))
@@ -369,18 +374,18 @@ class detail( ):
                 DmyD ** (-1) * exp(1) ** (sqrt(-1 + 0j) * z * real(xn)) * (
                     (pi1 + psi1) * iv(0, R * xn) + pi1 * R * xn * iv(1, R * xn)))
 
-        R = np.array(R, dtype=float).flatten( )
-        z = np.array(z, dtype=float).flatten( )
+        R = np.array(R, dtype=float).flatten()
+        z = np.array(z, dtype=float).flatten()
         Phi = np.array(Phi, dtype=float)
         Phi_shape = Phi.shape
         Phi_flags = Phi.flags
-        Phi = Phi.flatten( )
+        Phi = Phi.flatten()
         err_msg = 'both R and z should be scales. '
         assert R.size == 1 and z.size == 1, err_msg
 
-        uR1 = Phi.copy( )
-        uPhi1 = Phi.copy( )
-        uz1 = Phi.copy( )
+        uR1 = Phi.copy()
+        uPhi1 = Phi.copy()
+        uz1 = Phi.copy()
         uR1k0 = sum(uR1_k0(self._xn_k0, self._psi_xn1_k0, self._omega_xn1_k0, self._pi_xn1_k0, R, z, self._DmyD_xn_k0))
         uPhi1k0 = 0
         uz1k0 = sum(uz1_k0(self._xn_k0, self._psi_xn1_k0, self._omega_xn1_k0, self._pi_xn1_k0, R, z, self._DmyD_xn_k0))
@@ -436,18 +441,18 @@ class detail( ):
         uPhi2_k0 = lambda yn, psi2, omega2, pi2, R, z, DmyD: exp(1) ** ((-1) * z * imag(yn)) * pi * imag(
                 DmyD ** (-1) * omega2 * iv(1, R * yn))
 
-        R = np.array(R, dtype=float).flatten( )
-        z = np.array(z, dtype=float).flatten( )
+        R = np.array(R, dtype=float).flatten()
+        z = np.array(z, dtype=float).flatten()
         Phi = np.array(Phi, dtype=float)
         Phi_shape = Phi.shape
         Phi_flags = Phi.flags
-        Phi = Phi.flatten( )
+        Phi = Phi.flatten()
         err_msg = 'both R and z should be scales. '
         assert R.size == 1 and z.size == 1, err_msg
 
-        uR2 = Phi.copy( )
-        uPhi2 = Phi.copy( )
-        uz2 = Phi.copy( )
+        uR2 = Phi.copy()
+        uPhi2 = Phi.copy()
+        uz2 = Phi.copy()
         uR2k0 = 0
         uPhi2k0 = sum(
                 uPhi2_k0(self._yn_k0, self._psi_yn2_k0, self._omega_yn2_k0, self._pi_yn2_k0, R, z, self._DmyD_yn_k0))
@@ -508,18 +513,18 @@ class detail( ):
                 DmyD ** (-1) * exp(1) ** (sqrt(-1 + 0j) * z * real(xn)) * (
                     (pi3 + psi3) * iv(0, R * xn) + pi3 * R * xn * iv(1, R * xn)))
 
-        R = np.array(R, dtype=float).flatten( )
-        z = np.array(z, dtype=float).flatten( )
+        R = np.array(R, dtype=float).flatten()
+        z = np.array(z, dtype=float).flatten()
         Phi = np.array(Phi, dtype=float)
         Phi_shape = Phi.shape
         Phi_flags = Phi.flags
-        Phi = Phi.flatten( )
+        Phi = Phi.flatten()
         err_msg = 'both R and z should be scales. '
         assert R.size == 1 and z.size == 1, err_msg
 
-        uR3 = Phi.copy( )
-        uPhi3 = Phi.copy( )
-        uz3 = Phi.copy( )
+        uR3 = Phi.copy()
+        uPhi3 = Phi.copy()
+        uz3 = Phi.copy()
         uR3k0 = sum(uR3_k0(self._xn_k0, self._psi_xn3_k0, self._omega_xn3_k0, self._pi_xn3_k0, R, z, self._DmyD_xn_k0))
         uPhi3k0 = 0
         uz3k0 = sum(uz3_k0(self._xn_k0, self._psi_xn3_k0, self._omega_xn3_k0, self._pi_xn3_k0, R, z, self._DmyD_xn_k0))
@@ -546,12 +551,12 @@ class detail( ):
         return uR3, uPhi3, uz3
 
     def solve_prepare(self):
-        self._set_xyk( )
-        self._solve_prepare_xn( )
-        self._solve_prepare_yn( )
-        self._solve_prepare1( )
-        self._solve_prepare2( )
-        self._solve_prepare3( )
+        self._set_xyk()
+        self._solve_prepare_xn()
+        self._solve_prepare_yn()
+        self._solve_prepare1()
+        self._solve_prepare2()
+        self._solve_prepare3()
         return True
 
     def solve_u(self, R, Phi, z):
@@ -563,22 +568,22 @@ class detail( ):
 
 class detail_light(detail):
     def __init__(self, threshold):
-        super( ).__init__(threshold=threshold, b=0)
+        super().__init__(threshold=threshold, b=0)
 
     def set_b(self, b):
         self._b = b
         return True
 
     def solve_prepare_light(self):
-        self._set_xyk( )
-        self._solve_prepare_xn( )
-        self._solve_prepare_yn( )
+        self._set_xyk()
+        self._solve_prepare_xn()
+        self._solve_prepare_yn()
         return True
 
     def solve_prepare_b(self):
-        self._solve_prepare1( )
-        self._solve_prepare2( )
-        self._solve_prepare3( )
+        self._solve_prepare1()
+        self._solve_prepare2()
+        self._solve_prepare3()
         return True
 
     def solve_u1_light(self, R, Phi, z):

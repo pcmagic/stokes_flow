@@ -10,18 +10,8 @@ import sys
 import petsc4py
 
 petsc4py.init(sys.argv)
-from os import path as ospath
 
-t_path = sys.path[0]
-t_path = ospath.dirname(t_path)
-if ospath.isdir(t_path):
-    sys.path = [t_path] + sys.path
-else:
-    err_msg = "can not add path father path"
-    raise ValueError(err_msg)
-# sys.path = ['/home/zhangji/stokes_flow-master'] + sys.path
-
-# import numpy as np
+import numpy as np
 # import pickle
 # from time import time
 # from scipy.io import loadmat
@@ -38,6 +28,7 @@ def get_problem_kwargs(**main_kwargs):
     problem_kwargs = get_solver_kwargs()
     OptDB = PETSc.Options()
     fileHeadle = OptDB.getString('f', 'ecoliInPipe')
+    OptDB.setValue('f', fileHeadle)
     problem_kwargs['fileHeadle'] = fileHeadle
 
     kwargs_list = (main_kwargs, get_vtk_tetra_kwargs(), get_ecoli_kwargs(), get_forceFree_kwargs())
@@ -49,7 +40,7 @@ def get_problem_kwargs(**main_kwargs):
 
 def print_case_info(**problem_kwargs):
     fileHeadle = problem_kwargs['fileHeadle']
-    print_solver_info_forceFree(**problem_kwargs)
+    print_solver_info(**problem_kwargs)
     print_forceFree_info(**problem_kwargs)
     print_ecoli_info(fileHeadle, **problem_kwargs)
     return True
@@ -58,7 +49,6 @@ def print_case_info(**problem_kwargs):
 # @profile
 def main_fun(**main_kwargs):
     problem_kwargs = get_problem_kwargs(**main_kwargs)
-    fileHeadle = problem_kwargs['fileHeadle']
     forcepipe = problem_kwargs['forcepipe']
 
     if not problem_kwargs['restart']:
@@ -66,23 +56,20 @@ def main_fun(**main_kwargs):
         ecoli_comp = createEcoliComp_tunnel(name='ecoli_0', **problem_kwargs)
         problem = sf.stokesletsInPipeForceFreeProblem(**problem_kwargs)
         problem.set_prepare(forcepipe)
-        problem.add_obj(ecoli_comp)
+        problem.do_solve_process((ecoli_comp,), pick_M=True)
 
-        if problem_kwargs['pickProblem']:
-            problem.pickmyself(fileHeadle, check=True)
-        problem.print_info()
-        problem.create_matrix()
-        problem.solve()
-        # debug
-        # problem.saveM_ASCII('%s_M.txt' % fileHeadle)
-
-        print_single_ecoli_forceFree_result(ecoli_comp, **problem_kwargs)
-
-        if problem_kwargs['pickProblem']:
-            problem.pickmyself(fileHeadle, pick_M=True)
+        head_U, tail_U = print_single_ecoli_forceFree_result(ecoli_comp, **problem_kwargs)
+        ecoli_U = ecoli_comp.get_ref_U()
         save_singleEcoli_vtk(problem)
+
+        t_force = ecoli_comp.get_obj_list()[0].get_total_force()
+        PETSc.Sys.Print('---->>>head resultant is', t_force / 6 / np.pi)
+        t_force = 0
+        for t_obj in ecoli_comp.get_obj_list()[1:]:
+            t_force = t_force + t_obj.get_total_force()
+        PETSc.Sys.Print('---->>>tail resultant is', t_force / 6 / np.pi)
     else:
-        pass
+        head_U, tail_U, ecoli_U = np.nan, np.nan, np.nan
         # with open(fileHeadle + '_pick.bin', 'rb') as input:
         #     unpick = pickle.Unpickler(input)
         #     problem = unpick.load( )
@@ -122,7 +109,7 @@ def main_fun(**main_kwargs):
         #
         # # save_singleEcoli_vtk(problem)
 
-    return True
+    return head_U, tail_U, ecoli_U
 
 
 if __name__ == '__main__':

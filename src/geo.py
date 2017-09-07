@@ -316,7 +316,7 @@ class geo():
         self.set_dmda()
         return True
 
-    def show_velocity(self, length_factor=1, show_nodes=True):
+    def _show_velocity(self, length_factor=1, show_nodes=True):
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
         if rank == 0:
@@ -346,16 +346,24 @@ class geo():
             ax.set_xlim(mid_x - max_range, mid_x + max_range)
             ax.set_ylim(mid_y - max_range, mid_y + max_range)
             ax.set_zlim(mid_z - max_range, mid_z + max_range)
-            ax.set_xlabel('x')
-            ax.set_ylabel('y')
-            ax.set_zlabel('z')
+            ax.set_xlabel('x', size='xx-large')
+            ax.set_ylabel('y', size='xx-large')
+            ax.set_zlabel('z', size='xx-large')
+        else:
+            fig = None
+        return fig
 
+    def show_velocity(self, length_factor=1, show_nodes=True):
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
+        self._show_velocity(length_factor=length_factor, show_nodes=show_nodes)
+        if rank == 0:
             plt.grid()
             plt.get_current_fig_manager().window.showMaximized()
             plt.show()
         return True
 
-    def show_nodes(self, linestyle='-', color='b'):
+    def core_show_nodes(self, linestyle='-'):
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
         if rank == 0:
@@ -379,13 +387,33 @@ class geo():
             ax.set_xlim(mid_x - max_range, mid_x + max_range)
             ax.set_ylim(mid_y - max_range, mid_y + max_range)
             ax.set_zlim(mid_z - max_range, mid_z + max_range)
-            ax.set_xlabel('x')
-            ax.set_ylabel('y')
-            ax.set_zlabel('z')
+            ax.set_xlabel('x', size='xx-large')
+            ax.set_ylabel('y', size='xx-large')
+            ax.set_zlabel('z', size='xx-large')
+        else:
+            fig = None
+        return fig
 
+    def show_nodes(self, linestyle='-'):
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
+        self.core_show_nodes(linestyle=linestyle)
+        if rank == 0:
             plt.grid()
             plt.get_current_fig_manager().window.showMaximized()
             plt.show()
+        return True
+
+    def png_nodes(self, finename, linestyle='-'):
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
+        finename = check_file_extension(finename, '.png')
+
+        fig = self.core_show_nodes(linestyle=linestyle)
+        if rank == 0:
+            fig.set_size_inches(18.5, 10.5)
+            fig.savefig(finename, dpi=100)
+            plt.close()
         return True
 
     def get_mesh(self):

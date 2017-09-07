@@ -10,26 +10,18 @@ import sys
 import petsc4py
 
 petsc4py.init(sys.argv)
-from os import path as ospath
-
-t_path = sys.path[0]
-t_path = ospath.dirname(t_path)
-if ospath.isdir(t_path):
-    sys.path = [t_path] + sys.path
-else:
-    err_msg = "can not add path father path"
-    raise ValueError(err_msg)
 
 import numpy as np
 from src import stokes_flow as sf
 from src.stokes_flow import problem_dic, obj_dic
 from petsc4py import PETSc
 from src.geo import *
-from time import time
+# from time import time
 from scipy.io import loadmat, savemat
 import pickle
 import matplotlib.pyplot as plt
 from src.stokesletsInPipe import detail
+from src.support_class import *
 
 
 def get_problem_kwargs(**main_kwargs):
@@ -42,15 +34,14 @@ def get_problem_kwargs(**main_kwargs):
     b1 = OptDB.getReal('b1', 0.9)
     nb = OptDB.getInt('nb', 2)  # amount of b
     th = OptDB.getInt('th', 30)  # threshold
-    factor = OptDB.getInt('factor', 5)  # threshold
+    stokesletsInPipe_pipeFactor = OptDB.getReal('stokesletsInPipe_pipeFactor', 5)  # geometrical parameter, control the distribution of nodes of the pipe.
     solve_method = OptDB.getString('s', 'gmres')
     precondition_method = OptDB.getString('g', 'none')
     matrix_method = OptDB.getString('sm', 'pf_stokesletsInPipe')
-    twoPara_n = OptDB.getInt('tp_n', 1)
-    legendre_m = OptDB.getInt('legendre_m', 3)
-    legendre_k = OptDB.getInt('legendre_k', 2)
     check_acc = OptDB.getBool('check_acc', False)  # Accuracy check
     plot_geo = OptDB.getBool('plot_geo', False)  # show pipe
+    comm = PETSc.COMM_WORLD.tompi4py()
+    MPISIZE = comm.Get_size()
 
     problem_kwargs = {
         'name':                'force_pipe',
@@ -63,15 +54,13 @@ def get_problem_kwargs(**main_kwargs):
         'b1':                  b1,
         'nb':                  nb,
         'th':                  th,
-        'factor':              factor,
+        'stokesletsInPipe_pipeFactor':              stokesletsInPipe_pipeFactor,
         'solve_method':        solve_method,
         'precondition_method': precondition_method,
         'fileHeadle':          fileHeadle,
-        'twoPara_n':           twoPara_n,
-        'legendre_m':          legendre_m,
-        'legendre_k':          legendre_k,
         'check_acc':           check_acc,
         'plot_geo':            plot_geo,
+        'MPISIZE':             MPISIZE,
     }
 
     for key in main_kwargs:
@@ -81,7 +70,6 @@ def get_problem_kwargs(**main_kwargs):
 
 def print_case_info(**problem_kwargs):
     comm = PETSc.COMM_WORLD.tompi4py()
-    rank = comm.Get_rank()
     size = comm.Get_size()
 
     fileHeadle = problem_kwargs['fileHeadle']
@@ -91,7 +79,7 @@ def print_case_info(**problem_kwargs):
     lp = problem_kwargs['lp']
     rp = problem_kwargs['rp']
     th = problem_kwargs['th']
-    factor = problem_kwargs['factor']
+    stokesletsInPipe_pipeFactor = problem_kwargs['stokesletsInPipe_pipeFactor']
     b0 = problem_kwargs['b0']
     b1 = problem_kwargs['b1']
     nb = problem_kwargs['nb']
@@ -99,8 +87,8 @@ def print_case_info(**problem_kwargs):
 
     PETSc.Sys.Print('Case information: ')
     PETSc.Sys.Print('  pipe length: %f, pipe radius: %f' % (lp, rp))
-    PETSc.Sys.Print('  delta length, epsilon and factor of pipe are %f, %f and %f' % (dp, ep, factor))
-    PETSc.Sys.Print('  threshold of seriers is %d' % th)
+    PETSc.Sys.Print('  delta length, epsilon and factor of pipe are %f, %f and %f' % (dp, ep, stokesletsInPipe_pipeFactor))
+    PETSc.Sys.Print('  threshold of series is %d' % th)
     PETSc.Sys.Print('  b: %d numbers are evenly distributed within the range [%f, %f]' % (nb, b0, b1))
     PETSc.Sys.Print('  check accuracy of forces: %s' % check_acc)
 
@@ -138,14 +126,13 @@ def main_fun(**main_kwargs):
     problem_kwargs = get_problem_kwargs(**main_kwargs)
     fileHeadle = problem_kwargs['fileHeadle']
     print_case_info(**problem_kwargs)
-    matrix_method = problem_kwargs['matrix_method']
     check_acc = problem_kwargs['check_acc']
     dp = problem_kwargs['dp']
     rp = problem_kwargs['rp']
     lp = problem_kwargs['lp']
     ep = problem_kwargs['ep']
     th = problem_kwargs['th']
-    factor = problem_kwargs['factor']
+    stokesletsInPipe_pipeFactor = problem_kwargs['stokesletsInPipe_pipeFactor']
 
     # # debug
     # vsgeo = geo()  # velocity node geo of sphere
@@ -161,15 +148,15 @@ def main_fun(**main_kwargs):
 
     # # create problem
     # problem = problem_dic[matrix_method](**problem_kwargs)
-    problem = sf.stokesletsInPipeForceFreeProblem(**problem_kwargs)
+    problem = sf.stokesletsInPipeProblem(**problem_kwargs)
     problem.solve_prepare()
     problem.pickmyself(fileHeadle)
     b = np.array(problem.get_b_list())
     residualNorm = np.array(problem.get_residualNorm_list())
     err = np.array(problem.get_err_list())
-    do_show_err(fileHeadle, b, residualNorm, err)
+    # do_show_err(fileHeadle, b, residualNorm, err)
     f1_list, f2_list, f3_list = problem.get_f_list()
-    do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th, factor)
+    do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th, stokesletsInPipe_pipeFactor)
 
     PETSc.Sys().Print('                b -- residualNorm      ')
     PETSc.Sys().Print(np.hstack((b.reshape((-1, 1)), residualNorm)))
@@ -217,24 +204,25 @@ def do_show_err(fileHeadle, b, residualNorm, err):
     return True
 
 
-def do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th, factor):
-    t_headle = '_force_pipe.mat'
-    if fileHeadle[-len(t_headle):] != t_headle:
-        fileHeadle = fileHeadle + t_headle
-    savemat(fileHeadle,
-            {'b':            b,
-             'f1_list':      f1_list,
-             'f2_list':      f2_list,
-             'f3_list':      f3_list,
-             'residualNorm': residualNorm,
-             'err':          err,
-             'dp':           dp,
-             'ep':           ep,
-             'lp':           lp,
-             'rp':           rp,
-             'th':           th,
-             'factor':       factor, },
-            oned_as='column')
+def do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th, stokesletsInPipe_pipeFactor):
+    comm = PETSc.COMM_WORLD.tompi4py()
+    rank = comm.Get_rank()
+    fileHeadle = check_file_extension(fileHeadle, extension='_force_pipe.mat')
+    if rank == 0:
+        savemat(fileHeadle,
+                {'b':            b,
+                 'f1_list':      f1_list,
+                 'f2_list':      f2_list,
+                 'f3_list':      f3_list,
+                 'residualNorm': residualNorm,
+                 'err':          err,
+                 'dp':           dp,
+                 'ep':           ep,
+                 'lp':           lp,
+                 'rp':           rp,
+                 'th':           th,
+                 'stokesletsInPipe_pipeFactor':       stokesletsInPipe_pipeFactor, },
+                oned_as='column')
     PETSc.Sys().Print('export mat file to %s ' % fileHeadle)
     pass
 
@@ -262,26 +250,27 @@ def show_err():
 
 def export_mat():
     problem_kwargs = get_problem_kwargs()
+    fileHeadle = problem_kwargs['fileHeadle']
+    filePick = check_file_extension(fileHeadle, extension='_pick.bin')
+    with open(filePick, 'rb') as myinput:
+        unpick = pickle.Unpickler(myinput)
+        problem = unpick.load()
+        problem.unpickmyself()
+
+    problem_kwargs = problem.get_kwargs()
     dp = problem_kwargs['dp']
     rp = problem_kwargs['rp']
     lp = problem_kwargs['lp']
     ep = problem_kwargs['ep']
     th = problem_kwargs['th']
-    factor = problem_kwargs['factor']
-    fileHeadle = problem_kwargs['fileHeadle']
-    t_headle = '_pick.bin'
-    if fileHeadle[-len(t_headle):] != t_headle:
-        fileHeadle = fileHeadle + t_headle
-    with open(fileHeadle, 'rb') as input:
-        unpick = pickle.Unpickler(input)
-        problem = unpick.load()
-        problem.unpickmyself()
+    stokesletsInPipe_pipeFactor = problem_kwargs['stokesletsInPipe_pipeFactor']
+
     assert isinstance(problem, sf.stokesletsInPipeProblem)
     b = np.array(problem.get_b_list())
     residualNorm = np.array(problem.get_residualNorm_list())
     err = np.array(problem.get_err_list())
     f1_list, f2_list, f3_list = problem.get_f_list()
-    do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th, factor)
+    do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th, stokesletsInPipe_pipeFactor)
     return True
 
 
@@ -296,7 +285,7 @@ def construct(**main_kwargs):
     lp = problem_kwargs['lp']
     ep = problem_kwargs['ep']
     th = problem_kwargs['th']
-    factor = problem_kwargs['factor']
+    stokesletsInPipe_pipeFactor = problem_kwargs['stokesletsInPipe_pipeFactor']
     problem = problem_dic[matrix_method](**problem_kwargs)
     # problem = sf.stokesletsInPipeForceFreeProblem(**problem_kwargs)
 
@@ -307,7 +296,7 @@ def construct(**main_kwargs):
     err = np.array(problem.get_err_list())
     do_show_err(fileHeadle, b, residualNorm, err)
     f1_list, f2_list, f3_list = problem.get_f_list()
-    do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th, factor)
+    do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th, stokesletsInPipe_pipeFactor)
 
     PETSc.Sys().Print('                b -- residualNorm      ')
     PETSc.Sys().Print(np.hstack((b.reshape((-1, 1)), residualNorm)))
@@ -382,10 +371,10 @@ def debug_solve_stokeslets_fnode(fnode):
     dp = 0.1
     rp = 1
     lp = 1
-    factor = 1
+    stokesletsInPipe_pipeFactor = 1
     vpgeo = tunnel_geo()  # velocity node geo of pipe
     dth = 2 * np.arcsin(dp / 2 / rp)
-    vpgeo.create_deltatheta(dth=dth, radius=rp, length=lp, epsilon=0, with_cover=True, factor=factor)
+    vpgeo.create_deltatheta(dth=dth, radius=rp, length=lp, epsilon=0, with_cover=True, factor=stokesletsInPipe_pipeFactor)
     # vpgeo.show_nodes()
 
     problem.debug_solve_stokeslets_fnode(fnode, vpgeo)

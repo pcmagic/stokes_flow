@@ -1,4 +1,5 @@
 import numpy as np
+import os
 from scipy.io import loadmat
 
 class detail():
@@ -51,9 +52,13 @@ class detail():
         INDEX[kmax,:] = 0
         k_use = k_use[INDEX]
         n_use = n_use[INDEX]
-        mat_contents = loadmat('xn.mat')
+
+        t_path = os.path.dirname(os.path.abspath(__file__))
+        full_path = os.path.normpath(t_path + '/' + 'xn.mat')
+        mat_contents = loadmat(full_path)
         xn = mat_contents['xn']
-        mat_contents = loadmat('yn.mat')
+        full_path = os.path.normpath(t_path + '/' + 'yn.mat')
+        mat_contents = loadmat(full_path)
         yn = mat_contents['yn']
         xn_use = np.vstack((xn[kmax:1:-1, 1: nmax+1], xn[1: kmax + 1, 1: nmax+1]))
         yn_use =  np.vstack((yn[kmax:1-1:, 1: nmax+1], yn[1: kmax + 1, 1: nmax+1]))

@@ -6,28 +6,18 @@ import sys
 import petsc4py
 
 petsc4py.init(sys.argv)
-from os import path as ospath
-
-t_path = sys.path[0]
-t_path = ospath.dirname(t_path)
-if ospath.isdir(t_path):
-    sys.path = [t_path] + sys.path
-else:
-    err_msg = "can not add path father path"
-    raise ValueError(err_msg)
-
+# import warnings
+# from memory_profiler import profile
 import numpy as np
 from src import stokes_flow as sf
+# import stokes_flow as sf
 from src.stokes_flow import problem_dic, obj_dic
 from petsc4py import PETSc
 from src.geo import *
 from time import time
 import pickle
-from scipy.io import savemat
+from scipy.io import savemat, loadmat
 from src.ref_solution import *
-from scipy.io import loadmat
-import warnings
-from memory_profiler import profile
 
 
 # @profile
@@ -102,7 +92,7 @@ def get_problem_kwargs(**main_kwargs):
     precondition_method = OptDB.getString('g', 'none')
     plot_geo = OptDB.getBool('plot_geo', False)
     debug_mode = OptDB.getBool('debug', False)
-    matrix_method = OptDB.getString('sm', 'rs_plane')
+    matrix_method = OptDB.getString('sm', 'rs')
     restart = OptDB.getBool('restart', False)
     twoPara_n = OptDB.getInt('tp_n', 1)
     legendre_m = OptDB.getInt('legendre_m', 3)
@@ -235,7 +225,7 @@ def main_fun(**main_kwargs):
         if random_velocity:
             sphere_velocity = np.random.sample(6) * u
         else:
-            sphere_velocity = np.array([0, 0, u, 0, 0, 0])
+            sphere_velocity = np.array([0, u, 0, 0, 0, 0])
         sphere_geo0.set_rigid_velocity(sphere_velocity)
 
         problem = problem_dic[matrix_method](**problem_kwargs)
@@ -246,9 +236,9 @@ def main_fun(**main_kwargs):
         obj_sphere_kwargs = {'name': 'sphereObj_0_0'}
         sphere_geo1 = sphere_geo0.copy()
         if matrix_method in ('pf',):
-            sphere_geo1.create_n(n, radius + deltaLength * epsilon)
+            sphere_geo1.node_zoom((radius + deltaLength * epsilon) / radius)
         obj_sphere.set_data(sphere_geo1, sphere_geo0, **obj_sphere_kwargs)
-        obj_sphere.move((0, 0, 1.5))
+        obj_sphere.move((0, 0, 0))
         for i in range(n_obj_x * n_obj_y):
             ix = i // n_obj_x
             iy = i % n_obj_x
