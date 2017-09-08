@@ -433,6 +433,9 @@ def regularized_stokeslets_plane_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # ve
         dy * H2k + dy * dz * dz * dH2k / rk)  # Myz
     m11 = H1sk + dy * dy * H2sk - H1k - dy * dy * H2k - zwall * zwall * (-D1k - dy ** 2 * D2k) - 2 * zwall * (
         dH1k / rk + H2k) * zwall - 2 * zwall * (-dz * H2k - dy ** 2 * dz * dH2k / rk)  # Myy
+    # # PETSc.Sys.Print('DBG version')
+    # m11 = H1sk + dy * dy * H2sk - H1k - dy * dy * H2k - zwall * zwall * (-D1k - dy ** 2 * D2k) - 2 * zwall * (
+    #     dH1k / rk + H2k) * zwall + 2 * zwall * (-dz * H2k - dy ** 2 * dz * dH2k / rk)  # Myy
     m00 = m00 / (8 * np.pi)
     m01 = m01 / (8 * np.pi)
     m02 = m02 / (8 * np.pi)
@@ -1105,7 +1108,7 @@ def check_point_force_matrix_3d_petsc(**kwargs):
     return True
 
 
-def two_plate_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
+def two_plane_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
                               obj2: 'sf.stokesFlowObj',  # objct contain force information
                               m, **kwargs):
     # see Liron, N., & Mochon, S. (1976). Stokes flow for a stokeslet between two parallel flat plates. Journal of Engineering Mathematics, 10(4), 287-303.
@@ -1146,7 +1149,7 @@ def two_plate_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocit
     return True  # ' point_force_matrix, U = M * F '
 
 
-def check_two_plate_matrix_3d_petsc(**kwargs):
+def check_two_plane_matrix_3d_petsc(**kwargs):
     err_msg = 'The height of two plate system is necessary. '
     assert 'twoPlateHeight' in kwargs, err_msg
 

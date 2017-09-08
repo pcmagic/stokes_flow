@@ -9,6 +9,7 @@ from src import stokes_flow as sf
 
 __all__ = ['get_solver_kwargs', 'get_forceFree_kwargs', 'get_givenForce_kwargs', 'get_vtk_tetra_kwargs',
            'print_solver_info', 'print_forceFree_info', 'print_givenForce_info',
+           'get_shearFlow_kwargs', 'print_shearFlow_info',
            'get_ecoli_kwargs', 'print_ecoli_info', 'print_ecoli_U_info', 'print_single_ecoli_forceFree_result',
            'get_rod_kwargs', 'print_Rod_info',
            'get_sphere_kwargs', 'print_sphere_info', ]
@@ -154,6 +155,8 @@ def print_ecoli_info(ecoName, **problem_kwargs):
     eT = problem_kwargs['eT']
     Tfct = problem_kwargs['Tfct']
     zoom_factor = problem_kwargs['zoom_factor']
+    rot_norm = problem_kwargs['rot_norm']
+    rot_theta = problem_kwargs['rot_theta']
 
     PETSc.Sys.Print(ecoName, 'geo information: ')
     PETSc.Sys.Print('  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
@@ -163,6 +166,7 @@ def print_ecoli_info(ecoName, **problem_kwargs):
     PETSc.Sys.Print('    ntT, eT and Tfct of Tgeo are: %d, %f and %f' % (ntT, eT, Tfct))
     PETSc.Sys.Print('  ecoli center: %s, distance from head to tail is %f' % (str(center), dist_hs))
     PETSc.Sys.Print('  relative velocity of head and tail are %s and %s' % (str(rel_Us), str(rel_Uh)))
+    PETSc.Sys.Print('  rot_norm is %s, rot_theta is %f*pi' % (str(rot_norm), rot_theta))
     PETSc.Sys.Print('  geometry zoom factor is %f' % zoom_factor)
     return True
 
@@ -210,13 +214,9 @@ def get_solver_kwargs():
         t_headle = '_force_pipe.mat'
         forcepipe = forcepipe if forcepipe[-len(t_headle):] == t_headle else forcepipe + t_headle
         problem_kwargs['forcepipe'] = forcepipe
-    elif matrix_method in ('pf_stokesletsShearFlow',):
+    elif matrix_method in ('pf_stokesletsTwoPlane',):
         twoPlateHeight = OptDB.getReal('twoPlateHeight', 1)  # twoPlateHeight
         problem_kwargs['twoPlateHeight'] = twoPlateHeight
-        planeShearUx = OptDB.getReal('planeShearUx', 0)  #
-        planeShearUy = OptDB.getReal('planeShearUy', 0)  #
-        planeShearU = np.array((planeShearUx, planeShearUy, 0))
-        problem_kwargs['planeShearU'] = planeShearU
 
     return problem_kwargs
 
@@ -230,9 +230,9 @@ def print_solver_info(**problem_kwargs):
     solve_method = problem_kwargs['solve_method']
     precondition_method = problem_kwargs['precondition_method']
 
-    err_msg = "Only 'pf', 'pf_stokesletsInPipe', 'pf_stokesletsShearFlow'" \
+    err_msg = "Only 'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane'" \
               " and 'rs' methods are accept for this main code. "
-    acceptType = ('rs', 'rs_plane', 'pf', 'pf_stokesletsInPipe', 'pf_stokesletsShearFlow')
+    acceptType = ('rs', 'rs_plane', 'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane', )
     assert matrix_method in acceptType, err_msg
     PETSc.Sys.Print('output file headle: ' + fileHeadle)
     PETSc.Sys.Print('  create matrix method: %s, ' % matrix_method)
@@ -241,9 +241,9 @@ def print_solver_info(**problem_kwargs):
     elif matrix_method in ('pf_stokesletsInPipe',):
         forcepipe = problem_kwargs['forcepipe']
         PETSc.Sys.Print('  read force of pipe from: ' + forcepipe)
-    elif matrix_method in ('pf_stokesletsShearFlow',):
-        # raise Exception('set how to print matrix method please. ')
-        pass
+    elif matrix_method in ('pf_stokesletsTwoPlane',):
+        twoPlateHeight = problem_kwargs['twoPlateHeight']
+        PETSc.Sys.Print('Height of upper plane is %f ' % twoPlateHeight)
     else:
         raise Exception('set how to print matrix method please. ')
 
@@ -251,6 +251,21 @@ def print_solver_info(**problem_kwargs):
                     % (solve_method, precondition_method))
     PETSc.Sys.Print('  output file headle: ' + fileHeadle)
     PETSc.Sys.Print('  MPI size: %d' % size)
+
+
+def get_shearFlow_kwargs():
+    OptDB = PETSc.Options()
+    planeShearRatex = OptDB.getReal('planeShearRatex', 0)  #
+    planeShearRatey = OptDB.getReal('planeShearRatey', 0)  #
+    planeShearRate = np.array((planeShearRatex, planeShearRatey, 0)).reshape((1, 3))
+    problem_kwargs = {'planeShearRate': planeShearRate}
+    return problem_kwargs
+
+
+def print_shearFlow_info(**problem_kwargs):
+    planeShearRate = problem_kwargs['planeShearRate']
+    PETSc.Sys.Print('Given background flow: shear flow, rate: %s ' % str(planeShearRate.flatten()))
+    return True
 
 
 def get_forceFree_kwargs():
@@ -374,12 +389,12 @@ def get_sphere_kwargs():
     rs = OptDB.getReal('rs', 0.5)
     ds = OptDB.getReal('ds', 0.1)
     es = OptDB.getReal('es', -0.1)
-    ux = OptDB.getReal('ux', 1)
-    uy = OptDB.getReal('uy', 1)
-    uz = OptDB.getReal('uz', 1)
-    wx = OptDB.getReal('wx', 1)
-    wy = OptDB.getReal('wy', 1)
-    wz = OptDB.getReal('wz', 1)
+    ux = OptDB.getReal('ux', 0)
+    uy = OptDB.getReal('uy', 0)
+    uz = OptDB.getReal('uz', 0)
+    wx = OptDB.getReal('wx', 0)
+    wy = OptDB.getReal('wy', 0)
+    wz = OptDB.getReal('wz', 0)
 
     '''Generate a grid of sphere'''
     n_obj = OptDB.getInt('n', 1)

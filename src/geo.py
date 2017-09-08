@@ -28,8 +28,7 @@ class geo():
         self._glbIdx = np.array([])  # global indices
         self._glbIdx_all = np.array([])  # global indices for all process.
 
-    def mat_nodes(self,
-                  filename: str = '..',
+    def mat_nodes(self, filename: str = '..',
                   mat_handle: str = 'nodes'):
         err_msg = 'wrong mat file name. '
         assert filename != '..', err_msg
@@ -43,8 +42,7 @@ class geo():
         self.set_dmda()
         return True
 
-    def mat_elmes(self,
-                  filename: str = '..',
+    def mat_elmes(self, filename: str = '..',
                   mat_handle: str = 'elmes',
                   elemtype: str = ' '):
         err_msg = 'wrong mat file name. '
@@ -57,8 +55,7 @@ class geo():
         self._elemtype = elemtype
         return True
 
-    def text_nodes(self,
-                   filename: str = '..'):
+    def text_nodes(self, filename: str = '..'):
         err_msg = 'wrong mat file name. '
         assert filename != '..', err_msg
         nodes = np.loadtxt(filename)
@@ -69,8 +66,7 @@ class geo():
         self.set_dmda()
         return True
 
-    def mat_origin(self,
-                   filename: str = '..',
+    def mat_origin(self, filename: str = '..',
                    mat_handle: str = 'origin'):
         err_msg = 'wrong mat file name. '
         assert filename != '..', err_msg
@@ -79,8 +75,7 @@ class geo():
         self._origin = mat_contents[mat_handle].astype(np.float)
         return True
 
-    def mat_velocity(self,
-                     filename: str = '..',
+    def mat_velocity(self, filename: str = '..',
                      mat_handle: str = 'U'):
         err_msg = 'wrong mat file name. '
         assert filename != '..', err_msg

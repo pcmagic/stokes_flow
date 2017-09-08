@@ -14,12 +14,13 @@ petsc4py.init(sys.argv)
 # exit()
 
 import matplotlib
+
 matplotlib.use('Agg')
 import numpy as np
 from tqdm import tqdm
 # import pickle
 # from time import time
-# from scipy.io import loadmat
+from scipy.io import savemat, loadmat
 # from src.stokes_flow import problem_dic, obj_dic
 # from src.stokes_flow import problem_dic, obj_dic
 from src.objComposite import *
@@ -95,7 +96,7 @@ def main_fun(**main_kwargs):
 
             arrowFactor = np.max((1.5 * rRod, lRod / 2))
             finename = check_file_extension(fileHeadle, '.png')
-            rod_comp.png_nodes(finename=finename, arrowFactor=arrowFactor)
+            rod_comp.png_givenF(finename=finename, arrowFactor=arrowFactor)
             save_singleRod_vtk(problem)
             problem.destroy()
         else:
@@ -107,8 +108,10 @@ def main_fun(**main_kwargs):
 
 
 def job_script():
+    comm = PETSc.COMM_WORLD.tompi4py()
+    rank = comm.Get_rank()
     OptDB = PETSc.Options()
-    rod_W = OptDB.getReal('rod_W', 1)  # given torque amplitude of the rod
+    rod_torque = OptDB.getReal('rod_torque', 1)  # given torque amplitude of the rod
     n_RodThe = OptDB.getInt('n_RodThe', 10)
     n_RodPhi = OptDB.getInt('n_RodPhi', 10)
 
@@ -116,6 +119,7 @@ def job_script():
     lRod = problem_kwargs['lRod']
     fileHeadle = problem_kwargs['fileHeadle']
     RodCenter = problem_kwargs['RodCenter']
+    zoom_factor = problem_kwargs['zoom_factor']
 
     RodThe, RodPhi = np.meshgrid(np.linspace(0, np.pi / 2, n_RodThe),
                                  np.linspace(0, np.pi / 2, n_RodPhi))
@@ -123,8 +127,8 @@ def job_script():
     for i0, (t_RodThe, t_RodPhi) in enumerate(tqdm(zip(RodThe.flatten(), RodPhi.flatten()))):
         OptDB.setValue('RodThe', t_RodThe)
         OptDB.setValue('RodPhi', t_RodPhi)
-        OptDB.setValue('givenTy', rod_W * np.sin(t_RodPhi))
-        OptDB.setValue('givenTz', rod_W * np.cos(t_RodPhi))
+        OptDB.setValue('givenTy', rod_torque * np.sin(t_RodPhi))
+        OptDB.setValue('givenTz', rod_torque * np.cos(t_RodPhi))
         rod_U.append(main_fun())
         PETSc.Sys.Print(' ')
         PETSc.Sys.Print(' ')
@@ -135,6 +139,15 @@ def job_script():
     rod_u_y = rod_U[:, 1].reshape((n_RodThe, n_RodPhi))
     rod_u_z = rod_U[:, 2].reshape((n_RodThe, n_RodPhi))
     rod_u_xy = np.sqrt(rod_u_x ** 2 + rod_u_y ** 2)
+    rod_w_x = rod_U[:, 3].reshape((n_RodThe, n_RodPhi))
+    rod_w_y = rod_U[:, 4].reshape((n_RodThe, n_RodPhi))
+    rod_w_z = rod_U[:, 5].reshape((n_RodThe, n_RodPhi))
+    rod_w_all = np.sqrt(rod_w_x ** 2 + rod_w_y ** 2 + rod_w_z ** 2)
+    norm_fct = rod_w_all * lRod / 2
+    norm_rod_u_x = rod_u_x / norm_fct
+    norm_rod_u_y = rod_u_y / norm_fct
+    norm_rod_u_z = rod_u_z / norm_fct
+    norm_rod_u_xy = rod_u_xy / norm_fct
 
     # plot and save figures.
     # rod_u_xy
@@ -145,7 +158,7 @@ def job_script():
     figTitHeadle = 'l%.2f_z%.2f_' % (lRod, RodCenter[-1])
     fig0 = plt.figure()
     ax0 = fig0.gca()
-    cf = ax0.contourf(RodThe, RodPhi, rod_u_xy / (rod_W * lRod / 2))
+    cf = ax0.contourf(RodThe, RodPhi, norm_rod_u_xy)
     fig0.colorbar(cf, ax=ax0)
     ax0.set_title(figTitHeadle + 'uxy/(w*0.5*l)')
     ax0.set_xlabel('theta')
@@ -156,7 +169,7 @@ def job_script():
 
     fig0 = plt.figure()
     ax0 = fig0.gca()
-    cf = ax0.contourf(RodThe, RodPhi, rod_u_x / (rod_W * lRod / 2))
+    cf = ax0.contourf(RodThe, RodPhi, norm_rod_u_x)
     fig0.colorbar(cf, ax=ax0)
     ax0.set_title(figTitHeadle + 'ux/(w*0.5*l)')
     ax0.set_xlabel('theta')
@@ -167,7 +180,7 @@ def job_script():
 
     fig0 = plt.figure()
     ax0 = fig0.gca()
-    cf = ax0.contourf(RodThe, RodPhi, rod_u_y / (rod_W * lRod / 2))
+    cf = ax0.contourf(RodThe, RodPhi, norm_rod_u_y)
     fig0.colorbar(cf, ax=ax0)
     ax0.set_title(figTitHeadle + 'uy/(w*0.5*l)')
     ax0.set_xlabel('theta')
@@ -175,6 +188,63 @@ def job_script():
     fig0.set_size_inches(18.5, 10.5)
     fig0.savefig('%s_uy.png' % fileHeadle, dpi=100)
     plt.close()
+
+    fig0 = plt.figure()
+    ax0 = fig0.gca()
+    cf = ax0.contourf(RodThe, RodPhi, norm_rod_u_y)
+    fig0.colorbar(cf, ax=ax0)
+    ax0.set_title(figTitHeadle + 'uy/(w*0.5*l)')
+    ax0.set_xlabel('theta')
+    ax0.set_ylabel('phi')
+    fig0.set_size_inches(18.5, 10.5)
+    fig0.savefig('%s_uy.png' % fileHeadle, dpi=100)
+    plt.close()
+
+    fig0 = plt.figure()
+    ax0 = fig0.gca()
+    ax0.plot(np.mean(RodPhi, axis=1), np.mean(norm_rod_u_x, axis=1))
+    ax0.set_title(figTitHeadle + 'RodPhi vs rod_u_x')
+    ax0.set_xlabel('RodPhi')
+    ax0.set_ylabel('rod_u_x')
+    fig0.set_size_inches(18.5, 10.5)
+    fig0.savefig('%s_RodPhi_ux.png' % fileHeadle, dpi=100)
+    plt.close()
+
+    fig0 = plt.figure()
+    ax0 = fig0.gca()
+    ax0.plot(np.mean(RodPhi, axis=1), np.mean(norm_rod_u_y, axis=1))
+    ax0.set_title(figTitHeadle + 'RodPhi vs rod_u_y')
+    ax0.set_xlabel('RodPhi')
+    ax0.set_ylabel('rod_u_y')
+    fig0.set_size_inches(18.5, 10.5)
+    fig0.savefig('%s_RodPhi_uy.png' % fileHeadle, dpi=100)
+    plt.close()
+
+    fig0 = plt.figure()
+    ax0 = fig0.gca()
+    ax0.plot(np.mean(RodPhi, axis=1), np.mean(norm_rod_u_xy, axis=1))
+    ax0.set_title(figTitHeadle + 'RodPhi vs rod_u_xy')
+    ax0.set_xlabel('RodPhi')
+    ax0.set_ylabel('rod_u_xy')
+    fig0.set_size_inches(18.5, 10.5)
+    fig0.savefig('%s_RodPhi_uxy.png' % fileHeadle, dpi=100)
+    plt.close()
+
+    mat_name = check_file_extension(fileHeadle, '.mat')
+    if rank == 0:
+        savemat(mat_name,
+                {'lRod':        lRod,
+                 'RodThe':      RodThe,
+                 'RodPhi':      RodPhi,
+                 'RodCenter':   RodCenter,
+                 'zoom_factor': zoom_factor,
+                 'rod_u_x':     rod_u_x,
+                 'rod_u_y':     rod_u_y,
+                 'rod_u_z':     rod_u_z,
+                 'rod_w_x':     rod_w_x,
+                 'rod_w_y':     rod_w_y,
+                 'rod_w_z':     rod_w_z, },
+                oned_as='column')
 
 
 if __name__ == '__main__':

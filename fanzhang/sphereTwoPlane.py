@@ -35,7 +35,7 @@ def get_problem_kwargs(**main_kwargs):
     OptDB = PETSc.Options()
     fileHeadle = OptDB.getString('f', 'sphereTwoPlane')
     matrix_method = problem_kwargs['matrix_method']
-    if matrix_method in ('pf_stokesletsShearFlow',):
+    if matrix_method in ('pf_stokesletsTwoPlane',):
         twoPlateHeight = problem_kwargs['twoPlateHeight']
         movez = OptDB.getReal('movez', twoPlateHeight / 2)
     else:
@@ -55,22 +55,19 @@ def main_fun(**main_kwargs):
     problem_kwargs = get_problem_kwargs(**main_kwargs)
     print_case_info(**problem_kwargs)
     rs = problem_kwargs['rs']
-    sphere_velocity = problem_kwargs['sphere_velocity']
-    movez = problem_kwargs['movez']
     matrix_method = problem_kwargs['matrix_method']
+    sphere_velocity = problem_kwargs['sphere_velocity']
 
-    obj_sphere = create_sphere(**problem_kwargs)[0]
-    displacement = np.array((0, 0, movez))
-    obj_sphere.move(displacement)
-    problem = sf.stokesletsShearFlowProblem(**problem_kwargs)
+    obj_sphere = create_move_single_sphere(**problem_kwargs)[0]
+    problem = problem_dic[matrix_method](**problem_kwargs)
     problem.do_solve_process((obj_sphere, ))
 
     force_sphere = obj_sphere.get_total_force()
-    temp_F = (6 * rs, 6 * rs, 6 * rs, 8 * rs ** 3, 8 * rs ** 3, 8 * rs ** 3) * sphere_velocity[0]
+    temp_F = (6 * rs, 6 * rs, 6 * rs, 8 * rs ** 3, 8 * rs ** 3, 8 * rs ** 3)
     force_sphere = force_sphere / temp_F / np.pi
     PETSc.Sys.Print('---->>>%s: Resultant is %s' % (str(problem), str(force_sphere)))
 
-    save_grid_sphere_vtk(problem)
+    save_grid_sphere_vtk(problem, )
 
     return True
 
@@ -93,7 +90,7 @@ def create_M(**main_kwargs):
 
     obj_sphere = obj_dic[matrix_method]()
     sphere_geo1 = sphere_geo0.copy()
-    if matrix_method in ('pf', 'pf_stokesletsShearFlow',):
+    if matrix_method in ('pf', 'pf_ShearFlow',):
         sphere_geo1.node_zoom((radius + deltaLength * epsilon) / radius)
     obj_sphere.set_data(sphere_geo1, sphere_geo0, name='sphereObj_0_0')
     obj_sphere.move((0, 0, movez))

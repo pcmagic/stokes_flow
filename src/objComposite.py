@@ -6,7 +6,7 @@ from src import stokes_flow as sf
 __all__ = ['createEcoliComp_ellipse', 'createEcoliComp_tunnel', 'createEcoli_tunnel',
            'create_capsule',
            'create_rod',
-           'create_sphere']
+           'create_sphere', 'create_move_single_sphere']
 
 
 def createEcoliComp_ellipse(name='...', **kwargs):
@@ -68,7 +68,7 @@ def createEcoliComp_ellipse(name='...', **kwargs):
     ecoli_comp.add_obj(vhobj1, rel_U=rel_Uh)
 
     rot_norm = kwargs['rot_norm']
-    rot_theta = kwargs['rot_theta']
+    rot_theta = kwargs['rot_theta'] * np.pi
     ecoli_comp.node_rotation(norm=rot_norm, theta=rot_theta, rotation_origin=center)
     return ecoli_comp
 
@@ -229,6 +229,15 @@ def create_sphere(namehandle='sphereObj', **kwargs):
         obj2.move(t_coord)
         obj2.get_u_geo().set_rigid_velocity(t_velocity)
         obj_list.append(obj2)
+    return obj_list
+
+
+def create_move_single_sphere(namehandle='sphereObj', **kwargs):
+    movez = kwargs['movez']
+    obj_sphere = create_sphere(namehandle, **kwargs)[0]
+    displacement = np.array((0, 0, movez))
+    obj_sphere.move(displacement)
+    obj_list = (obj_sphere, )
     return obj_list
 
 

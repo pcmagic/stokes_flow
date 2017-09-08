@@ -24,7 +24,8 @@ def save_singleEcoli_vtk(problem: sf.stokesFlowProblem, ref_U=None, createHandle
     with_T_geo = len(ecoli_comp.get_obj_list()) == 4
     ref_U = ecoli_comp.get_ref_U() if ref_U is None else ref_U
 
-    problem.vtk_obj(fileHeadle)
+    # problem.vtk_obj(fileHeadle)
+    problem.vtk_self(fileHeadle)
 
     # bgeo = geo()
     # bnodesHeadle = problem_kwargs['bnodesHeadle']
@@ -62,7 +63,11 @@ def save_singleEcoli_vtk(problem: sf.stokesFlowProblem, ref_U=None, createHandle
     return True
 
 
-def save_grid_sphere_vtk(problem: sf.stokesFlowProblem):
+def save_grid_sphere_vtk(problem: sf.stokesFlowProblem, createHandle=create_sphere):
+    OptDB = PETSc.Options()
+    if not OptDB.getBool('save_grid_sphere_vtk', True):
+        return False
+
     t0 = time()
     problem_kwargs = problem.get_kwargs()
     fileHeadle = problem_kwargs['fileHeadle']
@@ -74,7 +79,7 @@ def save_grid_sphere_vtk(problem: sf.stokesFlowProblem):
     check_kwargs = problem_kwargs.copy()
     check_kwargs['ds'] = problem_kwargs['ds'] * 1.2
     obj_sphere_check = sf.stokesFlowObj()
-    obj_sphere_check.combine(create_sphere(**check_kwargs))
+    obj_sphere_check.combine(createHandle(**check_kwargs))
     velocity_err = problem.vtk_check(fileHeadle, obj_sphere_check)
     PETSc.Sys.Print('velocity error (total, x, y, z): ', velocity_err)
 
@@ -86,7 +91,7 @@ def save_grid_sphere_vtk(problem: sf.stokesFlowProblem):
 
 def save_singleRod_vtk(problem: sf.stokesFlowProblem, ref_U=None, createHandle=create_rod):
     OptDB = PETSc.Options()
-    if not OptDB.getBool('save_singleEcoli_vtk', True):
+    if not OptDB.getBool('save_singleRod_vtk', True):
         return False
 
     t0 = time()
