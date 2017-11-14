@@ -29,22 +29,23 @@ from petsc4py import PETSc
 # cbd_geo.combine(geo_list=[tgeo, fgeo, ])
 # cbd_geo.show_nodes(linestyle='-')
 
-# deltalength = 0.1
-# deltatheta = np.pi/6
-# radius = 0.1
-# epsilon = -1
-# R = 0.6
-# B = 0.1
-# n_c = 1
-# tgeo = supHelix()
-# fgeo = tgeo.create_deltatheta(deltatheta, radius, R, B, n_c, epsilon, True, factor=0.5)
-# # tgeo.show_nodes()
-# # fgeo.show_nodes()
+deltalength = 0.1
+dth = np.pi / 6
+radius = 0.1
+epsilon = -1
+R = 0.6
+B = 0.1
+n_c = 0.5
+tgeo = supHelix()
+fgeo = tgeo.create_deltatheta(dth=dth, radius=radius, R=R, B=B, n_c=n_c, epsilon=epsilon, with_cover=1,
+                              factor=1, left_hand=0)
+tgeo.show_nodes(linestyle='-')
+# fgeo.show_nodes()
 # cbd_geo = geo()
 # cbd_geo.combine(geo_list=[tgeo, fgeo, ])
 # cbd_geo.show_nodes(linestyle='-')
 
-sphere0 = ellipse_geo()
-sphere0.create_delta(0.07, 1, 0.5)
-print(sphere0.get_n_nodes())
-# sphere0.show_nodes()
+# sphere0 = ellipse_geo()
+# sphere0.create_delta(0.07, 1, 0.5)
+# print(sphere0.get_n_nodes())
+# # sphere0.show_nodes()

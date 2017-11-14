@@ -10,40 +10,93 @@ from src import stokes_flow as sf
 __all__ = ['get_solver_kwargs', 'get_forceFree_kwargs', 'get_givenForce_kwargs', 'get_vtk_tetra_kwargs',
            'print_solver_info', 'print_forceFree_info', 'print_givenForce_info',
            'get_shearFlow_kwargs', 'print_shearFlow_info',
-           'get_ecoli_kwargs', 'print_ecoli_info', 'print_ecoli_U_info', 'print_single_ecoli_forceFree_result',
+           'get_ecoli_kwargs', 'print_ecoli_info', 'print_ecoli_U_info',
+           'print_single_ecoli_forceFree_result', 'print_single_ecoli_force_result',
            'get_rod_kwargs', 'print_Rod_info',
            'get_sphere_kwargs', 'print_sphere_info', ]
 
 
-def print_single_ecoli_forceFree_result(ecoli_comp: sf.forceFreeComposite, **kwargs):
+def print_single_ecoli_force_result(ecoli_comp: sf.forceFreeComposite, prefix='', part='full', **kwargs):
+    def print_full():
+        head_obj = ecoli_comp.get_obj_list()[0]
+        tail_obj = ecoli_comp.get_obj_list()[1:]
+        head_force = head_obj.get_total_force()
+        tail_force = np.sum([t_obj.get_total_force() for t_obj in tail_obj], axis=0)
+        helix0_force = tail_obj[0].get_total_force()
+        helix1_force = tail_obj[1].get_total_force()
+        total_force = head_force + tail_force
+        abs_force = 0.5 * (np.abs(head_force) + np.abs(tail_force))
+        absF = np.sqrt(np.sum(abs_force[:3] ** 2))
+        absT = np.sqrt(np.sum(abs_force[3:] ** 2))
+        temp_F = np.array((absF, absF, absF, absT, absT, absT))
+        non_dim_F = total_force / temp_F
+        non_dim_sumF = np.sqrt(np.sum(non_dim_F[:3] ** 2))
+        non_dim_sumT = np.sqrt(np.sum(non_dim_F[3:] ** 2))
+        PETSc.Sys.Print('%s head resultant is' % prefix, head_force)
+        PETSc.Sys.Print('%s tail resultant is' % prefix, tail_force)
+        PETSc.Sys.Print('%s helix0 resultant is' % prefix, helix0_force)
+        PETSc.Sys.Print('%s helix1 resultant is' % prefix, helix1_force)
+        if len(tail_obj) == 3:
+            PETSc.Sys.Print('%s Tgeo resultant is' % prefix, tail_obj[2].get_total_force())
+
+        PETSc.Sys.Print('%s total resultant is' % prefix, total_force)
+        PETSc.Sys.Print('%s non_dim_F' % prefix, non_dim_F)
+        PETSc.Sys.Print('%s non_dim: sumF = %f, sumT = %f' % (prefix, non_dim_sumF, non_dim_sumT))
+        return total_force
+
+    def print_head():
+        head_obj = ecoli_comp.get_obj_list()[0]
+        head_force = head_obj.get_total_force()
+        PETSc.Sys.Print('%s head resultant is' % prefix, head_force)
+        return head_force
+
+    def print_tail():
+        tail_obj = ecoli_comp.get_obj_list()[0:]
+        tail_force = np.sum([t_obj.get_total_force() for t_obj in tail_obj], axis=0)
+        helix0_force = tail_obj[0].get_total_force()
+        helix1_force = tail_obj[1].get_total_force()
+        PETSc.Sys.Print('%s tail resultant is' % prefix, tail_force)
+        PETSc.Sys.Print('%s helix0 resultant is' % prefix, helix0_force)
+        PETSc.Sys.Print('%s helix1 resultant is' % prefix, helix1_force)
+        if len(tail_obj) == 3:
+            PETSc.Sys.Print('%s Tgeo resultant is' % prefix, tail_obj[2].get_total_force())
+        return tail_force
+
+    def do_fun():
+        return {'head': print_head,
+                'tail': print_tail,
+                'full': print_full}[part]
+
+    total_force = do_fun()()
+    return total_force
+
+
+def print_single_ecoli_forceFree_result(ecoli_comp, **kwargs):
     rh1 = kwargs['rh1']
     zoom_factor = kwargs['zoom_factor']
+    if isinstance(ecoli_comp, sf.forceFreeComposite):
+        # normally, input is a force free composite object
+        ref_U = ecoli_comp.get_ref_U()
+    else:
+        # input is a problem contain single ecoli, given velocity. this code NOT robustic.
+        ref_U = kwargs['ecoli_U']
     rel_Us = kwargs['rel_Us']
     rel_Uh = kwargs['rel_Uh']
 
-    with_T_geo = len(ecoli_comp.get_obj_list()) == 4
-    if with_T_geo:
-        vsobj, vhobj0, vhobj1, vTobj = ecoli_comp.get_obj_list()
-        temp_f = 0.5 * (np.abs(vsobj.get_force().reshape((-1, 3)).sum(axis=0)) +
-                        np.abs(vhobj0.get_force().reshape((-1, 3)).sum(axis=0) +
-                               vhobj1.get_force().reshape((-1, 3)).sum(axis=0) +
-                               vTobj.get_force().reshape((-1, 3)).sum(axis=0)))
-    else:
-        vsobj, vhobj0, vhobj1 = ecoli_comp.get_obj_list()
-        temp_f = 0.5 * (np.abs(vsobj.get_force().reshape((-1, 3)).sum(axis=0)) +
-                        np.abs(vhobj0.get_force().reshape((-1, 3)).sum(axis=0) +
-                               vhobj1.get_force().reshape((-1, 3)).sum(axis=0)))
-    temp_F = np.hstack((temp_f, temp_f * zoom_factor))
-    non_dim_F = ecoli_comp.get_total_force() / temp_F
     t_nondim = np.sqrt(np.sum((rel_Uh[-3:] + rel_Us[-3:]) ** 2))
-    non_dim_U = ecoli_comp.get_ref_U() / np.array(
-            (zoom_factor * rh1, zoom_factor * rh1, zoom_factor * rh1, 1, 1, 1)) / t_nondim
-    PETSc.Sys.Print('non_dim_U', non_dim_U)
-    PETSc.Sys.Print('non_dim_F', non_dim_F)
-    head_U = rel_Us + ecoli_comp.get_ref_U()
-    tail_U = rel_Uh + ecoli_comp.get_ref_U()
-    PETSc.Sys.Print('velocity_sphere', head_U)
-    PETSc.Sys.Print('velocity_helix', tail_U)
+    non_dim_U = ref_U / t_nondim / \
+                np.array((zoom_factor * rh1, zoom_factor * rh1, zoom_factor * rh1, 1, 1, 1))
+    non_dim_sumU = np.sqrt(np.sum(non_dim_U[:3] ** 2))
+    non_dim_sumW = np.sqrt(np.sum(non_dim_U[3:] ** 2))
+    PETSc.Sys.Print(' absolute ref U', ref_U)
+    PETSc.Sys.Print(' non_dim_U', non_dim_U)
+    PETSc.Sys.Print(' non_dim: sumU = %f, sumW = %f' % (non_dim_sumU, non_dim_sumW))
+    head_U = rel_Us + ref_U
+    tail_U = rel_Uh + ref_U
+    PETSc.Sys.Print(' velocity_sphere', head_U)
+    PETSc.Sys.Print(' velocity_helix', tail_U)
+
+    print_single_ecoli_force_result(ecoli_comp, **kwargs)
     return head_U, tail_U
 
 
@@ -51,10 +104,12 @@ def print_ecoli_U_info(ecoName, **problem_kwargs):
     rel_Us = problem_kwargs['rel_Us']
     rel_Uh = problem_kwargs['rel_Uh']
     ecoli_U = problem_kwargs['ecoli_U']
+    ecoli_part = problem_kwargs['ecoli_part']
     PETSc.Sys.Print(ecoName, 'given velocity information: ')
     PETSc.Sys.Print('  reference velocity of ecoli is %s' % str(ecoli_U))
     PETSc.Sys.Print('  global velocity of head is %s' % str(rel_Us + ecoli_U))
     PETSc.Sys.Print('  global velocity of tail is %s' % str(rel_Uh + ecoli_U))
+    PETSc.Sys.Print('  current ecoli part is %s' % ecoli_part)
     return True
 
 
@@ -67,7 +122,7 @@ def get_ecoli_kwargs():
     ch = OptDB.getReal('ch', 0.1)  # cycles of helix
     ph = OptDB.getReal('ph', 3)  # helix pitch
     hfct = OptDB.getReal('hfct', 1)  # helix axis line factor, put more nodes near both tops
-    with_cover = OptDB.getBool('with_cover', True)
+    with_cover = OptDB.getInt('with_cover', 1)
     left_hand = OptDB.getBool('left_hand', False)
     rs = OptDB.getReal('rs', 0.5)  # radius of head
     rs1 = OptDB.getReal('rs1', rs * 2)  # radius of head
@@ -82,14 +137,29 @@ def get_ecoli_kwargs():
     Tfct = OptDB.getReal('Tfct', 1)  # Tgeo axis line factor, put more nodes near both tops
     with_T_geo = OptDB.getBool('with_T_geo', True)
 
-    rel_Usx = OptDB.getReal('rel_Usx', 0)
-    rel_Usy = OptDB.getReal('rel_Usy', 0)
-    rel_Usz = OptDB.getReal('rel_Usz', 0)
-    rel_Uhx = OptDB.getReal('rel_Uhx', 0)
-    rel_Uhy = OptDB.getReal('rel_Uhy', 0)
-    rel_Uhz = OptDB.getReal('rel_Uhz', 1)
-    rel_Us = np.array((0, 0, 0, rel_Usx, rel_Usy, rel_Usz))  # relative omega of sphere
-    rel_Uh = np.array((0, 0, 0, rel_Uhx, rel_Uhy, rel_Uhz))  # relative omega of helix
+    # rotate the ecoli, original it is along z axis.
+    rot_theta = OptDB.getReal('rot_theta', 0)
+    rot_norm = np.array((1, 0, 0))  # currently is x axis.
+
+    rel_usx = OptDB.getReal('rel_usx', 0)
+    rel_uhx = OptDB.getReal('rel_uhx', 0)
+    rel_usy = OptDB.getReal('rel_usy', 0)
+    rel_uhy = OptDB.getReal('rel_uhy', 0)
+    rel_usz = OptDB.getReal('rel_usz', 0)
+    rel_uhz = OptDB.getReal('rel_uhz', 0)
+    rel_wsx = OptDB.getReal('rel_wsx', 0)
+    rel_whx = OptDB.getReal('rel_whx', 0)
+    rel_wsy = OptDB.getReal('rel_wsy', 0)
+    rel_why = OptDB.getReal('rel_why', 0)
+    rel_wsz = OptDB.getReal('rel_wsz', 0)
+    rel_whz = OptDB.getReal('rel_whz', 0)
+    t_theta = rot_theta * np.pi
+    # relative velocity of sphere
+    rel_Us = np.array((0, rel_usz * np.sin(t_theta), rel_usz * np.cos(t_theta),
+                       0, rel_wsz * np.sin(t_theta), rel_wsz * np.cos(t_theta)))
+    # relative velocity of helix
+    rel_Uh = np.array((0, rel_uhz * np.sin(t_theta), rel_uhz * np.cos(t_theta),
+                       0, rel_whz * np.sin(t_theta), rel_whz * np.cos(t_theta)))
     dist_hs = OptDB.getReal('dist_hs', 2)  # distance between head and tail
     centerx = OptDB.getReal('centerx', 0)
     centery = OptDB.getReal('centery', 0)
@@ -97,9 +167,6 @@ def get_ecoli_kwargs():
     center = np.array((centerx, centery, centerz))  # center of ecoli
     zoom_factor = OptDB.getReal('zoom_factor', 1)
 
-    # rotate the ecoli, original it is along z axis.
-    rot_theta = OptDB.getReal('rot_theta', 0)
-    rot_norm = np.array((1, 0, 0))  # currently is x axis.
     ecoli_kwargs = {
         'rh1':         rh1,
         'rh2':         rh2,
@@ -155,8 +222,15 @@ def print_ecoli_info(ecoName, **problem_kwargs):
     eT = problem_kwargs['eT']
     Tfct = problem_kwargs['Tfct']
     zoom_factor = problem_kwargs['zoom_factor']
-    rot_norm = problem_kwargs['rot_norm']
-    rot_theta = problem_kwargs['rot_theta']
+    # additional properties of ecoli composite, previous version of kwargs may not exist.
+    if 'rot_norm' in problem_kwargs.keys():
+        rot_norm = problem_kwargs['rot_norm']
+    else:
+        rot_norm = np.full(3, np.nan)
+    if 'rot_theta' in problem_kwargs.keys():
+        rot_theta = problem_kwargs['rot_theta']
+    else:
+        rot_theta = np.nan
 
     PETSc.Sys.Print(ecoName, 'geo information: ')
     PETSc.Sys.Print('  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
@@ -232,7 +306,7 @@ def print_solver_info(**problem_kwargs):
 
     err_msg = "Only 'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane'" \
               " and 'rs' methods are accept for this main code. "
-    acceptType = ('rs', 'rs_plane', 'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane', )
+    acceptType = ('rs', 'rs_plane', 'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane',)
     assert matrix_method in acceptType, err_msg
     PETSc.Sys.Print('output file headle: ' + fileHeadle)
     PETSc.Sys.Print('  create matrix method: %s, ' % matrix_method)

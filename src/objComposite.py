@@ -46,7 +46,7 @@ def createEcoliComp_ellipse(name='...', **kwargs):
     vhobj0.zoom(zoom_factor)
     vhobj0.move(moveh * zoom_factor)
     vhobj1 = vhobj0.copy()
-    vhobj1.node_rotation(norm=(0, 0, 1), theta=np.pi, rotation_origin=(0, 0, 0))
+    vhobj1.node_rotation(norm=(0, 0, 1), theta=np.pi, rotation_origin=center)
     vhobj1.set_name('helix_1')
 
     # create sphere
@@ -126,11 +126,11 @@ def createEcoli_tunnel(**kwargs):
     matrix_method = kwargs['matrix_method']
     lh = ph * ch  # length of helix
     movesz = 0.5 * (dist_hs - ls + lh) + ls / 2
-    movehz = 0.5 * (dist_hs + ls - lh) + lh / 2
+    movehz = -1 * (0.5 * (dist_hs + ls - lh) + lh / 2)
     # movesz = (ls + dist_hs) / 2
     # movehz = (lh + dist_hs) / 2
     moves = np.array((0, 0, movesz)) + center  # move distance of sphere
-    moveh = np.array((rT1 - rh1, 0, -movehz)) + center  # move distance of helix
+    moveh = np.array((rT1 - rh1, 0, movehz)) + center  # move distance of helix
     lT = (rT1 + rh2) * 2
     objtype = sf.obj_dic[matrix_method]
 
@@ -152,7 +152,7 @@ def createEcoli_tunnel(**kwargs):
     vhobj0.node_rotation(norm=np.array((0, 0, 1)), theta=theta)
     vhobj0.move(moveh * zoom_factor)
     vhobj1 = vhobj0.copy()
-    vhobj1.node_rotation(norm=(0, 0, 1), theta=np.pi, rotation_origin=(0, 0, 0))
+    vhobj1.node_rotation(norm=(0, 0, 1), theta=np.pi, rotation_origin=center)
     vhobj1.set_name('helix_1')
 
     # create head
@@ -172,9 +172,9 @@ def createEcoli_tunnel(**kwargs):
     # factor = OptDB.getReal('dbg_move_factor', 1)
     # PETSc.Sys.Print('--------------------> DBG: dbg_move_factor = %f' % factor)
     # moveT = np.array((0, 0, moveh[-1] + lh / 2 + rh2 * factor))
-    moveT = np.array((0, 0, moveh[-1] + lh / 2))
+    moveT = np.array((0, 0, movehz + lh / 2)) + center
     vTgeo = tunnel_geo()
-    fTgeo = vTgeo.create_deltatheta(dth=dtT, radius=rT2, factor=Tfct, length=lT, epsilon=eT, with_cover=True)
+    fTgeo = vTgeo.create_deltatheta(dth=dtT, radius=rT2, factor=Tfct, length=lT, epsilon=eT, with_cover=1)
     vTobj = objtype()
     vTobj.set_data(fTgeo, vTgeo, name='T_shape_0')
     theta = -np.pi / 2
@@ -182,19 +182,23 @@ def createEcoli_tunnel(**kwargs):
     vTobj.zoom(zoom_factor)
     vTobj.move(moveT * zoom_factor)
 
-    vsobj.node_rotation(norm=np.array((0, 0, 1)), theta=np.pi / 4)
-    vhobj0.node_rotation(norm=np.array((0, 0, 1)), theta=np.pi / 4)
-    vhobj1.node_rotation(norm=np.array((0, 0, 1)), theta=np.pi / 4)
-    vTobj.node_rotation(norm=np.array((0, 0, 1)), theta=np.pi / 4)
+    theta = np.pi / 4 - ch * np.pi
+    vsobj.node_rotation(norm=np.array((0, 0, 1)), theta=theta, rotation_origin=center)
+    vhobj0.node_rotation(norm=np.array((0, 0, 1)), theta=theta, rotation_origin=center)
+    vhobj1.node_rotation(norm=np.array((0, 0, 1)), theta=theta, rotation_origin=center)
+    vTobj.node_rotation(norm=np.array((0, 0, 1)), theta=theta, rotation_origin=center)
     return vsobj, vhobj0, vhobj1, vTobj
 
 
 def createEcoliComp_tunnel(name='...', **kwargs):
-    vsobj, vhobj0, vhobj1, vTobj = createEcoli_tunnel(**kwargs)
     with_T_geo = kwargs['with_T_geo']
     center = kwargs['center']
     rel_Us = kwargs['rel_Us']
     rel_Uh = kwargs['rel_Uh']
+
+    if not with_T_geo:
+        kwargs['rT1'] = kwargs['rh1']
+    vsobj, vhobj0, vhobj1, vTobj = createEcoli_tunnel(**kwargs)
     ecoli_comp = sf.forceFreeComposite(center, name)
     ecoli_comp.add_obj(vsobj, rel_U=rel_Us)
     ecoli_comp.add_obj(vhobj0, rel_U=rel_Uh)
@@ -237,7 +241,7 @@ def create_move_single_sphere(namehandle='sphereObj', **kwargs):
     obj_sphere = create_sphere(namehandle, **kwargs)[0]
     displacement = np.array((0, 0, movez))
     obj_sphere.move(displacement)
-    obj_list = (obj_sphere, )
+    obj_list = (obj_sphere,)
     return obj_list
 
 

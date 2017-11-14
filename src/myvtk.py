@@ -7,12 +7,13 @@ from src.stokes_flow import obj_dic
 from src.ref_solution import *
 from src.geo import *
 
-__all__ = ['save_singleEcoli_vtk',
+__all__ = ['save_singleEcoli_vtk', 'save_singleEcoli_U_vtk', 'save_singleEcoli_U_4part_vtk',
            'save_grid_sphere_vtk',
            'save_singleRod_vtk', ]
 
 
-def save_singleEcoli_vtk(problem: sf.stokesFlowProblem, ref_U=None, createHandle=createEcoliComp_tunnel):
+def save_singleEcoli_vtk(problem: sf.stokesFlowProblem, createHandle=createEcoliComp_tunnel):
+    # force free
     OptDB = PETSc.Options()
     if not OptDB.getBool('save_singleEcoli_vtk', True):
         return False
@@ -20,9 +21,8 @@ def save_singleEcoli_vtk(problem: sf.stokesFlowProblem, ref_U=None, createHandle
     t0 = time()
     problem_kwargs = problem.get_kwargs()
     fileHeadle = problem_kwargs['fileHeadle']
-    ecoli_comp = problem.get_obj_list()[0]
-    with_T_geo = len(ecoli_comp.get_obj_list()) == 4
-    ref_U = ecoli_comp.get_ref_U() if ref_U is None else ref_U
+    with_T_geo = len(problem.get_all_obj_list()) == 4
+    ref_U = problem.get_obj_list()[0].get_ref_U()
 
     # problem.vtk_obj(fileHeadle)
     problem.vtk_self(fileHeadle)
@@ -42,22 +42,141 @@ def save_singleEcoli_vtk(problem: sf.stokesFlowProblem, ref_U=None, createHandle
     check_kwargs['hfct'] = 1
     check_kwargs['Tfct'] = 1
     ecoli_comp_check = createHandle(**check_kwargs)
-
     ecoli_comp_check.set_ref_U(ref_U)
-    if with_T_geo:
-        velocity_err_sphere, velocity_err_helix0, velocity_err_helix1, velocity_err_Tgeo = \
-            problem.vtk_check(fileHeadle, ecoli_comp_check)
-        PETSc.Sys.Print('velocity error of sphere (total, x, y, z): ', velocity_err_sphere)
-        PETSc.Sys.Print('velocity error of helix0 (total, x, y, z): ', velocity_err_helix0)
-        PETSc.Sys.Print('velocity error of helix1 (total, x, y, z): ', velocity_err_helix1)
-        PETSc.Sys.Print('velocity error of Tgeo (total, x, y, z): ', velocity_err_Tgeo)
-    else:
-        velocity_err_sphere, velocity_err_helix0, velocity_err_helix1 = \
-            problem.vtk_check(fileHeadle, ecoli_comp_check)
-        PETSc.Sys.Print('velocity error of sphere (total, x, y, z): ', velocity_err_sphere)
-        PETSc.Sys.Print('velocity error of helix0 (total, x, y, z): ', velocity_err_helix0)
-        PETSc.Sys.Print('velocity error of helix1 (total, x, y, z): ', velocity_err_helix1)
+    # # dbg
+    # for obj in ecoli_comp_check.get_obj_list():
+    #     filename = fileHeadle + '_check_' + str(obj)
+    #     obj.get_u_geo().save_nodes(filename + '_U')
+    #     obj.get_f_geo().save_nodes(filename + '_f')
 
+    velocity_err_list = problem.vtk_check(fileHeadle, ecoli_comp_check)
+    PETSc.Sys.Print('velocity error of sphere (total, x, y, z): ', next(velocity_err_list))
+    PETSc.Sys.Print('velocity error of helix0 (total, x, y, z): ', next(velocity_err_list))
+    PETSc.Sys.Print('velocity error of helix1 (total, x, y, z): ', next(velocity_err_list))
+    if with_T_geo:
+        PETSc.Sys.Print('velocity error of Tgeo (total, x, y, z): ', next(velocity_err_list))
+
+    t1 = time()
+    PETSc.Sys.Print('%s: write vtk files use: %fs' % (str(problem), (t1 - t0)))
+    return True
+
+
+# given velocity case
+def save_singleEcoli_U_vtk(problem: sf.stokesFlowProblem,
+                           createHandle=createEcoliComp_tunnel, part='full'):
+    def save_head():
+        vsobj = createHandle(**check_kwargs)[0]
+        vsobj.set_rigid_velocity(rel_Us + ecoli_U, center=center)
+        velocity_err_sphere = next(problem.vtk_check(fileHeadle, vsobj))
+        PETSc.Sys.Print('velocity error of sphere (total, x, y, z): ', velocity_err_sphere)
+
+    def save_tail():
+        if with_T_geo:
+            tail_obj_list = createHandle(**check_kwargs)[1:]
+        else:
+            tail_obj_list = createHandle(**check_kwargs)[1:3]
+        for tail_obj in tail_obj_list:
+            tail_obj.set_rigid_velocity(rel_Uh + ecoli_U, center=center)
+        velocity_err_list = problem.vtk_check(fileHeadle, tail_obj_list)
+        PETSc.Sys.Print('velocity error of helix0 (total, x, y, z): ', next(velocity_err_list))
+        PETSc.Sys.Print('velocity error of helix1 (total, x, y, z): ', next(velocity_err_list))
+        if with_T_geo:
+            PETSc.Sys.Print('velocity error of Tgeo (total, x, y, z): ', next(velocity_err_list))
+
+    def save_full():
+        save_head()
+        save_tail()
+
+    def do_save_part():
+        return {'head': save_head,
+                'tail': save_tail,
+                'full': save_full}[part]
+
+    OptDB = PETSc.Options()
+    if not OptDB.getBool('save_singleEcoli_vtk', True):
+        return False
+
+    t0 = time()
+    problem_kwargs = problem.get_kwargs()
+    fileHeadle = problem_kwargs['fileHeadle']
+    ecoli_U = problem_kwargs['ecoli_U']
+    rel_Us = problem_kwargs['rel_Us']
+    rel_Uh = problem_kwargs['rel_Uh']
+    center = problem_kwargs['center']
+    # with_T_geo = len(problem.get_all_obj_list()) == 4
+    with_T_geo = problem_kwargs['with_T_geo'] if 'with_T_geo' in problem_kwargs.keys() else 0
+
+    # problem.vtk_obj(fileHeadle)
+    problem.vtk_self(fileHeadle)
+
+    # bgeo = geo()
+    # bnodesHeadle = problem_kwargs['bnodesHeadle']
+    # matname = problem_kwargs['matname']
+    # bgeo.mat_nodes(filename=matname, mat_handle=bnodesHeadle)
+    # belemsHeadle = problem_kwargs['belemsHeadle']
+    # bgeo.mat_elmes(filename=matname, mat_handle=belemsHeadle, elemtype='tetra')
+    # problem.vtk_tetra(fileHeadle + '_Velocity', bgeo)
+
+    # create check obj
+    check_kwargs = problem_kwargs.copy()
+    check_kwargs['nth'] = problem_kwargs['nth'] - 2 if problem_kwargs['nth'] >= 6 else problem_kwargs['nth'] + 1
+    check_kwargs['ds'] = problem_kwargs['ds'] * 1.2
+    check_kwargs['hfct'] = 1
+    check_kwargs['Tfct'] = 1
+    do_save_part()()
+
+    t1 = time()
+    PETSc.Sys.Print('%s: write vtk files use: %fs' % (str(problem), (t1 - t0)))
+    return True
+
+
+# given velocity case,
+#  consider the ecoli constituted by four separate part: head, helix0, helix1, and Tgeo.
+#  each part have its own velocity U=[ux, uy, uz, wx, wy ,wz]
+def save_singleEcoli_U_4part_vtk(problem: sf.stokesFlowProblem, U_list, createHandle=createEcoliComp_tunnel):
+    OptDB = PETSc.Options()
+    if not OptDB.getBool('save_singleEcoli_vtk', True):
+        return False
+
+    t0 = time()
+    problem_kwargs = problem.get_kwargs()
+    fileHeadle = problem_kwargs['fileHeadle']
+    center = problem_kwargs['center']
+    # with_T_geo = len(problem.get_all_obj_list()) == 4
+    with_T_geo = problem_kwargs['with_T_geo'] if 'with_T_geo' in problem_kwargs.keys() else 0
+
+    # problem.vtk_obj(fileHeadle)
+    problem.vtk_self(fileHeadle)
+
+    # bgeo = geo()
+    # bnodesHeadle = problem_kwargs['bnodesHeadle']
+    # matname = problem_kwargs['matname']
+    # bgeo.mat_nodes(filename=matname, mat_handle=bnodesHeadle)
+    # belemsHeadle = problem_kwargs['belemsHeadle']
+    # bgeo.mat_elmes(filename=matname, mat_handle=belemsHeadle, elemtype='tetra')
+    # problem.vtk_tetra(fileHeadle + '_Velocity', bgeo)
+
+    # create check obj
+    check_kwargs = problem_kwargs.copy()
+    check_kwargs['nth'] = problem_kwargs['nth'] - 2 if problem_kwargs['nth'] >= 6 else problem_kwargs['nth'] + 1
+    check_kwargs['ds'] = problem_kwargs['ds'] * 1.2
+    check_kwargs['hfct'] = 1
+    check_kwargs['Tfct'] = 1
+
+    obj_list = createHandle(**check_kwargs)
+    for obj, t_U in zip(obj_list, U_list):
+        obj.set_rigid_velocity(t_U, center=center)
+    velocity_err_list = problem.vtk_check(fileHeadle, obj_list)
+    PETSc.Sys.Print('velocity error of sphere (total, x, y, z): ', next(velocity_err_list))
+    PETSc.Sys.Print('velocity error of helix0 (total, x, y, z): ', next(velocity_err_list))
+    PETSc.Sys.Print('velocity error of helix1 (total, x, y, z): ', next(velocity_err_list))
+    if with_T_geo:
+        PETSc.Sys.Print('velocity error of Tgeo (total, x, y, z): ', next(velocity_err_list))
+
+    cbd_obj = sf.stokesFlowObj()
+    cbd_obj.combine(obj_list)
+    velocity_err = problem.vtk_check(fileHeadle, cbd_obj)
+    PETSc.Sys.Print('velocity error of ecoli (total, x, y, z): ', next(velocity_err))
     t1 = time()
     PETSc.Sys.Print('%s: write vtk files use: %fs' % (str(problem), (t1 - t0)))
     return True

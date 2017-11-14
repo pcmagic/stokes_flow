@@ -1108,6 +1108,12 @@ def check_point_force_matrix_3d_petsc(**kwargs):
     return True
 
 
+def two_plate_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
+                              obj2: 'sf.stokesFlowObj',  # objct contain force information
+                              m, **kwargs):
+    return two_plane_matrix_3d_petsc(obj1, obj2, m)
+
+
 def two_plane_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
                               obj2: 'sf.stokesFlowObj',  # objct contain force information
                               m, **kwargs):
@@ -1147,6 +1153,9 @@ def two_plane_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocit
         m.setValues(u_glbIdx_all[2::3], f_glb + 2, m22, addv=False)
     m.assemble()
     return True  # ' point_force_matrix, U = M * F '
+
+def check_two_plate_matrix_3d_petsc(**kwargs):
+    return check_two_plane_matrix_3d_petsc(**kwargs)
 
 
 def check_two_plane_matrix_3d_petsc(**kwargs):

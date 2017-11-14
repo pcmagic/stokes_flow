@@ -6,12 +6,13 @@
 # 5. solve problem and check.
 
 import sys
-
 import petsc4py
-
+# import matplotlib
 petsc4py.init(sys.argv)
+# matplotlib.use('Agg')
 
 import numpy as np
+from tqdm import tqdm
 # import pickle
 # from time import time
 # from scipy.io import loadmat
@@ -51,6 +52,9 @@ def print_case_info(**problem_kwargs):
 def main_fun(**main_kwargs):
     problem_kwargs = get_problem_kwargs(**main_kwargs)
     fileHeadle = problem_kwargs['fileHeadle']
+    rot_theta = problem_kwargs['rot_theta']
+    fileHeadle = '%s_rotTh%f' % (fileHeadle, rot_theta)
+    problem_kwargs['fileHeadle'] = fileHeadle
 
     if not problem_kwargs['restart']:
         print_case_info(**problem_kwargs)
@@ -58,7 +62,10 @@ def main_fun(**main_kwargs):
         problem = sf.ShearFlowForceFreeProblem(**problem_kwargs)
         problem.do_solve_process((ecoli_comp,), pick_M=True)
         head_U, tail_U = print_single_ecoli_forceFree_result(ecoli_comp, **problem_kwargs)
-        save_singleEcoli_vtk(problem, createHandle=createEcoliComp_ellipse)
+        ecoli_U = ecoli_comp.get_ref_U()
+        # save_singleEcoli_vtk(problem, createHandle=createEcoliComp_ellipse)
+        ecoli_comp.png_u_nodes(fileHeadle)
+        problem.destroy()
     else:
         pass
         # with open(fileHeadle + '_pick.bin', 'rb') as input:
@@ -99,9 +106,73 @@ def main_fun(**main_kwargs):
         # print_single_ecoli_forceFree_result(ecoli_comp, **problem_kwargs)
         #
         # # save_singleEcoli_vtk(problem)
+    return head_U, tail_U, ecoli_U
 
-    return True
+
+def job_script():
+    def save_contourf(figname, U):
+        fig0 = plt.figure()
+        ax0 = fig0.gca()
+        cf = ax0.contourf(rot_theta, planeShearRatey, U)
+        fig0.colorbar(cf, ax=ax0)
+        ax0.set_title(figTitHeadle + '_' + figname)
+        ax0.set_xlabel('rot_theta')
+        ax0.set_ylabel('planeShearRate_y')
+        fig0.set_size_inches(18.5, 10.5)
+        fig0.savefig('%s_%s.png' % (fileHeadle, figname), dpi=100)
+        plt.close()
+
+    comm = PETSc.COMM_WORLD.tompi4py()
+    rank = comm.Get_rank()
+    OptDB = PETSc.Options()
+    n_rot_theta = OptDB.getInt('n_rot_theta', 2)
+    n_planeShearRatey = OptDB.getInt('n_planeShearRatey', 2)
+
+    problem_kwargs = get_problem_kwargs()
+    rel_Us = problem_kwargs['rel_Us']
+    rel_Uh = problem_kwargs['rel_Uh']
+    rh1 = problem_kwargs['rh1']
+    zoom_factor = problem_kwargs['zoom_factor']
+    t_nondim = np.sqrt(np.sum((rel_Uh[-3:] + rel_Us[-3:]) ** 2)) * \
+               np.array((zoom_factor * rh1, zoom_factor * rh1, zoom_factor * rh1, 1, 1, 1))
+    fileHeadle = problem_kwargs['fileHeadle']
+
+    rot_theta, planeShearRatey = np.meshgrid(np.linspace(0, 2, n_rot_theta),
+                                             np.linspace(0, 0.1, n_planeShearRatey), )
+    ecoli_U = []
+    for i0, (t_rot_theta, t_planeShearRatey) in enumerate(
+            tqdm(zip(rot_theta.flatten(), planeShearRatey.flatten()), desc=fileHeadle)):
+        OptDB.setValue('rot_theta', t_rot_theta)
+        OptDB.setValue('planeShearRatey', t_planeShearRatey)
+        ecoli_U.append(main_fun()[2] / t_nondim)
+        PETSc.Sys.Print(' ')
+        PETSc.Sys.Print(' ')
+    ecoli_U = np.vstack(ecoli_U)
+    ecoli_ux = ecoli_U[:, 0].reshape((n_rot_theta, n_planeShearRatey))
+    ecoli_uy = ecoli_U[:, 1].reshape((n_rot_theta, n_planeShearRatey))
+    ecoli_uz = ecoli_U[:, 2].reshape((n_rot_theta, n_planeShearRatey))
+    ecoli_wx = ecoli_U[:, 3].reshape((n_rot_theta, n_planeShearRatey))
+    ecoli_wy = ecoli_U[:, 4].reshape((n_rot_theta, n_planeShearRatey))
+    ecoli_wz = ecoli_U[:, 5].reshape((n_rot_theta, n_planeShearRatey))
+    ecoli_uall = np.sqrt(ecoli_ux ** 2 + ecoli_uy ** 2 + ecoli_uz ** 2)
+    ecoli_wall = np.sqrt(ecoli_wx ** 2 + ecoli_wy ** 2 + ecoli_wz ** 2)
+
+    # plot and save figures.
+    import matplotlib.pyplot as plt
+    import matplotlib
+    font = {'size': 40}
+    matplotlib.rc('font', **font)
+    figTitHeadle = ''
+    save_contourf('ux', ecoli_ux)
+    save_contourf('uy', ecoli_uy)
+    save_contourf('uz', ecoli_uz)
+    save_contourf('uall', ecoli_uall)
+    save_contourf('wx', ecoli_wx)
+    save_contourf('wy', ecoli_wy)
+    save_contourf('wz', ecoli_wz)
+    save_contourf('wall', ecoli_wall)
 
 
 if __name__ == '__main__':
     main_fun()
+    # job_script()

@@ -4,7 +4,8 @@ import numpy as np
 
 __all__ = ['uniqueList', 'typeList', 'intList', 'floatList',
            'abs_comp', 'abs_construct_matrix',
-           'check_file_extension', ]
+           'check_file_extension',
+           'tube_flatten', ]
 
 
 class uniqueList(UserList):
@@ -177,3 +178,12 @@ def check_file_extension(filename, extension):
     if filename[-len(extension):] != extension:
         filename = filename + extension
     return filename
+
+
+def tube_flatten(container):
+    for i in container:
+        if isinstance(i, (list, tuple)):
+            for j in tube_flatten(i):
+                yield j
+        else:
+            yield i

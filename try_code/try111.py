@@ -1,32 +1,7 @@
-e2=e**2
-delta_xi = bsxfun(@minus, fNodes, nodes(i0,:))
-zwall=fNodes(:,3)-h
-dx=delta_xi(:,1)
-dy=delta_xi(:,2)
-dzs=delta_xi(:,3)
-dz=delta_xi(:,3)-2*zwall
-r2sk = dx**2+dzs**2+dy**2 # r squared
-rsk=r2sk**0.5
-rske=(r2sk+e2)**0.5
-H2sk=1/(rske**3)
-H1sk=1/(rske)+e2*H2sk
-D2sk=-6/(rske**5)
-D1sk=2/(rske**3)+e2*D2sk
-r2k = dx**2+dz**2+dy**2  # r squared
-rk=r2k**0.5
-rke=(r2k+e2)**0.5
-H2k=1/(rke**3)
-H1k=1/rke+e2*H2k
-D2k=-6/(rke**5)
-D1k=2/(rke**3)+e2*D2k
-dH2k=-3*rk/(rke**5)
-dH1k=-rk/(rke**3)+e2*dH2k
-M(3*i0-2, 1:3:end)=H1sk+dx**2*H2sk-H1k-dx**2*H2k-zwall*zwall*(-1*D1k-dx**2*D2k)-2*zwall*(dH1k/rk+H2k)*zwall-2*zwall*(-dz*H2k-dz*dx**2*dH2k/rk)   #Mxx
-M(3*i0,   1:3:end)=dx*dzs*H2sk-dx*dz*H2k-zwall*zwall*(-dz*dx*D2k)-2*zwall*(dH1k/rk+H2k)*dx-2*zwall*(-dx*dH1k/rk-dx*dz**2*dH2k/rk)       #Mzx
-M(3*i0-2, 3:3:end)=dx*dzs*H2sk-dx*dz*H2k-zwall*zwall*(dx*dz*D2k)-2*zwall*(dx*H2k+dz**2*dx*dH2k/rk)     #Mxz
-M(3*i0,   3:3:end)=H1sk+dzs**2*H2sk -H1k-dz**2*H2k -zwall*zwall*(1*D1k+dz**2*D2k)-2*zwall*(dz*H2k + dz*H2k +dz*dH1k/rk+dz**3*dH2k/rk)    #Mzz
-M(3*i0-2, 2:3:end)=dx*dy*H2sk-dx*dy*H2k-zwall*zwall*(-dx*dy*D2k)-2*zwall*(-dz*dx*dy*dH2k/rk)   #Mxy
-M(3*i0,   2:3:end)=dzs*dy*H2sk-dz*dy*H2k-zwall*zwall*(-dz*dy*D2k)-2*zwall*(dH1k/rk+H2k)*dy-2*zwall*(-dy*dH1k/rk-dz*dy*dz*dH2k/rk)  #Mzy
-M(3*i0-1, 1:3:end)=dx*dy*H2sk-dx*dy*H2k-zwall*zwall*(-dx*dy*D2k)-2*zwall*(-dx*dy*dz*dH2k/rk)   #Myx
-M(3*i0-1, 3:3:end)=dzs*dy*H2sk-dz*dy*H2k-zwall*zwall*(dy*dz*D2k)-2*zwall*(dy*H2k+dy*dz*dz*dH2k/rk)   #Myz
-M(3*i0-1, 2:3:end)=H1sk+dy*dy*H2sk-H1k-dy*dy*H2k-zwall*zwall*(-D1k-dy**2*D2k)-2*zwall*(dH1k/rk+H2k)*zwall-2*zwall*(-dz*H2k-dy**2*dz*dH2k/rk)   #Myy
+p1_0**4 + p1_0**3*p3_0 - \
+p1_0**2*x*(a1_1*a1_2*p3_0 - a3_1*a3_2*p1_0) + \
+p1_0*x**2*(2*a1_1**2*a1_2**2*p3_0 - a1_1*a1_2*p1_0*(a1_2*p3_0 + 2*a3_1*a3_2) + a3_1*a3_2**2*p1_0**2)/2 + \
+x**3*(-6*a1_1**3*a1_2**3*p3_0 + 6*a1_1**2*a1_2**2*p1_0*(a1_2*p3_0 + a3_1*a3_2) - a1_1*a1_2*p1_0**2*(a1_2**2*p3_0 + 3*a1_2*a3_1*a3_2 + 3*a3_1*a3_2**2) + a3_1*a3_2**3*p1_0**3)/6
+
+
+1 / p1_0**4

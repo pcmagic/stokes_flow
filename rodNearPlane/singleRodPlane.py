@@ -124,7 +124,7 @@ def job_script():
     RodThe, RodPhi = np.meshgrid(np.linspace(0, np.pi / 2, n_RodThe),
                                  np.linspace(0, np.pi / 2, n_RodPhi))
     rod_U = []
-    for i0, (t_RodThe, t_RodPhi) in enumerate(tqdm(zip(RodThe.flatten(), RodPhi.flatten()))):
+    for i0, (t_RodThe, t_RodPhi) in enumerate(tqdm(zip(RodThe.flatten(), RodPhi.flatten()), desc=fileHeadle)):
         OptDB.setValue('RodThe', t_RodThe)
         OptDB.setValue('RodPhi', t_RodPhi)
         OptDB.setValue('givenTy', rod_torque * np.sin(t_RodPhi))

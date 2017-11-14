@@ -2,7 +2,7 @@
 import copy
 import numpy as np
 from numpy import sin, cos
-import scipy.io as sio
+from scipy.io import savemat, loadmat
 from petsc4py import PETSc
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -27,13 +27,14 @@ class geo():
         self._stencil_width = 0  # --->>>if change in further version, deal with combine method.
         self._glbIdx = np.array([])  # global indices
         self._glbIdx_all = np.array([])  # global indices for all process.
+        self._selfIdx = np.array([])  # indices of _glbIdx in _glbIdx_all
 
     def mat_nodes(self, filename: str = '..',
                   mat_handle: str = 'nodes'):
         err_msg = 'wrong mat file name. '
         assert filename != '..', err_msg
 
-        mat_contents = sio.loadmat(filename)
+        mat_contents = loadmat(filename)
         nodes = mat_contents[mat_handle].astype(np.float, order='F')
         err_msg = 'nodes is a n*3 numpy array containing x, y and z coordinates. '
         assert nodes.shape[1] == 3, err_msg
@@ -48,7 +49,7 @@ class geo():
         err_msg = 'wrong mat file name. '
         assert filename != '..', err_msg
 
-        mat_contents = sio.loadmat(filename)
+        mat_contents = loadmat(filename)
         elems = mat_contents[mat_handle].astype(np.int, order='F')
         elems = elems - elems.min()
         self._elems = elems
@@ -71,7 +72,7 @@ class geo():
         err_msg = 'wrong mat file name. '
         assert filename != '..', err_msg
 
-        mat_contents = sio.loadmat(filename)
+        mat_contents = loadmat(filename)
         self._origin = mat_contents[mat_handle].astype(np.float)
         return True
 
@@ -80,7 +81,7 @@ class geo():
         err_msg = 'wrong mat file name. '
         assert filename != '..', err_msg
 
-        mat_contents = sio.loadmat(filename)
+        mat_contents = loadmat(filename)
         self._u = mat_contents[mat_handle].flatten()
         return True
 
@@ -231,6 +232,7 @@ class geo():
         """
         if center is None:
             center = self._origin
+        center = np.array(center)
         err_msg = 'center is a np.array containing 3 scales. '
         assert center.size == 3, err_msg
 
@@ -309,6 +311,16 @@ class geo():
             self.set_nodes(np.vstack((self.get_nodes(), geo1.get_nodes())), deltalength=deltaLength)
             self.set_velocity(np.hstack((self.get_velocity(), geo1.get_velocity())))
         self.set_dmda()
+        return True
+
+    def save_nodes(self, filename):
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
+        filename = check_file_extension(filename, extension='.mat')
+        if rank == 0:
+            savemat(filename,
+                    {'nodes': self.get_nodes()},
+                    oned_as='column')
         return True
 
     def _show_velocity(self, length_factor=1, show_nodes=True):
@@ -434,15 +446,20 @@ class geo():
         comm = PETSc.COMM_WORLD.tompi4py()
         self._glbIdx = indices
         self._glbIdx_all = np.hstack(comm.allgather(indices))
+        self._selfIdx = np.searchsorted(self._glbIdx_all, self._glbIdx)
         return True
 
     def set_glbIdx_all(self, indices):
         self._glbIdx = []
+        self._selfIdx = []
         self._glbIdx_all = indices
         return True
 
     def get_glbIdx(self):
         return self._glbIdx, self._glbIdx_all
+
+    def get_selfIdx(self):
+        return self._selfIdx
 
         # def _heaviside(self, n, factor):
         #     f = lambda x: 1 / (1 + np.exp(-factor * x))
@@ -456,7 +473,7 @@ class geoComposit(uniqueList):
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
         if len(self) == 0:
-            return None
+            return False
         if rank == 0:
             fig = plt.figure()
             ax = fig.gca(projection='3d')
@@ -497,6 +514,14 @@ class geoComposit(uniqueList):
             plt.grid()
             plt.get_current_fig_manager().window.showMaximized()
             plt.show()
+        return True
+
+    def move(self, displacement: np.array):
+        if len(self) == 0:
+            return False
+        else:
+            for sub_geo in self:
+                sub_obj.move(displacement=displacement)
         return True
 
 
@@ -563,7 +588,8 @@ class _ThickLine_geo(geo):
         ai_para = 0
 
         # cover at start
-        if with_cover:
+        if with_cover == 1:
+            # old version, cover is a plate.
             nc = np.ceil((radius - deltalength) / deltalength).astype(int)
             ri = np.linspace(deltalength / 2, radius, nc, endpoint=False)
             # self
@@ -582,6 +608,24 @@ class _ThickLine_geo(geo):
                                                       np.vstack((N_frame[0], B_frame[0], np.zeros_like(T_frame[0]))))
                 fgeo_nodes.append(tf_nodes)
                 self._strat_pretreatment(t_nodes)
+        elif with_cover == 2:
+            # 20170929, new version, cover is a hemisphere
+            vhsgeo = sphere_geo()
+            vhsgeo.create_half_delta(deltalength, radius)
+            vhsgeo.node_rotation((1, 0, 0), np.pi/2 + ai_para)
+            t_nodes = axisNodes[0] + np.dot(vhsgeo.get_nodes(),
+                                            np.vstack((-T_frame[0], N_frame[0], B_frame[0])))
+            vgeo_nodes.append(t_nodes)
+            fhsgeo = vhsgeo.copy()
+            # fhsgeo.show_nodes()
+            fhsgeo.node_zoom(epsilon)
+            # fhsgeo.show_nodes()
+            tf_nodes = fgeo_axisNodes[0] + np.dot(fhsgeo.get_nodes(),
+                                                  np.vstack((-T_frame[0], N_frame[0], B_frame[0])))
+            fgeo_nodes.append(tf_nodes)
+            self._strat_pretreatment(t_nodes)
+            iscover.append(np.ones(vhsgeo.get_n_nodes(), dtype=bool))
+
 
         # body
         for i0, nodei_line in enumerate(axisNodes):
@@ -601,7 +645,8 @@ class _ThickLine_geo(geo):
             self._body_pretreatment(t_nodes)
 
         # cover at end
-        if with_cover:
+        if with_cover == 1:
+            # old version, cover is a plate.
             nc = np.ceil((radius - deltalength) / deltalength).astype(int)
             ri = np.linspace(deltalength / 2, radius, nc, endpoint=False)[-1::-1]
             for i0 in range(0, nc):
@@ -619,6 +664,21 @@ class _ThickLine_geo(geo):
                         (fgeo_N_frame[-1], fgeo_B_frame[-1], np.zeros_like(fgeo_T_frame[-1]))))
                 fgeo_nodes.append(tf_nodes)
                 self._end_pretreatment(t_nodes)
+        elif with_cover == 2:
+            # 20170929, new version, cover is a hemisphere
+            vhsgeo = sphere_geo()
+            vhsgeo.create_half_delta(deltalength, radius)
+            vhsgeo.node_rotation((1, 0, 0), -np.pi/2 - ai_para)
+            t_nodes = axisNodes[-1] + np.dot(vhsgeo.get_nodes(),
+                                            np.vstack((T_frame[-1], N_frame[-1], B_frame[-1])))
+            vgeo_nodes.append(np.flipud(t_nodes))
+            fhsgeo = vhsgeo.copy()
+            fhsgeo.node_zoom(epsilon)
+            tf_nodes = fgeo_axisNodes[-1] + np.dot(fhsgeo.get_nodes(),
+                                                  np.vstack((T_frame[-1], N_frame[-1], B_frame[-1])))
+            fgeo_nodes.append(np.flipud(tf_nodes))
+            self._end_pretreatment(t_nodes)
+            iscover.append(np.ones(vhsgeo.get_n_nodes(), dtype=bool))
 
         self._iscover = np.hstack(iscover)
         self._nodes = np.asfortranarray(np.vstack(vgeo_nodes))
@@ -798,16 +858,22 @@ class ellipse_geo(geo):
 class sphere_geo(ellipse_geo):
     def create_n(self, n: int,  # number of nodes.
                  radius: float, *args):  # radius
-        err_msg = 'aditional paramenters are useless.  '
+        err_msg = 'additional parameters are useless.  '
         assert not args, err_msg
         self._deltaLength = np.sqrt(4 * np.pi * radius * radius / n)
         return super().create_n(n, radius, radius)
 
     def create_delta(self, deltaLength: float,  # length of the mesh
                      radius: float, *args):  # radius
-        err_msg = 'aditional paramenters are useless.  '
+        err_msg = 'additional parameters are useless.  '
         assert not args, err_msg
         return super().create_delta(deltaLength, radius, radius)
+
+    def create_half_delta(self, ds: float,  # length of the mesh
+                          a: float, *args):
+        err_msg = 'additional parameters are useless.  '
+        assert not args, err_msg
+        return super().create_half_delta(ds, a, a)
 
     def normal(self):
         self._normal = np.zeros((self._nodes.shape[0],
