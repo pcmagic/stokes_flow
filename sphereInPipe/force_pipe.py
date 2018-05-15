@@ -175,6 +175,7 @@ def do_show_err(fileHeadle, b, residualNorm, err):
         b1 = np.max(b)
         fig1 = plt.figure()
         ax1 = fig1.gca()
+        # ax1.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
         line1 = ax1.plot(b, residualNorm, marker='o')
         line1[0].set_label('f1')
         line1[1].set_label('f2')

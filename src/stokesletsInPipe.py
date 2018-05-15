@@ -3,6 +3,7 @@ import os
 from scipy.io import loadmat
 from scipy.special import kv, iv
 from numpy import pi, real, imag, exp, sqrt, sum, sin, cos
+from petsc4py import PETSc
 
 
 # see Liron, N., and R. Shahar. "Stokes flow due to a Stokeslet in a pipe." Journal of Fluid Mechanics 86.04 (1978): 727-744.
@@ -564,6 +565,51 @@ class detail:
         uR2, uPhi2, uz2 = self.solve_u2(R, Phi, z)
         uR3, uPhi3, uz3 = self.solve_u3(R, Phi, z)
         return uR1, uPhi1, uz1, uR2, uPhi2, uz2, uR3, uPhi3, uz3
+
+    def solve_uxyz(self, nodes):
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
+        phi = np.arctan2(nodes[:, 1], nodes[:, 0])
+        rho = np.sqrt(nodes[:, 0] ** 2 + nodes[:, 1] ** 2)
+        z = nodes[:, 2]
+        u1 = []
+        u2 = []
+        u3 = []
+        dmda = PETSc.DMDA().create(sizes=(nodes.shape[0],), dof=1,
+                                   stencil_width=0, comm=PETSc.COMM_WORLD)
+        dmda.setFromOptions()
+        dmda.setUp()
+        for i0 in range(dmda.getRanges()[0][0], dmda.getRanges()[0][1]):
+            t_rho = rho[i0]
+            t_phi = phi[i0]
+            t_z = z[i0]
+            abs_z = np.abs(t_z)
+            sign_z = np.sign(t_z)
+            if np.isclose(abs_z, 1):
+                uR1, uPhi1, uz1, uR2, uPhi2, uz2, uR3, uPhi3, uz3 = self.solve_u(t_rho, t_phi, abs_z)
+                ux1 = np.cos(t_phi) * uR1 - np.sin(t_phi) * uPhi1
+                ux2 = np.cos(t_phi) * uR2 - np.sin(t_phi) * uPhi2
+                ux3 = np.cos(t_phi) * uR3 - np.sin(t_phi) * uPhi3
+                uy1 = np.sin(t_phi) * uR1 + np.cos(t_phi) * uPhi1
+                uy2 = np.sin(t_phi) * uR2 + np.cos(t_phi) * uPhi2
+                uy3 = np.sin(t_phi) * uR3 + np.cos(t_phi) * uPhi3
+            else:
+                ux1 = 0
+                uy1 = 0
+                uz1 = 0
+                ux2 = 0
+                uy2 = 0
+                uz2 = 0
+                ux3 = 0
+                uy3 = 0
+                uz3 = 0
+            u1.append((ux1, uy1, sign_z * uz1))
+            u2.append((ux2, uy2, sign_z * uz2))
+            u3.append((sign_z * ux3, sign_z * uy3, uz3))
+        u1_all = np.vstack(comm.allgather(u1))
+        u2_all = np.vstack(comm.allgather(u2))
+        u3_all = np.vstack(comm.allgather(u3))
+        return u1_all, u2_all, u3_all
 
 
 class detail_light(detail):

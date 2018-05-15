@@ -56,10 +56,12 @@ class stokesFlowProblem:
             'tp_rs':                        StokesFlowMethod.two_para_regularized_stokeslets_matrix_3d,
             'lg_rs':                        StokesFlowMethod.legendre_regularized_stokeslets_matrix_3d,
             'pf':                           StokesFlowMethod.point_force_matrix_3d_petsc,
+            'pf_dualPotential':             StokesFlowMethod.dual_potential_matrix_3d_petsc,
             'rs_stokesletsInPipe':          StokesFlowMethod.regularized_stokeslets_matrix_3d_petsc,
             'pf_stokesletsInPipe':          StokesFlowMethod.point_force_matrix_3d_petsc,
             'pf_stokesletsInPipeForceFree': StokesFlowMethod.point_force_matrix_3d_petsc,
             'pf_stokesletsTwoPlane':        StokesFlowMethod.two_plane_matrix_3d_petsc,
+            'pf_infhelix':                  StokesFlowMethod.pf_infhelix_3d_petsc
         }
         self._check_args_dict = {
             'rs':                           StokesFlowMethod.check_regularized_stokeslets_matrix_3d,
@@ -67,10 +69,12 @@ class stokesFlowProblem:
             'tp_rs':                        StokesFlowMethod.check_two_para_regularized_stokeslets_matrix_3d,
             'lg_rs':                        StokesFlowMethod.check_legendre_regularized_stokeslets_matrix_3d,
             'pf':                           StokesFlowMethod.check_point_force_matrix_3d_petsc,
+            'pf_dualPotential':             StokesFlowMethod.check_dual_potential_matrix_3d_petsc,
             'rs_stokesletsInPipe':          StokesFlowMethod.check_regularized_stokeslets_matrix_3d,
             'pf_stokesletsInPipe':          StokesFlowMethod.check_point_force_matrix_3d_petsc,
             'pf_stokesletsInPipeForceFree': StokesFlowMethod.check_point_force_matrix_3d_petsc,
             'pf_stokesletsTwoPlane':        StokesFlowMethod.check_two_plane_matrix_3d_petsc,
+            'pf_infhelix':                  StokesFlowMethod.check_pf_infhelix_3d_petsc
         }
         self._check_args_dict[kwargs['matrix_method']](**kwargs)
 
@@ -304,10 +308,15 @@ class stokesFlowProblem:
             self._convergenceHistory = ksp.getConvergenceHistory()
         else:
             ksp.solve(self._velocity_petsc, self._force_petsc)
-        self._force = self.vec_scatter(self._force_petsc, destroy=False)
+
+        # reorder force from petsc index to normal index, and separate to each object.
+        t_force = self.vec_scatter(self._force_petsc, destroy=False)
+        tmp = []
         for obj0 in self.get_obj_list():
             _, f_glbIdx_all = obj0.get_f_geo().get_glbIdx()
-            obj0.set_force(self._force[f_glbIdx_all])
+            obj0.set_force(t_force[f_glbIdx_all])
+            tmp.append(t_force[f_glbIdx_all])
+        self._force = np.hstack(tmp)
         return True
 
     def _resolve_velocity(self, ksp):
@@ -334,11 +343,12 @@ class stokesFlowProblem:
         n_sub_obj = int(obj.get_n_u_node() / n_node_threshold) + 1
         obj_nodes = obj.get_u_nodes()
         for i0 in range(n_sub_obj):
+            sub_obj1 = obj_dic[self.get_kwargs()['matrix_method']]()
             sub_geo1 = geo()
             id0 = i0 * n_obj_nodes // n_sub_obj
             id1 = (i0 + 1) * n_obj_nodes // n_sub_obj
+            sub_geo1.set_dof(sub_obj1.get_n_unknown())
             sub_geo1.set_nodes(obj_nodes[id0:id1], resetVelocity=True, deltalength=obj.get_u_geo().get_deltaLength())
-            sub_obj1 = stokesFlowObj()
             sub_obj_kwargs = {'name': '%s_sub_%d' % (str(obj), i0)}
             sub_obj1.set_data(sub_geo1, sub_geo1, **sub_obj_kwargs)
             sub_obj_list.append(sub_obj1)
@@ -364,7 +374,9 @@ class stokesFlowProblem:
             sub_obj_u = self.vec_scatter(sub_obj_u_petsc)
             id0 = i1 * n_obj_nodes // n_sub_obj * 3
             id1 = (i1 + 1) * n_obj_nodes // n_sub_obj * 3
-            obj_u[id0:id1] = sub_obj_u[:]
+            obj_u[id0 + 0:id1:3] = sub_obj_u[0::self.get_n_unknown()]
+            obj_u[id0 + 1:id1:3] = sub_obj_u[1::self.get_n_unknown()]
+            obj_u[id0 + 2:id1:3] = sub_obj_u[2::self.get_n_unknown()]
             m_petsc.destroy()
             sub_u_pkg.destroy()
         return obj_u
@@ -497,7 +509,7 @@ class stokesFlowProblem:
 
     def vtk_self(self, filename):
         self.check_finish_solve()
-        obj0 = stokesFlowObj()
+        obj0 = obj_dic[self.get_kwargs()['matrix_method']]()
         obj0.combine(self.get_all_obj_list(), set_re_u=True, set_force=True)
         obj0.set_name('Prb')
         # self.show_velocity()
@@ -739,10 +751,10 @@ class stokesFlowProblem:
     def view_M(self, **kwargs):
         m = self._M_petsc.getDenseArray()
         view_args = {
-            'vmin':        None,
-            'vmax':        None,
+            'vmin':  None,
+            'vmax':  None,
             'title': kwargs['matrix_method'],
-            'cmap':        'gray'
+            'cmap':  'gray'
         }
         self._view_matrix(m, **view_args)
 
@@ -777,6 +789,10 @@ class stokesFlowProblem:
     def print_info(self):
         if self._kwargs['plot_geo']:
             self.show_f_u_nodes(linestyle='-')
+        OptDB = PETSc.Options()
+        if OptDB.getBool('plot_vel', 0):
+            length_factor = OptDB.getReal('vel_fct', 1)
+            self.show_velocity(length_factor=length_factor)
         for obj in self.get_obj_list():
             obj.print_info()
         PETSc.Sys.Print('%s: force nodes: %d, velocity nodes: %d'
@@ -873,6 +889,16 @@ class stokesFlowProblem:
             geo_list.append(obj1.get_u_geo())
         temp_geo = geo()
         temp_geo.combine(geo_list)
+        temp_geo.show_velocity(length_factor=length_factor, show_nodes=show_nodes)
+        return True
+
+    def show_force(self, length_factor=1, show_nodes=True):
+        geo_list = uniqueList()
+        for obj1 in self.get_obj_list():
+            geo_list.append(obj1.get_f_geo())
+        temp_geo = geo()
+        temp_geo.combine(geo_list)
+        temp_geo.set_velocity(self._force)
         temp_geo.show_velocity(length_factor=length_factor, show_nodes=show_nodes)
         return True
 
@@ -1093,11 +1119,11 @@ class stokesFlowObj:
         if center is None:
             center = self.get_u_geo().get_origin()
 
-        f = self.get_force().reshape((-1, 3))
+        f = self.get_force().reshape((-1, self.get_n_unknown()))
         r = self.get_f_geo().get_nodes() - center
-        t = np.cross(r, f)
-        F = np.hstack((f, t)).sum(axis=0)
-        return F
+        t = np.cross(r, f[:, :3])  # except node forces, some solve methods may have additional degrees of freedoms.
+        f_t = np.hstack((f, t)).sum(axis=0)
+        return f_t
 
     def set_force(self, force):
         self._force = force
@@ -1118,7 +1144,7 @@ class stokesFlowObj:
         return self.get_u_nodes().shape[0]
 
     def get_n_velocity(self):
-        return self.get_velocity().size
+        return self.get_u_nodes().shape[0] * self._n_unknown
 
     def get_n_force(self):
         return self.get_f_nodes().shape[0] * self._n_unknown
@@ -1148,12 +1174,12 @@ class stokesFlowObj:
             force_x = self._force[0::self._n_unknown].copy()
             force_y = self._force[1::self._n_unknown].copy()
             force_z = self._force[2::self._n_unknown].copy()
-            velocity_x = self._re_velocity[0::3].copy()
-            velocity_y = self._re_velocity[1::3].copy()
-            velocity_z = self._re_velocity[2::3].copy()
-            velocity_err_x = np.abs(self._re_velocity[0::3] - self.get_velocity()[0::3])
-            velocity_err_y = np.abs(self._re_velocity[1::3] - self.get_velocity()[1::3])
-            velocity_err_z = np.abs(self._re_velocity[2::3] - self.get_velocity()[2::3])
+            velocity_x = self._re_velocity[0::self._n_unknown].copy()
+            velocity_y = self._re_velocity[1::self._n_unknown].copy()
+            velocity_z = self._re_velocity[2::self._n_unknown].copy()
+            velocity_err_x = np.abs(self._re_velocity[0::self._n_unknown] - self.get_velocity()[0::3])
+            velocity_err_y = np.abs(self._re_velocity[1::self._n_unknown] - self.get_velocity()[1::3])
+            velocity_err_z = np.abs(self._re_velocity[2::self._n_unknown] - self.get_velocity()[2::3])
 
             f_filename = filename + '_' + str(self) + '_force'
             pointsToVTK(f_filename, self.get_f_nodes()[:, 0], self.get_f_nodes()[:, 1], self.get_f_nodes()[:, 2],
@@ -1172,8 +1198,16 @@ class stokesFlowObj:
         return True
 
     def show_re_velocity(self, length_factor=1, show_nodes=True):
+        self.get_problem().check_finish_solve()
         tgeo = self.get_u_geo().copy()
         tgeo.set_velocity(self._re_velocity)
+        tgeo.show_velocity(length_factor, show_nodes)
+        return True
+
+    def show_force(self, length_factor=1, show_nodes=True):
+        self.get_problem().check_finish_solve()
+        tgeo = self.get_f_geo().copy()
+        tgeo.set_velocity(self._force)
         tgeo.show_velocity(length_factor, show_nodes)
         return True
 
@@ -1840,7 +1874,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         u2 = np.vstack((ux2, uy2, uz2)).T
         u3 = np.vstack((ux3, uy3, uz3)).T
 
-        # u2, stokeslets, sigulatrity.
+        # u2, stokeslets, singularity.
         b = greenFun.get_b()
         stokeslets_post = np.hstack((b, 0, 0)).reshape(1, 3)
         geo_stokeslets = geo()
@@ -1875,7 +1909,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         return u11, u21, u31
 
     def _set_temp_var(self, obj1):
-        # create a empty matrix, and a empty velocity vecters, to avoid use too much time to allocate memory.
+        # create a empty matrix, and a empty velocity vectors, to avoid use too much time to allocate memory.
         comm = PETSc.COMM_WORLD.tompi4py()
         ugeo = obj1.get_u_geo().copy()
         kwargs = self.get_kwargs()
@@ -1915,7 +1949,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         for obj2 in tqdm(self.get_all_obj_list(), desc=obj_desc):
             f_nodes = obj2.get_f_nodes()
             _, f_glbIdx_all = obj2.get_f_geo().get_glbIdx()
-            f_dmda = obj2.get_f_geo().get_dmda()
+            # f_dmda = obj2.get_f_geo().get_dmda()
             f_desc = 'f_node level' + ' ' * len(INDEX)
             for i0 in tqdm(range(obj2.get_n_f_node()), desc=f_desc, leave=False):
                 # for i0 in range(obj2.get_n_f_node( )):
@@ -2629,7 +2663,7 @@ class forceFreeProblem(stokesFlowProblem):
                     geo_list.append(t_geo)
             else:
                 t_geo = obj1.get_u_geo().copy()
-                t_geo.set_velocity(obj2.get_re_velocity())
+                t_geo.set_velocity(obj1.get_re_velocity())
                 geo_list.append(t_geo)
         temp_geo = geo()
         temp_geo.combine(geo_list)
@@ -2783,7 +2817,7 @@ class stokesletsTwoPlaneProblem(stokesFlowProblem):
         h = self._twoPlateHeight
         nodes = obj.get_u_geo().get_nodes()
         err_msg = 'z coordinate of nodes is out of range (%f, %f)' % (0, h)
-        assert all(nodes[:, 2] < h) and all(nodes[:, 2] > 0), err_msg
+        assert np.all(nodes[:, 2] < h) and np.all(nodes[:, 2] > 0), err_msg
         return True
 
 
@@ -2825,7 +2859,6 @@ class givenFlowProblem(stokesFlowProblem):
         obj_u = super().solve_obj_u(obj)
         given_u = self._get_giveFlow(obj)
         return obj_u + given_u
-        return obj_u
 
         # def vtk_obj(self, filename):
         #     for obj0 in self.get_all_obj_list():
@@ -2902,16 +2935,71 @@ class shearFlowForceFreeProblem(ShearFlowProblem, forceFreeProblem):
         pass
 
 
+class dual_potential_problem(stokesFlowProblem):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._n_unknown = 4
+
+    def _create_U(self):
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
+        velocity = self._u_pkg.createGlobalVector()
+        velocity.zeroEntries()
+        for i0, obj0 in enumerate(self.get_obj_list()):
+            u0 = np.vstack((obj0.get_velocity().reshape(-1, 3).T,
+                            np.zeros(obj0.get_n_f_node()))).flatten(order='F')
+            _, u_glbIdx_all = obj0.get_u_geo().get_glbIdx()
+            if rank == 0:
+                velocity[u_glbIdx_all] = u0[:]
+        velocity.assemble()
+        self._velocity_petsc = velocity
+        return True
+
+
+class dual_potential_obj(stokesFlowObj):
+    def __init__(self):
+        super().__init__()
+        self._n_unknown = 4
+
+        # def vtk(self, filename):
+        #     if str(self) == '...':
+        #         return
+        #
+        #     comm = PETSc.COMM_WORLD.tompi4py()
+        #     rank = comm.Get_rank()
+        #     if rank == 0:
+        #         force_x = self._force[0::self._n_unknown].copy()
+        #         force_y = self._force[1::self._n_unknown].copy()
+        #         force_z = self._force[2::self._n_unknown].copy()
+        #         velocity_x = self._re_velocity[0::self._n_unknown].copy()
+        #         velocity_y = self._re_velocity[1::self._n_unknown].copy()
+        #         velocity_z = self._re_velocity[2::self._n_unknown].copy()
+        #         velocity_err_x = np.abs(self._re_velocity[0::self._n_unknown] - self.get_velocity()[0::3])
+        #         velocity_err_y = np.abs(self._re_velocity[1::self._n_unknown] - self.get_velocity()[1::3])
+        #         velocity_err_z = np.abs(self._re_velocity[2::self._n_unknown] - self.get_velocity()[2::3])
+        #
+        #         f_filename = filename + '_' + str(self) + '_force'
+        #         pointsToVTK(f_filename, self.get_f_nodes()[:, 0], self.get_f_nodes()[:, 1], self.get_f_nodes()[:, 2],
+        #                     data={"force": (force_x, force_y, force_z), })
+        #         u_filename = filename + '_' + str(self) + '_velocity'
+        #         pointsToVTK(u_filename, self.get_u_nodes()[:, 0], self.get_u_nodes()[:, 1], self.get_u_nodes()[:, 2],
+        #                     data={"velocity":     (velocity_x, velocity_y, velocity_z),
+        #                           "velocity_err": (velocity_err_x, velocity_err_y, velocity_err_z), })
+        #     return True
+
+
 problem_dic = {
     'rs':                           stokesFlowProblem,
     'rs_plane':                     stokesFlowProblem,
     'lg_rs':                        stokesFlowProblem,
     'tp_rs':                        stokesFlowProblem,
     'pf':                           stokesFlowProblem,
+    'pf_dualPotential':             dual_potential_problem,
     'rs_stokesletsInPipe':          stokesletsInPipeProblem,
     'pf_stokesletsInPipe':          stokesletsInPipeProblem,
-    'pf_stokesletsInPipeForceFree': stokesletsInPipeProblem,
+    'pf_stokesletsInPipeForceFree': stokesletsInPipeForceFreeProblem,
     'pf_stokesletsTwoPlane':        stokesletsTwoPlaneProblem,
+    'pf_infhelix':                  stokesFlowProblem
 }
 
 obj_dic = {
@@ -2920,10 +3008,12 @@ obj_dic = {
     'lg_rs':                        stokesFlowObj,
     'tp_rs':                        stokesFlowObj,
     'pf':                           stokesFlowObj,
+    'pf_dualPotential':             dual_potential_obj,
     'rs_stokesletsInPipe':          stokesFlowObj,
     'pf_stokesletsInPipe':          stokesFlowObj,
     'pf_stokesletsInPipeForceFree': stokesFlowObj,
     'pf_stokesletsTwoPlane':        stokesFlowObj,
+    'pf_infhelix':                  stokesFlowObj,
 }
 
 # names of models that need two geometries.

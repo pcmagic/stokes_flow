@@ -27,6 +27,8 @@ tube+sphere/
 *.exe
 *(copy).py
 *~
+*.pbs
+*.sh
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

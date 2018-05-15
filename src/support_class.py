@@ -182,7 +182,7 @@ def check_file_extension(filename, extension):
 
 def tube_flatten(container):
     for i in container:
-        if isinstance(i, (list, tuple)):
+        if isinstance(i, (uniqueList, list, tuple)):
             for j in tube_flatten(i):
                 yield j
         else:

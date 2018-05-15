@@ -53,7 +53,7 @@ def main_fun(**main_kwargs):
 
     obj_sphere = create_sphere(**problem_kwargs)[0]
     problem = sf.ShearFlowProblem(**problem_kwargs)
-    problem.do_solve_process((obj_sphere, ))
+    problem.do_solve_process((obj_sphere,))
 
     force_sphere = obj_sphere.get_total_force()
     temp_F = (6 * rs, 6 * rs, 6 * rs, 8 * rs ** 3, 8 * rs ** 3, 8 * rs ** 3)
@@ -64,6 +64,6 @@ def main_fun(**main_kwargs):
 
     return True
 
+
 if __name__ == '__main__':
     main_fun()
-

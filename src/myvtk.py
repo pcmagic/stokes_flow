@@ -65,7 +65,7 @@ def save_singleEcoli_vtk(problem: sf.stokesFlowProblem, createHandle=createEcoli
 def save_singleEcoli_U_vtk(problem: sf.stokesFlowProblem,
                            createHandle=createEcoliComp_tunnel, part='full'):
     def save_head():
-        vsobj = createHandle(**check_kwargs)[0]
+        vsobj = createHandle(**check_kwargs).get_obj_list()[0]
         vsobj.set_rigid_velocity(rel_Us + ecoli_U, center=center)
         velocity_err_sphere = next(problem.vtk_check(fileHeadle, vsobj))
         PETSc.Sys.Print('velocity error of sphere (total, x, y, z): ', velocity_err_sphere)
@@ -123,6 +123,9 @@ def save_singleEcoli_U_vtk(problem: sf.stokesFlowProblem,
     check_kwargs['ds'] = problem_kwargs['ds'] * 1.2
     check_kwargs['hfct'] = 1
     check_kwargs['Tfct'] = 1
+    check_kwargs['eh'] = 0
+    check_kwargs['es'] = 0
+    check_kwargs['eT'] = 0
     do_save_part()()
 
     t1 = time()
@@ -197,10 +200,11 @@ def save_grid_sphere_vtk(problem: sf.stokesFlowProblem, createHandle=create_sphe
 
     check_kwargs = problem_kwargs.copy()
     check_kwargs['ds'] = problem_kwargs['ds'] * 1.2
-    obj_sphere_check = sf.stokesFlowObj()
+    obj_sphere_check = sf.obj_dic[problem_kwargs['matrix_method']]()
     obj_sphere_check.combine(createHandle(**check_kwargs))
+    obj_sphere_check.set_name('fullPro')
     velocity_err = problem.vtk_check(fileHeadle, obj_sphere_check)
-    PETSc.Sys.Print('velocity error (total, x, y, z): ', velocity_err)
+    PETSc.Sys.Print('velocity error (total, x, y, z): ', next(velocity_err))
 
     t1 = time()
     PETSc.Sys.Print('%s: write vtk files use: %fs' % (str(problem), (t1 - t0)))

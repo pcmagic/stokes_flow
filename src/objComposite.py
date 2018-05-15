@@ -73,12 +73,13 @@ def createEcoliComp_ellipse(name='...', **kwargs):
     return ecoli_comp
 
 
-def create_capsule(rs1, rs2, ls, ds):
+def create_capsule(rs1, rs2, ls, ds, node_dof=3):
     lvs3 = ls - 2 * rs2
     dth = ds / rs2
     err_msg = 'geo parameter of create_capsule head is wrong. '
     assert lvs3 >= 0, err_msg
     vsgeo = geo()
+    vsgeo.set_dof(node_dof)
 
     vsgeo1 = ellipse_geo()  # velocity node geo of head
     vsgeo1.create_half_delta(ds, rs1, rs2)
@@ -135,20 +136,24 @@ def createEcoli_tunnel(**kwargs):
     objtype = sf.obj_dic[matrix_method]
 
     # create helix
+    vhobj0 = objtype()
+    node_dof = vhobj0.get_n_unknown()
     B = ph / (2 * np.pi)
     vhgeo0 = supHelix()  # velocity node geo of helix
+    if 'dualPotential' in matrix_method:
+        vhgeo0.set_check_epsilon(False)
+    vhgeo0.set_dof(node_dof)
     dth = 2 * np.pi / nth
     fhgeo0 = vhgeo0.create_deltatheta(dth=dth, radius=rh2, R=rh1, B=B, n_c=ch, epsilon=eh, with_cover=with_cover,
                                       factor=hfct, left_hand=left_hand)
-    vhobj0 = objtype()
     vhobj0.set_data(fhgeo0, vhgeo0, name='helix_0')
     vhobj0.zoom(zoom_factor)
-    # # dbg
-    # OptDB = PETSc.Options( )
-    # factor = OptDB.getReal('dbg_theta_factor', 0.5)
-    # PETSc.Sys.Print('--------------------> DBG: dbg_theta_factor = %f' % factor)
-    # theta = np.pi * ch + (rT2 + rh2 * factor) / (rh1 + rh2)
-    theta = np.pi * ch + (rT2 + rh2 * 0.5) / (rh1 + rh2)
+    # dbg
+    OptDB = PETSc.Options()
+    factor = OptDB.getReal('dbg_theta_factor', 1.5)
+    PETSc.Sys.Print('--------------------> DBG: dbg_theta_factor = %f' % factor)
+    theta = np.pi * ch + (rT2 + rh2 * factor) / (rh1 + rh2)
+    # theta = np.pi * ch + (rT2 + rh2 * 2) / (rh1 + rh2)
     vhobj0.node_rotation(norm=np.array((0, 0, 1)), theta=theta)
     vhobj0.move(moveh * zoom_factor)
     vhobj1 = vhobj0.copy()
@@ -156,17 +161,20 @@ def createEcoli_tunnel(**kwargs):
     vhobj1.set_name('helix_1')
 
     # create head
-    vsgeo = create_capsule(rs1, rs2, ls, ds)
+    vsobj = objtype()
+    node_dof = vsobj.get_n_unknown()
+    vsgeo = create_capsule(rs1, rs2, ls, ds, node_dof)
     fsgeo = vsgeo.copy()  # force node geo of sphere
     fsgeo.node_zoom(1 + ds / (0.5 * (rs1 + rs2)) * es)
     fsgeo.node_zoom_z(1 - ds / (0.5 * (rs1 + rs2)) * es)
-    vsobj = objtype()
     vsobj.set_data(fsgeo, vsgeo, name='sphere_0')
     vsobj.zoom(zoom_factor)
     vsobj.move(moves * zoom_factor)
 
     # create T shape
     dtT = 2 * np.pi / ntT
+    vTobj = objtype()
+    node_dof = vTobj.get_n_unknown()
     # # dbg
     # OptDB = PETSc.Options( )
     # factor = OptDB.getReal('dbg_move_factor', 1)
@@ -174,8 +182,10 @@ def createEcoli_tunnel(**kwargs):
     # moveT = np.array((0, 0, moveh[-1] + lh / 2 + rh2 * factor))
     moveT = np.array((0, 0, movehz + lh / 2)) + center
     vTgeo = tunnel_geo()
+    if 'dualPotential' in matrix_method:
+        vTgeo.set_check_epsilon(False)
+    vTgeo.set_dof(node_dof)
     fTgeo = vTgeo.create_deltatheta(dth=dtT, radius=rT2, factor=Tfct, length=lT, epsilon=eT, with_cover=1)
-    vTobj = objtype()
     vTobj.set_data(fTgeo, vTgeo, name='T_shape_0')
     theta = -np.pi / 2
     vTobj.node_rotation(norm=np.array((0, 1, 0)), theta=theta)
@@ -217,13 +227,14 @@ def create_sphere(namehandle='sphereObj', **kwargs):
     sphere_coord = kwargs['sphere_coord']
     objtype = sf.obj_dic[matrix_method]
 
+    obj_sphere = objtype()
     sphere_geo0 = sphere_geo()  # force geo
+    sphere_geo0.set_dof(obj_sphere.get_n_unknown())
     sphere_geo0.create_delta(ds, rs)
     sphere_geo0.set_rigid_velocity([0, 0, 0, 0, 0, 0])
     sphere_geo1 = sphere_geo0.copy()
-    if matrix_method in ('pf',):
+    if 'pf' in matrix_method:
         sphere_geo1.node_zoom((rs + ds * es) / rs)
-    obj_sphere = objtype()
     obj_sphere.set_data(sphere_geo1, sphere_geo0)
 
     obj_list = []

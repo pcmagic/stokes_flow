@@ -13,6 +13,7 @@ __all__ = ['get_solver_kwargs', 'get_forceFree_kwargs', 'get_givenForce_kwargs',
            'get_ecoli_kwargs', 'print_ecoli_info', 'print_ecoli_U_info',
            'print_single_ecoli_forceFree_result', 'print_single_ecoli_force_result',
            'get_rod_kwargs', 'print_Rod_info',
+           'print_infhelix_info',
            'get_sphere_kwargs', 'print_sphere_info', ]
 
 
@@ -304,13 +305,14 @@ def print_solver_info(**problem_kwargs):
     solve_method = problem_kwargs['solve_method']
     precondition_method = problem_kwargs['precondition_method']
 
-    err_msg = "Only 'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane'" \
-              " and 'rs' methods are accept for this main code. "
-    acceptType = ('rs', 'rs_plane', 'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane',)
+    err_msg = "Only 'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane', 'pf_dualPotential'" \
+              ", 'rs', and 'rs_plane' methods are accept for this main code. "
+    acceptType = ('rs', 'rs_plane',
+                  'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane', 'pf_dualPotential', 'pf_infhelix', )
     assert matrix_method in acceptType, err_msg
     PETSc.Sys.Print('output file headle: ' + fileHeadle)
     PETSc.Sys.Print('  create matrix method: %s, ' % matrix_method)
-    if matrix_method in ('rs', 'pf', 'rs_plane'):
+    if matrix_method in ('rs', 'pf', 'rs_plane', 'pf_dualPotential', 'pf_infhelix'):
         pass
     elif matrix_method in ('pf_stokesletsInPipe',):
         forcepipe = problem_kwargs['forcepipe']
@@ -514,3 +516,70 @@ def print_sphere_info(sphereName, **problem_kwargs):
     for t_coord, t_velocity in zip(sphere_coord, sphere_velocity):
         PETSc.Sys.Print(' ', t_coord, '&', t_velocity)
     return True
+
+def print_infhelix_info(objName, **problem_kwargs):
+    infhelix_maxtheta = problem_kwargs['infhelix_maxtheta']
+    infhelix_ntheta = problem_kwargs['infhelix_ntheta']
+    infhelix_nnode = problem_kwargs['infhelix_nnode']
+
+    PETSc.Sys.Print(objName, 'geo information: ')
+    PETSc.Sys.Print('  cut of max theta %f, # of segment %f, # of node %f' %
+                    (infhelix_maxtheta, infhelix_ntheta, infhelix_nnode))
+
+# def get_helix_kwargs():
+#     OptDB = PETSc.Options()
+#     rh1 = OptDB.getReal('rh1', 0.2)  # radius of helix
+#     rh2 = OptDB.getReal('rh2', 0.05)  # radius of helix
+#     nth = OptDB.getInt('nth', 2)  # amount of nodes on each cycle of helix
+#     eh = OptDB.getReal('eh', -0.1)  # epsilon of helix
+#     ch = OptDB.getReal('ch', 0.1)  # cycles of helix
+#     ph = OptDB.getReal('ph', 3)  # helix pitch
+#     hfct = OptDB.getReal('hfct', 1)  # helix axis line factor, put more nodes near both tops
+#     with_cover = OptDB.getInt('with_cover', 1)
+#     left_hand = OptDB.getBool('left_hand', False)
+#     rs = OptDB.getReal('rs', 0.5)  # radius of head
+#     rs1 = OptDB.getReal('rs1', rs * 2)  # radius of head
+#     rs2 = OptDB.getReal('rs2', rs)  # radius of head
+#     ls = OptDB.getReal('ls', rs1 * 2)  # length of head
+#     ds = OptDB.getReal('ds', 1)  # delta length of sphere
+#     es = OptDB.getReal('es', -0.1)  # epsilon of sphere
+#     rT1 = OptDB.getReal('rT1', rh1)  # radius of Tgeo
+#     rT2 = OptDB.getReal('rT2', rh2)  # radius of Tgeo
+#     ntT = OptDB.getReal('ntT', nth)  # amount of nodes on each cycle of Tgeo
+#     eT = OptDB.getReal('eT', eh)  # epsilon of Tgeo
+#     Tfct = OptDB.getReal('Tfct', 1)  # Tgeo axis line factor, put more nodes near both tops
+#     with_T_geo = OptDB.getBool('with_T_geo', True)
+#
+#     # rotate the ecoli, original it is along z axis.
+#     rot_theta = OptDB.getReal('rot_theta', 0)
+#     rot_norm = np.array((1, 0, 0))  # currently is x axis.
+#
+#     rel_uhx = OptDB.getReal('rel_uhx', 0)
+#     rel_uhy = OptDB.getReal('rel_uhy', 0)
+#     rel_uhz = OptDB.getReal('rel_uhz', 0)
+#     rel_whx = OptDB.getReal('rel_whx', 0)
+#     rel_why = OptDB.getReal('rel_why', 0)
+#     rel_whz = OptDB.getReal('rel_whz', 0)
+#     t_theta = rot_theta * np.pi
+#     # relative velocity of sphere
+#     rel_Us = np.array((0, rel_usz * np.sin(t_theta), rel_usz * np.cos(t_theta),
+#                        0, rel_wsz * np.sin(t_theta), rel_wsz * np.cos(t_theta)))
+#     # relative velocity of helix
+#     rel_Uh = np.array((0, rel_uhz * np.sin(t_theta), rel_uhz * np.cos(t_theta),
+#                        0, rel_whz * np.sin(t_theta), rel_whz * np.cos(t_theta)))
+#     dist_hs = OptDB.getReal('dist_hs', 2)  # distance between head and tail
+#     centerx = OptDB.getReal('centerx', 0)
+#     centery = OptDB.getReal('centery', 0)
+#     centerz = OptDB.getReal('centerz', 0)
+#     center = np.array((centerx, centery, centerz))  # center of ecoli
+#     zoom_factor = OptDB.getReal('zoom_factor', 1)
+#
+#     ecoli_kwargs = {
+#         'rh1':         rh1,
+#         'rh2':         rh2,
+#         'nth':         nth,
+#         'eh':          eh,
+#         'ch':          ch,
+#         'ph':          ph,
+#     }
+#     return ecoli_kwargs
