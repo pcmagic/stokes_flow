@@ -5,6 +5,7 @@ import numpy as np
 __all__ = ['uniqueList', 'typeList', 'intList', 'floatList',
            'abs_comp', 'abs_construct_matrix',
            'check_file_extension',
+           'coordinate_transformation',
            'tube_flatten', ]
 
 
@@ -187,3 +188,13 @@ def tube_flatten(container):
                 yield j
         else:
             yield i
+
+
+class coordinate_transformation:
+    @staticmethod
+    def vector_rotation(f, R):
+        fx, fy, fz = f.T[[0, 1, 2]]
+        fx1 = R[0][0] * fx + R[0][1] * fy + R[0][2] * fz
+        fy1 = R[1][0] * fx + R[1][1] * fy + R[1][2] * fz
+        fz1 = R[2][0] * fx + R[2][1] * fy + R[2][2] * fz
+        return np.dstack((fx1, fy1, fz1))[0]

@@ -8,6 +8,8 @@ from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.myio import *
 from src.geo import *
+from src.objComposite import *
+from matplotlib import pyplot as plt
 
 
 def get_problem_kwargs(**main_kwargs):
@@ -16,8 +18,14 @@ def get_problem_kwargs(**main_kwargs):
     fileHeadle = OptDB.getString('f', 'HelixInPipe')
     OptDB.setValue('f', fileHeadle)
     problem_kwargs['fileHeadle'] = fileHeadle
+    n_helix = OptDB.getReal('n_helix', 2)
+    OptDB.setValue('n_helix', n_helix)
+    problem_kwargs['n_helix'] = n_helix
+    infhelix_ntheta = OptDB.getReal('infhelix_ntheta', 2)
+    OptDB.setValue('infhelix_ntheta', infhelix_ntheta)
+    problem_kwargs['infhelix_ntheta'] = infhelix_ntheta
 
-    kwargs_list = (main_kwargs,)
+    kwargs_list = (main_kwargs, get_helix_kwargs(), get_givenForce_kwargs())
     for t_kwargs in kwargs_list:
         for key in t_kwargs:
             problem_kwargs[key] = t_kwargs[key]
@@ -26,91 +34,144 @@ def get_problem_kwargs(**main_kwargs):
 
 def print_case_info(obj_name, **problem_kwargs):
     fileHeadle = problem_kwargs['fileHeadle']
-    PETSc.Sys.Print('-->Infinite helix case, given unite spin wz.')
+    infhelix_ntheta = problem_kwargs['infhelix_ntheta']
+    n_helix = problem_kwargs['n_helix']
     print_solver_info(**problem_kwargs)
-    print_infhelix_info(obj_name, **problem_kwargs)
+    print_forcefree_info(**problem_kwargs)
+    print_helix_info(obj_name, **problem_kwargs)
+    PETSc.Sys.Print('  given unite spin wz, # segments %d, # helix %d. ' % (infhelix_ntheta, n_helix))
     return True
 
 
 # @profile
 def main_fun(**main_kwargs):
-    OptDB = PETSc.Options()
     main_kwargs['matrix_method'] = 'pf_infhelix'
-    main_kwargs['infhelix_maxtheta'] = OptDB.getReal('infhelix_maxtheta', 15)
-    main_kwargs['infhelix_ntheta'] = OptDB.getReal('infhelix_ntheta', 13)
-    main_kwargs['infhelix_nnode'] = OptDB.getReal('infhelix_nnode', 10)
     problem_kwargs = get_problem_kwargs(**main_kwargs)
-    objname = 'infHelix'
+    ph = problem_kwargs['ph']
+    ch = problem_kwargs['ch']
+    nth = problem_kwargs['nth']
+    maxtheta = ch * 2 * np.pi
+    problem_kwargs['infhelix_maxtheta'] = maxtheta
+    # problem_kwargs['infhelix_nnode'] = problem_kwargs['nth']
+    ntheta = problem_kwargs['infhelix_ntheta']
+    rh1 = problem_kwargs['rh1']
+    rh2 = problem_kwargs['rh2']
+    helix_theta = np.arctan(2 * np.pi * rh1 / ph)
+    R = (rh1 + rh2 * np.cos(helix_theta)) / problem_kwargs['zoom_factor']
+    objname = 'infhelix'
     print_case_info(objname, **problem_kwargs)
-    maxtheta = main_kwargs['infhelix_maxtheta']
-    ntheta = main_kwargs['infhelix_ntheta']
-    n_node = main_kwargs['infhelix_nnode']
-    n_helix = OptDB.getReal('n_helix', 2)
 
     # helix obj
-    rh1 = 1
-    rh2 = 0.08
-    ph = 2 * np.pi
-    helix_list = []
-    for i0, theta0 in enumerate(np.linspace(0, 2 * np.pi, n_helix, endpoint=False)):
-        infhelix_ugeo = infHelix(maxtheta, ntheta)
-        infhelix_ugeo.create_n(rh1, rh2, ph, n_node, theta0=theta0)
-        infhelix_fgeo = infhelix_ugeo.create_fgeo(epsilon=-1)
-        infhelix_obj = sf.stokesFlowObj()
-        infhelix_obj.set_data(f_geo=infhelix_fgeo, u_geo=infhelix_ugeo, name=objname + '%02d' % i0)
-        helix_list.append(infhelix_obj)
+    helix_list = create_infHelix(objname, **problem_kwargs)
 
     # pipe obj
-    R = 1 / 0.7
     infPipe_ugeo = infPipe(maxtheta / (2 * np.pi) * ph, ntheta)
-    infPipe_ugeo.create_n(R, n_node * (R / rh2))
+    # dbg
+    OptDB = PETSc.Options()
+    factor = OptDB.getReal('dbg_theta_factor', 0)
+    PETSc.Sys.Print('--------------------> DBG: dbg_theta_factor = %f' % factor)
+    infPipe_ugeo.create_n(R, nth * (R / rh2), factor * np.pi)
+    infPipe_ugeo.set_rigid_velocity((0, 0, 0, 0, 0, 0))
     infPipe_fgeo = infPipe_ugeo.create_fgeo(epsilon=1)
     infPipe_obj = sf.stokesFlowObj()
     infPipe_obj.set_data(f_geo=infPipe_fgeo, u_geo=infPipe_ugeo, name='InfPipeObj')
-    # ppl = 1e20
-    # infPipe_ugeo = infHelix(maxtheta * ph / ppl, ntheta)
-    # infPipe_ugeo.create_n(0, R, ppl, n_node * (R / rh2), theta0=0)
-    # infPipe_fgeo = infPipe_ugeo.create_fgeo(epsilon=-1)
-    # infPipe_obj = sf.stokesFlowObj()
-    # infPipe_obj.set_data(f_geo=infPipe_fgeo, u_geo=infPipe_ugeo, name='infHelixApx')
 
-    # create problem
-    problem = sf.stokesFlowProblem(**problem_kwargs)
+    # # create problem, given velocity
+    # problem = sf.stokesFlowProblem(**problem_kwargs)
+    # for tobj in helix_list:
+    #     problem.add_obj(tobj)
+    # problem.add_obj(infPipe_obj)
+    # problem.print_info()
+    # problem.create_matrix()
+    #
+    # # case 1, translation, translation
+    # for tobj in helix_list:
+    #     tobj.set_rigid_velocity((0, 0, 1, 0, 0, 0))
+    # infPipe_ugeo.set_rigid_velocity((0, 0, 0, 0, 0, 0))
+    # problem.create_F_U()
+    # problem.solve()
+    # # problem.show_force(length_factor=0.1)
+    # helix_force = np.sum([tobj.get_total_force() for tobj in helix_list], axis=0)
+    # helix_force = helix_force * ntheta / (2 * maxtheta / (2 * np.pi) * ph)  # total force / helix arc length
+    # pipe_force = infPipe_obj.get_total_force()
+    # pipe_force = pipe_force * ntheta / (2 * maxtheta / (2 * np.pi) * ph)  # total force / helix arc length
+    # PETSc.Sys.Print('Translation, helix forces and torques', helix_force)
+    # PETSc.Sys.Print('Translation, pipe forces and torques', pipe_force)
+    # PETSc.Sys.Print('Translation, total forces and torques', helix_force + pipe_force)
+    #
+    # # case 2, rotation
+    # for tobj in helix_list:
+    #     tobj.set_rigid_velocity((0, 0, 0, 0, 0, 1))
+    # infPipe_ugeo.set_rigid_velocity((0, 0, 0, 0, 0, 0))
+    # problem.create_F_U()
+    # problem.solve()
+    # # problem.show_force(length_factor=0.1)
+    # helix_force = np.sum([tobj.get_total_force() for tobj in helix_list], axis=0)
+    # helix_force = helix_force * ntheta / (2 * maxtheta / (2 * np.pi) * ph)   # total force / helix arc length
+    # pipe_force = infPipe_obj.get_total_force()
+    # pipe_force = pipe_force * ntheta / (2 * maxtheta / (2 * np.pi) * ph)   # total force / helix arc length
+    # PETSc.Sys.Print('Rotation, helix forces and torques', helix_force)
+    # PETSc.Sys.Print('Rotation, pipe forces and torques', pipe_force)
+    # PETSc.Sys.Print('Rotation, total forces and torques', helix_force + pipe_force)
+
+    # # case 3, create problem, given force and torque
+    # problem = sf.givenForce1DInfPoblem(axis='z', **problem_kwargs)
+    # fct = (2 * (maxtheta / (2 * np.pi)) * ph) / ntheta  # rescale factor
+    # helix_givenF = np.array((0, 0, 0, 0, 0, 1))
+    # helix_rel_U = np.array((0, 0, 0, 0, 0, 0))
+    # helix_composite = sf.givenForce1DInfComposite(name='helix_composite', givenF=helix_givenF * fct)
+    # for tobj in helix_list:
+    #     helix_composite.add_obj(tobj, rel_U=helix_rel_U)
+    # problem.add_obj(helix_composite)
+    # problem.add_obj(infPipe_obj)
+    # problem.print_info()
+    # problem.create_matrix()
+    # problem.solve()
+    # helix_force = helix_composite.get_total_force() / fct
+    # helixU = helix_composite.get_ref_U() + helix_rel_U
+    # PETSc.Sys.Print('External force per period', helix_givenF)
+    # PETSc.Sys.Print('helix force per period', helix_force)
+    # PETSc.Sys.Print('---->>>Resultant err is',
+    #                 np.linalg.norm(helix_force[[2, 5]] - helix_givenF[[2, 5]]) / np.linalg.norm(helix_givenF[[2, 5]]))
+    # PETSc.Sys.Print('---->>>helix velocity is', helixU)
+    # PETSc.Sys.Print('---->>>Norm forward helix velocity is', helixU[2] / (helixU[5] * rh1))
+
+    # case 4, create problem, given force and torque, iterate method
+    helix_composite = sf.forcefreeComposite(name='helix_composite')
+    problem_kwargs['givenF'] = 0
+    problem = sf.givenTorqueIterateForce1DProblem(axis='z', tolerate=1e-3, **problem_kwargs)
     for tobj in helix_list:
+        helix_composite.add_obj(tobj, rel_U=np.zeros(6))
         problem.add_obj(tobj)
     problem.add_obj(infPipe_obj)
+    problem.set_iterate_obj(helix_list)
     problem.print_info()
-    problem.create_matrix()
-
-    # case 1, translation
-    for tobj in helix_list:
-        tobj.set_rigid_velocity((0, 0, 1, 0, 0, 0))
-    infPipe_ugeo.set_rigid_velocity((0, 0, 0, 0, 0, 0))
-    problem.create_F_U()
-    problem.solve()
+    u0, tol = problem.do_iterate()
+    PETSc.Sys.Print('---->>>helix force relative tolerate', tol)
+    helixU = np.array((0, 0, u0, 0, 0, 1))
+    PETSc.Sys.Print('---->>>helix velocity is', helixU)
+    PETSc.Sys.Print('---->>>Norm forward helix velocity is', helixU[2] / (helixU[5] * rh1))
     # problem.show_force(length_factor=0.1)
-    helix_force = np.sum([tobj.get_total_force() for tobj in helix_list], axis=0)
-    helix_force = helix_force * ntheta / (2 * maxtheta / (2 * np.pi) * ph)   # total force / helix arc length
-    PETSc.Sys.Print('Translation, helix forces and torques', helix_force)
-    pipe_force = infPipe_obj.get_total_force()
-    pipe_force = pipe_force * ntheta / (2 * maxtheta / (2 * np.pi) * ph)   # total force / helix arc length
-    PETSc.Sys.Print('Translation, pipe forces and torques', pipe_force)
-    PETSc.Sys.Print('Translation, total forces and torques', helix_force + pipe_force)
+    # for tobj in helix_list:
+    #     tobj.set_rigid_velocity(helixU)
+    # problem.solve()
+    # problem.create_F_U()
+    # helix_force = np.sum([tobj.get_total_force() for tobj in helix_list], axis=0)
+    # PETSc.Sys.Print('helix force per period', helix_force)
 
-    # case 2, rotation
-    for tobj in helix_list:
-        tobj.set_rigid_velocity((0, 0, 0, 0, 0, 1))
-    infPipe_ugeo.set_rigid_velocity((0, 0, 0, 0, 0, 0))
-    problem.create_F_U()
-    problem.solve()
-    # problem.show_force(length_factor=0.1)
-    helix_force = np.sum([tobj.get_total_force() for tobj in helix_list], axis=0)
-    helix_force = helix_force * ntheta / (2 * maxtheta / (2 * np.pi) * ph)   # total force / helix arc length
-    PETSc.Sys.Print('Rotation, helix forces and torques', helix_force)
-    pipe_force = infPipe_obj.get_total_force()
-    pipe_force = pipe_force * ntheta / (2 * maxtheta / (2 * np.pi) * ph)   # total force / helix arc length
-    PETSc.Sys.Print('Rotation, pipe forces and torques', pipe_force)
-    PETSc.Sys.Print('Rotation, total forces and torques', helix_force + pipe_force)
+    # comm = PETSc.COMM_WORLD.tompi4py()
+    # rank = comm.Get_rank()
+    # if rank == 0:
+    #     pipeForce = infPipe_obj.get_force()
+    #     pipeTheta = infPipe_obj.get_f_geo().get_phi()
+    #     fig = plt.figure(figsize=(16, 12))
+    #     ax = fig.subplots(nrows=1, ncols=1)
+    #     fig.patch.set_facecolor('white')
+    #     ax.plot(pipeTheta, pipeForce[0::3], label='fx')
+    #     ax.plot(pipeTheta, pipeForce[1::3], label='fy')
+    #     ax.plot(pipeTheta, pipeForce[2::3], label='fz')
+    #     ax.legend()
+    #     plt.show()
 
     PETSc.Sys.Print(problem_kwargs)
     return True

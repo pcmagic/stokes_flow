@@ -3,15 +3,15 @@ import numpy as np
 from mpi4py import MPI
 from petsc4py import PETSc
 from numpy import pi
-from numpy import linalg as LA
 from src import stokes_flow as sf
 from src import geo
-from tqdm import tqdm, tqdm_notebook, tnrange
+from tqdm import tqdm
 
 
 # from multiprocessing import cpu_count, Pool
 # from numba import jit
 # import numexpr as ne
+# from numpy import linalg as LA
 
 
 def delta(i, j):  # delta symbol
@@ -1134,7 +1134,7 @@ def two_plane_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocit
     INDEX = kwargs['INDEX']
     greenFun = tank(Height=Height)
 
-    for i0 in tqdm(range(f_dmda.getRanges()[0][0], f_dmda.getRanges()[0][1]), desc=INDEX, leave=False):
+    for i0 in tqdm(range(f_dmda.getRanges()[0][0], f_dmda.getRanges()[0][1]), desc=INDEX):
         greenFun.set_locF(f_nodes[i0, 0], f_nodes[i0, 1], f_nodes[i0, 2])
         m00, m01, m02, m10, m11, m12, m20, m21, m22 = greenFun.get_Ufunc_series(u_nodes)
         m00 = m00 / (4 * np.pi)
@@ -1317,8 +1317,9 @@ def pf_infhelix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity inf
     _, u_glbIdx_all = obj1.get_u_geo().get_glbIdx()
     _, f_glbIdx_all = obj2.get_f_geo().get_glbIdx()
     u_dmda = obj1.get_u_geo().get_dmda()
+    INDEX = kwargs['INDEX']
 
-    for i0 in range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1]):
+    for i0 in tqdm(range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1]), desc=INDEX):
         m00, m01, m02, m10, m11, m12, m20, m21, m22, i1 \
             = pf_infhelix_3d_petsc_mij(u_nodes[i0], f_geo, i0)
         u_glb = u_glbIdx_all[i1 * 3]

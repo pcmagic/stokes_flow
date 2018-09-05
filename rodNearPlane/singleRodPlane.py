@@ -13,9 +13,6 @@ petsc4py.init(sys.argv)
 # print(sys.path)
 # exit()
 
-import matplotlib
-
-matplotlib.use('Agg')
 import numpy as np
 from tqdm import tqdm
 # import pickle
@@ -61,8 +58,6 @@ def print_case_info(**problem_kwargs):
 
 # @profile
 def main_fun(**main_kwargs):
-    comm = PETSc.COMM_WORLD.tompi4py()
-    rank = comm.Get_rank()
     problem_kwargs = get_problem_kwargs(**main_kwargs)
     fileHeadle = problem_kwargs['fileHeadle']
     rel_URod = problem_kwargs['rel_URod']
@@ -71,13 +66,12 @@ def main_fun(**main_kwargs):
     givenF = problem_kwargs['givenF']
     rRod = problem_kwargs['rRod']
     lRod = problem_kwargs['lRod']
-    RodCenter = problem_kwargs['RodCenter']
-    # matrix_method = problem_kwargs['matrix_method']
     fileHeadle = '%s_phi%f_th%f' % (fileHeadle, RodPhi, RodThe)
     problem_kwargs['fileHeadle'] = fileHeadle
 
     if not problem_kwargs['restart']:
         rod_comp_list = create_rod(namehandle='rod_comp', **problem_kwargs)
+        # rod_comp.show_givenF()
         # # dbg
         # rod_comp_list[0].get_obj_list()[0].get_u_geo().show_nodes()
         # rod_U = np.random.sample(6)
@@ -248,5 +242,5 @@ def job_script():
 
 
 if __name__ == '__main__':
-    # main_fun()
-    job_script()
+    main_fun()
+    # job_script()

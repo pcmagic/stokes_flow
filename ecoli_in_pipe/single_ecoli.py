@@ -21,7 +21,7 @@ from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.myio import *
 # from src.support_class import *
-from src.objComposite import createEcoliComp_tunnel
+from src.objComposite import *
 from src.myvtk import save_singleEcoli_vtk
 from ecoli_in_pipe.ecoli_common import *
 
@@ -33,7 +33,7 @@ from ecoli_in_pipe.ecoli_common import *
 #     OptDB.setValue('f', fileHeadle)
 #     problem_kwargs['fileHeadle'] = fileHeadle
 #
-#     kwargs_list = (get_vtk_tetra_kwargs(), get_ecoli_kwargs(), get_forceFree_kwargs(), main_kwargs,)
+#     kwargs_list = (get_vtk_tetra_kwargs(), get_ecoli_kwargs(), get_forcefree_kwargs(), main_kwargs,)
 #     for t_kwargs in kwargs_list:
 #         for key in t_kwargs:
 #             problem_kwargs[key] = t_kwargs[key]
@@ -44,7 +44,7 @@ from ecoli_in_pipe.ecoli_common import *
 #     fileHeadle = problem_kwargs['fileHeadle']
 #     PETSc.Sys.Print('-->Ecoli in free space, force free case.')
 #     print_solver_info(**problem_kwargs)
-#     print_forceFree_info(**problem_kwargs)
+#     print_forcefree_info(**problem_kwargs)
 #     print_ecoli_info(fileHeadle, **problem_kwargs)
 #     return True
 
@@ -59,14 +59,21 @@ def main_fun(**main_kwargs):
 
     if not problem_kwargs['restart']:
         print_case_info(**problem_kwargs)
-        ecoli_comp = createEcoliComp_tunnel(name='ecoli_0', **problem_kwargs)
+        ecoliHeadType = OptDB.getString('ecoliHeadType', 'tunnel')
+        if 'ellipse' in ecoliHeadType:
+            ecoli_comp = createEcoliComp_ellipse(name='ecoli_0', **problem_kwargs)
+        elif 'tunnel' in ecoliHeadType:
+            ecoli_comp = createEcoliComp_tunnel(name='ecoli_0', **problem_kwargs)
+        else:
+            err_msg = 'wrong ecoliHeadType'
+            raise ValueError(err_msg)
         # ecoli_comp.show_u_nodes(linestyle=' ')
         # # dbg
         # for obj in ecoli_comp.get_obj_list():
         #     filename = fileHeadle + '_' + str(obj)
         #     obj.get_u_geo().save_nodes(filename + '_U')
         #     obj.get_f_geo().save_nodes(filename + '_f')
-        problem = sf.forceFreeProblem(**problem_kwargs)
+        problem = sf.forcefreeProblem(**problem_kwargs)
         problem.do_solve_process(ecoli_comp, pick_M=True)
         # # debug
         # problem.saveM_ASCII('%s_M.txt' % fileHeadle)
@@ -74,7 +81,7 @@ def main_fun(**main_kwargs):
         # problem.saveV_ASCII('%s_V.txt' % fileHeadle)
 
         # post process
-        head_U, tail_U = print_single_ecoli_forceFree_result(ecoli_comp, **problem_kwargs)
+        head_U, tail_U = print_single_ecoli_forcefree_result(ecoli_comp, **problem_kwargs)
         ecoli_U = ecoli_comp.get_ref_U()
         save_singleEcoli_vtk(problem, createHandle=createEcoliComp_tunnel)
     else:

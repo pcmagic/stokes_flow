@@ -28,7 +28,7 @@ from src.support_class import *
 def get_problem_kwargs(**main_kwargs):
     problem_kwargs = get_solver_kwargs()
 
-    kwargs_list = (get_vtk_tetra_kwargs(), get_ecoli_kwargs(), get_forceFree_kwargs(), main_kwargs,)
+    kwargs_list = (get_vtk_tetra_kwargs(), get_ecoli_kwargs(), get_forcefree_kwargs(), main_kwargs,)
     for t_kwargs in kwargs_list:
         for key in t_kwargs:
             problem_kwargs[key] = t_kwargs[key]

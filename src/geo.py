@@ -185,8 +185,6 @@ class geo():
         return self._nodes[:, 2]
 
     def get_nodes_x_petsc(self):
-
-        x_petsc = self._dmda.createGlobalVector()
         x_petsc = self.get_dmda().createGlobalVector()
         t_x = np.matlib.repmat(self._nodes[:, 0].reshape((-1, 1)), 1, 3).flatten()
         x_petsc[:] = t_x[:]
@@ -1398,6 +1396,16 @@ class infHelix(infgeo_1d):
         Rmxt[1][1] = np.cos(th)
         return Rmxt
 
+    def Frenetframe(self, percentage):
+        th = percentage * self._maxlength + self._theta0
+        ph = self._ph
+        lh = 2 * np.pi * self._R
+        s = np.sqrt(lh ** 2 + ph ** 2)
+        T = np.array((-lh * np.sin(th) / s, lh * np.cos(th) / s, ph / s))
+        N = np.array((ph * np.sin(th) / s, -ph * np.cos(th) / s, lh / s))
+        B = np.array((-np.cos(th), -np.sin(th), 0))
+        return T, N, B
+
     def create_n(self, R, rho, ph, n, theta0=0):
         self._R = R
         self._rho = rho
@@ -1436,17 +1444,20 @@ class infPipe(infgeo_1d):
         super().__init__(maxlength, nSegment)
         self._R = 0  # radius of pipe
         self._phi = 0  # define the coordinates of nodes at the reference cross section.
+        self._theta = 0  # the angle between the cut plane and the z axis
 
     def coord_x123(self, percentage):
         # return coordinates of helix nodes
         xz = percentage * self._maxlength
         R = self._R
         phi = self._phi
-        return np.vstack((np.cos(phi) * R, np.sin(phi) * R, np.ones_like(phi) * xz)).T
+        theta = self._theta
+        return np.vstack((np.cos(phi) * R, np.sin(phi) * R, np.cos(phi) * R * np.sin(theta) + np.ones_like(phi) * xz)).T
 
-    def create_n(self, R, n):
+    def create_n(self, R, n, theta=0):
         self._R = R
         self._phi = np.linspace(0, 2 * np.pi, n, endpoint=False)
+        self._theta = theta
         self._nodes = self.coord_x123(0)
         self.set_deltaLength(np.sqrt(2 * np.pi * R / n))
         self.set_origin((0, 0, 0))
@@ -1458,8 +1469,11 @@ class infPipe(infgeo_1d):
         fgeo = infPipe(self.get_maxlength(), self.get_nSegment())
         deltalength = self.get_deltaLength()
         f_R = self._R + epsilon * deltalength
-        fgeo.create_n(f_R, self.get_n_nodes())
+        fgeo.create_n(f_R, self.get_n_nodes(), self._theta)
         return fgeo
+
+    def get_phi(self):
+        return self._phi
 
 
 class region:

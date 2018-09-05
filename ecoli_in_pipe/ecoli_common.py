@@ -17,7 +17,7 @@ __all__ = ['get_problem_kwargs', 'print_case_info', 'ecoli_restart']
 def get_problem_kwargs(**main_kwargs):
     problem_kwargs = get_solver_kwargs()
 
-    kwargs_list = (get_vtk_tetra_kwargs(), get_ecoli_kwargs(), get_forceFree_kwargs(), main_kwargs,)
+    kwargs_list = (get_vtk_tetra_kwargs(), get_ecoli_kwargs(), get_forcefree_kwargs(), main_kwargs,)
     for t_kwargs in kwargs_list:
         for key in t_kwargs:
             problem_kwargs[key] = t_kwargs[key]
@@ -28,7 +28,7 @@ def print_case_info(**problem_kwargs):
     fileHeadle = problem_kwargs['fileHeadle']
     PETSc.Sys.Print('-->Ecoli in pipe case, force free case.')
     print_solver_info(**problem_kwargs)
-    print_forceFree_info(**problem_kwargs)
+    print_forcefree_info(**problem_kwargs)
     print_ecoli_info(fileHeadle, **problem_kwargs)
     return True
 
@@ -61,7 +61,7 @@ def ecoli_restart(**main_kwargs):
     problem.solve()
 
     # post process
-    head_U, tail_U = print_single_ecoli_forceFree_result(ecoli_comp, **old_kwargs)
+    head_U, tail_U = print_single_ecoli_forcefree_result(ecoli_comp, **old_kwargs)
     ecoli_U = ecoli_comp.get_ref_U()
     save_singleEcoli_vtk(problem, createHandle=createEcoliComp_tunnel)
     return head_U, tail_U, ecoli_U

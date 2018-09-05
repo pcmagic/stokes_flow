@@ -52,7 +52,7 @@ def main_fun(**main_kwargs):
     rs = problem_kwargs['rs']
 
     obj_sphere = create_sphere(**problem_kwargs)[0]
-    problem = sf.ShearFlowProblem(**problem_kwargs)
+    problem = sf.shearFlowProblem(**problem_kwargs)
     problem.do_solve_process((obj_sphere,))
 
     force_sphere = obj_sphere.get_total_force()

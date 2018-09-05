@@ -21,7 +21,7 @@ from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.myio import *
 from src.support_class import *
-from src.objComposite import createEcoliComp_tunnel
+from src.objComposite import *
 from src.myvtk import save_singleEcoli_vtk
 from ecoli_in_pipe.ecoli_common import *
 
@@ -60,10 +60,30 @@ def main_fun(**main_kwargs):
     if not problem_kwargs['restart']:
         forcepipe = problem_kwargs['forcepipe']
         print_case_info(**problem_kwargs)
-        ecoli_comp = createEcoliComp_tunnel(name='ecoli_0', **problem_kwargs)
-        problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
+        ecoliHeadType = OptDB.getString('ecoliHeadType', 'tunnel')
+        if 'ellipse' in ecoliHeadType:
+            ecoli_comp0 = createEcoliComp_ellipse(name='ecoli_0', **problem_kwargs)
+        elif 'tunnel' in ecoliHeadType:
+            ecoli_comp0 = createEcoliComp_tunnel(name='ecoli_0', **problem_kwargs)
+        else:
+            err_msg = 'wrong ecoliHeadType'
+            raise ValueError(err_msg)
+        ecoli_comp = sf.forcefreeComposite(center=ecoli_comp0.get_center(), name='ecoli_0')
+        ecoli_comp.add_obj(ecoli_comp0.get_obj_list()[0], rel_U=ecoli_comp0.get_rel_U_list()[0])
+        ecoli_comp.add_obj(ecoli_comp0.get_obj_list()[1], rel_U=ecoli_comp0.get_rel_U_list()[1])
+
+        iterateTolerate = OptDB.getReal('iterateTolerate', 1e-4)
+        problem = sf.stokesletsInPipeforcefreeIterateProblem(tolerate=iterateTolerate, **problem_kwargs)
         problem.set_prepare(forcepipe)
-        problem.do_solve_process((ecoli_comp,), pick_M=True)
+        problem.add_obj(ecoli_comp)
+        if problem_kwargs['pickProblem']:
+            problem.pickmyself(fileHeadle, check=True)
+        problem.set_iterate_comp(ecoli_comp)
+        problem.print_info()
+        refU, Ftol, Ttol = problem.do_iterate()
+        ecoli_comp.set_ref_U(refU)
+        PETSc.Sys.Print('---->>>reference velocity is', refU)
+
         # post process
         head_U, tail_U = print_single_ecoli_forcefree_result(ecoli_comp, **problem_kwargs)
         ecoli_U = ecoli_comp.get_ref_U()

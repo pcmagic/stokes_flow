@@ -32,7 +32,7 @@ def get_problem_kwargs(**main_kwargs):
     problem_kwargs['fileHeadle'] = fileHeadle
 
     kwargs_list = (main_kwargs, get_vtk_tetra_kwargs(), get_ecoli_kwargs(),
-                   get_forceFree_kwargs(), get_shearFlow_kwargs())
+                   get_forcefree_kwargs(), get_shearFlow_kwargs())
     for t_kwargs in kwargs_list:
         for key in t_kwargs:
             problem_kwargs[key] = t_kwargs[key]
@@ -42,7 +42,7 @@ def get_problem_kwargs(**main_kwargs):
 def print_case_info(**problem_kwargs):
     fileHeadle = problem_kwargs['fileHeadle']
     print_solver_info(**problem_kwargs)
-    print_forceFree_info(**problem_kwargs)
+    print_forcefree_info(**problem_kwargs)
     print_shearFlow_info(**problem_kwargs)
     print_ecoli_info(fileHeadle, **problem_kwargs)
     return True
@@ -59,9 +59,9 @@ def main_fun(**main_kwargs):
     if not problem_kwargs['restart']:
         print_case_info(**problem_kwargs)
         ecoli_comp = createEcoliComp_ellipse(name='ecoli_0', **problem_kwargs)
-        problem = sf.ShearFlowForceFreeProblem(**problem_kwargs)
+        problem = sf.shearFlowforcefreeProblem(**problem_kwargs)
         problem.do_solve_process((ecoli_comp,), pick_M=True)
-        head_U, tail_U = print_single_ecoli_forceFree_result(ecoli_comp, **problem_kwargs)
+        head_U, tail_U = print_single_ecoli_forcefree_result(ecoli_comp, **problem_kwargs)
         ecoli_U = ecoli_comp.get_ref_U()
         # save_singleEcoli_vtk(problem, createHandle=createEcoliComp_ellipse)
         ecoli_comp.png_u_nodes(fileHeadle)
@@ -103,7 +103,7 @@ def main_fun(**main_kwargs):
         #
         # problem.set_force_free( )
         # problem.solve( )
-        # print_single_ecoli_forceFree_result(ecoli_comp, **problem_kwargs)
+        # print_single_ecoli_forcefree_result(ecoli_comp, **problem_kwargs)
         #
         # # save_singleEcoli_vtk(problem)
     return head_U, tail_U, ecoli_U

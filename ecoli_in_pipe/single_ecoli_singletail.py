@@ -20,8 +20,8 @@ import pickle
 from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.myio import *
-from src.support_class import *
-from src.objComposite import createEcoliComp_tunnel
+# from src.support_class import *
+from src.objComposite import *
 from src.myvtk import save_singleEcoli_vtk
 from ecoli_in_pipe.ecoli_common import *
 
@@ -29,7 +29,7 @@ from ecoli_in_pipe.ecoli_common import *
 # def get_problem_kwargs(**main_kwargs):
 #     problem_kwargs = get_solver_kwargs()
 #     OptDB = PETSc.Options()
-#     fileHeadle = OptDB.getString('f', 'ecoliInPipe')
+#     fileHeadle = OptDB.getString('f', 'singleEcoliPro')
 #     OptDB.setValue('f', fileHeadle)
 #     problem_kwargs['fileHeadle'] = fileHeadle
 #
@@ -42,7 +42,7 @@ from ecoli_in_pipe.ecoli_common import *
 #
 # def print_case_info(**problem_kwargs):
 #     fileHeadle = problem_kwargs['fileHeadle']
-#     PETSc.Sys.Print('-->Ecoli in pipe case, force free case.')
+#     PETSc.Sys.Print('-->Ecoli in free space, force free case.')
 #     print_solver_info(**problem_kwargs)
 #     print_forcefree_info(**problem_kwargs)
 #     print_ecoli_info(fileHeadle, **problem_kwargs)
@@ -52,18 +52,40 @@ from ecoli_in_pipe.ecoli_common import *
 # @profile
 def main_fun(**main_kwargs):
     OptDB = PETSc.Options()
-    fileHeadle = OptDB.getString('f', 'ecoliInPipe')
+    fileHeadle = OptDB.getString('f', 'singleEcoliPro')
     OptDB.setValue('f', fileHeadle)
     main_kwargs['fileHeadle'] = fileHeadle
     problem_kwargs = get_problem_kwargs(**main_kwargs)
 
     if not problem_kwargs['restart']:
-        forcepipe = problem_kwargs['forcepipe']
         print_case_info(**problem_kwargs)
-        ecoli_comp = createEcoliComp_tunnel(name='ecoli_0', **problem_kwargs)
-        problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
-        problem.set_prepare(forcepipe)
-        problem.do_solve_process((ecoli_comp,), pick_M=True)
+        ecoliHeadType = OptDB.getString('ecoliHeadType', 'tunnel')
+        if 'ellipse' in ecoliHeadType:
+            ecoli_comp0 = createEcoliComp_ellipse(name='ecoli_0', **problem_kwargs)
+        elif 'tunnel' in ecoliHeadType:
+            ecoli_comp0 = createEcoliComp_tunnel(name='ecoli_0', **problem_kwargs)
+        else:
+            err_msg = 'wrong ecoliHeadType'
+            raise ValueError(err_msg)
+        ecoli_comp = sf.forcefreeComposite(center=ecoli_comp0.get_center(), name='ecoli_0')
+        ecoli_comp.add_obj(ecoli_comp0.get_obj_list()[0], rel_U=ecoli_comp0.get_rel_U_list()[0])
+        ecoli_comp.add_obj(ecoli_comp0.get_obj_list()[1], rel_U=ecoli_comp0.get_rel_U_list()[1])
+        # ecoli_comp = createEcoliComp_tunnel(name='ecoli_0', **problem_kwargs)
+
+        # problem = sf.forcefreeProblem(**problem_kwargs)
+        # problem.do_solve_process(ecoli_comp, pick_M=True)
+        iterateTolerate = OptDB.getReal('iterateTolerate', 1e-4)
+        problem = sf.forcefreeIterateProblem(tolerate=iterateTolerate, **problem_kwargs)
+        problem.add_obj(ecoli_comp)
+        if problem_kwargs['pickProblem']:
+            problem.pickmyself(fileHeadle, check=True)
+        problem.set_iterate_comp(ecoli_comp)
+        problem.print_info()
+        refU, Ftol, Ttol = problem.do_iterate()
+        ecoli_comp.set_ref_U(refU)
+        PETSc.Sys.Print('---->>>reference velocity is', refU)
+        # PETSc.Sys.Print('---->>>Norm forward helix velocity is', helixU[2] / (helixU[5] * rh1))
+
         # post process
         head_U, tail_U = print_single_ecoli_forcefree_result(ecoli_comp, **problem_kwargs)
         ecoli_U = ecoli_comp.get_ref_U()
@@ -71,30 +93,6 @@ def main_fun(**main_kwargs):
     else:
         head_U, tail_U, ecoli_U = ecoli_restart(**main_kwargs)
     return head_U, tail_U, ecoli_U
-    # t_name = check_file_extension(fileHeadle, '_pick.bin')
-    # with open(t_name, 'rb') as myinput:
-    #     unpick = pickle.Unpickler(myinput)
-    #     problem = unpick.load()
-    # problem.unpickmyself()
-    # ecoli_comp = problem.get_obj_list()[0]
-    #
-    # problem_kwargs = problem.get_kwargs()
-    # problem_kwargs1 = get_problem_kwargs(**main_kwargs)
-    # problem_kwargs['matname'] = problem_kwargs1['matname']
-    # problem_kwargs['bnodesHeadle'] = problem_kwargs1['bnodesHeadle']
-    # problem_kwargs['belemsHeadle'] = problem_kwargs1['belemsHeadle']
-    # problem_kwargs['ffweightx'] = problem_kwargs1['ffweightx']
-    # problem_kwargs['ffweighty'] = problem_kwargs1['ffweighty']
-    # problem_kwargs['ffweightz'] = problem_kwargs1['ffweightz']
-    # problem_kwargs['ffweightT'] = problem_kwargs1['ffweightT']
-    # # PETSc.Sys.Print([attr for attr in dir(problem) if not attr.startswith('__')])
-    # # PETSc.Sys.Print(problem_kwargs1['ffweightT'])
-    #
-    # problem.set_kwargs(**problem_kwargs)
-    # print_case_info(**problem_kwargs)
-    # problem.print_info()
-    # problem.set_force_free()
-    # problem.solve()
 
 
 if __name__ == '__main__':

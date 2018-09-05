@@ -6,7 +6,6 @@
 # 5. solve problem and check.
 
 import sys
-
 import petsc4py
 
 petsc4py.init(sys.argv)
@@ -26,7 +25,7 @@ from src.support_class import *
 
 def get_problem_kwargs(**main_kwargs):
     OptDB = PETSc.Options()
-    fileHeadle = OptDB.getString('f', 'force_pipe')
+    fileHeadle = OptDB.getString('f', 'dbg')
     dp = OptDB.getReal('dp', 0.5)  # delta length of pipe
     ep = OptDB.getReal('ep', 2)  # epsilon of pipe
     lp = OptDB.getReal('lp', 1)  # length of pipe
@@ -34,7 +33,8 @@ def get_problem_kwargs(**main_kwargs):
     b1 = OptDB.getReal('b1', 0.9)
     nb = OptDB.getInt('nb', 2)  # amount of b
     th = OptDB.getInt('th', 30)  # threshold
-    stokesletsInPipe_pipeFactor = OptDB.getReal('stokesletsInPipe_pipeFactor', 5)  # geometrical parameter, control the distribution of nodes of the pipe.
+    stokesletsInPipe_pipeFactor = OptDB.getReal('stokesletsInPipe_pipeFactor',
+                                                5)  # geometrical parameter, control the distribution of nodes of the pipe.
     solve_method = OptDB.getString('s', 'gmres')
     precondition_method = OptDB.getString('g', 'none')
     matrix_method = OptDB.getString('sm', 'pf_stokesletsInPipe')
@@ -44,23 +44,28 @@ def get_problem_kwargs(**main_kwargs):
     MPISIZE = comm.Get_size()
 
     problem_kwargs = {
-        'name':                'force_pipe',
-        'matrix_method':       matrix_method,
-        'dp':                  dp,
-        'ep':                  ep,
-        'lp':                  lp,
-        'rp':                  1,
-        'b0':                  b0,
-        'b1':                  b1,
-        'nb':                  nb,
-        'th':                  th,
-        'stokesletsInPipe_pipeFactor':              stokesletsInPipe_pipeFactor,
-        'solve_method':        solve_method,
-        'precondition_method': precondition_method,
-        'fileHeadle':          fileHeadle,
-        'check_acc':           check_acc,
-        'plot_geo':            plot_geo,
-        'MPISIZE':             MPISIZE,
+        'name':                        'force_pipe',
+        'matrix_method':               matrix_method,
+        'dp':                          dp,
+        'ep':                          ep,
+        'lp':                          lp,
+        'rp':                          1,
+        'b0':                          b0,
+        'b1':                          b1,
+        'nb':                          nb,
+        'th':                          th,
+        'stokesletsInPipe_pipeFactor': stokesletsInPipe_pipeFactor,
+        'solve_method':                solve_method,
+        'precondition_method':         precondition_method,
+        'fileHeadle':                  fileHeadle,
+        'check_acc':                   check_acc,
+        'plot_geo':                    plot_geo,
+        'MPISIZE':                     MPISIZE,
+        'ffweightx':                   1,
+        'ffweighty':                   1,
+        'ffweightz':                   1,
+        'ffweightT':                   1,
+        'zoom_factor':                 1,
     }
 
     for key in main_kwargs:
@@ -87,7 +92,8 @@ def print_case_info(**problem_kwargs):
 
     PETSc.Sys.Print('Case information: ')
     PETSc.Sys.Print('  pipe length: %f, pipe radius: %f' % (lp, rp))
-    PETSc.Sys.Print('  delta length, epsilon and factor of pipe are %f, %f and %f' % (dp, ep, stokesletsInPipe_pipeFactor))
+    PETSc.Sys.Print(
+            '  delta length, epsilon and factor of pipe are %f, %f and %f' % (dp, ep, stokesletsInPipe_pipeFactor))
     PETSc.Sys.Print('  threshold of series is %d' % th)
     PETSc.Sys.Print('  b: %d numbers are evenly distributed within the range [%f, %f]' % (nb, b0, b1))
     PETSc.Sys.Print('  check accuracy of forces: %s' % check_acc)
@@ -156,7 +162,8 @@ def main_fun(**main_kwargs):
     err = np.array(problem.get_err_list())
     # do_show_err(fileHeadle, b, residualNorm, err)
     f1_list, f2_list, f3_list = problem.get_f_list()
-    do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th, stokesletsInPipe_pipeFactor)
+    do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th,
+                  stokesletsInPipe_pipeFactor)
 
     PETSc.Sys().Print('                b -- residualNorm      ')
     PETSc.Sys().Print(np.hstack((b.reshape((-1, 1)), residualNorm)))
@@ -205,24 +212,25 @@ def do_show_err(fileHeadle, b, residualNorm, err):
     return True
 
 
-def do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th, stokesletsInPipe_pipeFactor):
+def do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th,
+                  stokesletsInPipe_pipeFactor):
     comm = PETSc.COMM_WORLD.tompi4py()
     rank = comm.Get_rank()
     fileHeadle = check_file_extension(fileHeadle, extension='_force_pipe.mat')
     if rank == 0:
         savemat(fileHeadle,
-                {'b':            b,
-                 'f1_list':      f1_list,
-                 'f2_list':      f2_list,
-                 'f3_list':      f3_list,
-                 'residualNorm': residualNorm,
-                 'err':          err,
-                 'dp':           dp,
-                 'ep':           ep,
-                 'lp':           lp,
-                 'rp':           rp,
-                 'th':           th,
-                 'stokesletsInPipe_pipeFactor':       stokesletsInPipe_pipeFactor, },
+                {'b':                           b,
+                 'f1_list':                     f1_list,
+                 'f2_list':                     f2_list,
+                 'f3_list':                     f3_list,
+                 'residualNorm':                residualNorm,
+                 'err':                         err,
+                 'dp':                          dp,
+                 'ep':                          ep,
+                 'lp':                          lp,
+                 'rp':                          rp,
+                 'th':                          th,
+                 'stokesletsInPipe_pipeFactor': stokesletsInPipe_pipeFactor, },
                 oned_as='column')
     PETSc.Sys().Print('export mat file to %s ' % fileHeadle)
     pass
@@ -231,7 +239,7 @@ def do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, d
 def cart2pol(x, y):
     rho = np.sqrt(x ** 2 + y ** 2)
     phi = np.arctan2(y, x)
-    return (rho, phi)
+    return rho, phi
 
 
 def show_err():
@@ -271,7 +279,8 @@ def export_mat():
     residualNorm = np.array(problem.get_residualNorm_list())
     err = np.array(problem.get_err_list())
     f1_list, f2_list, f3_list = problem.get_f_list()
-    do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th, stokesletsInPipe_pipeFactor)
+    do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th,
+                  stokesletsInPipe_pipeFactor)
     return True
 
 
@@ -288,7 +297,7 @@ def construct(**main_kwargs):
     th = problem_kwargs['th']
     stokesletsInPipe_pipeFactor = problem_kwargs['stokesletsInPipe_pipeFactor']
     problem = problem_dic[matrix_method](**problem_kwargs)
-    # problem = sf.stokesletsInPipeForceFreeProblem(**problem_kwargs)
+    # problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
 
     problem.set_prepare(fileHeadle)
     problem.pickmyself(fileHeadle)
@@ -297,7 +306,8 @@ def construct(**main_kwargs):
     err = np.array(problem.get_err_list())
     do_show_err(fileHeadle, b, residualNorm, err)
     f1_list, f2_list, f3_list = problem.get_f_list()
-    do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th, stokesletsInPipe_pipeFactor)
+    do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th,
+                  stokesletsInPipe_pipeFactor)
 
     PETSc.Sys().Print('                b -- residualNorm      ')
     PETSc.Sys().Print(np.hstack((b.reshape((-1, 1)), residualNorm)))
@@ -309,7 +319,7 @@ def construct(**main_kwargs):
 def debug_stokeslets_b(b, node):
     problem_kwargs = get_problem_kwargs()
     fileHeadle = problem_kwargs['fileHeadle']
-    problem = sf.stokesletsInPipeForceFreeProblem(**problem_kwargs)
+    problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
     # fileHeadle = 'construct07'
     problem.set_prepare(fileHeadle)
 
@@ -326,18 +336,24 @@ def debug_stokeslets_b(b, node):
     num_ans1, num_ans2, num_ans3 = problem.debug_solve_stokeslets_b(b=b, node=node)
 
     tR, tphi = cart2pol(node[:, 0], node[:, 1])
-    greenFun = detail(threshold=30, b=b)
+    greenFun = detail(threshold=10, b=b)
     greenFun.solve_prepare()
     any_ans1 = np.hstack([greenFun.solve_u1(R, phi, z) for R, phi, z in zip(tR, tphi, node[:, 2])])
     any_ans2 = np.hstack([greenFun.solve_u2(R, phi, z) for R, phi, z in zip(tR, tphi, node[:, 2])])
     any_ans3 = np.hstack([greenFun.solve_u3(R, phi, z) for R, phi, z in zip(tR, tphi, node[:, 2])])
+    print('analitical, numerical, abs_err, relative_err')
     print('u1')
-    print(np.vstack((any_ans1, num_ans1, num_ans1 - any_ans1, (num_ans1 - any_ans1) / any_ans1)).T)
+    print(np.vstack((any_ans1, num_ans1[:], num_ans1[:] - any_ans1,
+                     (num_ans1[:] - any_ans1) / any_ans1)).T)
     print('u2')
-    print(np.vstack((any_ans2, num_ans2, num_ans2 - any_ans2, (num_ans2 - any_ans2) / any_ans2)).T)
+    print(np.vstack((any_ans2, num_ans2[:], num_ans2[:] - any_ans2,
+                     (num_ans2[:] - any_ans2) / any_ans2)).T)
     print('u3')
-    print(np.vstack((any_ans3, num_ans3, num_ans3 - any_ans3, (num_ans3 - any_ans3) / any_ans3)).T)
-    print(np.sqrt(np.sum((num_ans1 - any_ans1) ** 2 + (num_ans2 - any_ans2) ** 2 + (num_ans3 - any_ans3) ** 2)
+    print(np.vstack((any_ans3, num_ans3[:], num_ans3[:] - any_ans3,
+                     (num_ans3[:] - any_ans3) / any_ans3)).T)
+    print(np.sqrt(np.sum((num_ans1[:] - any_ans1) ** 2 +
+                         (num_ans2[:] - any_ans2) ** 2 +
+                         (num_ans3[:] - any_ans3) ** 2)
                   / np.sum(any_ans1 ** 2 + any_ans2 ** 2 + any_ans3 ** 2)))
     return True
 
@@ -365,7 +381,7 @@ def debug_solve_stokeslets_fnode(fnode):
     from src.geo import tunnel_geo
     problem_kwargs = get_problem_kwargs()
     fileHeadle = problem_kwargs['fileHeadle']
-    problem = sf.stokesletsInPipeForceFreeProblem(**problem_kwargs)
+    problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
     problem.set_prepare(fileHeadle)
     fnode = np.array(fnode).reshape((1, 3))
 
@@ -375,18 +391,55 @@ def debug_solve_stokeslets_fnode(fnode):
     stokesletsInPipe_pipeFactor = 1
     vpgeo = tunnel_geo()  # velocity node geo of pipe
     dth = 2 * np.arcsin(dp / 2 / rp)
-    vpgeo.create_deltatheta(dth=dth, radius=rp, length=lp, epsilon=0, with_cover=True, factor=stokesletsInPipe_pipeFactor)
+    vpgeo.create_deltatheta(dth=dth, radius=rp, length=lp, epsilon=0, with_cover=True,
+                            factor=stokesletsInPipe_pipeFactor)
     # vpgeo.show_nodes()
 
     problem.debug_solve_stokeslets_fnode(fnode, vpgeo)
     return True
 
 
+def m2_err_z():
+    # for the paper m2, test the relative error between numerical and analytical values of uz
+    from scipy.io import savemat, loadmat
+    mat_contents = loadmat('convergence_z.mat')
+    b = mat_contents['b'][0]
+    z1 = mat_contents['z1'][0]
+    IDX = z1 > 0.011
+    z1 = z1[IDX]
+    R1 = mat_contents['R1'][0][IDX]
+    phi1 = mat_contents['phi1'][0][IDX]
+    uz = mat_contents['u_struct'][0][-1][3][0][IDX]
+    nodes = np.vstack((R1 * np.cos(phi1), R1 * np.sin(phi1), z1)).T
+
+    problem_kwargs = get_problem_kwargs()
+    fileHeadle = problem_kwargs['fileHeadle']
+    problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
+    problem.set_prepare(fileHeadle)
+    _, _, num_ans3 = problem.debug_solve_stokeslets_b(b=b, node=nodes)
+    num_uz = num_ans3.getArray().reshape((-1, 3))[:, 2]
+    savemat('num_uz.mat',
+            {'z1_use': z1,
+             'uz_use': uz,
+             'num_uz': num_uz, },
+            oned_as='column')
+
+    print('analytical, numerical, abs_err, relative_err')
+    print(np.vstack((z1, uz, num_uz, num_uz - uz, (num_uz - uz) / uz)).T)
+    # print(np.sqrt(np.sum((num_ans1[:] - any_ans1) ** 2 +
+    #                      (num_ans2[:] - any_ans2) ** 2 +
+    #                      (num_ans3[:] - any_ans3) ** 2)
+    #               / np.sum(any_ans1 ** 2 + any_ans2 ** 2 + any_ans3 ** 2)))
+    return True
+
+
 if __name__ == '__main__':
-    main_fun()
+    m2_err_z()
+    # main_fun()
     # show_err()
     # export_mat()
     # debug_stokeslets_b(5.81500000e-01, np.vstack((np.ones(10) * 0.5, np.ones(10) * 0.5, np.linspace(0.1, 1, 10))).T)
+    # debug_stokeslets_b(0.5, np.array((0.5, 0, 1)))
     # debug_solve_u_pipe(0.5, 0.1, 0.5)
     # debug_solve_stokeslets_fnode((0.3/2**0.5, 0.3/2**0.5, 0))
 

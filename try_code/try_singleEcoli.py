@@ -30,7 +30,7 @@ def get_problem_kwargs(**main_kwargs):
     fileHeadle = OptDB.getString('f', 'singleEcoliPro')
     problem_kwargs['fileHeadle'] = fileHeadle
 
-    kwargs_list = (main_kwargs, get_vtk_tetra_kwargs(), get_ecoli_kwargs(), get_forceFree_kwargs())
+    kwargs_list = (main_kwargs, get_vtk_tetra_kwargs(), get_ecoli_kwargs(), get_forcefree_kwargs())
     for t_kwargs in kwargs_list:
         for key in t_kwargs:
             problem_kwargs[key] = t_kwargs[key]
@@ -40,7 +40,7 @@ def get_problem_kwargs(**main_kwargs):
 def print_case_info(**problem_kwargs):
     fileHeadle = problem_kwargs['fileHeadle']
     print_solver_info(**problem_kwargs)
-    print_forceFree_info(**problem_kwargs)
+    print_forcefree_info(**problem_kwargs)
     print_ecoli_info(fileHeadle, **problem_kwargs)
     return True
 
@@ -58,14 +58,14 @@ def main_fun(**main_kwargs):
         ecoli_comp = createEcoliComp_tunnel(name='ecoli_0', **problem_kwargs)
         # ecoli_comp.show_u_nodes(linestyle=' ')
         obj_list = (ecoli_comp,)
-        problem = sf.forceFreeProblem(**problem_kwargs)
+        problem = sf.forcefreeProblem(**problem_kwargs)
         problem.do_solve_process(obj_list)
         # # debug
         # problem.saveM_ASCII('%s_M.txt' % fileHeadle)
         # problem.saveF_ASCII('%s_F.txt' % fileHeadle)
         # problem.saveV_ASCII('%s_V.txt' % fileHeadle)
 
-        print_single_ecoli_forceFree_result(ecoli_comp, **problem_kwargs)
+        print_single_ecoli_forcefree_result(ecoli_comp, **problem_kwargs)
         # PETSc.Sys.Print(problem.get_total_force(center=center))
         # PETSc.Sys.Print(ecoli_comp.get_total_force())
 

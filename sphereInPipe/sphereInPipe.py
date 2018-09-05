@@ -186,8 +186,9 @@ def main_fun(**main_kwargs):
         rs = problem_kwargs['rs']
         es = problem_kwargs['es']
         vsgeo = sphere_geo()  # velocity node geo of sphere
-        vsgeo.create_delta(ds, rs)
+        vsgeo.create_delta(ds, 1)
         vsgeo.node_rotation(norm=(0, 1, 0), theta=np.pi/2)
+        vsgeo.node_zoom(rs)
         # vsgeo.show_nodes()
         U = problem_kwargs['U']
         vsgeo.set_rigid_velocity(np.array((0, 0, U, 0, 0, 0)))

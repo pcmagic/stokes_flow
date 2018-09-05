@@ -6,6 +6,7 @@ from src import stokes_flow as sf
 __all__ = ['createEcoliComp_ellipse', 'createEcoliComp_tunnel', 'createEcoli_tunnel',
            'create_capsule',
            'create_rod',
+           'create_infHelix',
            'create_sphere', 'create_move_single_sphere']
 
 
@@ -62,7 +63,7 @@ def createEcoliComp_ellipse(name='...', **kwargs):
 
     rel_Us = kwargs['rel_Us']
     rel_Uh = kwargs['rel_Uh']
-    ecoli_comp = sf.forceFreeComposite(center, name)
+    ecoli_comp = sf.forcefreeComposite(center, name)
     ecoli_comp.add_obj(vsobj, rel_U=rel_Us)
     ecoli_comp.add_obj(vhobj0, rel_U=rel_Uh)
     ecoli_comp.add_obj(vhobj1, rel_U=rel_Uh)
@@ -209,7 +210,7 @@ def createEcoliComp_tunnel(name='...', **kwargs):
     if not with_T_geo:
         kwargs['rT1'] = kwargs['rh1']
     vsobj, vhobj0, vhobj1, vTobj = createEcoli_tunnel(**kwargs)
-    ecoli_comp = sf.forceFreeComposite(center, name)
+    ecoli_comp = sf.forcefreeComposite(center, name)
     ecoli_comp.add_obj(vsobj, rel_U=rel_Us)
     ecoli_comp.add_obj(vhobj0, rel_U=rel_Uh)
     ecoli_comp.add_obj(vhobj1, rel_U=rel_Uh)
@@ -294,3 +295,24 @@ def create_rod(namehandle='rod_obj', **problem_kwargs):
 
     rod_list = (rod_comp,)
     return rod_list
+
+
+def create_infHelix(namehandle='infhelix', **problem_kwargs):
+    ntheta = problem_kwargs['infhelix_ntheta']
+    n_helix = problem_kwargs['n_helix']
+    eh = problem_kwargs['eh']
+    ch = problem_kwargs['ch']
+    rh1 = problem_kwargs['rh1']
+    rh2 = problem_kwargs['rh2']
+    ph = problem_kwargs['ph']
+    nth = problem_kwargs['nth']
+
+    helix_list = []
+    for i0, theta0 in enumerate(np.linspace(0, 2 * np.pi, n_helix, endpoint=False)):
+        infhelix_ugeo = infHelix(ch * 2 * np.pi, ntheta)
+        infhelix_ugeo.create_n(rh1, rh2, ph, nth, theta0=theta0)
+        infhelix_fgeo = infhelix_ugeo.create_fgeo(epsilon=eh)
+        infhelix_obj = sf.stokesFlowObj()
+        infhelix_obj.set_data(f_geo=infhelix_fgeo, u_geo=infhelix_ugeo, name=namehandle + '%02d' % i0)
+        helix_list.append(infhelix_obj)
+    return helix_list

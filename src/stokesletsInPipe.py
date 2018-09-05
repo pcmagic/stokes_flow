@@ -567,8 +567,6 @@ class detail:
         return uR1, uPhi1, uz1, uR2, uPhi2, uz2, uR3, uPhi3, uz3
 
     def solve_uxyz(self, nodes):
-        comm = PETSc.COMM_WORLD.tompi4py()
-        rank = comm.Get_rank()
         phi = np.arctan2(nodes[:, 1], nodes[:, 0])
         rho = np.sqrt(nodes[:, 0] ** 2 + nodes[:, 1] ** 2)
         z = nodes[:, 2]
@@ -585,15 +583,7 @@ class detail:
             t_z = z[i0]
             abs_z = np.abs(t_z)
             sign_z = np.sign(t_z)
-            if np.isclose(abs_z, 1):
-                uR1, uPhi1, uz1, uR2, uPhi2, uz2, uR3, uPhi3, uz3 = self.solve_u(t_rho, t_phi, abs_z)
-                ux1 = np.cos(t_phi) * uR1 - np.sin(t_phi) * uPhi1
-                ux2 = np.cos(t_phi) * uR2 - np.sin(t_phi) * uPhi2
-                ux3 = np.cos(t_phi) * uR3 - np.sin(t_phi) * uPhi3
-                uy1 = np.sin(t_phi) * uR1 + np.cos(t_phi) * uPhi1
-                uy2 = np.sin(t_phi) * uR2 + np.cos(t_phi) * uPhi2
-                uy3 = np.sin(t_phi) * uR3 + np.cos(t_phi) * uPhi3
-            else:
+            if np.isclose(t_rho, 1):
                 ux1 = 0
                 uy1 = 0
                 uz1 = 0
@@ -603,9 +593,18 @@ class detail:
                 ux3 = 0
                 uy3 = 0
                 uz3 = 0
+            else:
+                uR1, uPhi1, uz1, uR2, uPhi2, uz2, uR3, uPhi3, uz3 = self.solve_u(t_rho, t_phi, abs_z)
+                ux1 = np.cos(t_phi) * uR1 - np.sin(t_phi) * uPhi1
+                ux2 = np.cos(t_phi) * uR2 - np.sin(t_phi) * uPhi2
+                ux3 = np.cos(t_phi) * uR3 - np.sin(t_phi) * uPhi3
+                uy1 = np.sin(t_phi) * uR1 + np.cos(t_phi) * uPhi1
+                uy2 = np.sin(t_phi) * uR2 + np.cos(t_phi) * uPhi2
+                uy3 = np.sin(t_phi) * uR3 + np.cos(t_phi) * uPhi3
             u1.append((ux1, uy1, sign_z * uz1))
             u2.append((ux2, uy2, sign_z * uz2))
             u3.append((sign_z * ux3, sign_z * uy3, uz3))
+        comm = PETSc.COMM_WORLD.tompi4py()
         u1_all = np.vstack(comm.allgather(u1))
         u2_all = np.vstack(comm.allgather(u2))
         u3_all = np.vstack(comm.allgather(u3))
