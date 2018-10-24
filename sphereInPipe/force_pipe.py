@@ -12,10 +12,10 @@ petsc4py.init(sys.argv)
 
 import numpy as np
 from src import stokes_flow as sf
+from src.StokesFlowMethod import *
 from src.stokes_flow import problem_dic, obj_dic
 from petsc4py import PETSc
 from src.geo import *
-# from time import time
 from scipy.io import loadmat, savemat
 import pickle
 import matplotlib.pyplot as plt
@@ -156,7 +156,7 @@ def main_fun(**main_kwargs):
     # problem = problem_dic[matrix_method](**problem_kwargs)
     problem = sf.stokesletsInPipeProblem(**problem_kwargs)
     problem.solve_prepare()
-    problem.pickmyself(fileHeadle)
+    # problem.pickmyself(fileHeadle)
     b = np.array(problem.get_b_list())
     residualNorm = np.array(problem.get_residualNorm_list())
     err = np.array(problem.get_err_list())
@@ -358,6 +358,73 @@ def debug_stokeslets_b(b, node):
     return True
 
 
+def debug_num_speed(nnode=1000):
+    # get the speed of the numerical method for the calculation of the Stokeslets.
+    problem_kwargs = get_problem_kwargs()
+    node = np.random.sample(nnode * 3).reshape((-1, 3))
+    b = 0.5
+
+    import os
+    import glob
+    from time import time
+
+    PWD = os.getcwd()
+    # PWD = '/home/zhangji/stokes_flow_master/sphereInPipe/test_L_ds/dbg'
+    mat_name_list = glob.glob('%s/*_force_pipe.mat' % PWD)
+    dt = np.zeros_like(mat_name_list, dtype=np.float)
+    nnode_pipe = np.zeros_like(mat_name_list, dtype=np.float)
+    for i0, mat_name in enumerate(mat_name_list):
+        fileHeadle = mat_name[:-15]
+        problem = sf.stokesletsInPipeProblem(**problem_kwargs)
+        t0 = time()
+        problem.set_prepare(fileHeadle, fullpath=True)
+        problem.debug_solve_stokeslets_b(b=b, node=node)
+        t1 = time()
+        dt[i0] = t1 - t0
+        nnode_pipe[i0] = problem.get_fpgeo().get_n_nodes()
+        PETSc.Sys.Print('%s: solve stokeslets numerically use: %fs' % (os.path.basename(fileHeadle), dt[i0]))
+
+    comm = PETSc.COMM_WORLD.tompi4py()
+    rank = comm.Get_rank()
+    if rank == 0:
+        savemat('debug_num_speed.mat',
+                {'mat_name_list': mat_name_list,
+                 'dt':            dt,
+                 'nnode_pipe':    nnode_pipe,
+                 'node':          node, },
+                oned_as='column')
+    return True
+
+
+def debug_ana_speed(nnode=1000):
+    # get the speed of the series solution for the calculation of the Stokeslets.
+    node = np.random.sample(nnode * 3).reshape((-1, 3))
+    b = 0.5
+
+    from time import time
+
+    cth_list = np.arange(10, 1000, 10)
+    dt = np.zeros_like(cth_list, dtype=np.float)
+    for i0, cth in enumerate(cth_list):
+        greenFun = detail(threshold=cth, b=b)
+        t0 = time()
+        greenFun.solve_prepare()
+        greenFun.solve_uxyz(node)
+        t1 = time()
+        dt[i0] = t1 - t0
+        PETSc.Sys.Print('cth=%d: solve stokeslets analytically use: %fs' % (cth, dt[i0]))
+
+    comm = PETSc.COMM_WORLD.tompi4py()
+    rank = comm.Get_rank()
+    if rank == 0:
+        savemat('debug_ana_speed.mat',
+                {'cth':    cth_list,
+                 'dt_ana': dt,
+                 'node':   node, },
+                oned_as='column')
+    return True
+
+
 def debug_solve_u_pipe(b, dp, lp):
     problem_kwargs = get_problem_kwargs()
     matrix_method = problem_kwargs['matrix_method']
@@ -401,9 +468,8 @@ def debug_solve_stokeslets_fnode(fnode):
 
 def m2_err_z():
     # for the paper m2, test the relative error between numerical and analytical values of uz
-    from scipy.io import savemat, loadmat
     mat_contents = loadmat('convergence_z.mat')
-    b = mat_contents['b'][0]
+    b = mat_contents['b'][0][0]
     z1 = mat_contents['z1'][0]
     IDX = z1 > 0.011
     z1 = z1[IDX]
@@ -412,17 +478,26 @@ def m2_err_z():
     uz = mat_contents['u_struct'][0][-1][3][0][IDX]
     nodes = np.vstack((R1 * np.cos(phi1), R1 * np.sin(phi1), z1)).T
 
+    # velocity (stokeslets) in infinite space
+    m = light_stokeslets_matrix_3d(nodes, np.array((b, 0, 0)))
+    uz_inf = np.dot(m, (0, 0, 1))[2::3]
+
+    # velocity (stokeslets) in pipe
     problem_kwargs = get_problem_kwargs()
     fileHeadle = problem_kwargs['fileHeadle']
     problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
     problem.set_prepare(fileHeadle)
     _, _, num_ans3 = problem.debug_solve_stokeslets_b(b=b, node=nodes)
     num_uz = num_ans3.getArray().reshape((-1, 3))[:, 2]
-    savemat('num_uz.mat',
-            {'z1_use': z1,
-             'uz_use': uz,
-             'num_uz': num_uz, },
-            oned_as='column')
+    comm = PETSc.COMM_WORLD.tompi4py()
+    rank = comm.Get_rank()
+    if rank == 0:
+        savemat('num_uz.mat',
+                {'z1_use': z1,
+                 'uz_ana': uz,
+                 'uz_inf': uz_inf,
+                 'uz_num': num_uz, },
+                oned_as='column')
 
     print('analytical, numerical, abs_err, relative_err')
     print(np.vstack((z1, uz, num_uz, num_uz - uz, (num_uz - uz) / uz)).T)
@@ -434,7 +509,6 @@ def m2_err_z():
 
 
 if __name__ == '__main__':
-    m2_err_z()
     # main_fun()
     # show_err()
     # export_mat()
@@ -443,7 +517,7 @@ if __name__ == '__main__':
     # debug_solve_u_pipe(0.5, 0.1, 0.5)
     # debug_solve_stokeslets_fnode((0.3/2**0.5, 0.3/2**0.5, 0))
 
-    # OptDB = PETSc.Options()
+    OptDB = PETSc.Options()
     # if OptDB.getBool('show_err', False):
     #     OptDB.setValue('main_fun', False)
     #     show_err()
@@ -451,6 +525,14 @@ if __name__ == '__main__':
     # if OptDB.getBool('export_mat', False):
     #     OptDB.setValue('main_fun', False)
     #     export_mat()
-    #
-    # if OptDB.getBool('main_fun', True):
-    #     main_fun()
+
+    if OptDB.getBool('debug_num_speed', False):
+        OptDB.setValue('main_fun', False)
+        debug_num_speed(nnode=1000)
+
+    if OptDB.getBool('debug_ana_speed', False):
+        OptDB.setValue('main_fun', False)
+        debug_ana_speed(nnode=1000)
+
+    if OptDB.getBool('main_fun', True):
+        main_fun()

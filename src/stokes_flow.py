@@ -1335,6 +1335,12 @@ class stokesletsInPipeProblem(stokesFlowProblem):
     def get_n_b(self):
         return self._b_list.size
 
+    def get_fpgeo(self):
+        return self._fpgeo
+
+    def get_vpgeo(self):
+        return self._vpgeo
+
     def debug_solve_stokeslets_b(self, b, node):
         t_geo = geo()
         t_geo.set_nodes(node, deltalength=0)
@@ -1564,7 +1570,11 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         return u_fx_petsc, u_fy_petsc, u_fz_petsc
 
     def _check_f_accuracy(self, b, greenFun, waitBar=np.array((1, 1)), **kwargs):
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
+        fileHeadle = self._kwargs['fileHeadle']
         cpgeo = self._cpgeo
+        fpgeo = self._fpgeo
         outputHandle = 'check'
         a_u11, a_u21, a_u31 = self._solve_u1_pipe(cpgeo, outputHandle, greenFun, waitBar)
         m_petsc = self._m_pipe_check
@@ -1572,28 +1582,80 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         c_u11_petsc = m_petsc.createVecLeft()
         # c_u11_petsc.set(0)
         m_petsc.mult(self._f1_list[-1], c_u11_petsc)
-        c_u11 = self.vec_scatter(c_u11_petsc)
+        c_u11 = self.vec_scatter(c_u11_petsc, destroy=True)
         c_u21_petsc = m_petsc.createVecLeft()
         # c_u21_petsc.set(0)
         m_petsc.mult(self._f2_list[-1], c_u21_petsc)
-        c_u21 = self.vec_scatter(c_u21_petsc)
+        c_u21 = self.vec_scatter(c_u21_petsc, destroy=True)
         c_u31_petsc = m_petsc.createVecLeft()
         # c_u31_petsc.set(0)
         m_petsc.mult(self._f3_list[-1], c_u31_petsc)
-        c_u31 = self.vec_scatter(c_u31_petsc)
+        c_u31 = self.vec_scatter(c_u31_petsc, destroy=True)
 
         err1 = np.sqrt(np.sum((a_u11 - c_u11) ** 2) / np.sum(a_u11 ** 2))
         err2 = np.sqrt(np.sum((a_u21 - c_u21) ** 2) / np.sum(a_u21 ** 2))
         err3 = np.sqrt(np.sum((a_u31 - c_u31) ** 2) / np.sum(a_u31 ** 2))
         PETSc.Sys().Print('      relative err: %f, %f, %f' % (err1, err2, err3))
         self._err_list.append((err1, err2, err3))
+
+        f1 = self.vec_scatter(self._f1_list[-1], destroy=False)
+        f2 = self.vec_scatter(self._f2_list[-1], destroy=False)
+        f3 = self.vec_scatter(self._f3_list[-1], destroy=False)
+        if rank == 0:
+            savemat('%s_%s_b%.5f_u' % (fileHeadle, outputHandle, b),
+                    {'u11_num': a_u11,
+                     'u21_num': a_u21,
+                     'u31_num': a_u31,
+                     'u11_ana': c_u11,
+                     'u21_ana': c_u21,
+                     'u31_ana': c_u31,
+                     'nodes':   cpgeo.get_nodes(),
+                     'kwargs':  self.get_kwargs(),
+                     'fnodes':  fpgeo.get_nodes(),
+                     'f1':      f1,
+                     'f2':      f2,
+                     'f3':      f3, },
+                    oned_as='column')
+            t_filename = '%s_%s_b%.5f_u' % (fileHeadle, outputHandle, b)
+            a_u11 = np.asfortranarray(a_u11.reshape(-1, 3))
+            a_u21 = np.asfortranarray(a_u21.reshape(-1, 3))
+            a_u31 = np.asfortranarray(a_u31.reshape(-1, 3))
+            c_u11 = np.asfortranarray(c_u11.reshape(-1, 3))
+            c_u21 = np.asfortranarray(c_u21.reshape(-1, 3))
+            c_u31 = np.asfortranarray(c_u31.reshape(-1, 3))
+            e_u11 = a_u11 - c_u11
+            e_u21 = a_u21 - c_u21
+            e_u31 = a_u31 - c_u31
+            pointsToVTK(t_filename, cpgeo.get_nodes()[:, 0], cpgeo.get_nodes()[:, 1], cpgeo.get_nodes()[:, 2],
+                        data={"velocity_ana1": (a_u11[:, 0], a_u11[:, 1], a_u11[:, 2]),
+                              "velocity_ana2": (a_u21[:, 0], a_u21[:, 1], a_u21[:, 2]),
+                              "velocity_ana3": (a_u31[:, 0], a_u31[:, 1], a_u31[:, 2]),
+                              "velocity_num1": (c_u11[:, 0], c_u11[:, 1], c_u11[:, 2]),
+                              "velocity_num2": (c_u21[:, 0], c_u21[:, 1], c_u21[:, 2]),
+                              "velocity_num3": (c_u31[:, 0], c_u31[:, 1], c_u31[:, 2]),
+                              "velocity_err1": (e_u11[:, 0], e_u11[:, 1], e_u11[:, 2]),
+                              "velocity_err2": (e_u21[:, 0], e_u21[:, 1], e_u21[:, 2]),
+                              "velocity_err3": (e_u31[:, 0], e_u31[:, 1], e_u31[:, 2]), })
+            t_filename = '%s_%s_b%.5f_force' % (fileHeadle, outputHandle, b)
+            f1 = np.asfortranarray(f1.reshape(-1, 3))
+            f2 = np.asfortranarray(f2.reshape(-1, 3))
+            f3 = np.asfortranarray(f3.reshape(-1, 3))
+            pointsToVTK(t_filename, fpgeo.get_nodes()[:, 0], fpgeo.get_nodes()[:, 1], fpgeo.get_nodes()[:, 2],
+                        data={"force1": (f1[:, 0], f1[:, 1], f1[:, 2]),
+                              "force2": (f2[:, 0], f2[:, 1], f2[:, 2]),
+                              "force3": (f3[:, 0], f3[:, 1], f3[:, 2]), })
+
+            # t_filename = '%s_%s_b%.5f_velocity' % (fileHeadle, outputHandle, b)
         return True
 
-    def set_prepare(self, fileHeadle):
+    def set_prepare(self, fileHeadle, fullpath=False):
         fileHeadle = check_file_extension(fileHeadle, '_force_pipe.mat')
-        t_path = os.path.dirname(os.path.abspath(__file__))
-        full_path = os.path.normpath(t_path + '/' + fileHeadle)
-        mat_contents = loadmat(full_path)
+        if fullpath:
+            mat_contents = loadmat(fileHeadle)
+        else:
+            t_path = os.path.dirname(os.path.abspath(__file__))
+            full_path = os.path.normpath(t_path + '/' + fileHeadle)
+            mat_contents = loadmat(full_path)
 
         self.set_b_list(mat_contents['b'].flatten())
         self._f1_list = [f1 for f1 in mat_contents['f1_list']]
@@ -1700,7 +1762,23 @@ class stokesletsInPipeProblem(stokesFlowProblem):
 
         if kwargs['check_acc']:
             cpgeo = tunnel_geo()
-            cpgeo.create_deltatheta(dth=0.04733, radius=rp, length=lp, epsilon=0, with_cover=1, factor=1)
+            # a simple method to control the # of nodes on the pipe boundary
+            tmp_fun = lambda dth: cpgeo.create_deltatheta(dth=dth, radius=rp, length=lp, epsilon=0, with_cover=1,
+                                                          factor=1).get_n_nodes()
+            dth1 = 0.1  # guess 1
+            dth2 = 0.01  # guess 2
+            dth_min = dth2  # memory limit
+            tnode = 7000  # expect # of nodes
+            for _ in np.arange(10):
+                nnode1 = tmp_fun(dth1)
+                nnode2 = tmp_fun(dth2)
+                if np.abs(nnode2 - tnode) < tnode * 0.1:
+                    break
+                tdth = (tnode - nnode1) * (dth2 - dth1) / (nnode2 - nnode1) + dth1
+                dth1 = dth2
+                dth2 = np.max((tdth, (dth_min + dth1) / 2))
+            cpgeo = tunnel_geo()
+            cpgeo.create_deltatheta(dth=dth2, radius=rp, length=lp, epsilon=0, with_cover=1, factor=1)
             self._cpgeo = cpgeo
 
         # if kwargs['plot_geo']:

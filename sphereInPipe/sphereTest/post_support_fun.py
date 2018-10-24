@@ -41,30 +41,15 @@ def func_line(x, a0, a1):
     y = a0 + a1 * x
     return y
 
-def fit_line(ax, x, y, x0, x1, ifprint=1, linestyle='-.', linewidth=1):
+def fit_line(ax, x, y, x0, x1, ifprint=1):
     idx = np.array(x > x0) & np.array(x < x1) & np.isfinite(x) & np.isfinite(y)
     fit_line, pcov = curve_fit(func_line, x[idx], y[idx], maxfev=10000)
     fit_x = np.linspace(x.min(), x.max(), 30)
     if ax is not None:
-        ax.plot(fit_x, func_line(fit_x, *fit_line), linestyle, color='k', linewidth=linewidth)
+        ax.plot(fit_x, func_line(fit_x, *fit_line), '-.', color='k')
     if ifprint:
         print('y = %f + %f * x' % (fit_line[0], fit_line[1]), 'in range', (x0, x1))
     return fit_line
-
-def func_loglog(x, a0, a1):
-    y = a0 + a1 * x
-    return y
-
-def fit_power_law(ax, x, y, x0, x1, linestyle='-.', linewidth=1, extendline=False):
-    idx = np.array(x > x0) & np.array(x < x1) & np.isfinite(x) & np.isfinite(y)
-    fit_loglog, pcov = curve_fit(func_loglog, np.log(x[idx]), np.log(y[idx]), maxfev=10000)
-    if extendline:
-        fit_x = np.linspace(x.min(), x.max(), 30)
-    else:
-        fit_x = np.linspace(x0, x1, 30)
-    ax.plot(fit_x, np.exp(func_loglog(np.log(fit_x), *fit_loglog)), linestyle, color='k', linewidth=linewidth)
-    print('slope=%f' % fit_loglog[1], 'in range', (x0, x1))
-    return fit_loglog
 
 def get_simulate_data(eq_dir):
     txt_names = glob.glob(eq_dir + '/*.txt')
@@ -105,15 +90,3 @@ def get_simulate_data(eq_dir):
     wm = data.wm
     wh = data.wh
     return uz, wm, wh, Th
-
-def write_pbs_head(fpbs, job_name):
-    fpbs.write('#! /bin/bash\n')
-    fpbs.write('#PBS -M zhangji@csrc.ac.cn\n')
-    fpbs.write('#PBS -l nodes=1:ppn=24\n')
-    fpbs.write('#PBS -l walltime=72:00:00\n')
-    fpbs.write('#PBS -q common\n')
-    fpbs.write('#PBS -N %s\n' % job_name)
-    fpbs.write('\n')
-    fpbs.write('cd $PBS_O_WORKDIR\n')
-    fpbs.write('\n')
-    

@@ -615,7 +615,7 @@ class _ThickLine_geo(geo):
             nc = np.ceil((radius - deltalength) / deltalength).astype(int)
             ri = np.linspace(deltalength / 2, radius, nc, endpoint=False)
             # self
-            for i0 in range(0, nc):
+            for i0 in np.arange(0, nc):
                 ai_para = ai_para + 1
                 ni = np.ceil(2 * np.pi * ri[i0] / deltalength).astype(int)
                 ai = np.linspace(0, 2 * np.pi, ni, endpoint=False) + (-1) ** ai_para * dth / 4
@@ -670,7 +670,7 @@ class _ThickLine_geo(geo):
             # old version, cover is a plate.
             nc = np.ceil((radius - deltalength) / deltalength).astype(int)
             ri = np.linspace(deltalength / 2, radius, nc, endpoint=False)[-1::-1]
-            for i0 in range(0, nc):
+            for i0 in np.arange(0, nc):
                 ai_para = ai_para + 1
                 ni = np.ceil(2 * np.pi * ri[i0] / deltalength).astype(int)
                 ai = np.linspace(0, 2 * np.pi, ni, endpoint=False) + (-1) ** ai_para * dth / 4
@@ -914,8 +914,8 @@ class tunnel_geo(_ThickLine_geo):
         super().__init__()
         self._tunnel_norm = np.zeros((0, 0, 0))  # describing the aspect of tunnel.
         self._length = 0
-        self._cover_strat_list = uniqueList()
-        self._cover_end_list = uniqueList()
+        self._cover_strat_list = []
+        self._cover_end_list = []
 
     def create_n(self, n: int,  # number of nodes.
                  length: float,  # length of the tunnel
