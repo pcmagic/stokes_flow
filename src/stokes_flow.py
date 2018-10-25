@@ -1284,6 +1284,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         self._lp = np.nan
         self._ep = np.nan
         self._th = np.nan
+        self._with_cover = np.nan
         self._stokesletsInPipe_pipeFactor = np.nan
 
     def _set_f123(self):
@@ -1668,6 +1669,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         self._lp = mat_contents['lp'][0, 0]
         self._ep = mat_contents['ep'][0, 0]
         self._th = mat_contents['th'][0, 0]
+        self._with_cover = mat_contents['with_cover'][0, 0]
         self._stokesletsInPipe_pipeFactor = mat_contents['stokesletsInPipe_pipeFactor'][0, 0]
 
         kwargs = self.get_kwargs()
@@ -1676,11 +1678,32 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         kwargs['lp'] = self._lp
         kwargs['ep'] = self._ep
         kwargs['th'] = self._th
+        kwargs['with_cover'] = self._with_cover
         kwargs['stokesletsInPipe_pipeFactor'] = self._stokesletsInPipe_pipeFactor
         kwargs['check_acc'] = False
         self._kwargs['unpickedPrb'] = True
-        self._pipe_geo(**kwargs)
         self._kwargs = kwargs
+
+        # set the force and velocity pipe geos
+        # self._pipe_geo(**kwargs)
+        vpgeo = geo()
+        vpgeo.set_nodes(mat_contents['vp_nodes'], deltalength=0)
+        fpgeo = geo()
+        fpgeo.set_nodes(mat_contents['fp_nodes'], deltalength=0)
+        t_pkg = PETSc.DMComposite().create(comm=PETSc.COMM_WORLD)
+        t_pkg.addDM(fpgeo.get_dmda())
+        t_pkg.setFromOptions()
+        t_pkg.setUp()
+        t_isglb = t_pkg.getGlobalISs()
+        fpgeo.set_glbIdx(t_isglb[0].getIndices())
+        t_pkg = PETSc.DMComposite().create(comm=PETSc.COMM_WORLD)
+        t_pkg.addDM(vpgeo.get_dmda())
+        t_pkg.setFromOptions()
+        t_pkg.setUp()
+        t_isglb = t_pkg.getGlobalISs()
+        vpgeo.set_glbIdx(t_isglb[0].getIndices())
+        self._fpgeo = fpgeo
+        self._vpgeo = vpgeo
 
         # PETSC version
         self._f_list_numpy2PETSC()
@@ -1693,6 +1716,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         self._lp = kwargs['lp']
         self._ep = kwargs['ep']
         self._th = kwargs['th']
+        self._with_cover = kwargs['with_cover']
         self._stokesletsInPipe_pipeFactor = kwargs['stokesletsInPipe_pipeFactor']
         self._b_list = np.linspace(kwargs['b0'], kwargs['b1'], kwargs['nb'])  # list of b (force location).
 
@@ -1737,6 +1761,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         rp = self._rp
         lp = self._lp
         ep = self._ep
+        with_cover = self._with_cover
         stokesletsInPipe_pipeFactor = self._stokesletsInPipe_pipeFactor
 
         vpgeo = tunnel_geo()  # velocity node geo of pipe
@@ -1746,7 +1771,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         # OptDB = PETSc.Options()
         # stokesletsInPipe_pipeFactor = OptDB.getReal('dbg_factor', 2.5)
         # PETSc.Sys.Print('--------------------> DBG: stokesletsInPipe_pipeFactor=%f' % stokesletsInPipe_pipeFactor)
-        fpgeo = vpgeo.create_deltatheta(dth=dth, radius=rp, length=lp, epsilon=ep, with_cover=1,
+        fpgeo = vpgeo.create_deltatheta(dth=dth, radius=rp, length=lp, epsilon=ep, with_cover=with_cover,
                                         factor=stokesletsInPipe_pipeFactor)
         t_pkg = PETSc.DMComposite().create(comm=PETSc.COMM_WORLD)
         t_pkg.addDM(fpgeo.get_dmda())
@@ -1763,7 +1788,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         if kwargs['check_acc']:
             cpgeo = tunnel_geo()
             # a simple method to control the # of nodes on the pipe boundary
-            tmp_fun = lambda dth: cpgeo.create_deltatheta(dth=dth, radius=rp, length=lp, epsilon=0, with_cover=1,
+            tmp_fun = lambda dth: cpgeo.create_deltatheta(dth=dth, radius=rp, length=lp, epsilon=0, with_cover=2,
                                                           factor=1).get_n_nodes()
             dth1 = 0.1  # guess 1
             dth2 = 0.01  # guess 2
@@ -1778,7 +1803,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
                 dth1 = dth2
                 dth2 = np.max((tdth, (dth_min + dth1) / 2))
             cpgeo = tunnel_geo()
-            cpgeo.create_deltatheta(dth=dth2, radius=rp, length=lp, epsilon=0, with_cover=1, factor=1)
+            cpgeo.create_deltatheta(dth=dth2, radius=rp, length=lp, epsilon=0, with_cover=2, factor=1)
             self._cpgeo = cpgeo
 
         # if kwargs['plot_geo']:

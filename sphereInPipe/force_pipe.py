@@ -33,6 +33,7 @@ def get_problem_kwargs(**main_kwargs):
     b1 = OptDB.getReal('b1', 0.9)
     nb = OptDB.getInt('nb', 2)  # amount of b
     th = OptDB.getInt('th', 30)  # threshold
+    with_cover = OptDB.getInt('with_cover', 2)  # cover type of pipe. see tunnel_geo for detail.
     stokesletsInPipe_pipeFactor = OptDB.getReal('stokesletsInPipe_pipeFactor',
                                                 5)  # geometrical parameter, control the distribution of nodes of the pipe.
     solve_method = OptDB.getString('s', 'gmres')
@@ -54,6 +55,7 @@ def get_problem_kwargs(**main_kwargs):
         'b1':                          b1,
         'nb':                          nb,
         'th':                          th,
+        'with_cover':                  with_cover,
         'stokesletsInPipe_pipeFactor': stokesletsInPipe_pipeFactor,
         'solve_method':                solve_method,
         'precondition_method':         precondition_method,
@@ -138,6 +140,7 @@ def main_fun(**main_kwargs):
     lp = problem_kwargs['lp']
     ep = problem_kwargs['ep']
     th = problem_kwargs['th']
+    with_cover = problem_kwargs['with_cover']
     stokesletsInPipe_pipeFactor = problem_kwargs['stokesletsInPipe_pipeFactor']
 
     # # debug
@@ -162,8 +165,10 @@ def main_fun(**main_kwargs):
     err = np.array(problem.get_err_list())
     # do_show_err(fileHeadle, b, residualNorm, err)
     f1_list, f2_list, f3_list = problem.get_f_list()
-    do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th,
-                  stokesletsInPipe_pipeFactor)
+    vp_nodes = problem.get_vpgeo().get_nodes()
+    fp_nodes = problem.get_fpgeo().get_nodes()
+    do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th, with_cover,
+                  stokesletsInPipe_pipeFactor, vp_nodes, fp_nodes)
 
     PETSc.Sys().Print('                b -- residualNorm      ')
     PETSc.Sys().Print(np.hstack((b.reshape((-1, 1)), residualNorm)))
@@ -212,8 +217,8 @@ def do_show_err(fileHeadle, b, residualNorm, err):
     return True
 
 
-def do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th,
-                  stokesletsInPipe_pipeFactor):
+def do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th, with_cover,
+                  stokesletsInPipe_pipeFactor, vp_nodes, fp_nodes):
     comm = PETSc.COMM_WORLD.tompi4py()
     rank = comm.Get_rank()
     fileHeadle = check_file_extension(fileHeadle, extension='_force_pipe.mat')
@@ -230,7 +235,10 @@ def do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, d
                  'lp':                          lp,
                  'rp':                          rp,
                  'th':                          th,
-                 'stokesletsInPipe_pipeFactor': stokesletsInPipe_pipeFactor, },
+                 'with_cover':                  with_cover,
+                 'stokesletsInPipe_pipeFactor': stokesletsInPipe_pipeFactor,
+                 'vp_nodes':                    vp_nodes,
+                 'fp_nodes':                    fp_nodes},
                 oned_as='column')
     PETSc.Sys().Print('export mat file to %s ' % fileHeadle)
     pass
@@ -525,7 +533,7 @@ if __name__ == '__main__':
     # if OptDB.getBool('export_mat', False):
     #     OptDB.setValue('main_fun', False)
     #     export_mat()
-
+    #
     if OptDB.getBool('debug_num_speed', False):
         OptDB.setValue('main_fun', False)
         debug_num_speed(nnode=1000)
