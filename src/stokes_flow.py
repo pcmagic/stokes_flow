@@ -3342,6 +3342,7 @@ class givenFlowProblem(stokesFlowProblem):
 
 class shearFlowProblem(givenFlowProblem):
     def _init_kwargs(self, **kwargs):
+        super()._init_kwargs(**kwargs)
         self._planeShearRate = kwargs['planeShearRate']
         err_msg = 'shear flow velocity is must vertical to z axis. '
         assert self._planeShearRate[0, -1] == 0. and self._planeShearRate.size == 3, err_msg

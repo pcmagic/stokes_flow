@@ -138,7 +138,7 @@ def job_script():
     fileHeadle = problem_kwargs['fileHeadle']
 
     rot_theta, planeShearRatey = np.meshgrid(np.linspace(0, 2, n_rot_theta),
-                                             np.linspace(0, 0.1, n_planeShearRatey), )
+                                             np.linspace(0, 0.2, n_planeShearRatey), )
     ecoli_U = []
     for i0, (t_rot_theta, t_planeShearRatey) in enumerate(
             tqdm(zip(rot_theta.flatten(), planeShearRatey.flatten()), desc=fileHeadle)):
@@ -174,5 +174,5 @@ def job_script():
 
 
 if __name__ == '__main__':
-    main_fun()
-    # job_script()
+    # main_fun()
+    job_script()

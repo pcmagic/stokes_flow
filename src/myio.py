@@ -143,7 +143,7 @@ def get_ecoli_kwargs():
     Tfct = OptDB.getReal('Tfct', 1)  # Tgeo axis line factor, put more nodes near both tops
     with_T_geo = OptDB.getBool('with_T_geo', True)
 
-    # rotate the ecoli, original it is along z axis.
+    # rotate the ecoli
     rot_theta = OptDB.getReal('rot_theta', 0)
     rot_norm = np.array((1, 0, 0))  # currently is x axis.
 
