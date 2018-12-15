@@ -15,12 +15,12 @@ from src.myio import *
 from src.objComposite import createEcoliComp_tunnel
 
 def main_fun(**main_kwargs):
-    def save_mat_light(fileHeadle):
-        with open(fileHeadle + '_pick.bin', 'rb') as input_bin:
+    def save_mat_light(fileHandle):
+        with open(fileHandle + '_pick.bin', 'rb') as input_bin:
             unpick = pickle.Unpickler(input_bin)
             problem = unpick.load()
             problem.unpickmyself()
-            problem.saveM_mat(fileHeadle + '_M')
+            problem.saveM_mat(fileHandle + '_M')
             problem.destroy()
             for obj in problem.get_obj_list():
                 obj.save_mat()

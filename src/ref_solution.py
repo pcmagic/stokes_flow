@@ -17,7 +17,7 @@ np.seterr(all='ignore')
 
 
 class slt():
-    def __init__(self, problem: 'sf.stokesFlowProblem', **kwargs):
+    def __init__(self, problem: 'sf.StokesFlowProblem', **kwargs):
         self._problem = problem
         self._kwargs = kwargs
 

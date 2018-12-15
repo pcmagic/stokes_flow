@@ -26,7 +26,7 @@ def print_case_info(**problem_kwargs):
     rank = comm.Get_rank( )
     size = comm.Get_size( )
 
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     radius = problem_kwargs['radius']
     deltaLength = problem_kwargs['deltaLength']
     matrix_method = problem_kwargs['matrix_method']
@@ -52,7 +52,7 @@ def print_case_info(**problem_kwargs):
     solve_method = problem_kwargs['solve_method']
     precondition_method = problem_kwargs['precondition_method']
     PETSc.Sys.Print('solve method: %s, precondition method: %s' % (solve_method, precondition_method))
-    PETSc.Sys.Print('output file headle: ' + fileHeadle)
+    PETSc.Sys.Print('output file headle: ' + fileHandle)
     PETSc.Sys.Print('MPI size: %d' % size)
 
 
@@ -62,7 +62,7 @@ def get_problem_kwargs(**main_kwargs):
     deltaLength = OptDB.getReal('d', 0.3)
     epsilon = OptDB.getReal('e', -0.3)
     u = OptDB.getReal('u', 1)
-    fileHeadle = OptDB.getString('f', 'sphere')
+    fileHandle = OptDB.getString('f', 'sphere')
     solve_method = OptDB.getString('s', 'gmres')
     precondition_method = OptDB.getString('g', 'none')
     plot = OptDB.getBool('plot', False)
@@ -101,7 +101,7 @@ def get_problem_kwargs(**main_kwargs):
                       'n_grid':                n_grid,
                       'plot':                  plot,
                       'debug_mode':            debug_mode,
-                      'fileHeadle':            fileHeadle,
+                      'fileHandle':            fileHandle,
                       'region_type':           'rectangle',
                       'twoPara_n':             twoPara_n,
                       'legendre_m':            legendre_m,
@@ -126,7 +126,7 @@ def main_fun(**main_kwargs):
     problem_kwargs = get_problem_kwargs(**main_kwargs)
     print_case_info(**problem_kwargs)
 
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     radius = problem_kwargs['radius']
     deltaLength = problem_kwargs['deltaLength']
     matrix_method = problem_kwargs['matrix_method']
@@ -186,10 +186,10 @@ def main_fun(**main_kwargs):
     geo_check.set_rigid_velocity(sphere_velocity)
     obj_check = obj_dic[matrix_method]( )
     obj_check.set_data(geo_check, geo_check, obj_sphere_kwargs)
-    problem.vtk_check(fileHeadle + '_check', obj_check)
+    problem.vtk_check(fileHandle + '_check', obj_check)
 
-    problem.vtk_self(fileHeadle)
-    obj2.vtk(fileHeadle)
+    problem.vtk_self(fileHandle)
+    obj2.vtk(fileHandle)
     force_sphere = obj2.get_force_x( )
     PETSc.Sys.Print('---->>>%s: Resultant at x axis is %f' % (str(problem), force_sphere.sum( ) / (6 * np.pi * radius)))
 

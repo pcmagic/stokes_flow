@@ -30,9 +30,9 @@ from ecoli_in_pipe import head_tail
 #
 #
 # OptDB = PETSc.Options()
-# fileHeadle = OptDB.getString('f', 'ecoliInPipe')
-# OptDB.setValue('f', fileHeadle)
-# main_kwargs = {'fileHeadle': fileHeadle}
+# fileHandle = OptDB.getString('f', 'ecoliInPipe')
+# OptDB.setValue('f', fileHandle)
+# main_kwargs = {'fileHandle': fileHandle}
 # # head_U, tail_U, ref_U = ecoli_common.ecoli_restart(**main_kwargs)
 # # ecoli_common.ecoli_restart(**main_kwargs)
 # head_U = np.array([0, 0, 1, 0, 0, 1])

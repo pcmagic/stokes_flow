@@ -37,8 +37,8 @@ def get_problem_kwargs(**main_kwargs):
     rh1 = problem_kwargs['rh1']
 
     OptDB = PETSc.Options()
-    fileHeadle = OptDB.getString('f', 'singleEcoli_U')
-    problem_kwargs['fileHeadle'] = fileHeadle
+    fileHandle = OptDB.getString('f', 'singleEcoli_U')
+    problem_kwargs['fileHandle'] = fileHandle
     if 'ecoli_U' in main_kwargs.keys():
         problem_kwargs['ecoli_U'] = main_kwargs['ecoli_U']
     else:
@@ -51,10 +51,10 @@ def get_problem_kwargs(**main_kwargs):
 
 
 def print_case_info(**problem_kwargs):
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     print_solver_info(**problem_kwargs)
-    print_ecoli_info(fileHeadle, **problem_kwargs)
-    print_ecoli_U_info(fileHeadle, **problem_kwargs)
+    print_ecoli_info(fileHandle, **problem_kwargs)
+    print_ecoli_U_info(fileHandle, **problem_kwargs)
     return True
 
 
@@ -86,7 +86,7 @@ def main_fun(**main_kwargs):
     matrix_method = problem_kwargs['matrix_method']
     with_T_geo = problem_kwargs['with_T_geo']
     pickProblem = problem_kwargs['pickProblem']
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
 
     if not problem_kwargs['restart']:
         print_case_info(**problem_kwargs)
@@ -108,7 +108,7 @@ def main_fun(**main_kwargs):
         for obj in tube_flatten(obj_list):
             problem.add_obj(obj)
         if pickProblem:
-            problem.pickmyself(fileHeadle, check=True)
+            problem.pickmyself(fileHandle, check=True)
         problem.print_info()
 
         # # dbg
@@ -142,7 +142,7 @@ def main_fun(**main_kwargs):
         save_singleEcoli_U_vtk(problem, createHandle=createEcoli_tunnel, part=ecoli_part)
 
         if pickProblem:
-            problem.pickmyself(fileHeadle, pick_M=True, unpick=False)
+            problem.pickmyself(fileHandle, pick_M=True, unpick=False)
     else:
         pass
 

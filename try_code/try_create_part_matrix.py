@@ -16,15 +16,15 @@ from src.myio import *
 from src.objComposite import createEcoliComp_tunnel
 from src.myvtk import save_singleEcoli_vtk
 
-fileHeadle = 'singleEcoliPro'
-with open(fileHeadle + '_pick.bin', 'rb') as input:
+fileHandle = 'singleEcoliPro'
+with open(fileHandle + '_pick.bin', 'rb') as input:
     unpick = pickle.Unpickler(input)
     problem = unpick.load()
     problem.unpickmyself()
 kwargs = problem.get_kwargs()
 
 rigid_velocity = [2.88870196e-08, 1.25399086e-08, -5.91414513e-03, 7.34158974e-09, 2.73837520e-08, 4.32433478e-01]
-newProb = sf.stokesFlowProblem(**kwargs)
+newProb = sf.StokesFlowProblem(**kwargs)
 t_obj_list = problem.get_obj_list()[0].get_obj_list()[1:]
 new_obj_list = [t_obj.copy() for t_obj in t_obj_list]
 for new_obj in new_obj_list:
@@ -40,7 +40,7 @@ t_force = newProb.get_total_force()
 PETSc.Sys.Print('---->>>tail resultant is', t_force / 6 / np.pi)
 
 rigid_velocity = [2.88870196e-08, 1.25399086e-08, -5.91414513e-03, 7.34158974e-09, 2.73837520e-08, -5.67566522e-01]
-newProb = sf.stokesFlowProblem(**kwargs)
+newProb = sf.StokesFlowProblem(**kwargs)
 t_obj_list = [problem.get_obj_list()[0].get_obj_list()[0], ]
 new_obj_list = [t_obj.copy() for t_obj in t_obj_list]
 for new_obj in new_obj_list:

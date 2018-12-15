@@ -31,8 +31,8 @@ from src.support_class import *
 def get_problem_kwargs(**main_kwargs):
     problem_kwargs = get_solver_kwargs()
     OptDB = PETSc.Options()
-    fileHeadle = OptDB.getString('f', 'singleRodPlane')
-    problem_kwargs['fileHeadle'] = fileHeadle
+    fileHandle = OptDB.getString('f', 'singleRodPlane')
+    problem_kwargs['fileHandle'] = fileHandle
 
     kwargs_list = (main_kwargs, get_rod_kwargs(), get_givenForce_kwargs())
     for t_kwargs in kwargs_list:
@@ -49,25 +49,25 @@ def get_problem_kwargs(**main_kwargs):
 
 
 def print_case_info(**problem_kwargs):
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     print_solver_info(**problem_kwargs)
     print_givenForce_info(**problem_kwargs)
-    print_Rod_info(fileHeadle, **problem_kwargs)
+    print_Rod_info(fileHandle, **problem_kwargs)
     return True
 
 
 # @profile
 def main_fun(**main_kwargs):
     problem_kwargs = get_problem_kwargs(**main_kwargs)
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     rel_URod = problem_kwargs['rel_URod']
     RodThe = problem_kwargs['RodThe']
     RodPhi = problem_kwargs['RodPhi']
     givenF = problem_kwargs['givenF']
     rRod = problem_kwargs['rRod']
     lRod = problem_kwargs['lRod']
-    fileHeadle = '%s_phi%f_th%f' % (fileHeadle, RodPhi, RodThe)
-    problem_kwargs['fileHeadle'] = fileHeadle
+    fileHandle = '%s_phi%f_th%f' % (fileHandle, RodPhi, RodThe)
+    problem_kwargs['fileHandle'] = fileHandle
 
     if not problem_kwargs['restart']:
         rod_comp_list = create_rod(namehandle='rod_comp', **problem_kwargs)
@@ -80,7 +80,7 @@ def main_fun(**main_kwargs):
         min_z = rod_geo.get_nodes()[:, 2].min()
         if min_z > 0:
             print_case_info(**problem_kwargs)
-            problem = sf.givenForceProblem(**problem_kwargs)
+            problem = sf.GivenForceProblem(**problem_kwargs)
             problem.do_solve_process(rod_comp_list)
 
             rod_U = rod_comp.get_ref_U() + rel_URod
@@ -89,12 +89,12 @@ def main_fun(**main_kwargs):
             PETSc.Sys.Print('---->>>Rod velocity is', rod_U)
 
             arrowFactor = np.max((1.5 * rRod, lRod / 2))
-            finename = check_file_extension(fileHeadle, '.png')
+            finename = check_file_extension(fileHandle, '.png')
             rod_comp.png_givenF(finename=finename, arrowFactor=arrowFactor)
             save_singleRod_vtk(problem)
             problem.destroy()
         else:
-            PETSc.Sys.Print('%s: min_z = %f, ignore. ' % (fileHeadle, min_z))
+            PETSc.Sys.Print('%s: min_z = %f, ignore. ' % (fileHandle, min_z))
             rod_U = np.full(6, np.nan)
     else:
         rod_U = np.full(6, np.nan)
@@ -111,14 +111,14 @@ def job_script():
 
     problem_kwargs = get_problem_kwargs()
     lRod = problem_kwargs['lRod']
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     RodCenter = problem_kwargs['RodCenter']
     zoom_factor = problem_kwargs['zoom_factor']
 
     RodThe, RodPhi = np.meshgrid(np.linspace(0, np.pi / 2, n_RodThe),
                                  np.linspace(0, np.pi / 2, n_RodPhi))
     rod_U = []
-    for i0, (t_RodThe, t_RodPhi) in enumerate(tqdm(zip(RodThe.flatten(), RodPhi.flatten()), desc=fileHeadle)):
+    for i0, (t_RodThe, t_RodPhi) in enumerate(tqdm(zip(RodThe.flatten(), RodPhi.flatten()), desc=fileHandle)):
         OptDB.setValue('RodThe', t_RodThe)
         OptDB.setValue('RodPhi', t_RodPhi)
         OptDB.setValue('givenTy', rod_torque * np.sin(t_RodPhi))
@@ -158,7 +158,7 @@ def job_script():
     ax0.set_xlabel('theta')
     ax0.set_ylabel('phi')
     fig0.set_size_inches(18.5, 10.5)
-    fig0.savefig('%s_uxy.png' % fileHeadle, dpi=100)
+    fig0.savefig('%s_uxy.png' % fileHandle, dpi=100)
     plt.close()
 
     fig0 = plt.figure()
@@ -169,7 +169,7 @@ def job_script():
     ax0.set_xlabel('theta')
     ax0.set_ylabel('phi')
     fig0.set_size_inches(18.5, 10.5)
-    fig0.savefig('%s_ux.png' % fileHeadle, dpi=100)
+    fig0.savefig('%s_ux.png' % fileHandle, dpi=100)
     plt.close()
 
     fig0 = plt.figure()
@@ -180,7 +180,7 @@ def job_script():
     ax0.set_xlabel('theta')
     ax0.set_ylabel('phi')
     fig0.set_size_inches(18.5, 10.5)
-    fig0.savefig('%s_uy.png' % fileHeadle, dpi=100)
+    fig0.savefig('%s_uy.png' % fileHandle, dpi=100)
     plt.close()
 
     fig0 = plt.figure()
@@ -191,7 +191,7 @@ def job_script():
     ax0.set_xlabel('theta')
     ax0.set_ylabel('phi')
     fig0.set_size_inches(18.5, 10.5)
-    fig0.savefig('%s_uy.png' % fileHeadle, dpi=100)
+    fig0.savefig('%s_uy.png' % fileHandle, dpi=100)
     plt.close()
 
     fig0 = plt.figure()
@@ -201,7 +201,7 @@ def job_script():
     ax0.set_xlabel('RodPhi')
     ax0.set_ylabel('rod_u_x')
     fig0.set_size_inches(18.5, 10.5)
-    fig0.savefig('%s_RodPhi_ux.png' % fileHeadle, dpi=100)
+    fig0.savefig('%s_RodPhi_ux.png' % fileHandle, dpi=100)
     plt.close()
 
     fig0 = plt.figure()
@@ -211,7 +211,7 @@ def job_script():
     ax0.set_xlabel('RodPhi')
     ax0.set_ylabel('rod_u_y')
     fig0.set_size_inches(18.5, 10.5)
-    fig0.savefig('%s_RodPhi_uy.png' % fileHeadle, dpi=100)
+    fig0.savefig('%s_RodPhi_uy.png' % fileHandle, dpi=100)
     plt.close()
 
     fig0 = plt.figure()
@@ -221,10 +221,10 @@ def job_script():
     ax0.set_xlabel('RodPhi')
     ax0.set_ylabel('rod_u_xy')
     fig0.set_size_inches(18.5, 10.5)
-    fig0.savefig('%s_RodPhi_uxy.png' % fileHeadle, dpi=100)
+    fig0.savefig('%s_RodPhi_uxy.png' % fileHandle, dpi=100)
     plt.close()
 
-    mat_name = check_file_extension(fileHeadle, '.mat')
+    mat_name = check_file_extension(fileHandle, '.mat')
     if rank == 0:
         savemat(mat_name,
                 {'lRod':        lRod,

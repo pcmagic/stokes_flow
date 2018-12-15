@@ -14,15 +14,15 @@ from ecoli_in_pipe.ecoli_common import *
 # @profile
 def main_fun(**main_kwargs):
     OptDB = PETSc.Options()
-    fileHeadle = OptDB.getString('f', 'singleEcoliPro')
-    OptDB.setValue('f', fileHeadle)
-    main_kwargs['fileHeadle'] = fileHeadle
+    fileHandle = OptDB.getString('f', 'singleEcoliPro')
+    OptDB.setValue('f', fileHandle)
+    main_kwargs['fileHandle'] = fileHandle
     problem_kwargs = get_problem_kwargs(**main_kwargs)
 
     print_case_info(**problem_kwargs)
     ecoli_comp = createEcoliComp_tunnel(name='ecoli_0', **problem_kwargs)
     ecoli_comp.show_u_nodes(linestyle=' ')
-    ecoli_comp.vtk(fileHeadle)
+    ecoli_comp.vtk(fileHandle)
 
     return True
 

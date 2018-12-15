@@ -44,23 +44,23 @@ def view_matrix(m, **kwargs):
     plt.show()
 
 
-def save_vtk(problem: sf.stokesFlowProblem):
+def save_vtk(problem: sf.StokesFlowProblem):
     t0 = time()
     ref_slt = sphere_slt(problem)
     comm = PETSc.COMM_WORLD.tompi4py()
     rank = comm.Get_rank()
     problem_kwargs = problem.get_kwargs()
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     radius = problem_kwargs['radius']
     u = problem_kwargs['u']
     sphere_err = 0
 
-    # problem.vtk_obj(fileHeadle)
-    # problem.vtk_velocity('%s_Velocity' % fileHeadle)
-    # problem.vtk_self(fileHeadle)
+    # problem.vtk_obj(fileHandle)
+    # problem.vtk_velocity('%s_Velocity' % fileHandle)
+    # problem.vtk_self(fileHandle)
 
     theta = np.pi / 2
-    sphere_check = sf.stokesFlowObj()
+    sphere_check = sf.StokesFlowObj()
     sphere_geo_check = sphere_geo()  # force geo
 
     if not 'r_factor' in problem_kwargs:
@@ -73,7 +73,7 @@ def save_vtk(problem: sf.stokesFlowProblem):
         sphere_geo_check.set_rigid_velocity([u, 0, 0, 0, 0, 0])
         sphere_geo_check.node_rotation(norm=np.array([0, 1, 0]), theta=theta)
         sphere_check.set_data(sphere_geo_check, sphere_geo_check)
-        sphere_err[i0] = problem.vtk_check('%s_Check_%f' % (fileHeadle, (radius * d0)), sphere_check, ref_slt)[0]
+        sphere_err[i0] = problem.vtk_check('%s_Check_%f' % (fileHandle, (radius * d0)), sphere_check, ref_slt)[0]
 
     t1 = time()
     PETSc.Sys.Print('%s: write vtk files use: %fs' % (str(problem), (t1 - t0)))
@@ -87,7 +87,7 @@ def get_problem_kwargs(**main_kwargs):
     deltaLength = OptDB.getReal('d', 0.3)
     epsilon = OptDB.getReal('e', 0.3)
     u = OptDB.getReal('u', 1)
-    fileHeadle = OptDB.getString('f', 'sphere')
+    fileHandle = OptDB.getString('f', 'sphere')
     solve_method = OptDB.getString('s', 'gmres')
     precondition_method = OptDB.getString('g', 'none')
     plot_geo = OptDB.getBool('plot_geo', False)
@@ -128,7 +128,7 @@ def get_problem_kwargs(**main_kwargs):
         'n_grid':                n_grid,
         'plot_geo':              plot_geo,
         'debug_mode':            debug_mode,
-        'fileHeadle':            fileHeadle,
+        'fileHandle':            fileHandle,
         'region_type':           'rectangle',
         'twoPara_n':             twoPara_n,
         'legendre_m':            legendre_m,
@@ -157,7 +157,7 @@ def print_case_info(**problem_kwargs):
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     radius = problem_kwargs['radius']
     deltaLength = problem_kwargs['deltaLength']
     matrix_method = problem_kwargs['matrix_method']
@@ -187,7 +187,7 @@ def print_case_info(**problem_kwargs):
     precondition_method = problem_kwargs['precondition_method']
     PETSc.Sys.Print('solve method: %s, precondition method: %s'
                     % (solve_method, precondition_method))
-    PETSc.Sys.Print('output file headle: ' + fileHeadle)
+    PETSc.Sys.Print('output file headle: ' + fileHandle)
     PETSc.Sys.Print('MPI size: %d' % size)
 
 
@@ -198,7 +198,7 @@ def main_fun(**main_kwargs):
     problem_kwargs = get_problem_kwargs(**main_kwargs)
 
     restart = problem_kwargs['restart']
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     radius = problem_kwargs['radius']
     deltaLength = problem_kwargs['deltaLength']
     epsilon = problem_kwargs['epsilon']
@@ -230,7 +230,7 @@ def main_fun(**main_kwargs):
 
         problem = problem_dic[matrix_method](**problem_kwargs)
         if pickProblem:
-            problem.pickmyself(fileHeadle,
+            problem.pickmyself(fileHandle,
                                check=True)  # not save anything really, just check if the path is correct, to avoid this error after long time calculation.
         obj_sphere = obj_dic[matrix_method]()
         obj_sphere_kwargs = {'name': 'sphereObj_0_0'}
@@ -258,15 +258,15 @@ def main_fun(**main_kwargs):
         if getConvergenceHistory:
             convergenceHistory = problem.get_convergenceHistory()
         if pickProblem:
-            problem.pickmyself(fileHeadle)
+            problem.pickmyself(fileHandle)
     else:
-        with open(fileHeadle + '_pick.bin', 'rb') as input:
+        with open(fileHandle + '_pick.bin', 'rb') as input:
             unpick = pickle.Unpickler(input)
             problem = unpick.load()
             problem.unpickmyself()
             residualNorm = problem.get_residualNorm()
             obj_sphere = problem.get_obj_list()[0]
-            PETSc.Sys.Print('---->>>unpick the problem from file %s.pickle' % (fileHeadle))
+            PETSc.Sys.Print('---->>>unpick the problem from file %s.pickle' % (fileHandle))
 
     sphere_err = 0
     # sphere_err = save_vtk(problem, **main_kwargs)
@@ -283,7 +283,7 @@ def two_step_main_fun(**main_kwargs):
     problem_kwargs = get_problem_kwargs(**main_kwargs)
 
     restart = problem_kwargs['restart']
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     radius = problem_kwargs['radius']
     deltaLength = problem_kwargs['deltaLength']
     u = problem_kwargs['u']
@@ -299,7 +299,7 @@ def two_step_main_fun(**main_kwargs):
 
         problem = problem_dic[matrix_method](**problem_kwargs)
         problem.pickmyself(
-                fileHeadle)  # not save anything really, just check if the path is correct, to avoid this error after long time calculation.
+                fileHandle)  # not save anything really, just check if the path is correct, to avoid this error after long time calculation.
         obj_sphere = obj_dic[matrix_method]()
         obj_sphere_kwargs = {'name': 'sphereObj'}
         obj_sphere.set_data(sphere_geo0, sphere_geo0, **obj_sphere_kwargs)
@@ -308,15 +308,15 @@ def two_step_main_fun(**main_kwargs):
         problem.create_matrix()
 
         residualNorm = problem.solve()
-        # problem.pickmyself(fileHeadle)
+        # problem.pickmyself(fileHandle)
     else:
-        with open(fileHeadle + '_pick.bin', 'rb') as input:
+        with open(fileHandle + '_pick.bin', 'rb') as input:
             unpick = pickle.Unpickler(input)
             problem = unpick.load()
             problem.unpickmyself()
             residualNorm = problem.get_residualNorm()
             obj_sphere = problem.get_obj_list()[-1]
-            PETSc.Sys.Print('---->>>unpick the problem from file %s.pickle' % (fileHeadle))
+            PETSc.Sys.Print('---->>>unpick the problem from file %s.pickle' % (fileHandle))
 
     sphere_err = 0
     # sphere_err = save_vtk(problem, **main_kwargs)
@@ -324,16 +324,16 @@ def two_step_main_fun(**main_kwargs):
     obj_sphere1 = obj_sphere.copy()
     obj_sphere1.zoom(factor)
     ref_slt = sphere_slt(problem)
-    problem.vtk_check('%s_Check_%f' % (fileHeadle, (radius * d0)), obj_sphere1)
+    problem.vtk_check('%s_Check_%f' % (fileHandle, (radius * d0)), obj_sphere1)
 
     sphere_geo_check = sphere_geo()
     sphere_geo_check.create_n(2000, radius)
     sphere_geo_check.set_rigid_velocity([u, 0, 0, 0, 0, 0])
     theta = np.pi / 2
     sphere_geo_check.node_rotation(norm=np.array([0, 1, 0]), theta=theta)
-    sphere_check = sf.stokesFlowObj()
+    sphere_check = sf.StokesFlowObj()
     sphere_check.set_data(sphere_geo_check, sphere_geo_check)
-    sphere_err0 = problem.vtk_check('%s_Check_%f' % (fileHeadle, (radius)), sphere_check)[0]
+    sphere_err0 = problem.vtk_check('%s_Check_%f' % (fileHandle, (radius)), sphere_check)[0]
 
     t0 = time()
     problem_kwargs['delta'] = deltaLength * epsilon * d0
@@ -344,7 +344,7 @@ def two_step_main_fun(**main_kwargs):
     t1 = time()
     PETSc.Sys.Print('%s: create problem use: %fs' % (str(problem), (t1 - t0)))
     residualNorm1 = problem1.solve()
-    sphere_err1 = problem1.vtk_check('%s_Check_%f' % (fileHeadle, (radius * d0)), sphere_check)
+    sphere_err1 = problem1.vtk_check('%s_Check_%f' % (fileHandle, (radius * d0)), sphere_check)
 
     force_sphere = obj_sphere.get_force_x()
     PETSc.Sys.Print('sphere_err0=%f, sphere_err1=%f' % (sphere_err0, sphere_err1))
@@ -376,11 +376,11 @@ def tp_rs_wrapper():
         d = deltaLength[i0]
         e = epsilon[i0]
         n = N[i0]
-        fileHeadle = 'sphere_%05d_%6.4f_%4.2f_%d' % (i0, d, e, n)
+        fileHandle = 'sphere_%05d_%6.4f_%4.2f_%d' % (i0, d, e, n)
         OptDB.setValue('d', d)
         OptDB.setValue('e', e)
         OptDB.setValue('tp_n', int(n))
-        OptDB.setValue('f', fileHeadle)
+        OptDB.setValue('f', fileHandle)
         _, sphere_err[i0, :], residualNorm[i0] = main_fun(**main_kwargs)
     comm = PETSc.COMM_WORLD.tompi4py()
     rank = comm.Get_rank()
@@ -437,12 +437,12 @@ def lg_rs_wrapper():
         e = epsilon[i0]
         m = mk_bank[mk_index[i0], 0]
         k = mk_bank[mk_index[i0], 1]
-        fileHeadle = 'sphere_%05d_%6.4f_%4.2f_m=%d,k=%d' % (i0, d, e, m, k)
+        fileHandle = 'sphere_%05d_%6.4f_%4.2f_m=%d,k=%d' % (i0, d, e, m, k)
         OptDB.setValue('d', d)
         OptDB.setValue('e', e)
         OptDB.setValue('legendre_m', int(m))
         OptDB.setValue('legendre_k', int(k))
-        OptDB.setValue('f', fileHeadle)
+        OptDB.setValue('f', fileHandle)
         _, sphere_err[i0, :], residualNorm[i0] = main_fun(**main_kwargs)
     comm = PETSc.COMM_WORLD.tompi4py()
     rank = comm.Get_rank()
@@ -508,13 +508,13 @@ def two_step_wrapper():
     sphere_err = np.zeros((r_factor.size))
     main_kwargs = {'r_factor': r_factor}
     OptDB.setValue('sm', 'lg_rs')
-    fileHeadle = 'sphere_%6.4f_%4.2f_m=%d,k=%d' % \
+    fileHandle = 'sphere_%6.4f_%4.2f_m=%d,k=%d' % \
                  (deltaLength, epsilon, mk_bank[0], mk_bank[1])
     OptDB.setValue('d', deltaLength)
     OptDB.setValue('e', epsilon)
     OptDB.setValue('legendre_m', int(mk_bank[0]))
     OptDB.setValue('legendre_k', int(mk_bank[1]))
-    OptDB.setValue('f', fileHeadle)
+    OptDB.setValue('f', fileHandle)
     problem, sphere_err[:], residualNorm = two_step_main_fun(**main_kwargs)
 
 

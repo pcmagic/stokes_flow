@@ -21,12 +21,12 @@ from scipy.io import loadmat
 import pickle
 
 
-def save_vtk(problem: sf.stokesFlowProblem):
+def save_vtk(problem: sf.StokesFlowProblem):
     t0 = time()
     comm = PETSc.COMM_WORLD.tompi4py()
     rank = comm.Get_rank()
     problem_kwargs = problem.get_kwargs()
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     rs = problem_kwargs['rs']
     U = problem_kwargs['U']
     n_sphere_check = problem_kwargs['n_sphere_check']
@@ -40,15 +40,15 @@ def save_vtk(problem: sf.stokesFlowProblem):
     # bgeo.mat_nodes(filename=matname, mat_handle=bnodesHeadle)
     # belemsHeadle = problem_kwargs['belemsHeadle']
     # bgeo.mat_elmes(filename=matname, mat_handle=belemsHeadle, elemtype='tetra')
-    # problem.vtk_tetra(fileHeadle + '_Velocity', bgeo)
+    # problem.vtk_tetra(fileHandle + '_Velocity', bgeo)
 
     # velocity_err = -1
-    obj_check = sf.stokesFlowObj()
+    obj_check = sf.StokesFlowObj()
     tunnel_geo_check = tunnel_geo()  # pf, force geo
     tunnel_geo_check.create_n(n_tunnel_check, lp/3*2, rp)
     tunnel_geo_check.set_rigid_velocity(np.array((0, 0, 0, 0, 0, 0)))
     obj_check.set_data(tunnel_geo_check, tunnel_geo_check)
-    velocity_err = problem.vtk_check(fileHeadle + '_Check_tunnel', obj_check)[0]
+    velocity_err = problem.vtk_check(fileHandle + '_Check_tunnel', obj_check)[0]
 
     t1 = time()
     PETSc.Sys.Print('velocity error is: %f' % velocity_err)
@@ -62,7 +62,7 @@ def save_vtk(problem: sf.stokesFlowProblem):
 
 def get_problem_kwargs(**main_kwargs):
     OptDB = PETSc.Options()
-    fileHeadle = OptDB.getString('f', 'sphereInPipe')
+    fileHandle = OptDB.getString('f', 'sphereInPipe')
     dp = OptDB.getReal('dp', 0.05)  # delta length of pipe
     ds = OptDB.getReal('ds', 0.1)  # delta length of sphere
     ep = OptDB.getReal('ep', 0.5)  # epsilon of pipe
@@ -106,7 +106,7 @@ def get_problem_kwargs(**main_kwargs):
         'solve_method':          solve_method,
         'precondition_method':   precondition_method,
         'plot':                  plot,
-        'fileHeadle':            fileHeadle,
+        'fileHandle':            fileHandle,
         'twoPara_n':             twoPara_n,
         'legendre_m':            legendre_m,
         'legendre_k':            legendre_k,
@@ -128,7 +128,7 @@ def print_case_info(**problem_kwargs):
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     matrix_method = problem_kwargs['matrix_method']
     dp = problem_kwargs['dp']
     ds = problem_kwargs['ds']
@@ -168,7 +168,7 @@ def print_case_info(**problem_kwargs):
     precondition_method = problem_kwargs['precondition_method']
     PETSc.Sys.Print('  solve method: %s, precondition method: %s'
           % (solve_method, precondition_method))
-    PETSc.Sys.Print('  output file headle: ' + fileHeadle)
+    PETSc.Sys.Print('  output file headle: ' + fileHandle)
     PETSc.Sys.Print('MPI size: %d' % size)
 
 
@@ -177,7 +177,7 @@ def main_fun(**main_kwargs):
     comm = PETSc.COMM_WORLD.tompi4py()
     rank = comm.Get_rank()
     problem_kwargs = get_problem_kwargs(**main_kwargs)
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
 
     if not problem_kwargs['restart']:
         print_case_info(**problem_kwargs)
@@ -213,7 +213,7 @@ def main_fun(**main_kwargs):
         problem.solve_prepare(**problem_kwargs)
         if problem_kwargs['pickProblem']:
             # do NOT save anything really, just check if the path is correct, to avoid this error after long time calculation.
-            problem.pickmyself(fileHeadle, check=True)
+            problem.pickmyself(fileHandle, check=True)
 
         problem.create_matrix()
         Tolerances = {'max_it': 3000}
@@ -221,9 +221,9 @@ def main_fun(**main_kwargs):
         save_vtk(problem)
 
         if problem_kwargs['pickProblem']:
-            problem.pickmyself(fileHeadle)
+            problem.pickmyself(fileHandle)
     else:
-        with open(fileHeadle + '_pick.bin', 'rb') as input:
+        with open(fileHandle + '_pick.bin', 'rb') as input:
             unpick = pickle.Unpickler(input)
             problem = unpick.load()
             problem.unpickmyself()

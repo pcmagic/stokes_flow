@@ -25,7 +25,7 @@ from src.support_class import *
 
 def get_problem_kwargs(**main_kwargs):
     OptDB = PETSc.Options()
-    fileHeadle = OptDB.getString('f', 'dbg')
+    fileHandle = OptDB.getString('f', 'dbg')
     dp = OptDB.getReal('dp', 0.5)  # delta length of pipe
     ep = OptDB.getReal('ep', 2)  # epsilon of pipe
     lp = OptDB.getReal('lp', 1)  # length of pipe
@@ -59,7 +59,7 @@ def get_problem_kwargs(**main_kwargs):
         'stokesletsInPipe_pipeFactor': stokesletsInPipe_pipeFactor,
         'solve_method':                solve_method,
         'precondition_method':         precondition_method,
-        'fileHeadle':                  fileHeadle,
+        'fileHandle':                  fileHandle,
         'check_acc':                   check_acc,
         'plot_geo':                    plot_geo,
         'MPISIZE':                     MPISIZE,
@@ -79,7 +79,7 @@ def print_case_info(**problem_kwargs):
     comm = PETSc.COMM_WORLD.tompi4py()
     size = comm.Get_size()
 
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     matrix_method = problem_kwargs['matrix_method']
     dp = problem_kwargs['dp']
     ep = problem_kwargs['ep']
@@ -123,7 +123,7 @@ def print_case_info(**problem_kwargs):
     precondition_method = problem_kwargs['precondition_method']
     PETSc.Sys.Print('  solve method: %s, precondition method: %s'
                     % (solve_method, precondition_method))
-    PETSc.Sys.Print('  output file headle: ' + fileHeadle)
+    PETSc.Sys.Print('  output file headle: ' + fileHandle)
     PETSc.Sys.Print('MPI size: %d' % size)
 
 
@@ -132,7 +132,7 @@ def main_fun(**main_kwargs):
     comm = PETSc.COMM_WORLD.tompi4py()
     rank = comm.Get_rank()
     problem_kwargs = get_problem_kwargs(**main_kwargs)
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     print_case_info(**problem_kwargs)
     check_acc = problem_kwargs['check_acc']
     dp = problem_kwargs['dp']
@@ -151,7 +151,7 @@ def main_fun(**main_kwargs):
     # fsgeo = geo()  # force node geo of sphere
     # dbg_nodes = np.array((0.4, 0, 0), order='F').reshape((-1, 3))
     # fsgeo.set_nodes(dbg_nodes, deltalength=0)
-    # vsobj = sf.stokesFlowObj()
+    # vsobj = sf.StokesFlowObj()
     # vsobj_kwargs = {'name': 'sphere_0', }
     # vsobj.set_data(fsgeo, vsgeo, **vsobj_kwargs)
 
@@ -159,15 +159,15 @@ def main_fun(**main_kwargs):
     # problem = problem_dic[matrix_method](**problem_kwargs)
     problem = sf.stokesletsInPipeProblem(**problem_kwargs)
     problem.solve_prepare()
-    # problem.pickmyself(fileHeadle)
+    # problem.pickmyself(fileHandle)
     b = np.array(problem.get_b_list())
     residualNorm = np.array(problem.get_residualNorm_list())
     err = np.array(problem.get_err_list())
-    # do_show_err(fileHeadle, b, residualNorm, err)
+    # do_show_err(fileHandle, b, residualNorm, err)
     f1_list, f2_list, f3_list = problem.get_f_list()
     vp_nodes = problem.get_vpgeo().get_nodes()
     fp_nodes = problem.get_fpgeo().get_nodes()
-    do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th, with_cover,
+    do_export_mat(fileHandle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th, with_cover,
                   stokesletsInPipe_pipeFactor, vp_nodes, fp_nodes)
 
     PETSc.Sys().Print('                b -- residualNorm      ')
@@ -179,7 +179,7 @@ def main_fun(**main_kwargs):
     return True
 
 
-def do_show_err(fileHeadle, b, residualNorm, err):
+def do_show_err(fileHandle, b, residualNorm, err):
     comm = PETSc.COMM_WORLD.tompi4py()
     rank = comm.Get_rank()
     if rank == 0:
@@ -197,7 +197,7 @@ def do_show_err(fileHeadle, b, residualNorm, err):
         ax1.set_ylabel('residualNorm')
         ax1.set_xlim(b0, b1)
         # ax1.set_ylim(0, 0.03)
-        fig1.savefig('%s_rN.png' % fileHeadle)
+        fig1.savefig('%s_rN.png' % fileHandle)
 
     if err.size > 0 and rank == 0:
         fig2 = plt.figure()
@@ -211,19 +211,19 @@ def do_show_err(fileHeadle, b, residualNorm, err):
         ax2.set_ylabel('velocity err')
         ax2.set_xlim(b0, b1)
         # ax2.set_ylim(0, 0.02)
-        fig2.savefig('%s_err.png' % fileHeadle)
+        fig2.savefig('%s_err.png' % fileHandle)
         # plt.show()
-    PETSc.Sys().Print('export figles to %s_rN.png and %s_err.png' % (fileHeadle, fileHeadle))
+    PETSc.Sys().Print('export figles to %s_rN.png and %s_err.png' % (fileHandle, fileHandle))
     return True
 
 
-def do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th, with_cover,
+def do_export_mat(fileHandle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th, with_cover,
                   stokesletsInPipe_pipeFactor, vp_nodes, fp_nodes):
     comm = PETSc.COMM_WORLD.tompi4py()
     rank = comm.Get_rank()
-    fileHeadle = check_file_extension(fileHeadle, extension='_force_pipe.mat')
+    fileHandle = check_file_extension(fileHandle, extension='_force_pipe.mat')
     if rank == 0:
-        savemat(fileHeadle,
+        savemat(fileHandle,
                 {'b':                           b,
                  'f1_list':                     f1_list,
                  'f2_list':                     f2_list,
@@ -240,7 +240,7 @@ def do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, d
                  'vp_nodes':                    vp_nodes,
                  'fp_nodes':                    fp_nodes},
                 oned_as='column')
-    PETSc.Sys().Print('export mat file to %s ' % fileHeadle)
+    PETSc.Sys().Print('export mat file to %s ' % fileHandle)
     pass
 
 
@@ -252,8 +252,8 @@ def cart2pol(x, y):
 
 def show_err():
     problem_kwargs = get_problem_kwargs()
-    fileHeadle = problem_kwargs['fileHeadle']
-    with open(fileHeadle + '_pick.bin', 'rb') as input:
+    fileHandle = problem_kwargs['fileHandle']
+    with open(fileHandle + '_pick.bin', 'rb') as input:
         unpick = pickle.Unpickler(input)
         problem = unpick.load()
         problem.unpickmyself()
@@ -261,14 +261,14 @@ def show_err():
     b = np.array(problem.get_b_list())
     residualNorm = np.array(problem.get_residualNorm_list())
     err = np.array(problem.get_err_list())
-    do_show_err(fileHeadle, b, residualNorm, err)
+    do_show_err(fileHandle, b, residualNorm, err)
     return True
 
 
 def export_mat():
     problem_kwargs = get_problem_kwargs()
-    fileHeadle = problem_kwargs['fileHeadle']
-    filePick = check_file_extension(fileHeadle, extension='_pick.bin')
+    fileHandle = problem_kwargs['fileHandle']
+    filePick = check_file_extension(fileHandle, extension='_pick.bin')
     with open(filePick, 'rb') as myinput:
         unpick = pickle.Unpickler(myinput)
         problem = unpick.load()
@@ -287,7 +287,7 @@ def export_mat():
     residualNorm = np.array(problem.get_residualNorm_list())
     err = np.array(problem.get_err_list())
     f1_list, f2_list, f3_list = problem.get_f_list()
-    do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th,
+    do_export_mat(fileHandle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th,
                   stokesletsInPipe_pipeFactor)
     return True
 
@@ -296,7 +296,7 @@ def construct(**main_kwargs):
     comm = PETSc.COMM_WORLD.tompi4py()
     rank = comm.Get_rank()
     problem_kwargs = get_problem_kwargs(**main_kwargs)
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     matrix_method = problem_kwargs['matrix_method']
     dp = problem_kwargs['dp']
     rp = problem_kwargs['rp']
@@ -307,14 +307,14 @@ def construct(**main_kwargs):
     problem = problem_dic[matrix_method](**problem_kwargs)
     # problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
 
-    problem.set_prepare(fileHeadle)
-    problem.pickmyself(fileHeadle)
+    problem.set_prepare(fileHandle)
+    problem.pickmyself(fileHandle)
     b = np.array(problem.get_b_list())
     residualNorm = np.array(problem.get_residualNorm_list())
     err = np.array(problem.get_err_list())
-    do_show_err(fileHeadle, b, residualNorm, err)
+    do_show_err(fileHandle, b, residualNorm, err)
     f1_list, f2_list, f3_list = problem.get_f_list()
-    do_export_mat(fileHeadle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th,
+    do_export_mat(fileHandle, b, f1_list, f2_list, f3_list, residualNorm, err, dp, ep, lp, rp, th,
                   stokesletsInPipe_pipeFactor)
 
     PETSc.Sys().Print('                b -- residualNorm      ')
@@ -326,15 +326,15 @@ def construct(**main_kwargs):
 
 def debug_stokeslets_b(b, node):
     problem_kwargs = get_problem_kwargs()
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
-    # fileHeadle = 'construct07'
-    problem.set_prepare(fileHeadle)
+    # fileHandle = 'construct07'
+    problem.set_prepare(fileHandle)
 
     # t_headle = '_pick.bin'
-    # if fileHeadle[-len(t_headle):] != t_headle:
-    #     fileHeadle = fileHeadle + t_headle
-    # with open(fileHeadle, 'rb') as input:
+    # if fileHandle[-len(t_headle):] != t_headle:
+    #     fileHandle = fileHandle + t_headle
+    # with open(fileHandle, 'rb') as input:
     #     unpick = pickle.Unpickler(input)
     #     problem = unpick.load()
     #     problem.unpickmyself()
@@ -382,15 +382,15 @@ def debug_num_speed(nnode=1000):
     dt = np.zeros_like(mat_name_list, dtype=np.float)
     nnode_pipe = np.zeros_like(mat_name_list, dtype=np.float)
     for i0, mat_name in enumerate(mat_name_list):
-        fileHeadle = mat_name[:-15]
+        fileHandle = mat_name[:-15]
         problem = sf.stokesletsInPipeProblem(**problem_kwargs)
         t0 = time()
-        problem.set_prepare(fileHeadle, fullpath=True)
+        problem.set_prepare(fileHandle, fullpath=True)
         problem.debug_solve_stokeslets_b(b=b, node=node)
         t1 = time()
         dt[i0] = t1 - t0
         nnode_pipe[i0] = problem.get_fpgeo().get_n_nodes()
-        PETSc.Sys.Print('%s: solve stokeslets numerically use: %fs' % (os.path.basename(fileHeadle), dt[i0]))
+        PETSc.Sys.Print('%s: solve stokeslets numerically use: %fs' % (os.path.basename(fileHandle), dt[i0]))
 
     comm = PETSc.COMM_WORLD.tompi4py()
     rank = comm.Get_rank()
@@ -446,7 +446,7 @@ def debug_solve_u_pipe(b, dp, lp):
     outputHandle = ' '
     pgeo = tunnel_geo()  # velocity node geo of pipe
     dth = 2 * np.arcsin(dp / 2 / rp)
-    pgeo.create_deltatheta(dth=dth, radius=rp, length=lp, epsilon=0, with_cover=True, factor=2.5)
+    pgeo.create_deltatheta(dth=dth, radius=rp, length=lp, epsilon=0, with_cover=1, factor=2.5)
 
     problem.debug_solve_u_pipe(pgeo, outputHandle, greenFun)
     return True
@@ -455,9 +455,9 @@ def debug_solve_u_pipe(b, dp, lp):
 def debug_solve_stokeslets_fnode(fnode):
     from src.geo import tunnel_geo
     problem_kwargs = get_problem_kwargs()
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
-    problem.set_prepare(fileHeadle)
+    problem.set_prepare(fileHandle)
     fnode = np.array(fnode).reshape((1, 3))
 
     dp = 0.1
@@ -466,7 +466,7 @@ def debug_solve_stokeslets_fnode(fnode):
     stokesletsInPipe_pipeFactor = 1
     vpgeo = tunnel_geo()  # velocity node geo of pipe
     dth = 2 * np.arcsin(dp / 2 / rp)
-    vpgeo.create_deltatheta(dth=dth, radius=rp, length=lp, epsilon=0, with_cover=True,
+    vpgeo.create_deltatheta(dth=dth, radius=rp, length=lp, epsilon=0, with_cover=1,
                             factor=stokesletsInPipe_pipeFactor)
     # vpgeo.show_nodes()
 
@@ -492,9 +492,9 @@ def m2_err_z():
 
     # velocity (stokeslets) in pipe
     problem_kwargs = get_problem_kwargs()
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
-    problem.set_prepare(fileHeadle)
+    problem.set_prepare(fileHandle)
     _, _, num_ans3 = problem.debug_solve_stokeslets_b(b=b, node=nodes)
     num_uz = num_ans3.getArray().reshape((-1, 3))[:, 2]
     comm = PETSc.COMM_WORLD.tompi4py()

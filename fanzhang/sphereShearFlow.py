@@ -24,19 +24,19 @@ from src.myvtk import *
 
 
 def print_case_info(**problem_kwargs):
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     print_solver_info(**problem_kwargs)
     print_shearFlow_info(**problem_kwargs)
-    print_sphere_info(fileHeadle, **problem_kwargs)
+    print_sphere_info(fileHandle, **problem_kwargs)
     return True
 
 
 def get_problem_kwargs(**main_kwargs):
     problem_kwargs = get_solver_kwargs()
     OptDB = PETSc.Options()
-    fileHeadle = OptDB.getString('f', 'sphereShearFlow')
-    OptDB.setValue('f', fileHeadle)
-    problem_kwargs['fileHeadle'] = fileHeadle
+    fileHandle = OptDB.getString('f', 'sphereShearFlow')
+    OptDB.setValue('f', fileHandle)
+    problem_kwargs['fileHandle'] = fileHandle
 
     kwargs_list = (main_kwargs, get_vtk_tetra_kwargs(),
                    get_sphere_kwargs(), get_shearFlow_kwargs())
@@ -52,7 +52,7 @@ def main_fun(**main_kwargs):
     rs = problem_kwargs['rs']
 
     obj_sphere = create_sphere(**problem_kwargs)[0]
-    problem = sf.shearFlowProblem(**problem_kwargs)
+    problem = sf.ShearFlowProblem(**problem_kwargs)
     problem.do_solve_process((obj_sphere,))
 
     force_sphere = obj_sphere.get_total_force()

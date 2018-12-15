@@ -15,15 +15,12 @@ from matplotlib import pyplot as plt
 def get_problem_kwargs(**main_kwargs):
     problem_kwargs = get_solver_kwargs()
     OptDB = PETSc.Options()
-    fileHeadle = OptDB.getString('f', 'infhelixPro')
-    OptDB.setValue('f', fileHeadle)
-    problem_kwargs['fileHeadle'] = fileHeadle
+    fileHandle = OptDB.getString('f', 'infhelixPro')
+    OptDB.setValue('f', fileHandle)
+    problem_kwargs['fileHandle'] = fileHandle
     n_helix = OptDB.getReal('n_helix', 2)
     OptDB.setValue('n_helix', n_helix)
     problem_kwargs['n_helix'] = n_helix
-    infhelix_ntheta = OptDB.getReal('infhelix_ntheta', 2)
-    OptDB.setValue('infhelix_ntheta', infhelix_ntheta)
-    problem_kwargs['infhelix_ntheta'] = infhelix_ntheta
 
     kwargs_list = (main_kwargs, get_helix_kwargs(), get_givenForce_kwargs())
     for t_kwargs in kwargs_list:
@@ -33,12 +30,11 @@ def get_problem_kwargs(**main_kwargs):
 
 
 def print_case_info(obj_name, **problem_kwargs):
-    fileHeadle = problem_kwargs['fileHeadle']
-    infhelix_ntheta = problem_kwargs['infhelix_ntheta']
+    fileHandle = problem_kwargs['fileHandle']
     n_helix = problem_kwargs['n_helix']
     print_solver_info(**problem_kwargs)
     print_helix_info(obj_name, **problem_kwargs)
-    PETSc.Sys.Print('  given unite spin wz, # segments %d, # helix %d. ' % (infhelix_ntheta, n_helix))
+    PETSc.Sys.Print('  given unite spin wz, # helix %d. ' % n_helix)
     return True
 
 
@@ -48,10 +44,9 @@ def main_fun(**main_kwargs):
     problem_kwargs = get_problem_kwargs(**main_kwargs)
     ph = problem_kwargs['ph']
     ch = problem_kwargs['ch']
-    maxtheta = ch * 2 * np.pi
-    problem_kwargs['infhelix_maxtheta'] = maxtheta
-    ntheta = problem_kwargs['infhelix_ntheta']
     rh1 = problem_kwargs['rh1']
+    rh2 = problem_kwargs['rh2']
+    nth = problem_kwargs['nth']
     objname = 'infhelix'
     print_case_info(objname, **problem_kwargs)
 
@@ -59,7 +54,7 @@ def main_fun(**main_kwargs):
     helix_list = create_infHelix(objname, **problem_kwargs)
 
     # # create problem, given velocity
-    # problem = sf.stokesFlowProblem(**problem_kwargs)
+    # problem = sf.StokesFlowProblem(**problem_kwargs)
     # for tobj in helix_list:
     #     problem.add_obj(tobj)
     # problem.create_matrix()
@@ -125,7 +120,7 @@ def main_fun(**main_kwargs):
     # case 4, create problem, given force and torque, iterate method
     helix_composite = sf.forcefreeComposite(name='helix_composite')
     problem_kwargs['givenF'] = 0
-    problem = sf.givenTorqueIterateForce1DProblem(axis='z', tolerate=1e-3, **problem_kwargs)
+    problem = sf.GivenTorqueIterateVelocity1DProblem(axis='z', tolerate=1e-3, **problem_kwargs)
     for tobj in helix_list:
         helix_composite.add_obj(tobj, rel_U=np.zeros(6))
         problem.add_obj(tobj)
@@ -163,6 +158,7 @@ def main_fun(**main_kwargs):
 
     PETSc.Sys.Print(problem_kwargs)
     return True
+
 
 if __name__ == '__main__':
     main_fun()

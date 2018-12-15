@@ -24,21 +24,22 @@ def get_problem_kwargs(**main_kwargs):
     return problem_kwargs
 
 
-def print_case_info(**problem_kwargs):
-    fileHeadle = problem_kwargs['fileHeadle']
-    PETSc.Sys.Print('-->Ecoli in pipe case, force free case.')
+def print_case_info(caseIntro='-->Ecoli in pipe case, force free case.',
+                    **problem_kwargs):
+    fileHandle = problem_kwargs['fileHandle']
+    PETSc.Sys.Print(caseIntro)
     print_solver_info(**problem_kwargs)
     print_forcefree_info(**problem_kwargs)
-    print_ecoli_info(fileHeadle, **problem_kwargs)
+    print_ecoli_info(fileHandle, **problem_kwargs)
     return True
 
 
 def ecoli_restart(**main_kwargs):
-    err_msg = 'keyword fileHeadle is necessary. '
-    assert 'fileHeadle' in main_kwargs.keys(), err_msg
+    err_msg = 'keyword fileHandle is necessary. '
+    assert 'fileHandle' in main_kwargs.keys(), err_msg
     new_kwargs = get_problem_kwargs(**main_kwargs)
-    fileHeadle = new_kwargs['fileHeadle']
-    t_name = check_file_extension(fileHeadle, '_pick.bin')
+    fileHandle = new_kwargs['fileHandle']
+    t_name = check_file_extension(fileHandle, '_pick.bin')
     with open(t_name, 'rb') as myinput:
         unpick = pickle.Unpickler(myinput)
         problem = unpick.load()

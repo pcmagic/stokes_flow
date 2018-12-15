@@ -22,10 +22,10 @@ from src.objComposite import *
 def get_problem_kwargs(**main_kwargs):
     problem_kwargs = get_solver_kwargs()
     OptDB = PETSc.Options()
-    fileHeadle = OptDB.getString('f', '...')
-    err_msg = 'specify the fileHeadle. '
-    assert fileHeadle != '...', err_msg
-    problem_kwargs['fileHeadle'] = fileHeadle
+    fileHandle = OptDB.getString('f', '...')
+    err_msg = 'specify the fileHandle. '
+    assert fileHandle != '...', err_msg
+    problem_kwargs['fileHandle'] = fileHandle
 
     import os
     t_name = os.path.basename(__file__)
@@ -43,10 +43,10 @@ def get_problem_kwargs(**main_kwargs):
 
 
 def print_case_info(**problem_kwargs):
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     PETSc.Sys.Print('-->Ecoli in pipe case, given velocity case.')
     # print_solver_info(**problem_kwargs)
-    print_ecoli_info(fileHeadle, **problem_kwargs)
+    print_ecoli_info(fileHandle, **problem_kwargs)
 
     ecoli_U = problem_kwargs['ecoli_U']
     rel_Us = problem_kwargs['rel_Us']
@@ -64,7 +64,7 @@ def given_velocity_case(problem, old_obj_list, U_list, **kwargs):
     err_msg = 'length of obj_list and U_list must be same. '
     assert len(old_obj_list) == len(U_list), err_msg
 
-    newProb = sf.stokesFlowProblem(**kwargs)
+    newProb = sf.StokesFlowProblem(**kwargs)
     new_obj_list = [t_obj.copy() for t_obj in old_obj_list]
     for new_obj, obj_U in zip(new_obj_list, U_list):
         new_obj.set_rigid_velocity(obj_U)
@@ -85,13 +85,13 @@ def given_velocity_ecoli(problem, head_U, tail_U, prefix, **kwargs):
     head_U_list = [head_U, ]
     tail_U_list = [tail_U, ] * (len(obj_list) - 1)
     U_list = head_U_list + tail_U_list
-    fileHeadle = problem.get_kwargs()['fileHeadle'] + '_full_' + prefix
-    kwargs['fileHeadle'] = fileHeadle
+    fileHandle = problem.get_kwargs()['fileHandle'] + '_full_' + prefix
+    kwargs['fileHandle'] = fileHandle
     kwargs['rel_Us'] = head_U
     kwargs['rel_Uh'] = tail_U
 
     PETSc.Sys.Print('')
-    PETSc.Sys.Print('%s case results: ' % fileHeadle)
+    PETSc.Sys.Print('%s case results: ' % fileHandle)
     newProb = given_velocity_case(problem, obj_list, U_list, **kwargs)
     save_singleEcoli_U_vtk(newProb, createHandle=createEcoli_tunnel, part='full')
     prefix = 'ecoli full ' + prefix
@@ -105,13 +105,13 @@ def given_velocity_ecoli_NoTgeo(problem, head_U, tail_U, prefix, **kwargs):
     head_U_list = [head_U, ]
     tail_U_list = [tail_U, ] * 2
     U_list = head_U_list + tail_U_list
-    fileHeadle = problem.get_kwargs()['fileHeadle'] + '_NoTgeo_' + prefix
-    kwargs['fileHeadle'] = fileHeadle
+    fileHandle = problem.get_kwargs()['fileHandle'] + '_NoTgeo_' + prefix
+    kwargs['fileHandle'] = fileHandle
     kwargs['rel_Us'] = head_U
     kwargs['rel_Uh'] = tail_U
 
     PETSc.Sys.Print('')
-    PETSc.Sys.Print('%s case results: ' % fileHeadle)
+    PETSc.Sys.Print('%s case results: ' % fileHandle)
     newProb = given_velocity_case(problem, obj_list, U_list, **kwargs)
     save_singleEcoli_U_vtk(newProb, createHandle=createEcoli_tunnel, part='full')
     prefix = 'ecoli NoTgeo ' + prefix
@@ -123,11 +123,11 @@ def given_velocity_ecoli_NoTgeo(problem, head_U, tail_U, prefix, **kwargs):
 def given_velocity_ecoli_4part(problem, U_list, prefix, **kwargs):
     # consider the ecoli constituted by four separate part: head, helix0, helix1, and Tgeo.
     obj_list = problem.get_obj_list()[0].get_obj_list()[:]
-    fileHeadle = problem.get_kwargs()['fileHeadle'] + '_separ_' + prefix
-    kwargs['fileHeadle'] = fileHeadle
+    fileHandle = problem.get_kwargs()['fileHandle'] + '_separ_' + prefix
+    kwargs['fileHandle'] = fileHandle
 
     PETSc.Sys.Print('')
-    PETSc.Sys.Print('%s case results: ' % fileHeadle)
+    PETSc.Sys.Print('%s case results: ' % fileHandle)
     newProb = given_velocity_case(problem, obj_list, U_list, **kwargs)
     save_singleEcoli_U_4part_vtk(newProb, U_list, createHandle=createEcoli_tunnel)
     print_single_ecoli_force_result(newProb, prefix=prefix, **kwargs)
@@ -137,13 +137,13 @@ def given_velocity_ecoli_4part(problem, U_list, prefix, **kwargs):
 
 def main_fun_bck(**main_kwargs):
     problem_kwargs = get_problem_kwargs(**main_kwargs)
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     head_U = problem_kwargs['head_U']
     tail_U = problem_kwargs['tail_U']
     # OptDB = PETSc.Options()
     # OptDB.setValue('save_singleEcoli_vtk', True)
 
-    with open(fileHeadle + '_pick.bin', 'rb') as myinput:
+    with open(fileHandle + '_pick.bin', 'rb') as myinput:
         unpick = pickle.Unpickler(myinput)
         problem = unpick.load()
         problem.unpickmyself()
@@ -175,7 +175,7 @@ def main_fun_bck(**main_kwargs):
     # tail_U_rota_list = [tail_U_rota, ] * len(tail_obj_list)
 
     # # translation velocity, solve head separately.
-    # kwargs['fileHeadle'] = fileHeadle + '_head_tran'
+    # kwargs['fileHandle'] = fileHandle + '_head_tran'
     # kwargs['rel_Us'] = head_U_tran
     # kwargs['rel_Uh'] = np.zeros(6)
     # newProb = given_velocity_case(problem, head_obj_list, head_U_tran_list, **kwargs)
@@ -185,7 +185,7 @@ def main_fun_bck(**main_kwargs):
     # PETSc.Sys.Print('tran head resultant is', t_force)
     #
     # # rotation velocity, solve head separately.
-    # kwargs['fileHeadle'] = fileHeadle + '_head_rota'
+    # kwargs['fileHandle'] = fileHandle + '_head_rota'
     # kwargs['rel_Us'] = head_U_rota
     # kwargs['rel_Uh'] = np.zeros(6)
     # newProb = given_velocity_case(problem, head_obj_list, head_U_rota_list, **kwargs)
@@ -195,7 +195,7 @@ def main_fun_bck(**main_kwargs):
     # PETSc.Sys.Print('rota head resultant is', t_force)
     #
     # # trans&rotat velocity, solve head separately.
-    # kwargs['fileHeadle'] = fileHeadle + '_head_move'
+    # kwargs['fileHandle'] = fileHandle + '_head_move'
     # kwargs['rel_Us'] = head_U_move
     # kwargs['rel_Uh'] = np.zeros(6)
     # newProb = given_velocity_case(problem, head_obj_list, head_U_move_list, **kwargs)
@@ -205,7 +205,7 @@ def main_fun_bck(**main_kwargs):
     # PETSc.Sys.Print('move head resultant is', t_force)
     #
     # # translation velocity, solve tail separately.
-    # kwargs['fileHeadle'] = fileHeadle + '_tail_tran'
+    # kwargs['fileHandle'] = fileHandle + '_tail_tran'
     # kwargs['rel_Us'] = np.zeros(6)
     # kwargs['rel_Uh'] = tail_U_tran
     # newProb = given_velocity_case(problem, tail_obj_list, tail_U_tran_list, **kwargs)
@@ -215,7 +215,7 @@ def main_fun_bck(**main_kwargs):
     # PETSc.Sys.Print('tran tail resultant is', t_force)
     #
     # # rotation velocity, solve tail separately.
-    # kwargs['fileHeadle'] = fileHeadle + '_tail_rota'
+    # kwargs['fileHandle'] = fileHandle + '_tail_rota'
     # kwargs['rel_Us'] = np.zeros(6)
     # kwargs['rel_Uh'] = tail_U_rota
     # newProb = given_velocity_case(problem, tail_obj_list, tail_U_rota_list, **kwargs)
@@ -225,7 +225,7 @@ def main_fun_bck(**main_kwargs):
     # PETSc.Sys.Print('rota tail resultant is', t_force)
     #
     # # trans&rotat velocity, solve tail separately.
-    # kwargs['fileHeadle'] = fileHeadle + '_tail_move'
+    # kwargs['fileHandle'] = fileHandle + '_tail_move'
     # kwargs['rel_Us'] = np.zeros(6)
     # kwargs['rel_Uh'] = tail_U_move
     # newProb = given_velocity_case(problem, tail_obj_list, tail_U_move_list, **kwargs)
@@ -237,14 +237,14 @@ def main_fun_bck(**main_kwargs):
     # # given velocity, solve total ecoli.
     # obj_list = head_obj_list + tail_obj_list
     # U_list = head_U_move_list + tail_U_move_list
-    # kwargs['fileHeadle'] = fileHeadle + '_full'
+    # kwargs['fileHandle'] = fileHandle + '_full'
     # # # dbg
     # # for obj in obj_list:
-    # #     filename = kwargs['fileHeadle'] + '_' + str(obj)
+    # #     filename = kwargs['fileHandle'] + '_' + str(obj)
     # #     obj.get_u_geo().save_nodes(filename + '_U')
     # #     obj.get_f_geo().save_nodes(filename + '_f')
     # newProb = given_velocity_case(problem, obj_list, U_list, **kwargs)
-    # # newProb.saveM_mat(kwargs['fileHeadle'])
+    # # newProb.saveM_mat(kwargs['fileHandle'])
     # save_singleEcoli_U_vtk(newProb, createHandle=createEcoli_tunnel, part='full')
     # newProb.destroy()
     # total_force = print_single_ecoli_force_result(newProb)
@@ -253,7 +253,7 @@ def main_fun_bck(**main_kwargs):
 def main_head(problem):
     # solve head only.
     kwargs = problem.get_kwargs().copy()
-    fileHeadle = kwargs['fileHeadle']
+    fileHandle = kwargs['fileHandle']
     head_U = kwargs['rel_Us']
 
     # separate each part of objects from the base problem.
@@ -266,7 +266,7 @@ def main_head(problem):
     head_U_rota_list = [head_U_rota, ]
 
     # translation velocity, solve head separately.
-    kwargs['fileHeadle'] = fileHeadle + '_head_tran'
+    kwargs['fileHandle'] = fileHandle + '_head_tran'
     kwargs['rel_Us'] = head_U_tran
     kwargs['rel_Uh'] = np.zeros(6)
     PETSc.Sys.Print()
@@ -277,7 +277,7 @@ def main_head(problem):
     PETSc.Sys.Print('tran head resultant is', t_force)
 
     # rotation velocity, solve head separately.
-    kwargs['fileHeadle'] = fileHeadle + '_head_rota'
+    kwargs['fileHandle'] = fileHandle + '_head_rota'
     kwargs['rel_Us'] = head_U_rota
     kwargs['rel_Uh'] = np.zeros(6)
     PETSc.Sys.Print()
@@ -288,7 +288,7 @@ def main_head(problem):
     PETSc.Sys.Print('rota head resultant is', t_force)
 
     # trans&rotat velocity, solve head separately.
-    kwargs['fileHeadle'] = fileHeadle + '_head_move'
+    kwargs['fileHandle'] = fileHandle + '_head_move'
     kwargs['rel_Us'] = head_U_move
     kwargs['rel_Uh'] = np.zeros(6)
     PETSc.Sys.Print()
@@ -303,7 +303,7 @@ def main_head(problem):
 def main_helix_tail(problem):
     # only solve tail constituted of two helix, ignore Tgeo.
     kwargs = problem.get_kwargs().copy()
-    fileHeadle = kwargs['fileHeadle']
+    fileHandle = kwargs['fileHandle']
     tail_U = kwargs['rel_Uh']
 
     # separate each part of objects from the base problem.
@@ -316,7 +316,7 @@ def main_helix_tail(problem):
     tail_U_move_list = [tail_U_move, tail_U_move]
 
     # translation velocity, solve tail separately.
-    kwargs['fileHeadle'] = fileHeadle + '_tail_tran'
+    kwargs['fileHandle'] = fileHandle + '_tail_tran'
     kwargs['rel_Us'] = np.zeros(6)
     kwargs['rel_Uh'] = tail_U_tran
     PETSc.Sys.Print()
@@ -327,7 +327,7 @@ def main_helix_tail(problem):
     PETSc.Sys.Print('tran tail resultant is', t_force)
 
     # rotation velocity, solve tail separately.
-    kwargs['fileHeadle'] = fileHeadle + '_tail_rota'
+    kwargs['fileHandle'] = fileHandle + '_tail_rota'
     kwargs['rel_Us'] = np.zeros(6)
     kwargs['rel_Uh'] = tail_U_rota
     PETSc.Sys.Print()
@@ -338,7 +338,7 @@ def main_helix_tail(problem):
     PETSc.Sys.Print('rota tail resultant is', t_force)
 
     # trans&rotat velocity, solve tail separately.
-    kwargs['fileHeadle'] = fileHeadle + '_tail_move'
+    kwargs['fileHandle'] = fileHandle + '_tail_move'
     kwargs['rel_Us'] = np.zeros(6)
     kwargs['rel_Uh'] = tail_U_move
     PETSc.Sys.Print()
@@ -395,11 +395,11 @@ def main_ecoli_NoTgeo(problem, funHeadle=given_velocity_ecoli):
 
 def main_4part(**main_kwargs):
     problem_kwargs = get_problem_kwargs(**main_kwargs)
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     head_U = problem_kwargs['head_U']
     tail_U = problem_kwargs['tail_U']
 
-    with open(fileHeadle + '_pick.bin', 'rb') as myinput:
+    with open(fileHandle + '_pick.bin', 'rb') as myinput:
         unpick = pickle.Unpickler(myinput)
         problem = unpick.load()
         problem.unpickmyself()
@@ -431,8 +431,8 @@ def main_fun():
     main_kwargs = {'head_U': head_U,
                    'tail_U': tail_U, }
     problem_kwargs = get_problem_kwargs(**main_kwargs)
-    fileHeadle = problem_kwargs['fileHeadle']
-    with open(fileHeadle + '_pick.bin', 'rb') as myinput:
+    fileHandle = problem_kwargs['fileHandle']
+    with open(fileHandle + '_pick.bin', 'rb') as myinput:
         unpick = pickle.Unpickler(myinput)
         problem = unpick.load()
         problem.unpickmyself()

@@ -124,7 +124,7 @@ class pointSourceObj(stokesFlowObj):
                 velocity_err_x, velocity_err_y, velocity_err_z
 
 
-class pointSourceProblem(stokesFlowProblem):
+class pointSourceProblem(StokesFlowProblem):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._n_unknown = 4
@@ -230,7 +230,7 @@ class point_source_dipoleObj(stokesFlowObj):
         return self._pf_velocity
 
 
-class point_source_dipoleProblem(stokesFlowProblem):
+class point_source_dipoleProblem(StokesFlowProblem):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._n_unknown = 6
@@ -288,8 +288,8 @@ class point_source_dipoleProblem(stokesFlowProblem):
         problem_arguments = self._kwargs.copy()
         problem_arguments['matrix_method'] = 'pf'
         problem_arguments['name'] = 'ini_' + problem_arguments['name']
-        problem_arguments['fileHeadle'] += '_ini'
-        ini_problem = stokesFlowProblem(**problem_arguments)
+        problem_arguments['fileHandle'] += '_ini'
+        ini_problem = StokesFlowProblem(**problem_arguments)
         for obj0 in self.get_obj_list():
             obj1 = stokesFlowObj()
             para = {'name': obj0.get_name()}
@@ -361,7 +361,7 @@ class point_force_dipoleObj(stokesFlowObj):
         return True
 
 
-class point_force_dipoleProblem(stokesFlowProblem):
+class point_force_dipoleProblem(StokesFlowProblem):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._n_unknown = 12
@@ -413,7 +413,7 @@ class preconditionObj(stokesFlowObj):
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
         problem = self.get_problem()
-        # assert isinstance(problem, stokesFlowProblem)
+        # assert isinstance(problem, StokesFlowProblem)
         matrix_method = problem.get_matrix_method()
         kwargs = problem.get_kwargs()
         temp_m_petsc = matrix_method(self, self, **kwargs)
@@ -437,7 +437,7 @@ class preconditionObj(stokesFlowObj):
     def get_inv_petsc(self):
         return self._inv_petsc
 
-    def set_problem(self, problem: 'stokesFlowProblem'):
+    def set_problem(self, problem: 'StokesFlowProblem'):
         super().set_problem(problem)
 
         if not self.get_inv_petsc().isAssembled():
@@ -445,7 +445,7 @@ class preconditionObj(stokesFlowObj):
         return True
 
 
-class preconditionProblem(stokesFlowProblem):
+class preconditionProblem(StokesFlowProblem):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._inv_diag_petsc = PETSc.Mat().create(comm=PETSc.COMM_WORLD)  # diagonal elements of M matrix
@@ -505,7 +505,7 @@ class preconditionProblem(stokesFlowProblem):
         return True
 
 
-class stokesletsProblem(stokesFlowProblem):
+class stokesletsProblem(StokesFlowProblem):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._stokeslets_post = np.array(kwargs['stokeslets_post']).reshape(1, 3)

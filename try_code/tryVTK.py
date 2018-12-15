@@ -19,7 +19,7 @@ def main_fun():
         matname = matname + '.mat'
     bnodesHeadle = 'bnodes'
     belemsHeadle = 'belems'
-    fileHeadle = 'tryVTK'
+    fileHandle = 'tryVTK'
 
     bgeo = geo()
     bgeo.mat_nodes(filename=matname, mat_handle=bnodesHeadle)
@@ -38,7 +38,7 @@ def main_fun():
             PointData(Vectors(u, name='velocity')),
             ' '
     )
-    vtk.tofile(fileHeadle)
+    vtk.tofile(fileHandle)
 
 if __name__ == '__main__':
     main_fun()

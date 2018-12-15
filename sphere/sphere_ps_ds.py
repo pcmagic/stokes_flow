@@ -46,21 +46,21 @@ def view_matrix(m, **kwargs):
     plt.show()
 
 
-def save_vtk(problem: sf.stokesFlowProblem):
+def save_vtk(problem: sf.StokesFlowProblem):
     t0 = time()
     ref_slt = sphere_slt(problem)
     comm = PETSc.COMM_WORLD.tompi4py()
     rank = comm.Get_rank()
     problem_kwargs = problem.get_kwargs()
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     radius = problem_kwargs['radius']
     u = problem_kwargs['u']
 
-    problem.vtk_obj(fileHeadle)
-    problem.vtk_velocity('%s_Velocity' % fileHeadle)
+    problem.vtk_obj(fileHandle)
+    problem.vtk_velocity('%s_Velocity' % fileHandle)
 
     theta = np.pi / 2
-    sphere_check = sf.stokesFlowObj()
+    sphere_check = sf.StokesFlowObj()
     sphere_geo_check = sphere_geo()  # force geo
 
     if not 'r_factor' in main_kwargs:
@@ -73,9 +73,8 @@ def save_vtk(problem: sf.stokesFlowProblem):
         sphere_geo_check.set_rigid_velocity([u, 0, 0, 0, 0, 0])
         sphere_geo_check.node_rotation(norm=np.array([0, 1, 0]), theta=theta)
         sphere_check.set_data(sphere_geo_check, sphere_geo_check)
-        sphere_err[i0] = problem.vtk_check('%s_Check_%f' % (fileHeadle, (radius * d0)), sphere_check, ref_slt)[0]
+        sphere_err[i0] = problem.vtk_check('%s_Check_%f' % (fileHandle, (radius * d0)), sphere_check, ref_slt)[0]
 
-    # Todo wrapper print: print0 (print at rank_0).
     t1 = time()
     PETSc.Sys.Print('%s: write vtk files use: %fs' % (str(problem), (t1 - t0)))
 
@@ -89,7 +88,7 @@ def main_fun(**main_kwargs):
     deltaLength = OptDB.getReal('d', 0.2)
     epsilon = OptDB.getReal('e', 1)
     u = OptDB.getReal('u', 1)
-    fileHeadle = OptDB.getString('f', 'sphere')
+    fileHandle = OptDB.getString('f', 'sphere')
     ps_ds_para = OptDB.getReal('ps_ds_para', 1)  # weight factor of dipole for ps_ds method
     pf_ds_para = OptDB.getReal('pf_ds_para', 1)  # weight factor of dipole for pf_ds method
     solve_method = OptDB.getString('s', 'gmres')
@@ -133,7 +132,7 @@ def main_fun(**main_kwargs):
             'pf_ds_para':            pf_ds_para,
             'field_range':           field_range,
             'n_grid':                n_grid,
-            'fileHeadle':            fileHeadle,
+            'fileHandle':            fileHandle,
             'region_type':           'rectangle',
             'radius':                radius,
             'u':                     u,
@@ -153,12 +152,12 @@ def main_fun(**main_kwargs):
               % (sphere_f_geo.get_n_nodes(), sphere_ini_u_geo.get_n_nodes()))
         PETSc.Sys.Print('solve method: %s, precondition method: %s'
               % (solve_method, precondition_method))
-        PETSc.Sys.Print('output file headle: ' + fileHeadle)
+        PETSc.Sys.Print('output file headle: ' + fileHandle)
         PETSc.Sys.Print('MPI size: %d' % size)
 
         # Todo: write bc class to handle boundary condition.
         problem = problem_dic[matrix_method](**problem_kwargs)
-        problem.pickmyself(fileHeadle)  # not save anything really, just check if the path is correct, to avoid this error after long time calculation.
+        problem.pickmyself(fileHandle)  # not save anything really, just check if the path is correct, to avoid this error after long time calculation.
         obj_sphere = obj_dic[matrix_method]()
         obj_sphere_kwargs = {
             'name':        'sphereObj',
@@ -168,7 +167,6 @@ def main_fun(**main_kwargs):
         obj_sphere.set_data(sphere_f_geo, sphere_u_geo, **obj_sphere_kwargs)
         problem.add_obj(obj_sphere)
         problem.create_matrix()
-        # Todo wrapper print: print0 (print at rank_0).
         t1 = time()
         PETSc.Sys.Print('%s: create problem use: %fs' % (str(problem), (t1 - t0)))
 
@@ -177,10 +175,10 @@ def main_fun(**main_kwargs):
         # residualNorm = problem.solve(solve_method, precondition_method, ini_guess=ini_guess, Tolerances={'max_it':100000})
         residualNorm = problem.solve(ini_guess=ini_guess)
 
-        problem.pickmyself(fileHeadle)
+        problem.pickmyself(fileHandle)
     else:
         # Todo: unpick geo and ini_problem.
-        with open(fileHeadle + '_pick.bin', 'rb') as input:
+        with open(fileHandle + '_pick.bin', 'rb') as input:
             unpick = pickle.Unpickler(input)
             problem = unpick.load()
             problem.unpickmyself()
@@ -191,7 +189,7 @@ def main_fun(**main_kwargs):
             sphere_f_geo = obj_sphere.get_f_geo()
             sphere_u_geo = obj_sphere.get_u_geo()
             if rank == 0:
-                PETSc.Sys.Print('---->>>unpick the problem from file %s.pickle' % fileHeadle)
+                PETSc.Sys.Print('---->>>unpick the problem from file %s.pickle' % fileHandle)
 
     # Todo: let geo and obj classes do plot stuff.
     if plot:
@@ -237,10 +235,10 @@ if __name__ == '__main__':
     # for i0 in range(epsilon.size):
     #     d = deltaLength[i0]
     #     e = epsilon[i0]
-    #     fileHeadle = 'sphere_%d_%f_%f' % (i0, d, e)
+    #     fileHandle = 'sphere_%d_%f_%f' % (i0, d, e)
     #     OptDB.setValue('d', d)
     #     OptDB.setValue('e', e)
-    #     OptDB.setValue('f', fileHeadle)
+    #     OptDB.setValue('f', fileHandle)
     #     _, sphere_err[i0, :], ini_sphere_err[i0, :], residualNorm[i0], ini_residualNorm[i0] = main_fun(**main_kwargs)
     # comm = PETSc.COMM_WORLD.tompi4py()
     # rank = comm.Get_rank()

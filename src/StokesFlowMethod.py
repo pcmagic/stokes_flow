@@ -28,7 +28,7 @@ def eijk(i, j, k):  # Levi-Civita symbol
 def regularized_stokeslets_matrix_3d(vnodes: np.ndarray,  # nodes contain velocity information
                                      fnodes: np.ndarray,  # nodes contain force information
                                      delta: float):  # correction factor
-    # Solve m matrix using regularized stokeslets method
+    # Solve m matrix using regularized Stokeslets method
     # U = M * F.
     # Cortez R. The method of regularized Stokeslets[J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
 
@@ -97,22 +97,42 @@ def regularized_stokeslets_matrix_3d(vnodes: np.ndarray,  # nodes contain veloci
     else:
         m = None
     comm.Gatherv(m_local, [m, split_size_out, split_disp_out, MPI.DOUBLE], root=0)
-    return m  # ' regularized stokeslets matrix, U = M * F '
+    return m  # ' regularized Stokeslets matrix, U = M * F '
 
 
 def light_stokeslets_matrix_3d(u_nodes: np.ndarray, f_nodes: np.ndarray) -> np.ndarray:
-    from src.geo import geo
+    # from src.geo import geo
+    # temp_geo1 = geo()  # velocity nodes
+    # temp_geo1.set_nodes(u_nodes, deltalength=0)
+    # temp_obj1 = sf.StokesFlowObj()
+    # temp_obj1.set_data(temp_geo1, temp_geo1, np.zeros(u_nodes.size))
+    # temp_geo2 = geo()  # force nodes
+    # temp_geo2.set_nodes(f_nodes, deltalength=0)
+    # temp_obj2 = sf.StokesFlowObj()
+    # temp_obj2.set_data(temp_geo2, temp_geo2, np.zeros(3))
+    # m = stokeslets_matrix_3d(temp_obj1, temp_obj2)
 
-    temp_geo1 = geo()  # velocity nodes
-    temp_geo1.set_nodes(u_nodes, deltalength=0)
-    temp_obj1 = sf.stokesFlowObj()
-    temp_obj1.set_data(temp_geo1, temp_geo1, np.zeros(u_nodes.size))
-    temp_geo2 = geo()  # force nodes
-    temp_geo2.set_nodes(f_nodes, deltalength=0)
-    temp_obj2 = sf.stokesFlowObj()
-    temp_obj2.set_data(temp_geo2, temp_geo2, np.zeros(3))
-    m = stokeslets_matrix_3d(temp_obj1, temp_obj2)
-
+    m = np.ones((u_nodes.size, f_nodes.size))
+    for i0, u_node in enumerate(u_nodes):
+        dxi = (u_node - f_nodes).T
+        dx0 = dxi[0]
+        dx1 = dxi[1]
+        dx2 = dxi[2]
+        dr2 = np.sum(dxi ** 2, axis=0)
+        dr1 = np.sqrt(dr2)
+        dr3 = dr1 * dr2
+        temp1 = 1 / (dr1 * (8 * np.pi))  # 1/r^1
+        temp2 = 1 / (dr3 * (8 * np.pi))  # 1/r^3
+        i1 = i0 * 3
+        m[i1 + 0, 0::3] = temp2 * dx0 * dx0 + temp1
+        m[i1 + 0, 1::3] = temp2 * dx0 * dx1
+        m[i1 + 0, 2::3] = temp2 * dx0 * dx2
+        m[i1 + 1, 0::3] = temp2 * dx1 * dx0
+        m[i1 + 1, 1::3] = temp2 * dx1 * dx1 + temp1
+        m[i1 + 1, 2::3] = temp2 * dx1 * dx2
+        m[i1 + 2, 0::3] = temp2 * dx2 * dx0
+        m[i1 + 2, 1::3] = temp2 * dx2 * dx1
+        m[i1 + 2, 2::3] = temp2 * dx2 * dx2 + temp1
     return m
 
 
@@ -172,8 +192,8 @@ def stokeslets_matrix_3d_set(m, t_m, i1):
     return True
 
 
-def stokeslets_matrix_3d(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
-                         obj2: 'sf.stokesFlowObj'):  # objct contain force information
+def stokeslets_matrix_3d(obj1: 'sf.StokesFlowObj',  # object contain velocity information
+                         obj2: 'sf.StokesFlowObj'):  # object contain force information
     # Solve m matrix: (delta(i,i)/r + (x_i*x_j)/r^3
 
     u_nodes = obj1.get_u_nodes()
@@ -251,8 +271,8 @@ def stokeslets_matrix_3d(obj1: 'sf.stokesFlowObj',  # objct contain velocity inf
     #     t_m, i1 = stokeslets_matrix_3d_mij(u_node, f_nodes, i0)
     #     i2 = i1 * 3
     #     m[i2:i2+3, :] = t_m[:]
+    mypi = np.pi
     for i0, u_node in enumerate(u_nodes):
-        mypi = np.pi
         dxi = (u_node - f_nodes).T
         dx0 = dxi[0]
         dx1 = dxi[1]
@@ -272,7 +292,7 @@ def stokeslets_matrix_3d(obj1: 'sf.stokesFlowObj',  # objct contain velocity inf
         m[i1 + 2, 0::3] = temp2 * dx2 * dx0
         m[i1 + 2, 1::3] = temp2 * dx2 * dx1
         m[i1 + 2, 2::3] = temp2 * dx2 * dx2 + temp1
-    return m  # stokeslets matrix, U = M * F
+    return m  # Stokeslets matrix, U = M * F
 
 
 def light_stokeslets_matrix_3d_petsc(u_nodes: np.ndarray, f_nodes: np.ndarray):
@@ -282,14 +302,14 @@ def light_stokeslets_matrix_3d_petsc(u_nodes: np.ndarray, f_nodes: np.ndarray):
     temp_geo1.set_nodes(u_nodes, deltalength=0)
     temp_geo2 = geo()  # force nodes
     temp_geo2.set_nodes(f_nodes, deltalength=0)
-    temp_obj1 = sf.stokesFlowObj()
+    temp_obj1 = sf.StokesFlowObj()
     temp_obj1.set_data(temp_geo2, temp_geo1)
     m = stokeslets_matrix_3d_petsc(temp_obj1, temp_obj1)
     return m
 
 
-def stokeslets_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # object contain velocity information
-                               obj2: 'sf.stokesFlowObj'):  # object contain force information
+def stokeslets_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity information
+                               obj2: 'sf.StokesFlowObj'):  # object contain force information
     # Solve m matrix: (delta(i,i)/r + (x_i*x_j)/r^3
 
     vnodes = obj1.get_u_nodes()
@@ -325,7 +345,7 @@ def stokeslets_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # object contain veloc
             m[i0, 2::n_unknown] = (temp2 + np.square(delta_xi[:, 2]) * temp3) / (8 * np.pi)  # Mzz
     m.assemble()
 
-    return m  # stokeslets matrix, U = M * F
+    return m  # Stokeslets matrix, U = M * F
 
 
 def regularized_stokeslets_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # velocity node
@@ -354,12 +374,12 @@ def regularized_stokeslets_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # velocity
     return m00, m01, m02, m10, m11, m12, m20, m21, m22, i0
 
 
-def regularized_stokeslets_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
-                                           obj2: 'sf.stokesFlowObj',  # objct contain force information
+def regularized_stokeslets_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity information
+                                           obj2: 'sf.StokesFlowObj',  # object contain force information
                                            m, **kwargs):
-    # Solve m matrix using regularized stokeslets method
+    # Solve m matrix using regularized Stokeslets method
     # U = M * F.
-    # Cortez R. The method of regularized Stokeslets[J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
+    # Cortez R. The method of regularized Stokeslets [J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
     delta_2 = kwargs['delta'] ** 2  # correction factor
     u_nodes = obj1.get_u_nodes()
     f_nodes = obj2.get_f_nodes()
@@ -384,11 +404,11 @@ def regularized_stokeslets_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct co
         #     m.assemble()
     m.assemble()
 
-    return m  # ' regularized stokeslets matrix, U = M * F '
+    return m  # ' regularized Stokeslets  matrix, U = M * F '
 
 
 def check_regularized_stokeslets_matrix_3d(**kwargs):
-    err_msg = 'the reguralized stokeslets method needs parameter, delta. '
+    err_msg = 'the reguralized Stokeslets  method needs parameter, delta. '
     assert 'delta' in kwargs, err_msg
 
 
@@ -517,12 +537,12 @@ def regularized_stokeslets_plane_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # ve
 #     return m00, m01, m02, m10, m11, m12, m20, m21, m22, i0
 
 
-def regularized_stokeslets_plane_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
-                                                 obj2: 'sf.stokesFlowObj',  # objct contain force information
+def regularized_stokeslets_plane_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity information
+                                                 obj2: 'sf.StokesFlowObj',  # object contain force information
                                                  m, **kwargs):
-    # Solve m matrix using regularized stokeslets method
+    # Solve m matrix using regularized Stokeslets  method
     # U = M * F.
-    # Cortez R. The method of regularized Stokeslets[J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
+    # Cortez R. The method of regularized Stokeslets [J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
     delta_2 = kwargs['delta'] ** 2  # correction factor
     u_nodes = obj1.get_u_nodes()
     f_nodes = obj2.get_f_nodes()
@@ -545,213 +565,266 @@ def regularized_stokeslets_plane_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # ob
         m.setValues(u_glb + 2, f_glbIdx_all[2::3], m22, addv=False)
     m.assemble()
 
-    return m  # ' regularized stokeslets matrix, U = M * F '
+    return m  # ' regularized Stokeslets  matrix, U = M * F '
 
 
 def check_regularized_stokeslets_plane_matrix_3d(**kwargs):
-    err_msg = 'the reguralized stokeslets method needs parameter, delta. '
+    err_msg = 'the reguralized Stokeslets  method needs parameter, delta. '
     assert 'delta' in kwargs, err_msg
 
 
-def legendre_regularized_stokeslets_matrix_3d(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
-                                              obj2: 'sf.stokesFlowObj',  # objct contain force information
-                                              **kwargs):
+def legendre_regularized_stokeslets_matrix_3d_mij(t_u_node: np.ndarray,  # velocity node
+                                                  f_nodes: np.ndarray,  # force nodes
+                                                  f_ds, i0, **kwargs):
     # Hosseini, Bamdad, Nilima Nigam, and John M. Stockie. "On regularizations of the Dirac delta distribution." Journal of Computational Physics 305 (2016): 423-447.
     h1 = {
-        'm=2,k=0': lambda r, e: (1 / 8) * e ** (-6) * pi ** (-1) * (
+        'm=2,k=0': lambda r, e: (1 / 8) * e ** (-6) * np.pi ** (-1) * (
                 12 * e ** 5 + (-160) * e ** 3 * r ** 2 + 375 * e ** 2 * r ** 3 + (-324) * e * r ** 4 + 98 * r ** 5),
-        'm=2,k=1': lambda r, e: (1 / 8) * e ** (-8) * pi ** (-1) * (
+        'm=2,k=1': lambda r, e: (1 / 8) * e ** (-8) * np.pi ** (-1) * (
                 12 * e ** 7 + (-112) * e ** 5 * r ** 2 + 756 * e ** 3 * r ** 4 + (
             -1372) * e ** 2 * r ** 5 + 960 * e * r ** 6 + (-243) * r ** 7),
-        'm=2,k=2': lambda r, e: (1 / 8) * e ** (-10) * pi ** (-1) * (
+        'm=2,k=2': lambda r, e: (1 / 8) * e ** (-10) * np.pi ** (-1) * (
                 12 * e ** 9 + (-96) * e ** 7 * r ** 2 + 2058 * e ** 4 * r ** 5 + (
             -5760) * e ** 3 * r ** 6 + 6561 * e ** 2 * r ** 7 + (-3500) * e * r ** 8 + 726 * r ** 9),
-        'm=2,k=3': lambda r, e: (1 / 8) * e ** (-12) * pi ** (-1) * (
+        'm=2,k=3': lambda r, e: (1 / 8) * e ** (-12) * np.pi ** (-1) * (
                 12 * e ** 11 + (-88) * e ** 9 * r ** 2 + 6336 * e ** 5 * r ** 6 + (
             -24057) * e ** 4 * r ** 7 + 38500 * e ** 3 * r ** 8 + (
                     -31944) * e ** 2 * r ** 9 + 13608 * e * r ** 10 + (
                     -2366) * r ** 11),
-        'm=2,k=4': lambda r, e: (1 / 40) * e ** (-14) * pi ** (-1) * (
+        'm=2,k=4': lambda r, e: (1 / 40) * e ** (-14) * np.pi ** (-1) * (
                 60 * e ** 13 + (-416) * e ** 11 * r ** 2 + 104247 * e ** 6 * r ** 7 + (
             -500500) * e ** 5 * r ** 8 + 1038180 * e ** 4 * r ** 9 + (
                     -1179360) * e ** 3 * r ** 10 + 768950 * e ** 2 * r ** 11 + (
                     -271656) * e * r ** 12 + 40500 * r ** 13),
-        'm=3,k=0': lambda r, e: (1 / 24) * e ** (-7) * pi ** (-1) * (
+        'm=3,k=0': lambda r, e: (1 / 24) * e ** (-7) * np.pi ** (-1) * (
                 56 * e ** 6 + (-1680) * e ** 4 * r ** 2 + 6125 * e ** 3 * r ** 3 + (
             -9072) * e ** 2 * r ** 4 + 6174 * e * r ** 5 + (-1600) * r ** 6),
-        'm=3,k=1': lambda r, e: (1 / 8) * e ** (-9) * pi ** (-1) * (
+        'm=3,k=1': lambda r, e: (1 / 8) * e ** (-9) * np.pi ** (-1) * (
                 18 * e ** 8 + (-336) * e ** 6 * r ** 2 + 4536 * e ** 4 * r ** 4 + (
             -12348) * e ** 3 * r ** 5 + 14400 * e ** 2 * r ** 6 + (-8019) * e * r ** 7 + 1750 * r ** 8),
-        'm=3,k=2': lambda r, e: (1 / 40) * e ** (-11) * pi ** (-1) * (88 * e ** 10 + r ** 2 * (
+        'm=3,k=2': lambda r, e: (1 / 40) * e ** (-11) * np.pi ** (-1) * (88 * e ** 10 + r ** 2 * (
                 (-1320) * e ** 8 + r ** 3 * (67914 * e ** 5 + r * (
                 (-264000) * e ** 4 + r * (
                 441045 * e ** 3 + r * ((-385000) * e ** 2 + (173030 * e + (-31752) * r) * r)))))),
-        'm=3,k=3': lambda r, e: (1 / 120) * e ** (-13) * pi ** (-1) * (
+        'm=3,k=3': lambda r, e: (1 / 120) * e ** (-13) * np.pi ** (-1) * (
                 260 * e ** 12 + (-3432) * e ** 10 * r ** 2 + 686400 * e ** 6 * r ** 6 + (
             -3440151) * e ** 5 * r ** 7 + 7507500 * e ** 4 * r ** 8 + (
                     -8997560) * e ** 3 * r ** 9 + 6191640 * e ** 2 * r ** 10 + (
                     -2306850) * e * r ** 11 + 362208 * r ** 12),
-        'm=4,k=0': lambda r, e: (1 / 24) * e ** (-8) * pi ** (-1) * (
+        'm=4,k=0': lambda r, e: (1 / 24) * e ** (-8) * np.pi ** (-1) * (
                 80 * e ** 7 + (-4704) * e ** 5 * r ** 2 + 24500 * e ** 4 * r ** 3 + (
             -54432) * e ** 3 * r ** 4 + 61740 * e ** 2 * r ** 5 + (-35200) * e * r ** 6 + 8019 * r ** 7),
-        'm=4,k=1': lambda r, e: (1 / 8) * e ** (-10) * pi ** (-1) * (
+        'm=4,k=1': lambda r, e: (1 / 8) * e ** (-10) * np.pi ** (-1) * (
                 25 * e ** 9 + (-840) * e ** 7 * r ** 2 + 20412 * e ** 5 * r ** 4 + (
             -77175) * e ** 4 * r ** 5 + 132000 * e ** 3 * r ** 6 + (
                     -120285) * e ** 2 * r ** 7 + 56875 * e * r ** 8 + (
                     -11011) * r ** 9),
-        'm=4,k=2': lambda r, e: (1 / 8) * e ** (-12) * pi ** (-1) * (
+        'm=4,k=2': lambda r, e: (1 / 8) * e ** (-12) * np.pi ** (-1) * (
                 24 * e ** 11 + (-616) * e ** 9 * r ** 2 + 67914 * e ** 6 * r ** 5 + (
             -348480) * e ** 5 * r ** 6 + 793881 * e ** 4 * r ** 7 + (
                     -1001000) * e ** 3 * r ** 8 + 726726 * e ** 2 * r ** 9 + (
                     -285768) * e * r ** 10 + 47320 * r ** 11),
-        'm=4,k=3': lambda r, e: (1 / 120) * e ** (-14) * pi ** (-1) * (
+        'm=4,k=3': lambda r, e: (1 / 120) * e ** (-14) * np.pi ** (-1) * (
                 350 * e ** 13 + (-7644) * e ** 11 * r ** 2 + 3775200 * e ** 7 * r ** 6 + (
             -24081057) * e ** 6 * r ** 7 + 68318250 * e ** 5 * r ** 8 + (
                     -110220110) * e ** 4 * r ** 9 + 108353700 * e ** 3 * r ** 10 + (
                     -64591800) * e ** 2 * r ** 11 + 21551376 * e * r ** 12 + (-3098250) * r ** 13),
-        'm=5,k=0': lambda r, e: (1 / 40) * e ** (-9) * pi ** (-1) * (
+        'm=5,k=0': lambda r, e: (1 / 40) * e ** (-9) * np.pi ** (-1) * (
                 180 * e ** 8 + (-18816) * e ** 6 * r ** 2 + 132300 * e ** 5 * r ** 3 + (
             -408240) * e ** 4 * r ** 4 + 679140 * e ** 3 * r ** 5 + (
                     -633600) * e ** 2 * r ** 6 + 312741 * e * r ** 7 + (
                     -63700) * r ** 8),
-        'm=5,k=1': lambda r, e: (1 / 8) * e ** (-11) * pi ** (-1) * (
+        'm=5,k=1': lambda r, e: (1 / 8) * e ** (-11) * np.pi ** (-1) * (
                 33 * e ** 10 + (-1848) * e ** 8 * r ** 2 + 74844 * e ** 6 * r ** 4 + (
             -373527) * e ** 5 * r ** 5 + 871200 * e ** 4 * r ** 6 + (
                     -1146717) * e ** 3 * r ** 7 + 875875 * e ** 2 * r ** 8 + (
                     -363363) * e * r ** 9 + 63504 * r ** 10),
-        'm=5,k=2': lambda r, e: (1 / 200) * e ** (-13) * pi ** (-1) * (
+        'm=5,k=2': lambda r, e: (1 / 200) * e ** (-13) * np.pi ** (-1) * (
                 780 * e ** 12 + (-32032) * e ** 10 * r ** 2 + 6936930 * e ** 7 * r ** 5 + (
             -45302400) * e ** 6 * r ** 6 + 134165889 * e ** 5 * r ** 7 + (
                     -227727500) * e ** 4 * r ** 8 + 236185950 * e ** 3 * r ** 9 + (
                     -148599360) * e ** 2 * r ** 10 + 52288600 * e * r ** 11 + (-7916832) * r ** 12)
     }
     h2 = {
-        'm=2,k=0': lambda r, e: (1 / 8) * e ** (-6) * pi ** (-1) * (
+        'm=2,k=0': lambda r, e: (1 / 8) * e ** (-6) * np.pi ** (-1) * (
                 80 * e ** 3 + (-225) * e ** 2 * r + 216 * e * r ** 2 + (-70) * r ** 3),
-        'm=2,k=1': lambda r, e: (1 / 8) * e ** (-8) * pi ** (-1) * (
+        'm=2,k=1': lambda r, e: (1 / 8) * e ** (-8) * np.pi ** (-1) * (
                 56 * e ** 5 + (-504) * e ** 3 * r ** 2 + 980 * e ** 2 * r ** 3 + (-720) * e * r ** 4 + 189 * r ** 5),
-        'm=2,k=2': lambda r, e: (1 / 8) * e ** (-10) * pi ** (-1) * (
+        'm=2,k=2': lambda r, e: (1 / 8) * e ** (-10) * np.pi ** (-1) * (
                 48 * e ** 7 + (-1470) * e ** 4 * r ** 3 + 4320 * e ** 3 * r ** 4 + (
             -5103) * e ** 2 * r ** 5 + 2800 * e * r ** 6 + (-594) * r ** 7),
-        'm=2,k=3': lambda r, e: (1 / 8) * e ** (-12) * pi ** (-1) * (
+        'm=2,k=3': lambda r, e: (1 / 8) * e ** (-12) * np.pi ** (-1) * (
                 44 * e ** 9 + (-4752) * e ** 5 * r ** 4 + 18711 * e ** 4 * r ** 5 + (
             -30800) * e ** 3 * r ** 6 + 26136 * e ** 2 * r ** 7 + (-11340) * e * r ** 8 + 2002 * r ** 9),
-        'm=2,k=4': lambda r, e: (1 / 40) * e ** (-14) * pi ** (-1) * (
+        'm=2,k=4': lambda r, e: (1 / 40) * e ** (-14) * np.pi ** (-1) * (
                 208 * e ** 11 + (-81081) * e ** 6 * r ** 5 + 400400 * e ** 5 * r ** 6 + (
             -849420) * e ** 4 * r ** 7 + 982800 * e ** 3 * r ** 8 + (
                     -650650) * e ** 2 * r ** 9 + 232848 * e * r ** 10 + (
                     -35100) * r ** 11),
-        'm=3,k=0': lambda r, e: (1 / 8) * e ** (-7) * pi ** (-1) * (
+        'm=3,k=0': lambda r, e: (1 / 8) * e ** (-7) * np.pi ** (-1) * (
                 280 * e ** 4 + (-1225) * e ** 3 * r + 2016 * e ** 2 * r ** 2 + (-1470) * e * r ** 3 + 400 * r ** 4),
-        'm=3,k=1': lambda r, e: (1 / 8) * e ** (-9) * pi ** (-1) * (
+        'm=3,k=1': lambda r, e: (1 / 8) * e ** (-9) * np.pi ** (-1) * (
                 168 * e ** 6 + (-3024) * e ** 4 * r ** 2 + 8820 * e ** 3 * r ** 3 + (
             -10800) * e ** 2 * r ** 4 + 6237 * e * r ** 5 + (-1400) * r ** 6),
-        'm=3,k=2': lambda r, e: (1 / 8) * e ** (-11) * pi ** (-1) * (
+        'm=3,k=2': lambda r, e: (1 / 8) * e ** (-11) * np.pi ** (-1) * (
                 132 * e ** 8 + r ** 3 * ((-9702) * e ** 5 + r * (
                 39600 * e ** 4 + r * ((-68607) * e ** 3 + r * (61600 * e ** 2 + r * ((-28314) * e + 5292 * r)))))),
-        'm=3,k=3': lambda r, e: (1 / 40) * e ** (-13) * pi ** (-1) * (
+        'm=3,k=3': lambda r, e: (1 / 40) * e ** (-13) * np.pi ** (-1) * (
                 572 * e ** 10 + (-171600) * e ** 6 * r ** 4 + 891891 * e ** 5 * r ** 5 + (
             -2002000) * e ** 4 * r ** 6 + 2453880 * e ** 3 * r ** 7 + (
                     -1719900) * e ** 2 * r ** 8 + 650650 * e * r ** 9 + (
                     -103488) * r ** 10),
-        'm=4,k=0': lambda r, e: (1 / 8) * e ** (-8) * pi ** (-1) * (
+        'm=4,k=0': lambda r, e: (1 / 8) * e ** (-8) * np.pi ** (-1) * (
                 784 * e ** 5 + (-4900) * e ** 4 * r + 12096 * e ** 3 * r ** 2 + (
             -14700) * e ** 2 * r ** 3 + 8800 * e * r ** 4 + (-2079) * r ** 5),
-        'm=4,k=1': lambda r, e: (1 / 8) * e ** (-10) * pi ** (-1) * (
+        'm=4,k=1': lambda r, e: (1 / 8) * e ** (-10) * np.pi ** (-1) * (
                 420 * e ** 7 + (-13608) * e ** 5 * r ** 2 + 55125 * e ** 4 * r ** 3 + (
             -99000) * e ** 3 * r ** 4 + 93555 * e ** 2 * r ** 5 + (-45500) * e * r ** 6 + 9009 * r ** 7),
-        'm=4,k=2': lambda r, e: (1 / 8) * e ** (-12) * pi ** (-1) * (
+        'm=4,k=2': lambda r, e: (1 / 8) * e ** (-12) * np.pi ** (-1) * (
                 308 * e ** 9 + (-48510) * e ** 6 * r ** 3 + 261360 * e ** 5 * r ** 4 + (
             -617463) * e ** 4 * r ** 5 + 800800 * e ** 3 * r ** 6 + (
                     -594594) * e ** 2 * r ** 7 + 238140 * e * r ** 8 + (
                     -40040) * r ** 9),
-        'm=4,k=3': lambda r, e: (1 / 40) * e ** (-14) * pi ** (-1) * (
+        'm=4,k=3': lambda r, e: (1 / 40) * e ** (-14) * np.pi ** (-1) * (
                 1274 * e ** 11 + (-943800) * e ** 7 * r ** 4 + 6243237 * e ** 6 * r ** 5 + (
             -18218200) * e ** 5 * r ** 6 + 30060030 * e ** 4 * r ** 7 + (
                     -30098250) * e ** 3 * r ** 8 + 18218200 * e ** 2 * r ** 9 + (
                     -6157536) * e * r ** 10 + 895050 * r ** 11),
-        'm=5,k=0': lambda r, e: (1 / 40) * e ** (-9) * pi ** (-1) * (
+        'm=5,k=0': lambda r, e: (1 / 40) * e ** (-9) * np.pi ** (-1) * (
                 9408 * e ** 6 + (-79380) * e ** 5 * r + 272160 * e ** 4 * r ** 2 + (
             -485100) * e ** 3 * r ** 3 + 475200 * e ** 2 * r ** 4 + (-243243) * e * r ** 5 + 50960 * r ** 6),
-        'm=5,k=1': lambda r, e: (1 / 8) * e ** (-11) * pi ** (-1) * (
+        'm=5,k=1': lambda r, e: (1 / 8) * e ** (-11) * np.pi ** (-1) * (
                 924 * e ** 8 + (-49896) * e ** 6 * r ** 2 + 266805 * e ** 5 * r ** 3 + (
             -653400) * e ** 4 * r ** 4 + 891891 * e ** 3 * r ** 5 + (
                     -700700) * e ** 2 * r ** 6 + 297297 * e * r ** 7 + (
                     -52920) * r ** 8),
-        'm=5,k=2': lambda r, e: (1 / 200) * e ** (-13) * pi ** (-1) * (
+        'm=5,k=2': lambda r, e: (1 / 200) * e ** (-13) * np.pi ** (-1) * (
                 16016 * e ** 10 + (-4954950) * e ** 7 * r ** 3 + 33976800 * e ** 6 * r ** 4 + (
             -104351247) * e ** 5 * r ** 5 + 182182000 * e ** 4 * r ** 6 + (
                     -193243050) * e ** 3 * r ** 7 + 123832800 * e ** 2 * r ** 8 + (
                     -44244200) * e * r ** 9 + 6785856 * r ** 10)
     }
 
-    e = kwargs['delta']  # correction factor
+    epsilon = kwargs['epsilon']
+    e = f_ds * epsilon  # correction factor
     m = kwargs['legendre_m']
     k = kwargs['legendre_k']
     key = "m=%d,k=%d" % (m, k)
-    vnodes = obj1.get_u_nodes()
-    n_vnode = obj1.get_n_velocity()
-    fnodes = obj2.get_f_nodes()
-    n_fnode = obj2.get_n_force()
 
-    n_unknown = obj2.get_n_unknown()
-    m = PETSc.Mat().create(comm=PETSc.COMM_WORLD)
-    m.setSizes(((None, n_vnode), (None, n_fnode)))
-    m.setType('dense')
-    m.setFromOptions()
-    m.setUp()
-    m_start, m_end = m.getOwnershipRange()
-    mi = np.zeros(obj2.get_n_f_node())
-    for i0 in range(m_start, m_end):
-        delta_xi = fnodes - vnodes[i0 // 3]
-        temp1 = delta_xi ** 2
-        delta_r = np.sqrt(temp1.sum(axis=1))
-        INDEX1 = delta_r < e
-        INDEX2 = ~INDEX1
-        i = i0 % 3
-        for j in range(3):
-            mi[INDEX1] = delta(i, j) * h1[key](delta_r[INDEX1], e) + delta_xi[INDEX1, i] * delta_xi[INDEX1, j] * h2[
-                key](delta_r[INDEX1], e)
-            mi[INDEX2] = delta(i, j) / (8 * pi * delta_r[INDEX2]) + delta_xi[INDEX2, i] * delta_xi[INDEX2, j] / (
-                    8 * pi * delta_r[INDEX2] ** 3)
-            m[i0, j::n_unknown] = mi
-            pass
+    delta_xi = f_nodes - t_u_node
+    temp1 = delta_xi ** 2
+    delta_r = np.sqrt(temp1.sum(axis=1))
+    mi = np.zeros(f_nodes.shape[0])
+    mi_all = []
+    INDEX1 = delta_r < e
+    INDEX2 = ~INDEX1
+    th1 = h1[key](delta_r[INDEX1], e[INDEX1])
+    th2 = h2[key](delta_r[INDEX1], e[INDEX1])
+    tr1 = 1 / (8 * np.pi * delta_r[INDEX2])
+    tr3 = (8 * np.pi * delta_r[INDEX2] ** 3)
+    # m00
+    mi[INDEX1] = delta_xi[INDEX1, 0] * delta_xi[INDEX1, 0] * th2 + th1
+    mi[INDEX2] = delta_xi[INDEX2, 0] * delta_xi[INDEX2, 0] / tr3 + tr1
+    mi_all.append(mi.copy())
+    # m01
+    mi[INDEX1] = delta_xi[INDEX1, 0] * delta_xi[INDEX1, 1] * th2
+    mi[INDEX2] = delta_xi[INDEX2, 0] * delta_xi[INDEX2, 1] / tr3
+    mi_all.append(mi.copy())
+    # m02
+    mi[INDEX1] = delta_xi[INDEX1, 0] * delta_xi[INDEX1, 2] * th2
+    mi[INDEX2] = delta_xi[INDEX2, 0] * delta_xi[INDEX2, 2] / tr3
+    mi_all.append(mi.copy())
+    # m10
+    mi[INDEX1] = delta_xi[INDEX1, 1] * delta_xi[INDEX1, 0] * th2
+    mi[INDEX2] = delta_xi[INDEX2, 1] * delta_xi[INDEX2, 0] / tr3
+    mi_all.append(mi.copy())
+    # m11
+    mi[INDEX1] = delta_xi[INDEX1, 1] * delta_xi[INDEX1, 1] * th2 + th1
+    mi[INDEX2] = delta_xi[INDEX2, 1] * delta_xi[INDEX2, 1] / tr3 + tr1
+    mi_all.append(mi.copy())
+    # m12
+    mi[INDEX1] = delta_xi[INDEX1, 1] * delta_xi[INDEX1, 2] * th2
+    mi[INDEX2] = delta_xi[INDEX2, 1] * delta_xi[INDEX2, 2] / tr3
+    mi_all.append(mi.copy())
+    # m20
+    mi[INDEX1] = delta_xi[INDEX1, 2] * delta_xi[INDEX1, 0] * th2
+    mi[INDEX2] = delta_xi[INDEX2, 2] * delta_xi[INDEX2, 0] / tr3
+    mi_all.append(mi.copy())
+    # m21
+    mi[INDEX1] = delta_xi[INDEX1, 2] * delta_xi[INDEX1, 1] * th2
+    mi[INDEX2] = delta_xi[INDEX2, 2] * delta_xi[INDEX2, 1] / tr3
+    mi_all.append(mi.copy())
+    # m22
+    mi[INDEX1] = delta_xi[INDEX1, 2] * delta_xi[INDEX1, 2] * th2 + th1
+    mi[INDEX2] = delta_xi[INDEX2, 2] * delta_xi[INDEX2, 2] / tr3 + tr1
+    mi_all.append(mi.copy())
+    return mi_all, i0
+
+
+def legendre_regularized_stokeslets_matrix_3d(obj1: 'sf.StokesFlowObj',  # object contain velocity information
+                                              obj2: 'sf.StokesFlowObj',  # object contain force information
+                                              m, **kwargs):
+    u_nodes = obj1.get_u_nodes()
+    f_nodes = obj2.get_f_nodes()
+    f_ds = obj2.get_f_geo().get_deltaLength()
+    if np.array(f_ds).size == 1:
+        f_ds = f_ds * np.ones(obj2.get_n_f_node())
+    _, u_glbIdx_all = obj1.get_u_geo().get_glbIdx()
+    _, f_glbIdx_all = obj2.get_f_geo().get_glbIdx()
+    u_dmda = obj1.get_u_geo().get_dmda()
+
+    for i0 in range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1]):
+        [m00, m01, m02, m10, m11, m12, m20, m21, m22], i1 = \
+            legendre_regularized_stokeslets_matrix_3d_mij(u_nodes[i0], f_nodes, f_ds, i0, **kwargs)
+        u_glb = u_glbIdx_all[i1 * 3]
+        m.setValues(u_glb + 0, f_glbIdx_all[0::3], m00, addv=False)
+        m.setValues(u_glb + 0, f_glbIdx_all[1::3], m01, addv=False)
+        m.setValues(u_glb + 0, f_glbIdx_all[2::3], m02, addv=False)
+        m.setValues(u_glb + 1, f_glbIdx_all[0::3], m10, addv=False)
+        m.setValues(u_glb + 1, f_glbIdx_all[1::3], m11, addv=False)
+        m.setValues(u_glb + 1, f_glbIdx_all[2::3], m12, addv=False)
+        m.setValues(u_glb + 2, f_glbIdx_all[0::3], m20, addv=False)
+        m.setValues(u_glb + 2, f_glbIdx_all[1::3], m21, addv=False)
+        m.setValues(u_glb + 2, f_glbIdx_all[2::3], m22, addv=False)
+        # if i0 % 1000==0:
+        #     m.assemble()
     m.assemble()
 
-    return m  # ' regularized stokeslets matrix, U = M * F '
+    return m  # ' regularized Stokeslets  matrix, U = M * F '
 
 
 def check_legendre_regularized_stokeslets_matrix_3d(**kwargs):
-    err_msg = 'the reguralized stokeslets method needs parameter, delta. '
-    assert 'delta' in kwargs, err_msg
-    err_msg = 'the reguralized stokeslets method needs parameter, Legendre_m. '
+    err_msg = 'the regularized Stokeslets  method needs parameter, epsilon. '
+    assert 'epsilon' in kwargs, err_msg
+    err_msg = 'the regularized Stokeslets  method needs parameter, Legendre_m. '
     assert 'legendre_m' in kwargs, err_msg
-    err_msg = 'the reguralized stokeslets method needs parameter, Legendre_k. '
+    err_msg = 'the regularized Stokeslets  method needs parameter, Legendre_k. '
     assert 'legendre_k' in kwargs, err_msg
+    return True
 
 
 # @jit
-def two_para_regularized_stokeslets_matrix_3d(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
-                                              obj2: 'sf.stokesFlowObj',  # objct contain force information
+def two_para_regularized_stokeslets_matrix_3d(obj1: 'sf.StokesFlowObj',  # object contain velocity information
+                                              obj2: 'sf.StokesFlowObj',  # object contain force information
                                               **kwargs):
-    # Solve m matrix using regularized stokeslets method
+    # Solve m matrix using regularized Stokeslets  method
     # U = M * F.
-    # Cortez R. The method of regularized Stokeslets[J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
+    # Cortez R. The method of regularized Stokeslets [J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
     # Ong, Benjamin, Andrew Christlieb, and Bryan Quaife. "A New Family of Regularized Kernels for the Harmonic Oscillator." arXiv preprint arXiv:1407.1108 (2014).
 
     h1 = {
-        '0':  lambda r, e: (1 / 8) * pi ** (-1) * r ** (-3) * (e ** 2 + r ** 2) ** (-1 / 2) *
+        '0':  lambda r, e: (1 / 8) * np.pi ** (-1) * r ** (-3) * (e ** 2 + r ** 2) ** (-1 / 2) *
                            ((-1) * e ** 2 * r + r ** 3 + e ** 2 * (e ** 2 + r ** 2) ** (1 / 2) * np.log(
                                    r + (e ** 2 + r ** 2) ** (1 / 2))),
-        '1':  lambda r, e: (1 / 8) * pi ** (-1) * (e ** 2 + r ** 2) ** (-3 / 2) * (2 * e ** 2 + r ** 2),
-        '2':  lambda r, e: (1 / 32) * pi ** (-1) * (e ** 2 + r ** 2) ** (-5 / 2) * (
+        '1':  lambda r, e: (1 / 8) * np.pi ** (-1) * (e ** 2 + r ** 2) ** (-3 / 2) * (2 * e ** 2 + r ** 2),
+        '2':  lambda r, e: (1 / 32) * np.pi ** (-1) * (e ** 2 + r ** 2) ** (-5 / 2) * (
                 10 * e ** 4 + 11 * e ** 2 * r ** 2 + 4 * r ** 4),
-        '10': lambda r, e: (1 / 5242880) * pi ** (-1) * (e ** 2 + r ** 2) ** (-21 / 2) *
+        '10': lambda r, e: (1 / 5242880) * np.pi ** (-1) * (e ** 2 + r ** 2) ** (-21 / 2) *
                            (3233230 * e ** 20 + 19076057 * e ** 18 * r ** 2 + 64849356 * e ** 16 * r ** 4 +
                             143370656 * e ** 14 * r ** 6 + 218213632 * e ** 12 * r ** 8 + 234420480 * e ** 10 * r ** 10 +
                             178275328 * e ** 8 * r ** 12 + 94244864 * e ** 6 * r ** 14 + 33030144 * e ** 4 * r ** 16 +
                             6914048 * e ** 2 * r ** 18 + 655360 * r ** 20),
-        '20': lambda r, e: (1 / 5497558138880) * pi ** (-1) * (e ** 2 + r ** 2) ** (-41 / 2) * (
+        '20': lambda r, e: (1 / 5497558138880) * np.pi ** (-1) * (e ** 2 + r ** 2) ** (-41 / 2) * (
                 4709756401350 * e ** 40 + 56046101176065 * e ** 38 * r ** 2 + 403962534767220 * e ** 36 * r ** 4 + 2014699224028920 * e ** 34 * r ** 6 +
                 7460058409602240 * e ** 32 * r ** 8 + 21397820731584000 * e ** 30 * r ** 10 + 48864841525217280 * e ** 28 * r ** 12 +
                 90479597908439040 * e ** 26 * r ** 14 + 137493374367498240 * e ** 24 * r ** 16 + 172768642426798080 * e ** 22 * r ** 18 +
@@ -761,16 +834,16 @@ def two_para_regularized_stokeslets_matrix_3d(obj1: 'sf.stokesFlowObj',  # objct
                 14104672600064 * e ** 2 * r ** 38 + 687194767360 * r ** 40)
     }
     h2 = {
-        '0':  lambda r, e: (1 / 8) * pi ** (-1) * r ** (-5) * (e ** 2 + r ** 2) ** (-1 / 2) *
+        '0':  lambda r, e: (1 / 8) * np.pi ** (-1) * r ** (-5) * (e ** 2 + r ** 2) ** (-1 / 2) *
                            (3 * e ** 2 * r + r ** 3 + (-3) * e ** 2 * (e ** 2 + r ** 2) ** (1 / 2) * np.log(
                                    r + (e ** 2 + r ** 2) ** (1 / 2))),
-        '1':  lambda r, e: (1 / 8) * pi ** (-1) * (e ** 2 + r ** 2) ** (-3 / 2),
-        '2':  lambda r, e: (1 / 32) * pi ** (-1) * (e ** 2 + r ** 2) ** (-5 / 2) * (7 * e ** 2 + 4 * r ** 2),
-        '10': lambda r, e: (1 / 5242880) * pi ** (-1) * (e ** 2 + r ** 2) ** (-21 / 2) *
+        '1':  lambda r, e: (1 / 8) * np.pi ** (-1) * (e ** 2 + r ** 2) ** (-3 / 2),
+        '2':  lambda r, e: (1 / 32) * np.pi ** (-1) * (e ** 2 + r ** 2) ** (-5 / 2) * (7 * e ** 2 + 4 * r ** 2),
+        '10': lambda r, e: (1 / 5242880) * np.pi ** (-1) * (e ** 2 + r ** 2) ** (-21 / 2) *
                            (7436429 * e ** 18 + 38244492 * e ** 16 * r ** 2 + 101985312 * e ** 14 * r ** 4 +
                             173065984 * e ** 12 * r ** 6 + 199691520 * e ** 10 * r ** 8 + 159753216 * e ** 8 * r ** 10 +
                             87707648 * e ** 6 * r ** 12 + 31653888 * e ** 4 * r ** 14 + 6782976 * e ** 2 * r ** 16 + 655360 * r ** 18),
-        '20': lambda r, e: (1 / 5497558138880) * pi ** (-1) * (e ** 2 + r ** 2) ** (-41 / 2) * (
+        '20': lambda r, e: (1 / 5497558138880) * np.pi ** (-1) * (e ** 2 + r ** 2) ** (-41 / 2) * (
                 20251952525805 * e ** 38 + 219878341708740 * e ** 36 * r ** 2 + 1319270050252440 * e ** 34 * r ** 4 +
                 5436991722252480 * e ** 32 * r ** 6 + 16729205299238400 * e ** 30 * r ** 8 + 40150092718172160 * e ** 28 * r ** 10 +
                 77151158556487680 * e ** 26 * r ** 12 + 120657450975559680 * e ** 24 * r ** 14 + 155131008397148160 * e ** 22 * r ** 16 +
@@ -803,22 +876,22 @@ def two_para_regularized_stokeslets_matrix_3d(obj1: 'sf.stokesFlowObj',  # objct
             m[i0, j::n_unknown] = delta(i, j) * h1[n](delta_r, e) + delta_xi[:, i] * delta_xi[:, j] * h2[n](delta_r, e)
     m.assemble()
 
-    return m  # ' regularized stokeslets matrix, U = M * F '
+    return m  # ' regularized Stokeslets  matrix, U = M * F '
 
 
 def check_two_para_regularized_stokeslets_matrix_3d(**kwargs):
-    err_msg = 'the reguralized stokeslets method needs parameter, delta. '
+    err_msg = 'the regularized Stokeslets  method needs parameter, delta. '
     assert 'delta' in kwargs, err_msg
-    err_msg = 'the reguralized stokeslets method needs parameter, twoPara_n. '
+    err_msg = 'the regularized Stokeslets  method needs parameter, twoPara_n. '
     assert 'twoPara_n' in kwargs, err_msg
 
 
-def surf_force_matrix_3d_debug(obj1: 'sf.surf_forceObj',  # objct contain velocity information
-                               obj2: 'sf.surf_forceObj',  # objct contain force information
+def surf_force_matrix_3d_debug(obj1: 'sf.surf_forceObj',  # object contain velocity information
+                               obj2: 'sf.surf_forceObj',  # object contain force information
                                **kwargs):
-    # Solve m matrix using regularized stokeslets method
+    # Solve m matrix using regularized Stokeslets  method
     # U = M * F.
-    # Cortez R. The method of regularized Stokeslets[J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
+    # Cortez R. The method of regularized Stokeslets [J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
 
     delta = kwargs['delta']  # correction factor
     d_radia = kwargs['d_radia']  # the radial of the integral surface.
@@ -875,11 +948,11 @@ def surf_force_matrix_3d_debug(obj1: 'sf.surf_forceObj',  # objct contain veloci
                 m[i0, i0 - 1] = (np.cos(norm[0]) * np.cos(norm[1]) * np.sin(norm[1])) / (8 * np.pi * d_radia)  # Myz
                 m[i0, i0 + 0] = (1 / 2 * (5 - np.cos(2 * norm[1]))) / (8 * np.pi * d_radia)  # Mzz
     m.assemble()
-    return m  # ' regularized stokeslets matrix, U = M * F '
+    return m  # ' regularized Stokeslets  matrix, U = M * F '
 
 
-def surf_force_matrix_3d(obj1: 'sf.surf_forceObj',  # objct contain velocity information
-                         obj2: 'sf.surf_forceObj',  # objct contain force information
+def surf_force_matrix_3d(obj1: 'sf.surf_forceObj',  # object contain velocity information
+                         obj2: 'sf.surf_forceObj',  # object contain force information
                          **kwargs):
     # Solve m matrix using surface force distribution method
     # U = M * F.
@@ -954,7 +1027,7 @@ def surf_force_matrix_3d(obj1: 'sf.surf_forceObj',  # objct contain velocity inf
     # cax = ax.matshow(M, origin='lower')
     # fig.colorbar(cax)
     # plt.show()
-    return m  # ' regularized stokeslets matrix, U = M * F '
+    return m  # ' regularized Stokeslets  matrix, U = M * F '
 
 
 def check_surf_force_matrix_3d(**kwargs):
@@ -963,10 +1036,10 @@ def check_surf_force_matrix_3d(**kwargs):
         raise ValueError(err_msg)
 
 
-def point_source_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
-                                 obj2: 'sf.stokesFlowObj',  # objct contain force information
+def point_source_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity information
+                                 obj2: 'sf.StokesFlowObj',  # object contain force information
                                  **kwargs):
-    # Solve m matrix using regularized stokeslets method
+    # Solve m matrix using regularized Stokeslets  method
     # U = M * F.
     # Cortez R. The method of regularized Stokeslets[J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
 
@@ -1006,17 +1079,17 @@ def point_source_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velo
             m[i0, 3::n_unknown] = delta_xi[:, 2] / delta_r3 / (4 * np.pi)  # Mz_source
     m.assemble()
 
-    return m  # ' regularized stokeslets matrix, U = M * F '
+    return m  # ' regularized Stokeslets matrix, U = M * F '
 
 
 def check_point_source_matrix_3d_petsc(**kwargs):
     pass
 
 
-def point_source_dipole_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
-                                        obj2: 'sf.stokesFlowObj',  # objct contain force information
+def point_source_dipole_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity information
+                                        obj2: 'sf.StokesFlowObj',  # object contain force information
                                         **kwargs):
-    # Solve m matrix using regularized stokeslets method
+    # Solve m matrix using regularized Stokeslets method
     # U = M * F.
 
     vnodes = obj1.get_u_nodes()
@@ -1050,7 +1123,7 @@ def point_source_dipole_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct conta
             m[i0, (j + 3)::n_unknown] = delta(i, j) * temp4 + delta_xi[:, i] * delta_xi[:, j] * temp5
     m.assemble()
 
-    return m  # ' regularized stokeslets matrix, U = M * F '
+    return m  # ' regularized Stokeslets matrix, U = M * F '
 
 
 def check_point_source_dipole_matrix_3d_petsc(**kwargs):
@@ -1082,10 +1155,10 @@ def point_force_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # velocity node
     return m00, m01, m02, m10, m11, m12, m20, m21, m22, i0
 
 
-def point_force_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
-                                obj2: 'sf.stokesFlowObj',  # objct contain force information
+def point_force_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity information
+                                obj2: 'sf.StokesFlowObj',  # object contain force information
                                 m, **kwargs):
-    # Solve m matrix using point force stokeslets method
+    # Solve m matrix using point force Stokeslets method
     # U = M * F.
     u_nodes = obj1.get_u_nodes()
     f_nodes = obj2.get_f_nodes()
@@ -1113,14 +1186,14 @@ def check_point_force_matrix_3d_petsc(**kwargs):
     return True
 
 
-def two_plate_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
-                              obj2: 'sf.stokesFlowObj',  # objct contain force information
+def two_plate_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity information
+                              obj2: 'sf.StokesFlowObj',  # object contain force information
                               m, **kwargs):
     return two_plane_matrix_3d_petsc(obj1, obj2, m)
 
 
-def two_plane_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
-                              obj2: 'sf.stokesFlowObj',  # objct contain force information
+def two_plane_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity information
+                              obj2: 'sf.StokesFlowObj',  # object contain force information
                               m, **kwargs):
     # see Liron, N., & Mochon, S. (1976). Stokes flow for a stokeslet between two parallel flat plates. Journal of Engineering Mathematics, 10(4), 287-303.
     # U = M * F.
@@ -1202,8 +1275,8 @@ def dual_potential_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # velocity node
     return m30, m31, m32, m33, m20, m21, m22, m23, m10, m11, m12, m13, m00, m01, m02, m03, i0
 
 
-def dual_potential_matrix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
-                                   obj2: 'sf.stokesFlowObj',  # objct contain force information
+def dual_potential_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity information
+                                   obj2: 'sf.StokesFlowObj',  # object contain force information
                                    m, **kwargs):
     # Solve m matrix using dual_potential method
     # Young, D. L., et al. "Method of fundamental solutions for multidimensional Stokes equations by the dual-potential formulation." European Journal of Mechanics-B/Fluids 25.6 (2006): 877-893.
@@ -1253,7 +1326,7 @@ def check_dual_potential_matrix_3d_petsc(**kwargs):
     return True
 
 
-# method of fundamental solution, infinite helix stokeslets, cut off at maxtheta, 3d case
+# method of fundamental solution, infinite helix Stokeslets, cut off at maxtheta, 3d case
 def pf_infhelix_3d_petsc_mij(t_u_node, f_geo: 'geo.infgeo_1d', i0):
     def tmij(unode, fnodes):  # solve deltaij/r * 1/*(8*np.pi) + (xi*xj)/r**3 * 1/*(8*np.pi)
         dxi = (unode - fnodes).T
@@ -1298,10 +1371,10 @@ def pf_infhelix_3d_petsc_mij(t_u_node, f_geo: 'geo.infgeo_1d', i0):
     return m00, m01, m02, m10, m11, m12, m20, m21, m22, i0
 
 
-def pf_infhelix_3d_petsc(obj1: 'sf.stokesFlowObj',  # objct contain velocity information
-                         obj2: 'sf.stokesFlowObj',  # objct contain force information
+def pf_infhelix_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity information
+                         obj2: 'sf.StokesFlowObj',  # object contain force information
                          m, **kwargs):
-    # Solve m matrix using point force stokeslets method
+    # Solve m matrix using point force Stokeslets method
     # U = M * F.
     err_msg = 'dof of fgeo of obj %s should be 3. ' % str(obj1)
     assert obj1.get_f_geo().get_dmda().getDof() == 3, err_msg

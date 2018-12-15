@@ -24,7 +24,7 @@ from src.geo import *
 from src.ref_solution import *
 
 
-class stokesFlowProblem:
+class StokesFlowProblem:
     def __init__(self, **kwargs):
         self._obj_list = uniqueList()  # contain objects
         self._kwargs = kwargs  # kwargs associate with solving method,
@@ -90,16 +90,16 @@ class stokesFlowProblem:
         return True
 
     def do_solve_process(self, obj_list, pick_M=False):
-        fileHeadle = self._kwargs['fileHeadle']
+        fileHandle = self._kwargs['fileHandle']
         for obj in obj_list:
             self.add_obj(obj)
         if self._kwargs['pickProblem']:
-            self.pickmyself(fileHeadle, check=True)
+            self.pickmyself(fileHandle, check=True)
         self.print_info()
         self.create_matrix()
         residualNorm = self.solve()
         if self._kwargs['pickProblem']:
-            self.pickmyself(fileHeadle, pick_M=pick_M)
+            self.pickmyself(fileHandle, pick_M=pick_M)
         return residualNorm
 
     def __repr__(self):
@@ -383,7 +383,7 @@ class stokesFlowProblem:
         :param filename: output file name
         :type obj: stokesFlowObj
         :param obj: check object (those known exact velocity information. )
-        :param ref_slt: reference solution function headle
+        :param ref_slt: reference solution function handle
         :return: none.
         """
         self.check_finish_solve()
@@ -845,7 +845,7 @@ class stokesFlowProblem:
         return self._convergenceHistory
 
     def get_name(self):
-        return self._kwargs['fileHeadle']
+        return self._kwargs['fileHandle']
 
     @staticmethod
     def vec_scatter(vec_petsc, destroy=True):
@@ -972,7 +972,7 @@ class stokesFlowObj:
     def get_problem(self):
         return self._problem
 
-    def set_problem(self, problem: 'stokesFlowProblem'):
+    def set_problem(self, problem: 'StokesFlowProblem'):
         self._problem = problem
         return True
 
@@ -1190,7 +1190,7 @@ class stokesFlowObj:
         return True
 
 
-class stokesletsInPipeProblem(stokesFlowProblem):
+class stokesletsInPipeProblem(StokesFlowProblem):
     # pipe center line along z asix
     def __init__(self, **kwargs):
         from src.stokesletsInPipe import detail_light
@@ -1538,10 +1538,10 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         self._err_list.append((err1, err2, err3))
         return True
 
-    def set_prepare(self, fileHeadle):
-        check_file_extension(fileHeadle, '_force_pipe.mat')
+    def set_prepare(self, fileHandle):
+        check_file_extension(fileHandle, '_force_pipe.mat')
         t_path = os.path.dirname(os.path.abspath(__file__))
-        full_path = os.path.normpath(t_path + '/' + fileHeadle)
+        full_path = os.path.normpath(t_path + '/' + fileHandle)
         mat_contents = loadmat(full_path)
 
         self.set_b_list(mat_contents['b'].flatten())
@@ -1633,7 +1633,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         # OptDB = PETSc.Options()
         # stokesletsInPipe_pipeFactor = OptDB.getReal('dbg_factor', 2.5)
         # PETSc.Sys.Print('--------------------> DBG: stokesletsInPipe_pipeFactor=%f' % stokesletsInPipe_pipeFactor)
-        fpgeo = vpgeo.create_deltatheta(dth=dth, radius=rp, length=lp, epsilon=ep, with_cover=True,
+        fpgeo = vpgeo.create_deltatheta(dth=dth, radius=rp, length=lp, epsilon=ep, with_cover=1,
                                         factor=stokesletsInPipe_pipeFactor)
         t_pkg = PETSc.DMComposite().create(comm=PETSc.COMM_WORLD)
         t_pkg.addDM(fpgeo.get_dmda())
@@ -1649,7 +1649,7 @@ class stokesletsInPipeProblem(stokesFlowProblem):
 
         if kwargs['check_acc']:
             cpgeo = tunnel_geo()
-            cpgeo.create_deltatheta(dth=dth * 1.3, radius=rp, length=lp, epsilon=0, with_cover=True, factor=1)
+            cpgeo.create_deltatheta(dth=dth * 1.3, radius=rp, length=lp, epsilon=0, with_cover=1, factor=1)
             self._cpgeo = cpgeo
 
         if kwargs['plot_geo']:
@@ -1690,12 +1690,12 @@ class stokesletsInPipeProblem(stokesFlowProblem):
         kwargs_u1['delta'] = self._dp * self._ep
         kwargs_u1['name'] = '  _%05d/%05d_u1' % (waitBar[0], waitBar[1])
         kwargs_u1['plot'] = False
-        kwargs_u1['fileHeadle'] = 'stokesletsInPipeProblem_u1'
+        kwargs_u1['fileHandle'] = 'stokesletsInPipeProblem_u1'
         kwargs_u1['restart'] = False
         kwargs_u1['getConvergenceHistory'] = False
         kwargs_u1['pickProblem'] = False
 
-        problem_u1 = stokesFlowProblem(**kwargs_u1)
+        problem_u1 = StokesFlowProblem(**kwargs_u1)
         obj_u1 = stokesFlowObj()
         obj_u1_kwargs = {'name': 'stokesletsInPipeObj_u1'}
         vpgeo.set_velocity(u11)
@@ -1706,8 +1706,8 @@ class stokesletsInPipeProblem(stokesFlowProblem):
 
         kwargs_u2 = kwargs_u1.copy()
         kwargs_u2['name'] = '  _%05d/%05d_u2' % (waitBar[0], waitBar[1])
-        kwargs_u2['fileHeadle'] = 'stokesletsInPipeProblem_u2'
-        problem_u2 = stokesFlowProblem(**kwargs_u2)
+        kwargs_u2['fileHandle'] = 'stokesletsInPipeProblem_u2'
+        problem_u2 = StokesFlowProblem(**kwargs_u2)
         obj_u2 = stokesFlowObj()
         obj_u2_kwargs = {'name': 'stokesletsInPipeObj_u2'}
         vpgeo.set_velocity(u21)
@@ -1718,8 +1718,8 @@ class stokesletsInPipeProblem(stokesFlowProblem):
 
         kwargs_u3 = kwargs_u1.copy()
         kwargs_u3['name'] = '  _%05d/%05d_u3' % (waitBar[0], waitBar[1])
-        kwargs_u3['fileHeadle'] = 'stokesletsInPipeProblem_u3'
-        problem_u3 = stokesFlowProblem(**kwargs_u3)
+        kwargs_u3['fileHandle'] = 'stokesletsInPipeProblem_u3'
+        problem_u3 = StokesFlowProblem(**kwargs_u3)
         obj_u3 = stokesFlowObj()
         obj_u3_kwargs = {'name': 'stokesletsInPipeObj_u3'}
         vpgeo.set_velocity(u31)
@@ -2163,7 +2163,7 @@ class forcefreeComposite:
         obj0.combine(self.get_obj_list(), set_re_u=True, set_force=True)
         return obj0
 
-    def set_problem(self, problem: 'stokesFlowProblem'):
+    def set_problem(self, problem: 'StokesFlowProblem'):
         self._problem = problem
         return True
 
@@ -2213,7 +2213,7 @@ class forcefreeComposite:
             subobj.set_rigid_velocity(rel_U, (0., 0., 0.))
         return True
 
-    def local_axis_rotation(self, norm=np.array([0, 0, 1]), theta=0, rotation_origin=None):
+    # def local_axis_rotation(self, norm=np.array([0, 0, 1]), theta=0, rotation_origin=None):
 
     def set_ref_U(self, U):
         self._ref_U = U
@@ -2399,7 +2399,7 @@ class givenForceComposite(forcefreeComposite):
         return True
 
 
-class forcefreeProblem(stokesFlowProblem):
+class forcefreeProblem(StokesFlowProblem):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._all_obj_list = uniqueList()  # contain all objects, including subobj within forcefreeComposite.
@@ -2756,7 +2756,7 @@ class stokesletsInPipeforcefreeProblem(stokesletsInPipeProblem, forcefreeProblem
         pass
 
 
-class stokesletsTwoPlaneProblem(stokesFlowProblem):
+class stokesletsTwoPlaneProblem(StokesFlowProblem):
     # stokes flow between two plane, one is move in a constant velocity.
     # U_all = U_shear + U_twoPlane.
     # two planes are paralleled with XY plane, shear flow is vertical to z axis.
@@ -2773,7 +2773,7 @@ class stokesletsTwoPlaneProblem(stokesFlowProblem):
         return True
 
 
-class givenFlowProblem(stokesFlowProblem):
+class givenFlowProblem(StokesFlowProblem):
     # assuming the problem have a given background flow, subtract, solve and add again.
     def _get_giveFlow(self, obj):
         ugeo = obj.get_u_geo()
@@ -2815,14 +2815,14 @@ class givenFlowProblem(stokesFlowProblem):
 
         # def vtk_obj(self, filename):
         #     for obj0 in self.get_all_obj_list():
-        #         self.subtract_givenFlow_obj(obj0)
+        #         self.subtract_given_flow_obj(obj0)
         #     super().vtk_obj(filename)
         #     for obj0 in self.get_all_obj_list():
         #         self.add_givenFlow_obj(obj0)
         #
         # def vtk_self(self, filename):
         #     for obj0 in self.get_all_obj_list():
-        #         self.subtract_givenFlow_obj(obj0)
+        #         self.subtract_given_flow_obj(obj0)
         #     super().vtk_self(filename)
         #     for obj0 in self.get_all_obj_list():
         #         self.add_givenFlow_obj(obj0)
@@ -2863,7 +2863,7 @@ class ShearFlowforcefreeProblem(ShearFlowProblem, forcefreeProblem):
                         # # dbg
                         # t_list = []
                         # for sub_obj, rel_U in zip(obj0.get_obj_list(), obj0.get_rel_U_list()):
-                        #     givenU = self._get_giveFlow(sub_obj)
+                        #     givenU = self._get_give_flow(sub_obj)
                         #     t_geo = sub_obj.get_u_geo().copy()
                         #     t_geo.set_velocity(givenU)
                         #     t_list.append(t_geo)
@@ -2887,11 +2887,11 @@ class shearFlowforcefreeProblem(ShearFlowProblem, forcefreeProblem):
 
 
 problem_dic = {
-    'rs':                    stokesFlowProblem,
-    'rs_plane':              stokesFlowProblem,
-    'lg_rs':                 stokesFlowProblem,
-    'tp_rs':                 stokesFlowProblem,
-    'pf':                    stokesFlowProblem,
+    'rs':                    StokesFlowProblem,
+    'rs_plane':              StokesFlowProblem,
+    'lg_rs':                 StokesFlowProblem,
+    'tp_rs':                 StokesFlowProblem,
+    'pf':                    StokesFlowProblem,
     'rs_stokesletsInPipe':   stokesletsInPipeProblem,
     'pf_stokesletsInPipe':   stokesletsInPipeProblem,
     'pf_stokesletsTwoPlane': stokesletsTwoPlaneProblem,

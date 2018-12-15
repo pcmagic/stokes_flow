@@ -21,12 +21,12 @@ from time import time
 import pickle
 
 
-def save_vtk(problem: sf.stokesFlowProblem):
+def save_vtk(problem: sf.StokesFlowProblem):
     t0 = time()
     comm = PETSc.COMM_WORLD.tompi4py()
     rank = comm.Get_rank()
     problem_kwargs = problem.get_kwargs()
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     nth = problem_kwargs['nth']
     nh = problem_kwargs['nh']
     ch = problem_kwargs['ch']
@@ -43,17 +43,17 @@ def save_vtk(problem: sf.stokesFlowProblem):
     # bgeo.mat_nodes(filename=matname, mat_handle=bnodesHeadle)
     # belemsHeadle = problem_kwargs['belemsHeadle']
     # bgeo.mat_elmes(filename=matname, mat_handle=belemsHeadle, elemtype='tetra')
-    # problem.vtk_tetra(fileHeadle + '_Velocity', bgeo)
+    # problem.vtk_tetra(fileHandle + '_Velocity', bgeo)
 
-    problem.vtk_obj(fileHeadle)
+    problem.vtk_obj(fileHandle)
 
     helix_geo_check = supHelix()  # force geo
     # dth = 2 * np.pi / nth * 0.7
     # dth = 2 * np.pi * 0.061 * np.sqrt(ch)
     dth = np.max((2 * np.pi / nth * 0.8, 2 * np.pi * 0.061 * np.sqrt(ch)))
     B = ph / (2 * np.pi)
-    helix_geo_check.create_deltatheta(dth=dth, radius=rh2, R=rh1, B=B, n_c=ch, epsilon=0, with_cover=True)
-    helix_check = sf.stokesFlowObj()
+    helix_geo_check.create_deltatheta(dth=dth, radius=rh2, R=rh1, B=B, n_c=ch, epsilon=0, with_cover=1)
+    helix_check = sf.StokesFlowObj()
     helix_check.set_data(helix_geo_check, helix_geo_check)
 
     ang_helix = 2 * np.pi / nh  # the angle of two nearest helixes.
@@ -65,10 +65,9 @@ def save_vtk(problem: sf.stokesFlowProblem):
         t_obj.set_velocity(np.ones_like(t_obj.get_u_nodes()))
         t_obj.set_rigid_velocity(np.array((0, 0, 0, 0, 0, rU)))
         t_obj.set_name('helix_Check_%d' % i0)
-        velocity_err = velocity_err + problem.vtk_check('%s_Check_%d' % (fileHeadle, i0), t_obj)[0]
+        velocity_err = velocity_err + problem.vtk_check('%s_Check_%d' % (fileHandle, i0), t_obj)[0]
     velocity_err = velocity_err / nh
 
-    # Todo wrapper print: print0 (print at rank_0).
     t1 = time()
     PETSc.Sys.Print('velocity error is: %f' % velocity_err)
     PETSc.Sys.Print('%s: write vtk files use: %fs' % (str(problem), (t1 - t0)))
@@ -78,7 +77,7 @@ def save_vtk(problem: sf.stokesFlowProblem):
 
 def get_problem_kwargs(**main_kwargs):
     OptDB = PETSc.Options()
-    fileHeadle = OptDB.getString('f', 'helixInPipe')
+    fileHandle = OptDB.getString('f', 'helixInPipe')
     prbHeadle = OptDB.getString('prbHeadle', 'construct07')
     nth = OptDB.getInt('nth', 2)  # amount of helix nodes
     nh = OptDB.getInt('nh', 1)  # total of helixes
@@ -127,7 +126,7 @@ def get_problem_kwargs(**main_kwargs):
         'solve_method':          solve_method,
         'precondition_method':   precondition_method,
         'plot':                  plot,
-        'fileHeadle':            fileHeadle,
+        'fileHandle':            fileHandle,
         'prbHeadle':             prbHeadle,
         'twoPara_n':             twoPara_n,
         'legendre_m':            legendre_m,
@@ -150,7 +149,7 @@ def print_case_info(**problem_kwargs):
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     prbHeadle = problem_kwargs['prbHeadle']
     matrix_method = problem_kwargs['matrix_method']
     nth = problem_kwargs['nth']
@@ -194,7 +193,7 @@ def print_case_info(**problem_kwargs):
         t_headle = '_pick.bin'
         prbHeadle = prbHeadle if prbHeadle[-len(t_headle):] == t_headle else prbHeadle + t_headle
         PETSc.Sys.Print('  read problem from: ' + prbHeadle)
-        PETSc.Sys.Print('  output file headle: ' + fileHeadle)
+        PETSc.Sys.Print('  output file headle: ' + fileHandle)
         PETSc.Sys.Print('MPI size: %d' % size)
 
 
@@ -203,7 +202,7 @@ def main_fun(**main_kwargs):
     comm = PETSc.COMM_WORLD.tompi4py()
     rank = comm.Get_rank()
     problem_kwargs = get_problem_kwargs(**main_kwargs)
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     prbHeadle = problem_kwargs['prbHeadle']
 
     if not problem_kwargs['restart']:
@@ -223,7 +222,7 @@ def main_fun(**main_kwargs):
         B = ph / (2 * np.pi)
         vhgeo = supHelix()  # velocity node geo of helix
         dth = 2 * np.pi / nth
-        fhgeo = vhgeo.create_deltatheta(dth=dth, radius=rh2, R=rh1, B=B, n_c=ch, epsilon=eh, with_cover=True, factor=hfct)
+        fhgeo = vhgeo.create_deltatheta(dth=dth, radius=rh2, R=rh1, B=B, n_c=ch, epsilon=eh, with_cover=1, factor=hfct)
         # vhgeo.show_nodes()
         # vhgeo.show_velocity(length_factor=0.01)
 
@@ -258,17 +257,17 @@ def main_fun(**main_kwargs):
         problem.create_matrix()
         residualNorm = problem.solve()
         # # debug
-        # problem.saveM_ASCII('%s_M.txt' % fileHeadle)
+        # problem.saveM_ASCII('%s_M.txt' % fileHandle)
 
         if problem_kwargs['pickProblem']:
-            problem.pickmyself(fileHeadle)
+            problem.pickmyself(fileHandle)
         force_helix = vhobj.get_force_z()
         PETSc.Sys.Print('---->>>Resultant at z axis is %f' % (np.sum(force_helix) / (6 * np.pi * rh1)))
         save_vtk(problem)
     else:
         t_headle = '_pick.bin'
-        fileHeadle = fileHeadle if fileHeadle[-len(t_headle):] == fileHeadle else fileHeadle + t_headle
-        with open(fileHeadle, 'rb') as input:
+        fileHandle = fileHandle if fileHandle[-len(t_headle):] == fileHandle else fileHandle + t_headle
+        with open(fileHandle, 'rb') as input:
             unpick = pickle.Unpickler(input)
             problem = unpick.load()
             problem.unpickmyself()

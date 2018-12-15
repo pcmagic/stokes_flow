@@ -21,7 +21,7 @@ import pickle
 #     rank = comm.Get_rank()
 #     size = comm.Get_size()
 #
-#     fileHeadle = problem_kwargs['fileHeadle']
+#     fileHandle = problem_kwargs['fileHandle']
 #     radius = problem_kwargs['radius']
 #     deltaLength = problem_kwargs['deltaLength']
 #     matrix_method = problem_kwargs['matrix_method']
@@ -49,7 +49,7 @@ import pickle
 #     precondition_method = problem_kwargs['precondition_method']
 #     PETSc.Sys.Print('solve method: %s, precondition method: %s'
 #                     % (solve_method, precondition_method))
-#     PETSc.Sys.Print('output file headle: ' + fileHeadle)
+#     PETSc.Sys.Print('output file headle: ' + fileHandle)
 #     PETSc.Sys.Print('MPI size: %d' % size)
 
 
@@ -61,7 +61,7 @@ def get_problem_kwargs(**main_kwargs):
     epsilon = OptDB.getReal('e', -1)
     rel_omega = OptDB.getReal('rel_omega', 1)
     rel_u = OptDB.getReal('rel_u', 1)
-    fileHeadle = OptDB.getString('f', 'try_forcefree')
+    fileHandle = OptDB.getString('f', 'try_forcefree')
     solve_method = OptDB.getString('s', 'gmres')
     precondition_method = OptDB.getString('g', 'none')
     plot = OptDB.getBool('plot', False)
@@ -98,7 +98,7 @@ def get_problem_kwargs(**main_kwargs):
         'field_range':           field_range,
         'n_grid':                n_grid,
         'plot':                  plot,
-        'fileHeadle':            fileHeadle,
+        'fileHandle':            fileHandle,
         'region_type':           'rectangle',
         'twoPara_n':             twoPara_n,
         'legendre_m':            legendre_m,
@@ -126,7 +126,7 @@ def main_fun(**main_kwargs):
     problem_kwargs = get_problem_kwargs(**main_kwargs)
     # print_case_info(**problem_kwargs)
 
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     radius = problem_kwargs['radius']
     deltaLength = problem_kwargs['deltaLength']
     matrix_method = problem_kwargs['matrix_method']
@@ -167,29 +167,29 @@ def main_fun(**main_kwargs):
     problem.print_info()
     residualNorm = problem.solve()
 
-    problem.pickmyself(fileHeadle)
-    with open(fileHeadle + '_pick.bin', 'rb') as input:
+    problem.pickmyself(fileHandle)
+    with open(fileHandle + '_pick.bin', 'rb') as input:
         unpick = pickle.Unpickler(input)
         problem = unpick.load()
         problem.unpickmyself()
     problem.create_matrix()
     problem.print_info()
     residualNorm = problem.solve()
-    problem.pickmyself(fileHeadle)
+    problem.pickmyself(fileHandle)
 
     PETSc.Sys.Print(obj_composite.get_ref_U())
     PETSc.Sys.Print(obj_composite.get_total_force())
 
-    problem.vtk_obj(fileHeadle)
+    problem.vtk_obj(fileHandle)
     geo_check = sphere_geo()  # force geo
     geo_check.create_n(n * 2, radius)
     geo_check.set_rigid_velocity(rel_U + obj_composite.get_ref_U())
     obj_check = obj_dic[matrix_method]()
     obj_check.set_data(geo_check, geo_check, **obj_sphere_kwargs)
-    problem.vtk_check(fileHeadle + '_check', obj_check)
+    problem.vtk_check(fileHandle + '_check', obj_check)
 
-    problem.vtk_self(fileHeadle)
-    obj_sphere.vtk(fileHeadle)
+    problem.vtk_self(fileHandle)
+    obj_sphere.vtk(fileHandle)
     force_sphere = obj_sphere.get_force_x()
     PETSc.Sys().Print('---->>>%s: Resultant at x axis is %f' % (str(problem), force_sphere.sum()/(6*np.pi*radius)))
 

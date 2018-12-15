@@ -25,6 +25,9 @@ font = {'size': 20}
 matplotlib.rc('font', **font)
 np.set_printoptions(linewidth=90, precision=5)
 
+markerstyle_list = ['^', 'v', 'o', 's', 'p', 'd', 'H', 
+                  '1', '2', '3', '4', '8', 'P', '*', 
+                  'h', '+', 'x', 'X', 'D', '|', '_', ]
 
 def read_array(text_headle, FILE_DATA, array_length=6):
     t_match = re.search(text_headle, FILE_DATA)
@@ -37,34 +40,63 @@ def read_array(text_headle, FILE_DATA, array_length=6):
         temp1[:] = np.nan
     return temp1
 
-def func_line(x, a0, a1):
-    y = a0 + a1 * x
-    return y
-
-def fit_line(ax, x, y, x0, x1, ifprint=1, linestyle='-.', linewidth=1):
-    idx = np.array(x > x0) & np.array(x < x1) & np.isfinite(x) & np.isfinite(y)
-    fit_line, pcov = curve_fit(func_line, x[idx], y[idx], maxfev=10000)
-    fit_x = np.linspace(x.min(), x.max(), 30)
-    if ax is not None:
-        ax.plot(fit_x, func_line(fit_x, *fit_line), linestyle, color='k', linewidth=linewidth)
-    if ifprint:
-        print('y = %f + %f * x' % (fit_line[0], fit_line[1]), 'in range', (x0, x1))
-    return fit_line
-
-def func_loglog(x, a0, a1):
-    y = a0 + a1 * x
-    return y
-
-def fit_power_law(ax, x, y, x0, x1, linestyle='-.', linewidth=1, extendline=False):
-    idx = np.array(x > x0) & np.array(x < x1) & np.isfinite(x) & np.isfinite(y)
-    fit_loglog, pcov = curve_fit(func_loglog, np.log(x[idx]), np.log(y[idx]), maxfev=10000)
+def fit_line(ax, x, y, x0, x1, ifprint=1, linestyle='-.', linewidth=1, extendline=False, 
+                 color='k', alpha=0.7):
+    idx = np.array(x >= x0) & np.array(x <= x1) & np.isfinite(x) & np.isfinite(y)
+    tx = x[idx]
+    ty = y[idx]
+    fit_para = np.polyfit(tx, ty, 1)
+    pol_y = np.poly1d(fit_para)
     if extendline:
         fit_x = np.linspace(x.min(), x.max(), 30)
     else:
-        fit_x = np.linspace(x0, x1, 30)
-    ax.plot(fit_x, np.exp(func_loglog(np.log(fit_x), *fit_loglog)), linestyle, color='k', linewidth=linewidth)
-    print('slope=%f' % fit_loglog[1], 'in range', (x0, x1))
-    return fit_loglog
+        fit_x = np.linspace(max(x.min(), x0), min(x.max(), x1), 30)
+    if ax is not None:
+        ax.plot(fit_x, pol_y(fit_x), linestyle, linewidth=linewidth, 
+                color=color, alpha=alpha)
+    if ifprint:
+        print('y = %f + %f * x' % (fit_para[1], fit_para[0]), 'in range', (x[idx].min(), x[idx].max()))
+    return fit_para
+
+def fit_power_law(ax, x, y, x0, x1, ifprint=1, linestyle='-.', linewidth=1, extendline=False, 
+                 color='k', alpha=0.7):
+    idx = np.array(x >= x0) & np.array(x <= x1) & np.isfinite((np.log10(x))) & np.isfinite((np.log10(y)))
+    tx = np.log10(x[idx])
+    ty = np.log10(y[idx])    
+    fit_para = np.polyfit(tx, ty, 1)
+    pol_y = np.poly1d(fit_para)
+
+    if extendline:
+        fit_x = np.log10(np.linspace(x.min(), x.max(), 30))
+    else:
+        fit_x = np.log10(np.linspace(max(x.min(), x0), min(x.max(), x1), 30))
+    if ax is not None:
+        ax.loglog(10 ** fit_x, 10 ** pol_y(fit_x), linestyle, linewidth=linewidth, 
+                color=color, alpha=alpha)
+    if ifprint:
+        print('log(y) = %f + %f * log(x)' % (fit_para[1], fit_para[0]), 'in range', (10 ** tx.min(), 10 ** tx.max()))
+        print('ln(y) = %f + %f * ln(x)' % (fit_para[1] * np.log(10), fit_para[0]), 'in range', (10 ** tx.min(), 10 ** tx.max()))
+    return fit_para
+
+def fit_semilogy(ax, x, y, x0, x1, ifprint=1, linestyle='-.', linewidth=1, extendline=False, 
+                 color='k', alpha=0.7):
+    idx = np.array(x >= x0) & np.array(x <= x1) & np.isfinite(x) & np.isfinite(np.log10(y))
+    tx = x[idx]
+    ty = np.log10(y[idx])
+    fit_para = np.polyfit(tx, ty, 1)
+    pol_y = np.poly1d(fit_para)
+    if extendline:
+        fit_x = np.linspace(x.min(), x.max(), 30)
+    else:
+        fit_x = np.linspace(max(x.min(), x0), min(x.max(), x1), 30)
+    if ax is not None:
+        ax.plot(fit_x, 10 ** pol_y(fit_x), linestyle, linewidth=linewidth, 
+                color=color, alpha=alpha)
+    if ifprint:
+        print('log(y) = %f + %f * x' % (fit_para[1], fit_para[0]), 'in range', (tx.min(), tx.max()))
+        fit_para = fit_para * np.log(10)
+        print('ln(y) = %f + %f * x' % (fit_para[1], fit_para[0]), 'in range', (tx.min(), tx.max()))
+    return fit_para
 
 def get_simulate_data(eq_dir):
     txt_names = glob.glob(eq_dir + '/*.txt')

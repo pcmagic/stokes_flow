@@ -27,8 +27,8 @@ from src.myvtk import *
 def get_problem_kwargs(**main_kwargs):
     problem_kwargs = get_solver_kwargs()
     OptDB = PETSc.Options()
-    fileHeadle = OptDB.getString('f', 'singleEcoliPro')
-    problem_kwargs['fileHeadle'] = fileHeadle
+    fileHandle = OptDB.getString('f', 'singleEcoliPro')
+    problem_kwargs['fileHandle'] = fileHandle
 
     kwargs_list = (main_kwargs, get_vtk_tetra_kwargs(), get_ecoli_kwargs(), get_forcefree_kwargs())
     for t_kwargs in kwargs_list:
@@ -44,10 +44,10 @@ def get_problem_kwargs(**main_kwargs):
 
 
 def print_case_info(**problem_kwargs):
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     print_solver_info(**problem_kwargs)
     print_forcefree_info(**problem_kwargs)
-    print_ecoli_info(fileHeadle, **problem_kwargs)
+    print_ecoli_info(fileHandle, **problem_kwargs)
     return True
 
 
@@ -58,7 +58,7 @@ def main_fun(**main_kwargs):
     if not problem_kwargs['restart']:
         print_case_info(**problem_kwargs)
         ecoli_comp = createEcoliComp_tunnel(name='ecoli_0', **problem_kwargs)
-        problem = sf.dual_potential_problem(**problem_kwargs)
+        problem = sf.DualPotentialProblem(**problem_kwargs)
         for obj in ecoli_comp.get_obj_list()[1:]:
             problem.add_obj(obj)
         problem.print_info()

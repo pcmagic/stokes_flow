@@ -274,7 +274,7 @@ def create_rod(namehandle='rod_obj', **problem_kwargs):
     dth = 2 * np.pi / ntRod
     rod_geo = tunnel_geo()
     rod_geo.create_deltatheta(dth=dth, radius=rRod, length=lRod, epsilon=eRod,
-                              with_cover=True, factor=Rodfct, left_hand=False)
+                              with_cover=1, factor=Rodfct, left_hand=False)
     # first displace the rod above the surface, rotate to horizon.
     rod_geo.move(displacement=RodCenter)
     rod_geo.node_zoom(factor=zoom_factor, zoom_origin=RodCenter)
@@ -298,7 +298,6 @@ def create_rod(namehandle='rod_obj', **problem_kwargs):
 
 
 def create_infHelix(namehandle='infhelix', **problem_kwargs):
-    ntheta = problem_kwargs['infhelix_ntheta']
     n_helix = problem_kwargs['n_helix']
     eh = problem_kwargs['eh']
     ch = problem_kwargs['ch']
@@ -309,10 +308,10 @@ def create_infHelix(namehandle='infhelix', **problem_kwargs):
 
     helix_list = []
     for i0, theta0 in enumerate(np.linspace(0, 2 * np.pi, n_helix, endpoint=False)):
-        infhelix_ugeo = infHelix(ch * 2 * np.pi, ntheta)
+        infhelix_ugeo = infHelix(ch * 2 * np.pi)
         infhelix_ugeo.create_n(rh1, rh2, ph, nth, theta0=theta0)
         infhelix_fgeo = infhelix_ugeo.create_fgeo(epsilon=eh)
-        infhelix_obj = sf.stokesFlowObj()
+        infhelix_obj = sf.StokesFlowObj()
         infhelix_obj.set_data(f_geo=infhelix_fgeo, u_geo=infhelix_ugeo, name=namehandle + '%02d' % i0)
         helix_list.append(infhelix_obj)
     return helix_list

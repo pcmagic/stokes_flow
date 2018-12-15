@@ -34,13 +34,13 @@ def standard_method():
         err_msg = 'Only lsqr method is avalable when the number of velocity nodes is greater than force nodes. '
         raise sf_error(ierr, err_msg)
     problem_dic = {
-        'rs':       sf.stokesFlowProblem,
-        'sf':       sf.stokesFlowProblem,
-        'sf_debug': sf.stokesFlowProblem,
-        'ps':       sf.stokesFlowProblem,
+        'rs':       sf.StokesFlowProblem,
+        'sf':       sf.StokesFlowProblem,
+        'sf_debug': sf.StokesFlowProblem,
+        'ps':       sf.StokesFlowProblem,
     }
     obj_dic = {
-        'rs':       sf.stokesFlowObj,
+        'rs':       sf.StokesFlowObj,
         'sf':       sf.surf_forceObj,
         'sf_debug': sf.surf_forceObj,
         'ps':       sf.pointSourceObj,

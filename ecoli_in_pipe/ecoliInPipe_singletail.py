@@ -29,9 +29,9 @@ from ecoli_in_pipe.ecoli_common import *
 # def get_problem_kwargs(**main_kwargs):
 #     problem_kwargs = get_solver_kwargs()
 #     OptDB = PETSc.Options()
-#     fileHeadle = OptDB.getString('f', 'ecoliInPipe')
-#     OptDB.setValue('f', fileHeadle)
-#     problem_kwargs['fileHeadle'] = fileHeadle
+#     fileHandle = OptDB.getString('f', 'ecoliInPipe')
+#     OptDB.setValue('f', fileHandle)
+#     problem_kwargs['fileHandle'] = fileHandle
 #
 #     kwargs_list = (get_vtk_tetra_kwargs(), get_ecoli_kwargs(), get_forcefree_kwargs(), main_kwargs,)
 #     for t_kwargs in kwargs_list:
@@ -41,20 +41,20 @@ from ecoli_in_pipe.ecoli_common import *
 #
 #
 # def print_case_info(**problem_kwargs):
-#     fileHeadle = problem_kwargs['fileHeadle']
+#     fileHandle = problem_kwargs['fileHandle']
 #     PETSc.Sys.Print('-->Ecoli in pipe case, force free case.')
 #     print_solver_info(**problem_kwargs)
 #     print_forcefree_info(**problem_kwargs)
-#     print_ecoli_info(fileHeadle, **problem_kwargs)
+#     print_ecoli_info(fileHandle, **problem_kwargs)
 #     return True
 
 
 # @profile
 def main_fun(**main_kwargs):
     OptDB = PETSc.Options()
-    fileHeadle = OptDB.getString('f', 'ecoliInPipe')
-    OptDB.setValue('f', fileHeadle)
-    main_kwargs['fileHeadle'] = fileHeadle
+    fileHandle = OptDB.getString('f', 'ecoliInPipe')
+    OptDB.setValue('f', fileHandle)
+    main_kwargs['fileHandle'] = fileHandle
     problem_kwargs = get_problem_kwargs(**main_kwargs)
 
     if not problem_kwargs['restart']:
@@ -77,7 +77,7 @@ def main_fun(**main_kwargs):
         problem.set_prepare(forcepipe)
         problem.add_obj(ecoli_comp)
         if problem_kwargs['pickProblem']:
-            problem.pickmyself(fileHeadle, check=True)
+            problem.pickmyself(fileHandle, check=True)
         problem.set_iterate_comp(ecoli_comp)
         problem.print_info()
         refU, Ftol, Ttol = problem.do_iterate()
@@ -91,7 +91,7 @@ def main_fun(**main_kwargs):
     else:
         head_U, tail_U, ecoli_U = ecoli_restart(**main_kwargs)
     return head_U, tail_U, ecoli_U
-    # t_name = check_file_extension(fileHeadle, '_pick.bin')
+    # t_name = check_file_extension(fileHandle, '_pick.bin')
     # with open(t_name, 'rb') as myinput:
     #     unpick = pickle.Unpickler(myinput)
     #     problem = unpick.load()

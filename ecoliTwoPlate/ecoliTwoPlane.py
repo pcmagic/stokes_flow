@@ -27,8 +27,8 @@ from src.myvtk import save_singleEcoli_vtk
 def get_problem_kwargs(**main_kwargs):
     problem_kwargs = get_solver_kwargs()
     OptDB = PETSc.Options()
-    fileHeadle = OptDB.getString('f', 'ecoliTwoPlane')
-    problem_kwargs['fileHeadle'] = fileHeadle
+    fileHandle = OptDB.getString('f', 'ecoliTwoPlane')
+    problem_kwargs['fileHandle'] = fileHandle
     problem_kwargs['twoPlateHeight'] = 10
 
     kwargs_list = (main_kwargs, get_vtk_tetra_kwargs(), get_ecoli_kwargs(), get_forcefree_kwargs())
@@ -39,17 +39,17 @@ def get_problem_kwargs(**main_kwargs):
 
 
 def print_case_info(**problem_kwargs):
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     print_solver_info(**problem_kwargs)
     print_forcefree_info(**problem_kwargs)
-    print_ecoli_info(fileHeadle, **problem_kwargs)
+    print_ecoli_info(fileHandle, **problem_kwargs)
     return True
 
 
 # @profile
 def main_fun(**main_kwargs):
     problem_kwargs = get_problem_kwargs(**main_kwargs)
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
 
     if not problem_kwargs['restart']:
         print_case_info(**problem_kwargs)
@@ -60,7 +60,7 @@ def main_fun(**main_kwargs):
         save_singleEcoli_vtk(problem, createHandle=createEcoliComp_ellipse)
     else:
         pass
-        # with open(fileHeadle + '_pick.bin', 'rb') as input:
+        # with open(fileHandle + '_pick.bin', 'rb') as input:
         #     unpick = pickle.Unpickler(input)
         #     problem = unpick.load( )
         #     problem.unpickmyself( )

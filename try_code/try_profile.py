@@ -29,8 +29,8 @@ OptDB = PETSc.Options()
 for i0 in range(epsilon.size):
     d = deltaLength[i0]
     e = epsilon[i0]
-    fileHeadle = 'sphereInTunnel_%d_%f_%f' % (i0, d, e)
-    PETSc.Sys.Print(fileHeadle)
+    fileHandle = 'sphereInTunnel_%d_%f_%f' % (i0, d, e)
+    PETSc.Sys.Print(fileHandle)
 
 # def two_para_regularized_stokeslets_matrix_3d(vnodes,
 #                                               fnodes,

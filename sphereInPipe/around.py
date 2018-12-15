@@ -23,54 +23,53 @@ from scipy.io import loadmat
 import pickle
 
 
-def save_vtk(problem: sf.stokesFlowProblem):
+def save_vtk(problem: sf.StokesFlowProblem):
     t0 = time()
     comm = PETSc.COMM_WORLD.tompi4py()
     rank = comm.Get_rank()
     problem_kwargs = problem.get_kwargs()
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     matname = problem_kwargs['matname']
-    obj_check = sf.stokesFlowObj()
+    obj_check = sf.StokesFlowObj()
     geo_check = geo()
 
-    problem.vtk_obj(fileHeadle)
+    problem.vtk_obj(fileHandle)
 
     ucbHeadle = problem_kwargs['ucbHeadle']
     cbnodesHeadle = problem_kwargs['cbnodesHeadle']
     geo_check.mat_nodes(filename=matname, mat_handle=cbnodesHeadle)
     geo_check.mat_velocity(filename=matname, mat_handle=ucbHeadle)
     obj_check.set_data(geo_check, geo_check)
-    err_cb = problem.vtk_check(fileHeadle + '_cbnodes', obj_check)[0]
+    err_cb = problem.vtk_check(fileHandle + '_cbnodes', obj_check)[0]
 
     # ucf1Headle = problem_kwargs['ucf1Headle']
     # cf1nodesHeadle = problem_kwargs['cf1nodesHeadle']
     # geo_check.mat_nodes(filename=matname, mat_handle=cf1nodesHeadle)
     # geo_check.mat_velocity(filename=matname, mat_handle=ucf1Headle)
     # obj_check.set_data(geo_check, geo_check)
-    # err_cf1 = problem.vtk_check(fileHeadle + '_cf1nodes', obj_check)[0]
+    # err_cf1 = problem.vtk_check(fileHandle + '_cf1nodes', obj_check)[0]
     #
     # ucf2Headle = problem_kwargs['ucf2Headle']
     # cf2nodesHeadle = problem_kwargs['cf2nodesHeadle']
     # geo_check.mat_nodes(filename=matname, mat_handle=cf2nodesHeadle)
     # geo_check.mat_velocity(filename=matname, mat_handle=ucf2Headle)
     # obj_check.set_data(geo_check, geo_check)
-    # err_cf2 = problem.vtk_check(fileHeadle + '_cf2nodes', obj_check)[0]
+    # err_cf2 = problem.vtk_check(fileHandle + '_cf2nodes', obj_check)[0]
     #
     # ucf3Headle = problem_kwargs['ucf3Headle']
     # cf3nodesHeadle = problem_kwargs['cf3nodesHeadle']
     # geo_check.mat_nodes(filename=matname, mat_handle=cf3nodesHeadle)
     # geo_check.mat_velocity(filename=matname, mat_handle=ucf3Headle)
     # obj_check.set_data(geo_check, geo_check)
-    # err_cf3 = problem.vtk_check(fileHeadle + '_cf3nodes', obj_check)[0]
+    # err_cf3 = problem.vtk_check(fileHandle + '_cf3nodes', obj_check)[0]
 
     bgeo = geo()
     bnodesHeadle = problem_kwargs['bnodesHeadle']
     bgeo.mat_nodes(filename=matname, mat_handle=bnodesHeadle)
     belemsHeadle = problem_kwargs['belemsHeadle']
     bgeo.mat_elmes(filename=matname, mat_handle=belemsHeadle, elemtype='tetra')
-    problem.vtk_tetra(fileHeadle + '_Velocity', bgeo)
+    problem.vtk_tetra(fileHandle + '_Velocity', bgeo)
 
-    # Todo wrapper print: print0 (print at rank_0).
     t1 = time()
     PETSc.Sys.Print('%s: write vtk files use: %fs' % (str(problem), (t1 - t0)))
     PETSc.Sys.Print('err_cb=%f' % err_cb)
@@ -84,7 +83,7 @@ def save_vtk(problem: sf.stokesFlowProblem):
 def get_problem_kwargs(**main_kwargs):
     OptDB = PETSc.Options()
     matname = OptDB.getString('mat', 'body1')
-    fileHeadle = OptDB.getString('f', 'stokeletInPipe')
+    fileHandle = OptDB.getString('f', 'stokeletInPipe')
     fnodesHeadle = OptDB.getString('fnodes', 'fnodes')  # force nodes, for solver
     vnodesHeadle = OptDB.getString('vnodes', 'vnodes')  # velocity nodes, for solver
     cbnodesHeadle = OptDB.getString('cbnodes', 'cbnodes')  # check nodes, for solver
@@ -152,7 +151,7 @@ def get_problem_kwargs(**main_kwargs):
         'stokeslets_f':          stokeslets_f,
         'stokeslets_b':          stokeslets_b,
         'stokeslets_post':       stokeslets_post,
-        'fileHeadle':            fileHeadle,
+        'fileHandle':            fileHandle,
         'twoPara_n':             twoPara_n,
         'legendre_m':            legendre_m,
         'legendre_k':            legendre_k,
@@ -173,7 +172,7 @@ def print_case_info(**problem_kwargs):
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     fnodesHeadle = problem_kwargs['fnodesHeadle']
     vnodesHeadle = problem_kwargs['vnodesHeadle']
     cbnodesHeadle = problem_kwargs['cbnodesHeadle']
@@ -221,7 +220,7 @@ def print_case_info(**problem_kwargs):
         precondition_method = problem_kwargs['precondition_method']
         PETSc.Sys.Print('solve method: %s, precondition method: %s'
               % (solve_method, precondition_method))
-        PETSc.Sys.Print('output file headle: ' + fileHeadle)
+        PETSc.Sys.Print('output file headle: ' + fileHandle)
         PETSc.Sys.Print('MPI size: %d' % size)
 
 
@@ -230,7 +229,7 @@ def main_fun(**main_kwargs):
     comm = PETSc.COMM_WORLD.tompi4py()
     rank = comm.Get_rank()
     problem_kwargs = get_problem_kwargs(**main_kwargs)
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     stokeslets_post = problem_kwargs['stokeslets_post']
     stokeslets_f = problem_kwargs['stokeslets_f']
 
@@ -241,7 +240,7 @@ def main_fun(**main_kwargs):
         problem = problem_dic[matrix_method](**problem_kwargs)
         if problem_kwargs['pickProblem']:
             # do NOT save anything really, just check if the path is correct, to avoid this error after long time calculation.
-            problem.pickmyself(fileHeadle, check=True)
+            problem.pickmyself(fileHandle, check=True)
 
         # create problem
         matname = problem_kwargs['matname']
@@ -269,9 +268,9 @@ def main_fun(**main_kwargs):
         residualNorm = problem.solve()
         save_vtk(problem)
         if problem_kwargs['pickProblem']:
-            problem.pickmyself(fileHeadle)
+            problem.pickmyself(fileHandle)
     else:
-        with open(fileHeadle + '_pick.bin', 'rb') as input:
+        with open(fileHandle + '_pick.bin', 'rb') as input:
             unpick = pickle.Unpickler(input)
             problem = unpick.load()
             problem.unpickmyself()

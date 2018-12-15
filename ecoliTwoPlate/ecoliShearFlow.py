@@ -28,8 +28,8 @@ from src.myvtk import save_singleEcoli_vtk
 def get_problem_kwargs(**main_kwargs):
     problem_kwargs = get_solver_kwargs()
     OptDB = PETSc.Options()
-    fileHeadle = OptDB.getString('f', 'ecoliShearFlow')
-    problem_kwargs['fileHeadle'] = fileHeadle
+    fileHandle = OptDB.getString('f', 'ecoliShearFlow')
+    problem_kwargs['fileHandle'] = fileHandle
 
     kwargs_list = (main_kwargs, get_vtk_tetra_kwargs(), get_ecoli_kwargs(),
                    get_forcefree_kwargs(), get_shearFlow_kwargs())
@@ -40,35 +40,35 @@ def get_problem_kwargs(**main_kwargs):
 
 
 def print_case_info(**problem_kwargs):
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     print_solver_info(**problem_kwargs)
     print_forcefree_info(**problem_kwargs)
     print_shearFlow_info(**problem_kwargs)
-    print_ecoli_info(fileHeadle, **problem_kwargs)
+    print_ecoli_info(fileHandle, **problem_kwargs)
     return True
 
 
 # @profile
 def main_fun(**main_kwargs):
     problem_kwargs = get_problem_kwargs(**main_kwargs)
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     rot_theta = problem_kwargs['rot_theta']
-    fileHeadle = '%s_rotTh%f' % (fileHeadle, rot_theta)
-    problem_kwargs['fileHeadle'] = fileHeadle
+    fileHandle = '%s_rotTh%f' % (fileHandle, rot_theta)
+    problem_kwargs['fileHandle'] = fileHandle
 
     if not problem_kwargs['restart']:
         print_case_info(**problem_kwargs)
         ecoli_comp = createEcoliComp_ellipse(name='ecoli_0', **problem_kwargs)
-        problem = sf.shearFlowforcefreeProblem(**problem_kwargs)
+        problem = sf.ShearFlowForceFreeProblem(**problem_kwargs)
         problem.do_solve_process((ecoli_comp,), pick_M=True)
         head_U, tail_U = print_single_ecoli_forcefree_result(ecoli_comp, **problem_kwargs)
         ecoli_U = ecoli_comp.get_ref_U()
         # save_singleEcoli_vtk(problem, createHandle=createEcoliComp_ellipse)
-        ecoli_comp.png_u_nodes(fileHeadle)
+        ecoli_comp.png_u_nodes(fileHandle)
         problem.destroy()
     else:
         pass
-        # with open(fileHeadle + '_pick.bin', 'rb') as input:
+        # with open(fileHandle + '_pick.bin', 'rb') as input:
         #     unpick = pickle.Unpickler(input)
         #     problem = unpick.load( )
         #     problem.unpickmyself( )
@@ -119,7 +119,7 @@ def job_script():
         ax0.set_xlabel('rot_theta')
         ax0.set_ylabel('planeShearRate_y')
         fig0.set_size_inches(18.5, 10.5)
-        fig0.savefig('%s_%s.png' % (fileHeadle, figname), dpi=100)
+        fig0.savefig('%s_%s.png' % (fileHandle, figname), dpi=100)
         plt.close()
 
     comm = PETSc.COMM_WORLD.tompi4py()
@@ -135,13 +135,13 @@ def job_script():
     zoom_factor = problem_kwargs['zoom_factor']
     t_nondim = np.sqrt(np.sum((rel_Uh[-3:] + rel_Us[-3:]) ** 2)) * \
                np.array((zoom_factor * rh1, zoom_factor * rh1, zoom_factor * rh1, 1, 1, 1))
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
 
     rot_theta, planeShearRatey = np.meshgrid(np.linspace(0, 2, n_rot_theta),
                                              np.linspace(0, 0.2, n_planeShearRatey), )
     ecoli_U = []
     for i0, (t_rot_theta, t_planeShearRatey) in enumerate(
-            tqdm(zip(rot_theta.flatten(), planeShearRatey.flatten()), desc=fileHeadle)):
+            tqdm(zip(rot_theta.flatten(), planeShearRatey.flatten()), desc=fileHandle)):
         OptDB.setValue('rot_theta', t_rot_theta)
         OptDB.setValue('planeShearRatey', t_planeShearRatey)
         ecoli_U.append(main_fun()[2] / t_nondim)

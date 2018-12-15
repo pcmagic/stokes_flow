@@ -5,6 +5,7 @@
 # Zhang Ji, 20170320
 
 import sys
+from typing import Any, Union
 
 import petsc4py
 
@@ -19,27 +20,26 @@ from scipy.io import savemat
 import pickle
 
 
-def save_vtk(problem: sf.stokesFlowProblem):
+def save_vtk(problem: sf.StokesFlowProblem):
     t0 = time()
     comm = PETSc.COMM_WORLD.tompi4py()
     rank = comm.Get_rank()
     problem_kwargs = problem.get_kwargs()
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     tunnel_radius = problem_kwargs['tunnel_radius']
     length = problem_kwargs['length']
     n_tunnel_check = problem_kwargs['n_tunnel_check']
 
-    problem.vtk_obj(fileHeadle)
-    problem.vtk_velocity('%s_Velocity' % fileHeadle)
+    problem.vtk_obj(fileHandle)
+    problem.vtk_velocity('%s_Velocity' % fileHandle)
 
-    obj_check = sf.stokesFlowObj()
+    obj_check = sf.StokesFlowObj()
     tunnel_geo_check = tunnel_geo()  # pf, force geo
     tunnel_geo_check.create_n(n_tunnel_check, length / 3, tunnel_radius)
     tunnel_geo_check.set_rigid_velocity(np.array((0, 0, 0, 0, 0, 0)))
     obj_check.set_data(tunnel_geo_check, tunnel_geo_check)
-    problem.vtk_check(fileHeadle + '_Check_tunnel', obj_check)
+    problem.vtk_check(fileHandle + '_Check_tunnel', obj_check)
 
-    # Todo wrapper print: print0 (print at rank_0).
     t1 = time()
     PETSc.Sys.Print('%s: write vtk files use: %fs' % (str(problem), (t1 - t0)))
 
@@ -58,7 +58,7 @@ def get_problem_kwargs(**main_kwargs):
     fz = OptDB.getReal('fz', 0)
     stokeslets_f = np.array((fx, fy, fz))
     stokeslets_b = OptDB.getReal('stokeslets_b', 0)
-    fileHeadle = OptDB.getString('f', 'stokeletInPipe')
+    fileHandle = OptDB.getString('f', 'stokeletInPipe')
     solve_method = OptDB.getString('s', 'gmres')
     precondition_method = OptDB.getString('g', 'none')
     plot = OptDB.getBool('plot', False)
@@ -101,7 +101,7 @@ def get_problem_kwargs(**main_kwargs):
         'n_grid':                n_grid,
         'plot':                  plot,
         'debug_mode':            debug_mode,
-        'fileHeadle':            fileHeadle,
+        'fileHandle':            fileHandle,
         'region_type':           region_type,
         'twoPara_n':             twoPara_n,
         'legendre_m':            legendre_m,
@@ -127,7 +127,7 @@ def print_case_info(**problem_kwargs):
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     tunnel_radius = problem_kwargs['tunnel_radius']
     deltaLength = problem_kwargs['deltaLength']
     matrix_method = problem_kwargs['matrix_method']
@@ -166,7 +166,7 @@ def print_case_info(**problem_kwargs):
     precondition_method = problem_kwargs['precondition_method']
     PETSc.Sys.Print('solve method: %s, precondition method: %s'
           % (solve_method, precondition_method))
-    PETSc.Sys.Print('output file headle: ' + fileHeadle)
+    PETSc.Sys.Print('output file headle: ' + fileHandle)
     PETSc.Sys.Print('MPI size: %d' % size)
 
 
@@ -175,7 +175,7 @@ def main_fun(**main_kwargs):
     comm = PETSc.COMM_WORLD.tompi4py()
     rank = comm.Get_rank()
     problem_kwargs = get_problem_kwargs(**main_kwargs)
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     stokeslets_post = problem_kwargs['stokeslets_post']
     stokeslets_f = problem_kwargs['stokeslets_f']
     tunnel_radius = problem_kwargs['tunnel_radius']
@@ -190,7 +190,7 @@ def main_fun(**main_kwargs):
         problem = problem_dic[matrix_method](**problem_kwargs)
         if problem_kwargs['pickProblem']:
             # do NOT save anything really, just check if the path is correct, to avoid this error after long time calculation.
-            problem.pickmyself(fileHeadle, check=True)
+            problem.pickmyself(fileHandle, check=True)
 
         # The tunnel is divided into n objects having a similar length.
         tunnel_geo_u = stokeslets_tunnel_geo()
@@ -229,14 +229,14 @@ def main_fun(**main_kwargs):
         residualNorm = problem.solve()
         save_vtk(problem)
         if problem_kwargs['pickProblem']:
-            problem.pickmyself(fileHeadle)
+            problem.pickmyself(fileHandle)
     else:
-        with open(fileHeadle + '_pick.bin', 'rb') as input:
+        with open(fileHandle + '_pick.bin', 'rb') as input:
             unpick = pickle.Unpickler(input)
             problem = unpick.load()
             problem.unpickmyself()
             residualNorm = problem.get_residualNorm()
-            PETSc.Sys.Print('---->>>unpick the problem from file %s.pickle' % (fileHeadle))
+            PETSc.Sys.Print('---->>>unpick the problem from file %s.pickle' % (fileHandle))
 
             problem_kwargs = get_problem_kwargs(**main_kwargs)
             problem.set_kwargs(**problem_kwargs)
@@ -333,16 +333,16 @@ def casebank():
             for i2 in range(len(fileHeadle3_list)):
                 fileHeadle3 = fileHeadle3_list[i2]
                 sm, e, d = sm_e_d_tube[i2]
-                fileHeadle = fileHeadle1 + fileHeadle2 + fileHeadle3
+                fileHandle = fileHeadle1 + fileHeadle2 + fileHeadle3
                 kwargs = '-l %f -d %f -e %f -fx %f -fy %f -fz %f -stokeslets_b %f -sm %s -f %s ' \
                          '-n_tunnel_check %d -pickProblem %s -ksp_rtol %f -ksp_max_it %d ' \
                          '-xRange1 %f -xRange2 %f -ngrid %d -xfactor %d ' % \
-                         (l, d, e, fx, fy, fz, b, sm, fileHeadle,
+                         (l, d, e, fx, fy, fz, b, sm, fileHandle,
                           n_tunnel_check, pickProblem, ksp_rtol, ksp_max_it,
                           xRange1, xRange2, ngrid, xfactor)
                 PETSc.Sys.Print('echo \'-------------------------------------------->>>>>>%s\'; '
                       'mpirun -n 24 python ../../StokesletInPipe.py %s > %s.txt' %
-                      (fileHeadle, kwargs, fileHeadle))
+                      (fileHandle, kwargs, fileHandle))
 
                 # fileHeadle1_list = ('b0_100',
                 #                     'b0_010',
@@ -365,8 +365,8 @@ def casebank():
                 #         fileHeadle2 = fileHeadle2_list[i1]
                 #         for i2 in range(len(fileHeadle3_list)):
                 #             fileHeadle3 = fileHeadle3_list[i2]
-                #             fileHeadle = fileHeadle1 + fileHeadle2 + fileHeadle3
-                #             PETSc.Sys.Print(fileHeadle)
+                #             fileHandle = fileHeadle1 + fileHeadle2 + fileHeadle3
+                #             PETSc.Sys.Print(fileHandle)
 
 
 if __name__ == '__main__':

@@ -6,7 +6,7 @@ __all__ = ['uniqueList', 'typeList', 'intList', 'floatList',
            'abs_comp', 'abs_construct_matrix',
            'check_file_extension',
            'coordinate_transformation',
-           'tube_flatten', ]
+           'tube_flatten', 'get_rot_matrix']
 
 
 class uniqueList(UserList):
@@ -189,6 +189,22 @@ def tube_flatten(container):
         else:
             yield i
 
+def get_rot_matrix(norm=np.array([0, 0, 1]), theta=0):
+    norm = np.array(norm).reshape((3,))
+    theta = float(theta)
+    norm = norm / np.linalg.norm(norm)
+    a = norm[0]
+    b = norm[1]
+    c = norm[2]
+    rotation = np.array([
+        [a ** 2 + (1 - a ** 2) * np.cos(theta), a * b * (1 - np.cos(theta)) + c * np.sin(theta),
+         a * c * (1 - np.cos(theta)) - b * np.sin(theta)],
+        [a * b * (1 - np.cos(theta)) - c * np.sin(theta), b ** 2 + (1 - b ** 2) * np.cos(theta),
+         b * c * (1 - np.cos(theta)) + a * np.sin(theta)],
+        [a * c * (1 - np.cos(theta)) + b * np.sin(theta), b * c * (1 - np.cos(theta)) - a * np.sin(theta),
+         c ** 2 + (1 - c ** 2) * np.cos(theta)]
+    ])
+    return rotation
 
 class coordinate_transformation:
     @staticmethod

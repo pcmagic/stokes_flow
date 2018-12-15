@@ -10,12 +10,14 @@ from src import stokes_flow as sf
 __all__ = ['get_solver_kwargs', 'get_forcefree_kwargs', 'get_givenForce_kwargs', 'get_vtk_tetra_kwargs',
            'print_solver_info', 'print_forcefree_info', 'print_givenForce_info',
            'get_shearFlow_kwargs', 'print_shearFlow_info',
+           'get_PoiseuilleFlow_kwargs', 'print_PoiseuilleFlow_info',
            'get_ecoli_kwargs', 'print_ecoli_info', 'print_ecoli_U_info',
            'get_helix_kwargs', 'print_helix_info',
            'print_single_ecoli_forcefree_result', 'print_single_ecoli_force_result',
            'get_rod_kwargs', 'print_Rod_info',
            # 'print_infhelix_info',
-           'get_sphere_kwargs', 'print_sphere_info', ]
+           'get_sphere_kwargs', 'print_sphere_info',
+           'get_pipe_kwargs', 'print_pipe_info', ]
 
 
 def print_single_ecoli_force_result(ecoli_comp: sf.forcefreeComposite, prefix='', part='full', **kwargs):
@@ -128,7 +130,7 @@ def get_ecoli_kwargs():
     ch = OptDB.getReal('ch', 0.1)  # cycles of helix
     ph = OptDB.getReal('ph', 3)  # helix pitch
     hfct = OptDB.getReal('hfct', 1)  # helix axis line factor, put more nodes near both tops
-    with_cover = OptDB.getInt('with_cover', 1)
+    with_cover = OptDB.getInt('with_cover', 2)
     left_hand = OptDB.getBool('left_hand', False)
     rs = OptDB.getReal('rs', 0.5)  # radius of head
     rs1 = OptDB.getReal('rs1', rs * 2)  # radius of head
@@ -214,10 +216,10 @@ def get_helix_kwargs():
     ch = OptDB.getReal('ch', 0.1)  # cycles of helix
     ph = OptDB.getReal('ph', 3)  # helix pitch
     hfct = OptDB.getReal('hfct', 1)  # helix axis line factor, put more nodes near both tops
-    with_cover = OptDB.getInt('with_cover', 1)
+    with_cover = OptDB.getInt('with_cover', 2)
     left_hand = OptDB.getBool('left_hand', False)
 
-    # rotate the helix, original it is along z axis.
+    # rotate the helix
     rot_theta = OptDB.getReal('rot_theta', 0)
     rot_norm = np.array((1, 0, 0))  # currently is x axis.
 
@@ -296,6 +298,7 @@ def print_ecoli_info(ecoName, **problem_kwargs):
     PETSc.Sys.Print('  geometry zoom factor is %f' % zoom_factor)
     return True
 
+
 def print_helix_info(helixName, **problem_kwargs):
     rh1 = problem_kwargs['rh1']
     rh2 = problem_kwargs['rh2']
@@ -330,12 +333,12 @@ def print_helix_info(helixName, **problem_kwargs):
 def get_vtk_tetra_kwargs():
     OptDB = PETSc.Options()
     matname = OptDB.getString('bmat', 'body1')
-    bnodesHeadle = OptDB.getString('bnodes', 'bnodes')  # body nodes, for vtu output
-    belemsHeadle = OptDB.getString('belems', 'belems')  # body tetrahedron mesh, for vtu output
+    bnodeshandle = OptDB.getString('bnodes', 'bnodes')  # body nodes, for vtu output
+    belemshandle = OptDB.getString('belems', 'belems')  # body tetrahedron mesh, for vtu output
     vtk_tetra_kwargs = {
         'matname':      matname,
-        'bnodesHeadle': bnodesHeadle,
-        'belemsHeadle': belemsHeadle,
+        'bnodeshandle': bnodeshandle,
+        'belemshandle': belemshandle,
     }
     return vtk_tetra_kwargs
 
@@ -367,12 +370,19 @@ def get_solver_kwargs():
 
     if matrix_method in ('pf_stokesletsInPipe',):
         forcepipe = OptDB.getString('forcepipe', 'dbg')
-        t_headle = '_force_pipe.mat'
-        forcepipe = forcepipe if forcepipe[-len(t_headle):] == t_headle else forcepipe + t_headle
+        t_handle = '_force_pipe.mat'
+        forcepipe = forcepipe if forcepipe[-len(t_handle):] == t_handle else forcepipe + t_handle
         problem_kwargs['forcepipe'] = forcepipe
     elif matrix_method in ('pf_stokesletsTwoPlane',):
         twoPlateHeight = OptDB.getReal('twoPlateHeight', 1)  # twoPlateHeight
         problem_kwargs['twoPlateHeight'] = twoPlateHeight
+    elif matrix_method in ('lg_rs',):
+        legendre_m = OptDB.getInt('legendre_m', 3)
+        legendre_k = OptDB.getInt('legendre_k', 2)
+        epsilon = OptDB.getReal('epsilon', 3)
+        problem_kwargs['legendre_m'] = legendre_m
+        problem_kwargs['legendre_k'] = legendre_k
+        problem_kwargs['epsilon'] = epsilon
 
     return problem_kwargs
 
@@ -381,17 +391,17 @@ def print_solver_info(**problem_kwargs):
     comm = PETSc.COMM_WORLD.tompi4py()
     size = comm.Get_size()
 
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     matrix_method = problem_kwargs['matrix_method']
     solve_method = problem_kwargs['solve_method']
     precondition_method = problem_kwargs['precondition_method']
 
     err_msg = "Only 'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane', 'pf_dualPotential'" \
-              ", 'rs', and 'rs_plane' methods are accept for this main code. "
-    acceptType = ('rs', 'rs_plane',
+              ", 'rs', 'lg_rs', and 'rs_plane' methods are accept for this main code. "
+    acceptType = ('rs', 'rs_plane', 'lg_rs',
                   'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane', 'pf_dualPotential', 'pf_infhelix',)
     assert matrix_method in acceptType, err_msg
-    PETSc.Sys.Print('output file headle: ' + fileHeadle)
+    PETSc.Sys.Print('  output file handle: ' + fileHandle)
     PETSc.Sys.Print('  create matrix method: %s, ' % matrix_method)
     if matrix_method in ('rs', 'pf', 'rs_plane', 'pf_dualPotential', 'pf_infhelix'):
         pass
@@ -401,12 +411,17 @@ def print_solver_info(**problem_kwargs):
     elif matrix_method in ('pf_stokesletsTwoPlane',):
         twoPlateHeight = problem_kwargs['twoPlateHeight']
         PETSc.Sys.Print('Height of upper plane is %f ' % twoPlateHeight)
+    elif matrix_method in ('lg_rs',):
+        legendre_m = problem_kwargs['legendre_m']
+        legendre_k = problem_kwargs['legendre_k']
+        epsilon = problem_kwargs['epsilon']
+        PETSc.Sys.Print('    epsilon: %f, m: %d, k: %d, p: %d'
+                        % (epsilon, legendre_m, legendre_k, (legendre_m + 2 * legendre_k + 1)))
     else:
         raise Exception('set how to print matrix method please. ')
 
     PETSc.Sys.Print('  solve method: %s, precondition method: %s'
                     % (solve_method, precondition_method))
-    PETSc.Sys.Print('  output file headle: ' + fileHeadle)
     PETSc.Sys.Print('  MPI size: %d' % size)
 
 
@@ -414,6 +429,7 @@ def get_shearFlow_kwargs():
     OptDB = PETSc.Options()
     planeShearRatex = OptDB.getReal('planeShearRatex', 0)  #
     planeShearRatey = OptDB.getReal('planeShearRatey', 0)  #
+    # planeShearRatez = OptDB.getReal('planeShearRatez', 0)  #
     planeShearRate = np.array((planeShearRatex, planeShearRatey, 0)).reshape((1, 3))
     problem_kwargs = {'planeShearRate': planeShearRate}
     return problem_kwargs
@@ -424,6 +440,18 @@ def print_shearFlow_info(**problem_kwargs):
     PETSc.Sys.Print('Given background flow: shear flow, rate: %s ' % str(planeShearRate.flatten()))
     return True
 
+def get_PoiseuilleFlow_kwargs():
+    OptDB = PETSc.Options()
+    PoiseuilleStrength = OptDB.getReal('PoiseuilleStrength', 0)
+    # PoiseuilleRadius =
+    problem_kwargs = {'PoiseuilleStrength': PoiseuilleStrength}
+    return problem_kwargs
+
+def print_PoiseuilleFlow_info(**problem_kwargs):
+    PoiseuilleStrength = problem_kwargs['PoiseuilleStrength']
+    PETSc.Sys.Print('Given background flow: Poiseuille flow, rate: %f ' % PoiseuilleStrength)
+    PETSc.Sys.Print('  current assumes flow along z axis and pipe radius==1, vz = rate*(1-r^2)')
+    return True
 
 def get_forcefree_kwargs():
     OptDB = PETSc.Options()
@@ -608,3 +636,27 @@ def print_sphere_info(sphereName, **problem_kwargs):
 #     PETSc.Sys.Print('  cut of max theta %f, # of segment %f, # of node %f' %
 #                     (infhelix_maxtheta, infhelix_ntheta, infhelix_nnode))
 
+def get_pipe_kwargs():
+    OptDB = PETSc.Options()
+    finite_pipe_length = OptDB.getReal('finite_pipe_length', 10)
+    finite_pipe_cover = OptDB.getInt('finite_pipe_cover', 1)
+    finite_pipe_epsilon = OptDB.getReal('finite_pipe_epsilon', 1)
+    finite_pipe_ntheta = OptDB.getInt('finite_pipe_ntheta', 10)
+
+    problem_kwargs = {
+        'finite_pipe_length':  finite_pipe_length,
+        'finite_pipe_cover':   finite_pipe_cover,
+        'finite_pipe_epsilon': finite_pipe_epsilon,
+        'finite_pipe_ntheta':  finite_pipe_ntheta,
+    }
+    return problem_kwargs
+
+
+def print_pipe_info(**problem_kwargs):
+    finite_pipe_length = problem_kwargs['finite_pipe_length']
+    finite_pipe_cover = problem_kwargs['finite_pipe_cover']
+    finite_pipe_epsilon = problem_kwargs['finite_pipe_epsilon']
+    finite_pipe_ntheta = problem_kwargs['finite_pipe_ntheta']
+    PETSc.Sys.Print('  finite pipe have length %f, cover type %d, epsilon %f, ntheta %d' %
+                    (finite_pipe_length, finite_pipe_cover, finite_pipe_epsilon, finite_pipe_ntheta))
+    return True

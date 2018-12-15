@@ -24,24 +24,24 @@ from src.myvtk import *
 
 
 def print_case_info(**problem_kwargs):
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     print_solver_info(**problem_kwargs)
-    print_sphere_info(fileHeadle, **problem_kwargs)
+    print_sphere_info(fileHandle, **problem_kwargs)
     return True
 
 
 def get_problem_kwargs(**main_kwargs):
     problem_kwargs = get_solver_kwargs()
     OptDB = PETSc.Options()
-    fileHeadle = OptDB.getString('f', 'sphereTwoPlane')
+    fileHandle = OptDB.getString('f', 'sphereTwoPlane')
     matrix_method = problem_kwargs['matrix_method']
     if matrix_method in ('pf_stokesletsTwoPlane',):
         twoPlateHeight = problem_kwargs['twoPlateHeight']
         movez = OptDB.getReal('movez', twoPlateHeight / 2)
     else:
         movez = 0
-    OptDB.setValue('f', fileHeadle)
-    problem_kwargs['fileHeadle'] = fileHeadle
+    OptDB.setValue('f', fileHandle)
+    problem_kwargs['fileHandle'] = fileHandle
     problem_kwargs['movez'] = movez
 
     kwargs_list = (main_kwargs, get_vtk_tetra_kwargs(), get_sphere_kwargs(), )
@@ -76,7 +76,7 @@ def create_M(**main_kwargs):
     problem_kwargs = get_problem_kwargs(**main_kwargs)
     print_case_info(**problem_kwargs)
 
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     radius = problem_kwargs['radius']
     deltaLength = problem_kwargs['deltaLength']
     matrix_method = problem_kwargs['matrix_method']
@@ -99,19 +99,19 @@ def create_M(**main_kwargs):
     problem.add_obj(obj_sphere)
     problem.print_info()
     # problem.show_f_u_nodes()
-    problem.pickmyself(fileHeadle, check=True)
+    problem.pickmyself(fileHandle, check=True)
     problem.create_matrix()
     problem.solve()
-    problem.pickmyself(fileHeadle, pick_M=True)
+    problem.pickmyself(fileHandle, pick_M=True)
     return True
 
 
 def restart_solve(**main_kwargs):
     problem_kwargs = get_problem_kwargs(**main_kwargs)
-    fileHeadle = problem_kwargs['fileHeadle']
+    fileHandle = problem_kwargs['fileHandle']
     sphere_velocity = problem_kwargs['sphere_velocity']
     PETSc.Sys.Print('sphere velocity: %s' % str(sphere_velocity))
-    with open(fileHeadle + '_pick.bin', 'rb') as input:
+    with open(fileHandle + '_pick.bin', 'rb') as input:
         unpick = pickle.Unpickler(input)
         problem = unpick.load()
         problem.unpickmyself()
@@ -129,7 +129,7 @@ def restart_solve(**main_kwargs):
     problem.print_info()
     problem.solve()
 
-    problem.vtk_self(fileHeadle)
+    problem.vtk_self(fileHandle)
     force_sphere = obj_sphere.get_total_force()
     force_sphere = force_sphere / np.pi / \
                    (6 * radius, 6 * radius, 6 * radius, 8 * radius ** 3, 8 * radius ** 3, 8 * radius ** 3)
@@ -142,23 +142,23 @@ def restart_solve(**main_kwargs):
     geo_check.move((0, 0, movez))
     obj_check = obj_dic[matrix_method]()
     obj_check.set_data(geo_check, geo_check, name='sphereObj_check')
-    err = problem.vtk_check(fileHeadle + '_check', obj_check)
+    err = problem.vtk_check(fileHandle + '_check', obj_check)
     PETSc.Sys.Print('err: ', err)
 
 
 def export_data(**main_kwargs):
     problem_kwargs = get_problem_kwargs(**main_kwargs)
-    fileHeadle = problem_kwargs['fileHeadle']
-    with open(fileHeadle + '_pick.bin', 'rb') as input:
+    fileHandle = problem_kwargs['fileHandle']
+    with open(fileHandle + '_pick.bin', 'rb') as input:
         unpick = pickle.Unpickler(input)
         problem = unpick.load()
         problem.unpickmyself()
 
     obj_sphere = problem.get_obj_list()[0]
     obj_sphere.save_mat()
-    # problem.saveM_mat(fileHeadle + '_M')
-    problem.saveM_ASCII(fileHeadle + '_M')
-    # problem.saveM_HDF5(fileHeadle + '_M')
+    # problem.saveM_mat(fileHandle + '_M')
+    problem.saveM_ASCII(fileHandle + '_M')
+    # problem.saveM_HDF5(fileHandle + '_M')
     PETSc.Sys.Print('finish')
 
 
