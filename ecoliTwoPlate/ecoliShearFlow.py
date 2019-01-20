@@ -1,10 +1,3 @@
-# coding=utf-8
-# 1. generate velocity and force nodes of sphere using MATLAB,
-# 2. for each force node, get b, solve surrounding velocity boundary condition (pipe and cover, named boundary velocity) using formula from Liron's paper, save .mat file
-# 3. read .mat file, for each boundary velocity, solve associated boundary force.
-# 4. solve sphere M matrix using boundary force.
-# 5. solve problem and check.
-
 import sys
 import petsc4py
 # import matplotlib
@@ -71,7 +64,7 @@ def main_fun(**main_kwargs):
         # with open(fileHandle + '_pick.bin', 'rb') as input:
         #     unpick = pickle.Unpickler(input)
         #     problem = unpick.load( )
-        #     problem.unpickmyself( )
+        #     problem.unpick_myself( )
         # problem_kwargs = problem.get_kwargs( )
         # forcepipe = problem_kwargs['forcepipe']
         # rh1 = problem_kwargs['rh1']
@@ -174,5 +167,5 @@ def job_script():
 
 
 if __name__ == '__main__':
-    # main_fun()
-    job_script()
+    main_fun()
+    # job_script()

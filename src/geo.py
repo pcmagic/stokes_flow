@@ -13,7 +13,7 @@ import abc
 __all__ = ['geo', 'sphere_geo', 'ellipse_geo', 'geoComposit',
            'tunnel_geo', 'pipe_cover_geo', 'supHelix',
            'infgeo_1d', 'infHelix', 'infPipe',
-           'region', ]
+           'region', 'set_axes_equal']
 
 
 class geo():
@@ -104,6 +104,7 @@ class geo():
         self._origin = np.dot(rotation, (self._origin - rotation_origin)) + rotation_origin
         self._geo_norm = np.dot(rotation, (self._geo_norm + t_origin - rotation_origin)) \
                          + rotation_origin - self._origin
+        self._geo_norm = self._geo_norm / np.linalg.norm(self._geo_norm)
         return True
 
     def coord_rotation(self, norm=np.array([0, 0, 1]), theta=0):
@@ -832,6 +833,7 @@ class ellipse_geo(geo):
         self.set_dmda()
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
+        self._geo_norm = np.array((1, 0, 0))
         return True
 
     def create_half_delta(self, ds: float,  # length of the mesh
@@ -1130,7 +1132,7 @@ class pipe_cover_geo(tunnel_geo):
         ri = np.linspace(radius, deltaLength / 2, nc)[1:]
         cover_node_list = uniqueList()
         for i0 in range(0, int(nc - 2)):
-            ni = np.ceil(2 * np.pi * ri[i0] / deltalength).astype(int)
+            ni = np.ceil(2 * np.pi * ri[i0] / deltaLength).astype(int)
             ai = np.linspace(0, 2 * np.pi, ni, endpoint=False)
             t_cover = np.ones_like(ai, dtype=bool)
             t_cover[:] = True
@@ -1534,3 +1536,24 @@ class region:
         full_region_z = temp_r * np.sin(temp_theta)
 
         return full_region_x, full_region_y, full_region_z
+
+def set_axes_equal(ax):
+    '''Make axes of 3D plot have equal scale so that spheres appear as spheres,
+    cubes as cubes, etc..  This is one possible solution to Matplotlib's
+    ax.set_aspect('equal') and ax.axis('equal') not working for 3D.
+
+    Input
+      ax: a matplotlib axis, e.g., as output from plt.gca().
+    '''
+
+    limits = np.array([
+        ax.get_xlim3d(),
+        ax.get_ylim3d(),
+        ax.get_zlim3d(),
+    ])
+
+    origin = np.mean(limits, axis=1)
+    radius = 0.5 * np.max(np.abs(limits[:, 1] - limits[:, 0]))
+    ax.set_xlim3d([origin[0] - radius, origin[0] + radius])
+    ax.set_ylim3d([origin[1] - radius, origin[1] + radius])
+    ax.set_zlim3d([origin[2] - radius, origin[2] + radius])

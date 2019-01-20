@@ -66,7 +66,7 @@ def main_fun(**main_kwargs):
 
         pipe_obj = create_pipe_obj(**problem_kwargs)
 
-        problem = sf.forcefreeProblem(**problem_kwargs)
+        problem = sf.ForceFreeProblem(**problem_kwargs)
         problem.add_obj(ecoli_comp)
         problem.add_obj(pipe_obj)
         # problem.show_velocity()

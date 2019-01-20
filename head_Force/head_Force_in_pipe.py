@@ -156,7 +156,7 @@ def main_fun(**main_kwargs):
         ellipse_ugeo = ellipse_obj.get_u_geo()
         F_ellipse = ellipse_obj.get_point_force_list()[0][1]
         givenF = np.hstack((F_ellipse, np.zeros(3)))
-        ecoli_comp = sf.givenForceComposite(center=ellipse_ugeo.get_center(), name='ecoli_0', givenF=givenF)
+        ecoli_comp = sf.GivenForceComposite(center=ellipse_ugeo.get_center(), name='ecoli_0', givenF=givenF)
         ecoli_comp.add_obj(obj=ellipse_obj, rel_U=np.zeros(6))
         problem = sf.GivenForcePoiseuilleFlowProblem(**problem_kwargs)
         problem.add_given_flow_obj(pipe_obj)

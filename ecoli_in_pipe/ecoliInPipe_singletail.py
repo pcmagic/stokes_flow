@@ -68,7 +68,7 @@ def main_fun(**main_kwargs):
         else:
             err_msg = 'wrong ecoliHeadType'
             raise ValueError(err_msg)
-        ecoli_comp = sf.forcefreeComposite(center=ecoli_comp0.get_center(), name='ecoli_0')
+        ecoli_comp = sf.ForceFreeComposite(center=ecoli_comp0.get_center(), name='ecoli_0')
         ecoli_comp.add_obj(ecoli_comp0.get_obj_list()[0], rel_U=ecoli_comp0.get_rel_U_list()[0])
         ecoli_comp.add_obj(ecoli_comp0.get_obj_list()[1], rel_U=ecoli_comp0.get_rel_U_list()[1])
 
@@ -95,7 +95,7 @@ def main_fun(**main_kwargs):
     # with open(t_name, 'rb') as myinput:
     #     unpick = pickle.Unpickler(myinput)
     #     problem = unpick.load()
-    # problem.unpickmyself()
+    # problem.unpick_myself()
     # ecoli_comp = problem.get_obj_list()[0]
     #
     # problem_kwargs = problem.get_kwargs()

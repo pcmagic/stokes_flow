@@ -157,7 +157,7 @@ def main_fun(**main_kwargs):
     obj_sphere.set_data(sphere_geo1, sphere_geo0, **obj_sphere_kwargs)
 
     name = 'obj_composite1'
-    obj_composite = sf.forcefreeComposite(center, name)
+    obj_composite = sf.ForceFreeComposite(center, name)
     obj_composite.add_obj(obj_sphere, rel_U=rel_U)
 
     problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
@@ -171,7 +171,7 @@ def main_fun(**main_kwargs):
     with open(fileHandle + '_pick.bin', 'rb') as input:
         unpick = pickle.Unpickler(input)
         problem = unpick.load()
-        problem.unpickmyself()
+        problem.unpick_myself()
     problem.create_matrix()
     problem.print_info()
     problem.solve()

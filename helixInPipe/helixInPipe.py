@@ -236,7 +236,7 @@ def main_fun(**main_kwargs):
         with open(prbHeadle, 'rb') as input:
             unpick = pickle.Unpickler(input)
             problem = unpick.load()
-            problem.unpickmyself()
+            problem.unpick_myself()
         problem.set_kwargs(**problem_kwargs)
 
         ang_helix = 2 * np.pi / nh  # the angle of two nearest helixes.
@@ -270,7 +270,7 @@ def main_fun(**main_kwargs):
         with open(fileHandle, 'rb') as input:
             unpick = pickle.Unpickler(input)
             problem = unpick.load()
-            problem.unpickmyself()
+            problem.unpick_myself()
 
         residualNorm = problem.get_residualNorm()
         problem_kwargs1 = get_problem_kwargs(**main_kwargs)

@@ -21,33 +21,10 @@ from src.myvtk import save_singleEcoli_vtk
 from ecoli_in_pipe.ecoli_common import *
 
 
-# def get_problem_kwargs(**main_kwargs):
-#     problem_kwargs = get_solver_kwargs()
-#     OptDB = PETSc.Options()
-#     fileHandle = OptDB.getString('f', 'ecoliInPipe')
-#     OptDB.setValue('f', fileHandle)
-#     problem_kwargs['fileHandle'] = fileHandle
-#
-#     kwargs_list = (get_vtk_tetra_kwargs(), get_ecoli_kwargs(), get_forcefree_kwargs(), main_kwargs,)
-#     for t_kwargs in kwargs_list:
-#         for key in t_kwargs:
-#             problem_kwargs[key] = t_kwargs[key]
-#     return problem_kwargs
-#
-#
-# def print_case_info(**problem_kwargs):
-#     fileHandle = problem_kwargs['fileHandle']
-#     PETSc.Sys.Print('-->Ecoli in pipe case, force free case.')
-#     print_solver_info(**problem_kwargs)
-#     print_forcefree_info(**problem_kwargs)
-#     print_ecoli_info(fileHandle, **problem_kwargs)
-#     return True
-
-
 # @profile
 def main_fun(**main_kwargs):
     OptDB = PETSc.Options()
-    fileHandle = OptDB.getString('f', 'ecoliInPipe')
+    fileHandle = OptDB.getString('f', 'AlineEcoliInPipe')
     OptDB.setValue('f', fileHandle)
     main_kwargs['fileHandle'] = fileHandle
     problem_kwargs = get_problem_kwargs(**main_kwargs)
@@ -56,12 +33,19 @@ def main_fun(**main_kwargs):
         forcepipe = problem_kwargs['forcepipe']
         print_case_info(**problem_kwargs)
         ecoli_comp0 = createEcoliComp_tunnel(name='ecoli_0', **problem_kwargs)
-        ecoli_comp1 = createEcoliComp_tunnel(name='ecoli_0', **problem_kwargs)
-        ecoli_length = problem_kwargs['ls'] + problem_kwargs['dist_hs'] + problem_kwargs['ph'] * problem_kwargs['ch']
-        ecoli_comp1.move(np.array((0, 0, 1.3 * ecoli_length)))
+        ecoli_comp1 = createEcoliComp_tunnel(name='ecoli_1', **problem_kwargs)
+        ecoli_length = (problem_kwargs['ls'] + problem_kwargs['dist_hs'] +
+                        problem_kwargs['ph'] * problem_kwargs['ch']) * problem_kwargs['zoom_factor']
+        ecoli_comp1.move(np.array((0, 0, 1 * ecoli_length)))
         problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
         problem.set_prepare(forcepipe)
-        problem.do_solve_process((ecoli_comp0,), pick_M=True)
+        problem.add_obj(ecoli_comp0)
+        problem.add_obj(ecoli_comp1)
+        # problem.show_u_nodes()
+        problem.print_info()
+        problem.create_matrix()
+        problem.solve()
+
         # post process
         head_U, tail_U = print_single_ecoli_forcefree_result(ecoli_comp0, **problem_kwargs)
         ecoli_U = ecoli_comp0.get_ref_U()

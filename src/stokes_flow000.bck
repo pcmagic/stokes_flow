@@ -2399,7 +2399,7 @@ class givenForceComposite(forcefreeComposite):
         return True
 
 
-class forcefreeProblem(StokesFlowProblem):
+class ForceFreeProblem(StokesFlowProblem):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._all_obj_list = uniqueList()  # contain all objects, including subobj within forcefreeComposite.
@@ -2697,7 +2697,7 @@ class forcefreeProblem(StokesFlowProblem):
         return True
 
 
-class givenForceProblem(forcefreeProblem):
+class givenForceProblem(ForceFreeProblem):
     def _create_U(self):
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
@@ -2727,7 +2727,7 @@ class givenForceProblem(forcefreeProblem):
         return True
 
 
-class stokesletsInPipeforcefreeProblem(stokesletsInPipeProblem, forcefreeProblem):
+class stokesletsInPipeforcefreeProblem(stokesletsInPipeProblem, ForceFreeProblem):
     # def add_obj(self, obj):
     #     b_list = self.get_b_list()
     #     b1 = np.max(b_list)
@@ -2844,7 +2844,7 @@ class ShearFlowProblem(givenFlowProblem):
         return given_u
 
 
-class ShearFlowforcefreeProblem(ShearFlowProblem, forcefreeProblem):
+class ShearFlowforcefreeProblem(ShearFlowProblem, ForceFreeProblem):
     def _create_U(self):
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
@@ -2863,7 +2863,7 @@ class ShearFlowforcefreeProblem(ShearFlowProblem, forcefreeProblem):
                         # # dbg
                         # t_list = []
                         # for sub_obj, rel_U in zip(obj0.get_obj_list(), obj0.get_rel_U_list()):
-                        #     givenU = self._get_give_flow(sub_obj)
+                        #     givenU = self.get_given_flow(sub_obj)
                         #     t_geo = sub_obj.get_u_geo().copy()
                         #     t_geo.set_velocity(givenU)
                         #     t_list.append(t_geo)
@@ -2881,7 +2881,7 @@ class ShearFlowforcefreeProblem(ShearFlowProblem, forcefreeProblem):
         return True
 
 
-class shearFlowforcefreeProblem(ShearFlowProblem, forcefreeProblem):
+class shearFlowforcefreeProblem(ShearFlowProblem, ForceFreeProblem):
     def donothing(self):
         pass
 

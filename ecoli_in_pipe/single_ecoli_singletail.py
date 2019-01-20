@@ -67,15 +67,15 @@ def main_fun(**main_kwargs):
         else:
             err_msg = 'wrong ecoliHeadType'
             raise ValueError(err_msg)
-        ecoli_comp = sf.forcefreeComposite(center=ecoli_comp0.get_center(), name='ecoli_0')
+        ecoli_comp = sf.ForceFreeComposite(center=ecoli_comp0.get_center(), name='ecoli_0')
         ecoli_comp.add_obj(ecoli_comp0.get_obj_list()[0], rel_U=ecoli_comp0.get_rel_U_list()[0])
         ecoli_comp.add_obj(ecoli_comp0.get_obj_list()[1], rel_U=ecoli_comp0.get_rel_U_list()[1])
         # ecoli_comp = createEcoliComp_tunnel(name='ecoli_0', **problem_kwargs)
 
-        # problem = sf.forcefreeProblem(**problem_kwargs)
+        # problem = sf.ForceFreeProblem(**problem_kwargs)
         # problem.do_solve_process(ecoli_comp, pick_M=True)
         iterateTolerate = OptDB.getReal('iterateTolerate', 1e-4)
-        problem = sf.forcefreeIterateProblem(tolerate=iterateTolerate, **problem_kwargs)
+        problem = sf.ForceFreeIterateProblem(tolerate=iterateTolerate, **problem_kwargs)
         problem.add_obj(ecoli_comp)
         if problem_kwargs['pickProblem']:
             problem.pickmyself(fileHandle, check=True)

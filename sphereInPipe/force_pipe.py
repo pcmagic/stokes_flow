@@ -157,7 +157,7 @@ def main_fun(**main_kwargs):
 
     # # create problem
     # problem = problem_dic[matrix_method](**problem_kwargs)
-    problem = sf.stokesletsInPipeProblem(**problem_kwargs)
+    problem = sf.StokesletsInPipeProblem(**problem_kwargs)
     problem.solve_prepare()
     # problem.pickmyself(fileHandle)
     b = np.array(problem.get_b_list())
@@ -256,8 +256,8 @@ def show_err():
     with open(fileHandle + '_pick.bin', 'rb') as input:
         unpick = pickle.Unpickler(input)
         problem = unpick.load()
-        problem.unpickmyself()
-    assert isinstance(problem, sf.stokesletsInPipeProblem)
+        problem.unpick_myself()
+    assert isinstance(problem, sf.StokesletsInPipeProblem)
     b = np.array(problem.get_b_list())
     residualNorm = np.array(problem.get_residualNorm_list())
     err = np.array(problem.get_err_list())
@@ -272,7 +272,7 @@ def export_mat():
     with open(filePick, 'rb') as myinput:
         unpick = pickle.Unpickler(myinput)
         problem = unpick.load()
-        problem.unpickmyself()
+        problem.unpick_myself()
 
     problem_kwargs = problem.get_kwargs()
     dp = problem_kwargs['dp']
@@ -282,7 +282,7 @@ def export_mat():
     th = problem_kwargs['th']
     stokesletsInPipe_pipeFactor = problem_kwargs['stokesletsInPipe_pipeFactor']
 
-    assert isinstance(problem, sf.stokesletsInPipeProblem)
+    assert isinstance(problem, sf.StokesletsInPipeProblem)
     b = np.array(problem.get_b_list())
     residualNorm = np.array(problem.get_residualNorm_list())
     err = np.array(problem.get_err_list())
@@ -337,8 +337,8 @@ def debug_stokeslets_b(b, node):
     # with open(fileHandle, 'rb') as input:
     #     unpick = pickle.Unpickler(input)
     #     problem = unpick.load()
-    #     problem.unpickmyself()
-    # assert isinstance(problem, sf.stokesletsInPipeProblem)
+    #     problem.unpick_myself()
+    # assert isinstance(problem, sf.StokesletsInPipeProblem)
 
     node = np.array(node).reshape((-1, 3))
     num_ans1, num_ans2, num_ans3 = problem.debug_solve_stokeslets_b(b=b, node=node)
@@ -383,7 +383,7 @@ def debug_num_speed(nnode=1000):
     nnode_pipe = np.zeros_like(mat_name_list, dtype=np.float)
     for i0, mat_name in enumerate(mat_name_list):
         fileHandle = mat_name[:-15]
-        problem = sf.stokesletsInPipeProblem(**problem_kwargs)
+        problem = sf.StokesletsInPipeProblem(**problem_kwargs)
         t0 = time()
         problem.set_prepare(fileHandle, fullpath=True)
         problem.debug_solve_stokeslets_b(b=b, node=node)
@@ -441,7 +441,7 @@ def debug_solve_u_pipe(b, dp, lp):
     greenFun.solve_prepare()
 
     problem = problem_dic[matrix_method](**problem_kwargs)
-    assert isinstance(problem, sf.stokesletsInPipeProblem)
+    assert isinstance(problem, sf.StokesletsInPipeProblem)
 
     outputHandle = ' '
     pgeo = tunnel_geo()  # velocity node geo of pipe

@@ -181,7 +181,7 @@ def main_fun(**main_kwargs):
         with open(fileHandle + '_pick.bin', 'rb') as input:
             unpick = pickle.Unpickler(input)
             problem = unpick.load()
-            problem.unpickmyself()
+            problem.unpick_myself()
             obj_sphere = problem.get_obj_list()[-1]
             ini_problem = problem.get_ini_problem()
             residualNorm = problem.get_residualNorm()

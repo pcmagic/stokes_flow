@@ -3,75 +3,12 @@ from petsc4py import PETSc
 from src.geo import *
 from src import stokes_flow as sf
 
-__all__ = ['createEcoliComp_ellipse', 'createEcoliComp_tunnel', 'createEcoli_tunnel',
+__all__ = ['createEcoli_ellipse', 'createEcoliComp_ellipse',
+           'createEcoliComp_tunnel', 'createEcoli_tunnel',
            'create_capsule',
            'create_rod',
            'create_infHelix',
            'create_sphere', 'create_move_single_sphere']
-
-
-def createEcoliComp_ellipse(name='...', **kwargs):
-    nth = kwargs['nth']
-    hfct = kwargs['hfct']
-    eh = kwargs['eh']
-    ch = kwargs['ch']
-    rh1 = kwargs['rh1']
-    rh2 = kwargs['rh2']
-    ph = kwargs['ph']
-    with_cover = kwargs['with_cover']
-    ds = kwargs['ds']
-    rs1 = kwargs['rs1']
-    rs2 = kwargs['rs2']
-    es = kwargs['es']
-    left_hand = kwargs['left_hand']
-    # sphere_rotation = kwargs['sphere_rotation'] if 'sphere_rotation' in kwargs.keys() else 0
-    zoom_factor = kwargs['zoom_factor'] if 'zoom_factor' in kwargs.keys() else 1
-    dist_hs = kwargs['dist_hs']
-    center = kwargs['center']
-    matrix_method = kwargs['matrix_method']
-    lh = ph * ch  # length of helix
-    movesz = 0.5 * (dist_hs - 2 * rs1 + lh) + rs1
-    movehz = 0.5 * (dist_hs + 2 * rs1 - lh) + lh / 2
-    moves = np.array((0, 0, movesz)) + center  # move distance of sphere
-    moveh = np.array((0, 0, -movehz)) + center  # move distance of helix
-    objtype = sf.obj_dic[matrix_method]
-
-    # create helix
-    B = ph / (2 * np.pi)
-    vhgeo0 = supHelix()  # velocity node geo of helix
-    dth = 2 * np.pi / nth
-    fhgeo0 = vhgeo0.create_deltatheta(dth=dth, radius=rh2, R=rh1, B=B, n_c=ch, epsilon=eh, with_cover=with_cover,
-                                      factor=hfct, left_hand=left_hand)
-    vhobj0 = objtype()
-    vhobj0.set_data(fhgeo0, vhgeo0, name='helix_0')
-    vhobj0.zoom(zoom_factor)
-    vhobj0.move(moveh * zoom_factor)
-    vhobj1 = vhobj0.copy()
-    vhobj1.node_rotation(norm=(0, 0, 1), theta=np.pi, rotation_origin=center)
-    vhobj1.set_name('helix_1')
-
-    # create sphere
-    vsgeo = ellipse_geo()  # velocity node geo of sphere
-    vsgeo.create_delta(ds, rs1, rs2)
-    vsgeo.node_rotation(norm=np.array((0, 1, 0)), theta=np.pi / 2)
-    fsgeo = vsgeo.copy()  # force node geo of sphere
-    fsgeo.node_zoom(1 + ds / (0.5 * (rs1 + rs2)) * es)
-    vsobj = objtype()
-    vsobj.set_data(fsgeo, vsgeo, name='sphere_0')
-    vsobj.zoom(zoom_factor)
-    vsobj.move(moves * zoom_factor)
-
-    rel_Us = kwargs['rel_Us']
-    rel_Uh = kwargs['rel_Uh']
-    ecoli_comp = sf.forcefreeComposite(center, name)
-    ecoli_comp.add_obj(vsobj, rel_U=rel_Us)
-    ecoli_comp.add_obj(vhobj0, rel_U=rel_Uh)
-    ecoli_comp.add_obj(vhobj1, rel_U=rel_Uh)
-
-    rot_norm = kwargs['rot_norm']
-    rot_theta = kwargs['rot_theta'] * np.pi
-    ecoli_comp.node_rotation(norm=rot_norm, theta=rot_theta, rotation_origin=center)
-    return ecoli_comp
 
 
 def create_capsule(rs1, rs2, ls, ds, node_dof=3):
@@ -101,7 +38,7 @@ def create_capsule(rs1, rs2, ls, ds, node_dof=3):
     return vsgeo
 
 
-def createEcoli_tunnel(**kwargs):
+def create_ecoli_tail(moveh, **kwargs):
     nth = kwargs['nth']
     hfct = kwargs['hfct']
     eh = kwargs['eh']
@@ -109,13 +46,110 @@ def createEcoli_tunnel(**kwargs):
     rh1 = kwargs['rh1']
     rh2 = kwargs['rh2']
     ph = kwargs['ph']
+    n_tail = kwargs['n_tail']
     with_cover = kwargs['with_cover']
+    left_hand = kwargs['left_hand']
+    rT2 = kwargs['rT2']
+    center = kwargs['center']
+    matrix_method = kwargs['matrix_method']
+    zoom_factor = kwargs['zoom_factor']
+    obj_type = sf.obj_dic[matrix_method]
+
+    # create helix
+    vhobj0 = obj_type()
+    node_dof = vhobj0.get_n_unknown()
+    B = ph / (2 * np.pi)
+    vhgeo0 = supHelix()  # velocity node geo of helix
+    if 'dualPotential' in matrix_method:
+        vhgeo0.set_check_epsilon(False)
+    vhgeo0.set_dof(node_dof)
+    dth = 2 * np.pi / nth
+    fhgeo0 = vhgeo0.create_deltatheta(dth=dth, radius=rh2, R=rh1, B=B, n_c=ch, epsilon=eh,
+                                      with_cover=with_cover, factor=hfct, left_hand=left_hand)
+    vhobj0.set_data(fhgeo0, vhgeo0, name='helix_0')
+    vhobj0.zoom(zoom_factor)
+    # dbg
+    OptDB = PETSc.Options()
+    factor = OptDB.getReal('dbg_theta_factor', 1.5)
+    PETSc.Sys.Print('--------------------> DBG: dbg_theta_factor = %f' % factor)
+    theta = np.pi * ch + (rT2 + rh2 * factor) / (rh1 + rh2)
+    vhobj0.node_rotation(norm=np.array((0, 0, 1)), theta=theta)
+    vhobj0.move(moveh * zoom_factor)
+
+    tail_list = []
+    for i0 in range(n_tail):
+        theta = 2 * np.pi / n_tail * i0
+        vhobj1 = vhobj0.copy()
+        vhobj1.node_rotation(norm=(0, 0, 1), theta=theta, rotation_origin=center.copy())
+        vhobj1.set_name('helix_%d' % i0)
+        tail_list.append(vhobj1)
+
+    return tail_list
+
+
+def createEcoli_ellipse(name='...', **kwargs):
+    ch = kwargs['ch']
+    ph = kwargs['ph']
+    ds = kwargs['ds']
+    rs1 = kwargs['rs1']
+    rs2 = kwargs['rs2']
+    es = kwargs['es']
+    # sphere_rotation = kwargs['sphere_rotation'] if 'sphere_rotation' in kwargs.keys() else 0
+    zoom_factor = kwargs['zoom_factor'] if 'zoom_factor' in kwargs.keys() else 1
+    dist_hs = kwargs['dist_hs']
+    center = kwargs['center']
+    matrix_method = kwargs['matrix_method']
+    lh = ph * ch  # length of helix
+    movesz = 0.5 * (dist_hs - 2 * rs1 + lh) + rs1
+    movehz = 0.5 * (dist_hs + 2 * rs1 - lh) + lh / 2
+    moves = np.array((0, 0, movesz)) + center  # move distance of sphere
+    moveh = np.array((0, 0, -movehz)) + center  # move distance of helix
+    objtype = sf.obj_dic[matrix_method]
+
+    # create tail
+    tail_list = create_ecoli_tail(moveh, **kwargs)
+
+    # create head
+    vsgeo = ellipse_geo()  # velocity node geo of sphere
+    vsgeo.create_delta(ds, rs1, rs2)
+    vsgeo.node_rotation(norm=np.array((0, 1, 0)), theta=np.pi / 2)
+    fsgeo = vsgeo.copy()  # force node geo of sphere
+    fsgeo.node_zoom(1 + ds / (0.5 * (rs1 + rs2)) * es)
+    vsobj = objtype()
+    vsobj.set_data(fsgeo, vsgeo, name='sphere_0')
+    vsobj.zoom(zoom_factor)
+    vsobj.move(moves * zoom_factor)
+    return vsobj, tail_list
+
+
+def createEcoliComp_ellipse(name='...', **kwargs):
+    vsobj, tail_list = createEcoli_ellipse(name=name, **kwargs)
+    vsgeo = vsobj.get_u_geo()
+    center = kwargs['center']
+    rel_Us = kwargs['rel_Us']
+    rel_Uh = kwargs['rel_Uh']
+
+    ecoli_comp = sf.ForceFreeComposite(center=center.copy(), norm=vsgeo.get_geo_norm().copy(), name=name)
+    ecoli_comp.add_obj(vsobj, rel_U=rel_Us)
+    for ti in tail_list:
+        ecoli_comp.add_obj(ti, rel_U=rel_Uh)
+
+    rot_norm = kwargs['rot_norm']
+    rot_theta = kwargs['rot_theta'] * np.pi
+    ecoli_comp.node_rotation(norm=rot_norm.copy(), theta=rot_theta, rotation_origin=center.copy())
+    return ecoli_comp
+
+
+def createEcoli_tunnel(**kwargs):
+    ch = kwargs['ch']
+    rh1 = kwargs['rh1']
+    rh2 = kwargs['rh2']
+    ph = kwargs['ph']
     ds = kwargs['ds']
     rs1 = kwargs['rs1']
     rs2 = kwargs['rs2']
     ls = kwargs['ls']
     es = kwargs['es']
-    left_hand = kwargs['left_hand']
     # sphere_rotation = kwargs['sphere_rotation'] if 'sphere_rotation' in kwargs.keys() else 0
     zoom_factor = kwargs['zoom_factor']
     dist_hs = kwargs['dist_hs']
@@ -137,29 +171,7 @@ def createEcoli_tunnel(**kwargs):
     objtype = sf.obj_dic[matrix_method]
 
     # create helix
-    vhobj0 = objtype()
-    node_dof = vhobj0.get_n_unknown()
-    B = ph / (2 * np.pi)
-    vhgeo0 = supHelix()  # velocity node geo of helix
-    if 'dualPotential' in matrix_method:
-        vhgeo0.set_check_epsilon(False)
-    vhgeo0.set_dof(node_dof)
-    dth = 2 * np.pi / nth
-    fhgeo0 = vhgeo0.create_deltatheta(dth=dth, radius=rh2, R=rh1, B=B, n_c=ch, epsilon=eh, with_cover=with_cover,
-                                      factor=hfct, left_hand=left_hand)
-    vhobj0.set_data(fhgeo0, vhgeo0, name='helix_0')
-    vhobj0.zoom(zoom_factor)
-    # dbg
-    OptDB = PETSc.Options()
-    factor = OptDB.getReal('dbg_theta_factor', 1.5)
-    PETSc.Sys.Print('--------------------> DBG: dbg_theta_factor = %f' % factor)
-    theta = np.pi * ch + (rT2 + rh2 * factor) / (rh1 + rh2)
-    # theta = np.pi * ch + (rT2 + rh2 * 2) / (rh1 + rh2)
-    vhobj0.node_rotation(norm=np.array((0, 0, 1)), theta=theta)
-    vhobj0.move(moveh * zoom_factor)
-    vhobj1 = vhobj0.copy()
-    vhobj1.node_rotation(norm=(0, 0, 1), theta=np.pi, rotation_origin=center)
-    vhobj1.set_name('helix_1')
+    tail_list = create_ecoli_tail(moveh, **kwargs)
 
     # create head
     vsobj = objtype()
@@ -195,10 +207,10 @@ def createEcoli_tunnel(**kwargs):
 
     theta = np.pi / 4 - ch * np.pi
     vsobj.node_rotation(norm=np.array((0, 0, 1)), theta=theta, rotation_origin=center)
-    vhobj0.node_rotation(norm=np.array((0, 0, 1)), theta=theta, rotation_origin=center)
-    vhobj1.node_rotation(norm=np.array((0, 0, 1)), theta=theta, rotation_origin=center)
+    for ti in tail_list:
+        ti.node_rotation(norm=np.array((0, 0, 1)), theta=theta, rotation_origin=center)
     vTobj.node_rotation(norm=np.array((0, 0, 1)), theta=theta, rotation_origin=center)
-    return vsobj, vhobj0, vhobj1, vTobj
+    return vsobj, tail_list, vTobj
 
 
 def createEcoliComp_tunnel(name='...', **kwargs):
@@ -209,11 +221,11 @@ def createEcoliComp_tunnel(name='...', **kwargs):
 
     if not with_T_geo:
         kwargs['rT1'] = kwargs['rh1']
-    vsobj, vhobj0, vhobj1, vTobj = createEcoli_tunnel(**kwargs)
-    ecoli_comp = sf.forcefreeComposite(center, name)
+    vsobj, tail_list, vTobj = createEcoli_tunnel(**kwargs)
+    ecoli_comp = sf.ForceFreeComposite(center, name)
     ecoli_comp.add_obj(vsobj, rel_U=rel_Us)
-    ecoli_comp.add_obj(vhobj0, rel_U=rel_Uh)
-    ecoli_comp.add_obj(vhobj1, rel_U=rel_Uh)
+    for ti in tail_list:
+        c = ecoli_comp.add_obj(ti, rel_U=rel_Uh)
     if with_T_geo:
         ecoli_comp.add_obj(vTobj, rel_U=rel_Uh)
     return ecoli_comp
@@ -290,14 +302,14 @@ def create_rod(namehandle='rod_obj', **problem_kwargs):
     name = namehandle + '_obj_0'
     rod_obj.set_data(f_geo=rod_geo, u_geo=rod_geo, name=name)
     name = namehandle + '_0'
-    rod_comp = sf.givenForceComposite(center=RodCenter, name=name, givenF=givenF)
+    rod_comp = sf.GivenForceComposite(center=RodCenter, name=name, givenF=givenF.copy())
     rod_comp.add_obj(obj=rod_obj, rel_U=rel_URod)
 
     rod_list = (rod_comp,)
     return rod_list
 
 
-def create_infHelix(namehandle='infhelix', **problem_kwargs):
+def create_infHelix(namehandle='infhelix', normalize=False, **problem_kwargs):
     n_helix = problem_kwargs['n_helix']
     eh = problem_kwargs['eh']
     ch = problem_kwargs['ch']
@@ -305,6 +317,12 @@ def create_infHelix(namehandle='infhelix', **problem_kwargs):
     rh2 = problem_kwargs['rh2']
     ph = problem_kwargs['ph']
     nth = problem_kwargs['nth']
+
+    if normalize:
+        zoom_factor = problem_kwargs['zoom_factor']
+        rh2 = rh2 * zoom_factor
+        ph = ph * zoom_factor
+        rh1 = rh1 * zoom_factor
 
     helix_list = []
     for i0, theta0 in enumerate(np.linspace(0, 2 * np.pi, n_helix, endpoint=False)):

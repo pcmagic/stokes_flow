@@ -43,7 +43,7 @@ def ecoli_restart(**main_kwargs):
     with open(t_name, 'rb') as myinput:
         unpick = pickle.Unpickler(myinput)
         problem = unpick.load()
-    problem.unpickmyself()
+    problem.unpick_myself()
     ecoli_comp = problem.get_obj_list()[0]
 
     old_kwargs = problem.get_kwargs()

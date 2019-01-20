@@ -104,7 +104,7 @@ def main_fun(**main_kwargs):
         PETSc.Sys.Print('F_ellipse', F_ellipse)
         # assert  1 == 2
 
-        ecoli_comp = sf.givenForceComposite(center=ellipse_ugeo.get_center(),
+        ecoli_comp = sf.GivenForceComposite(center=ellipse_ugeo.get_center(),
                                             name='ecoli_0', givenF=F_ellipse)
         ecoli_comp.add_obj(obj=ellipse_obj, rel_U=np.zeros(6))
         # problem = sf.GivenForceProblem(**problem_kwargs)

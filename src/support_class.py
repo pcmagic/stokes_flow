@@ -4,9 +4,10 @@ import numpy as np
 
 __all__ = ['uniqueList', 'typeList', 'intList', 'floatList',
            'abs_comp', 'abs_construct_matrix',
-           'check_file_extension',
+           'check_file_extension', 'mpiprint',
            'coordinate_transformation',
-           'tube_flatten', 'get_rot_matrix']
+           'tube_flatten', 'get_rot_matrix', 'rot_vec2rot_mtx',
+           'Adams_Moulton_Methods', 'Adams_Bashforth_Methods']
 
 
 class uniqueList(UserList):
@@ -189,10 +190,12 @@ def tube_flatten(container):
         else:
             yield i
 
+
 def get_rot_matrix(norm=np.array([0, 0, 1]), theta=0):
     norm = np.array(norm).reshape((3,))
-    theta = float(theta)
-    norm = norm / np.linalg.norm(norm)
+    theta = -1 * float(theta)
+    if np.linalg.norm(norm) > 0:
+        norm = norm / np.linalg.norm(norm)
     a = norm[0]
     b = norm[1]
     c = norm[2]
@@ -202,9 +205,19 @@ def get_rot_matrix(norm=np.array([0, 0, 1]), theta=0):
         [a * b * (1 - np.cos(theta)) - c * np.sin(theta), b ** 2 + (1 - b ** 2) * np.cos(theta),
          b * c * (1 - np.cos(theta)) + a * np.sin(theta)],
         [a * c * (1 - np.cos(theta)) + b * np.sin(theta), b * c * (1 - np.cos(theta)) - a * np.sin(theta),
-         c ** 2 + (1 - c ** 2) * np.cos(theta)]
-    ])
+         c ** 2 + (1 - c ** 2) * np.cos(theta)]])
     return rotation
+
+
+def rot_vec2rot_mtx(rot_vct):
+    rot_vct = np.array(rot_vct).flatten()
+    err_msg = 'rot_vct is a numpy array contain three components. '
+    assert rot_vct.size == 3, err_msg
+    rot_mtx = np.array(((0, -rot_vct[2], rot_vct[1]),
+                        (rot_vct[2], 0, -rot_vct[0]),
+                        (-rot_vct[1], rot_vct[0], 0),))
+    return rot_mtx
+
 
 class coordinate_transformation:
     @staticmethod
@@ -214,3 +227,76 @@ class coordinate_transformation:
         fy1 = R[1][0] * fx + R[1][1] * fy + R[1][2] * fz
         fz1 = R[2][0] * fx + R[2][1] * fy + R[2][2] * fz
         return np.dstack((fx1, fy1, fz1))[0]
+
+
+def Adams_Bashforth_Methods(order, f_list, eval_dt):
+    def o1(f_list, eval_dt):
+        delta = eval_dt * f_list[-1]
+        return delta
+
+    def o2(f_list, eval_dt):
+        delta = eval_dt * (3 / 2 * f_list[-1] - 1 / 2 * f_list[-2])
+        return delta
+
+    def o3(f_list, eval_dt):
+        delta = eval_dt * (23 / 12 * f_list[-1] - 16 / 12 * f_list[-2] + 5 / 12 * f_list[-3])
+        return delta
+
+    def o4(f_list, eval_dt):
+        delta = eval_dt * (55 / 24 * f_list[-1] - 59 / 24 * f_list[-2] + 37 / 24 * f_list[-3] - 9 / 24 * f_list[-4])
+        return delta
+
+    def o5(f_list, eval_dt):
+        delta = eval_dt * (1901 / 720 * f_list[-1] - 2774 / 720 * f_list[-2] + 2616 / 720 * f_list[-3]
+                           - 1274 / 720 * f_list[-4] + 251 / 720 * f_list[-5])
+        return delta
+
+    def get_order(order):
+        return dict([(1, o1),
+                     (2, o2),
+                     (3, o3),
+                     (4, o4),
+                     (5, o5),
+                     ]).get(order, o1)
+
+    return get_order(order)(f_list, eval_dt)
+
+
+def Adams_Moulton_Methods(order, f_list, eval_dt):
+    def o1(f_list, eval_dt):
+        delta = eval_dt * f_list[-1]
+        return delta
+
+    def o2(f_list, eval_dt):
+        delta = eval_dt * (1 / 2 * f_list[-1] + 1 / 2 * f_list[-2])
+        return delta
+
+    def o3(f_list, eval_dt):
+        delta = eval_dt * (5 / 12 * f_list[-1] + 8 / 12 * f_list[-2] - 1 / 12 * f_list[-3])
+        return delta
+
+    def o4(f_list, eval_dt):
+        delta = eval_dt * (9 / 24 * f_list[-1] + 19 / 24 * f_list[-2] - 5 / 24 * f_list[-3] + 1 / 24 * f_list[-4])
+        return delta
+
+    def o5(f_list, eval_dt):
+        delta = eval_dt * (251 / 720 * f_list[-1] + 646 / 720 * f_list[-2] - 264 / 720 * f_list[-3]
+                           + 106 / 720 * f_list[-4] - 19 / 720 * f_list[-5])
+        return delta
+
+    def get_order(order):
+        return dict([(1, o1),
+                     (2, o2),
+                     (3, o3),
+                     (4, o4),
+                     (5, o5),
+                     ]).get(order, o1)
+
+    return get_order(order)(f_list, eval_dt)
+
+
+def mpiprint(*args, **kwargs):
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+    if comm.rank == 0:
+        print(*args, **kwargs)

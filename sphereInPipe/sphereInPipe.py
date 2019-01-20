@@ -234,7 +234,7 @@ def main_fun(**main_kwargs):
         with open(fileHandle, 'rb') as myinput:
             unpick = pickle.Unpickler(myinput)
             problem = unpick.load()
-            problem.unpickmyself()
+            problem.unpick_myself()
             residualNorm = problem.get_residualNorm()
 
             problem_kwargs1 = get_problem_kwargs(**main_kwargs)

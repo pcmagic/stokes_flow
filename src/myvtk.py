@@ -72,10 +72,7 @@ def save_singleEcoli_U_vtk(problem: sf.StokesFlowProblem,
         PETSc.Sys.Print('velocity error of sphere (total, x, y, z): ', velocity_err_sphere)
 
     def save_tail():
-        if with_T_geo:
-            tail_obj_list = createHandle(**check_kwargs)[1:]
-        else:
-            tail_obj_list = createHandle(**check_kwargs)[1:3]
+        tail_obj_list = createHandle(**check_kwargs)[1]
         for tail_obj in tail_obj_list:
             tail_obj.set_rigid_velocity(rel_Uh + ecoli_U, center=center)
         velocity_err_list = problem.vtk_check(fileHandle, tail_obj_list)
@@ -104,7 +101,6 @@ def save_singleEcoli_U_vtk(problem: sf.StokesFlowProblem,
     rel_Us = problem_kwargs['rel_Us']
     rel_Uh = problem_kwargs['rel_Uh']
     center = problem_kwargs['center']
-    # with_T_geo = len(problem.get_all_obj_list()) == 4
     with_T_geo = problem_kwargs['with_T_geo'] if 'with_T_geo' in problem_kwargs.keys() else 0
 
     # problem.vtk_obj(fileHandle)
@@ -168,7 +164,7 @@ def save_singleEcoli_U_4part_vtk(problem: sf.StokesFlowProblem, U_list, createHa
     check_kwargs['Tfct'] = 1
 
     obj_list = createHandle(**check_kwargs)
-    for obj, t_U in zip(obj_list, U_list):
+    for obj, t_U in zip(sf.tube_flatten(obj_list), U_list):
         obj.set_rigid_velocity(t_U, center=center)
     velocity_err_list = problem.vtk_check(fileHandle, obj_list)
     PETSc.Sys.Print('velocity error of sphere (total, x, y, z): ', next(velocity_err_list))

@@ -98,7 +98,7 @@ def main_fun(**main_kwargs):
     # # helix_givenF = norm_force
     # helix_givenF = np.array((0, 0, 0, 0, 0, 1))
     # helix_rel_U = np.array((0, 0, 0, 0, 0, 0))
-    # helix_composite = sf.givenForce1DInfComposite(name='helix_composite', givenF=helix_givenF * fct)
+    # helix_composite = sf.GivenForce1DInfComposite(name='helix_composite', givenF=helix_givenF * fct)
     # for tobj in helix_list:
     #     helix_composite.add_obj(tobj, rel_U=helix_rel_U)
     # problem = sf.givenForce1DInfPoblem(axis='z', **problem_kwargs)
@@ -118,7 +118,7 @@ def main_fun(**main_kwargs):
     # PETSc.Sys.Print('---->>>Norm forward helix velocity is', helixU[2] / (helixU[5] * rh1))
 
     # case 4, create problem, given force and torque, iterate method
-    helix_composite = sf.forcefreeComposite(name='helix_composite')
+    helix_composite = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((0, 0, 1)), name='helix_composite')
     problem_kwargs['givenF'] = 0
     problem = sf.GivenTorqueIterateVelocity1DProblem(axis='z', tolerate=1e-3, **problem_kwargs)
     for tobj in helix_list:

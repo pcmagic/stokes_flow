@@ -114,7 +114,7 @@ def restart_solve(**main_kwargs):
     with open(fileHandle + '_pick.bin', 'rb') as input:
         unpick = pickle.Unpickler(input)
         problem = unpick.load()
-        problem.unpickmyself()
+        problem.unpick_myself()
 
     problem_kwargs_old = problem.get_kwargs()
     radius = problem_kwargs_old['radius']
@@ -152,7 +152,7 @@ def export_data(**main_kwargs):
     with open(fileHandle + '_pick.bin', 'rb') as input:
         unpick = pickle.Unpickler(input)
         problem = unpick.load()
-        problem.unpickmyself()
+        problem.unpick_myself()
 
     obj_sphere = problem.get_obj_list()[0]
     obj_sphere.save_mat()

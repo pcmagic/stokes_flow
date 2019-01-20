@@ -1,10 +1,3 @@
-# coding=utf-8
-# 1. generate velocity and force nodes of sphere using MATLAB,
-# 2. for each force node, get b, solve surrounding velocity boundary condition (pipe and cover, named boundary velocity) using formula from Liron's paper, save .mat file
-# 3. read .mat file, for each boundary velocity, solve associated boundary force.
-# 4. solve sphere M matrix using boundary force.
-# 5. solve problem and check.
-
 import sys
 
 import petsc4py
@@ -24,29 +17,6 @@ from src.myio import *
 from src.objComposite import *
 from src.myvtk import save_singleEcoli_vtk
 from ecoli_in_pipe.ecoli_common import *
-
-
-# def get_problem_kwargs(**main_kwargs):
-#     problem_kwargs = get_solver_kwargs()
-#     OptDB = PETSc.Options()
-#     fileHandle = OptDB.getString('f', 'singleEcoliPro')
-#     OptDB.setValue('f', fileHandle)
-#     problem_kwargs['fileHandle'] = fileHandle
-#
-#     kwargs_list = (get_vtk_tetra_kwargs(), get_ecoli_kwargs(), get_forcefree_kwargs(), main_kwargs,)
-#     for t_kwargs in kwargs_list:
-#         for key in t_kwargs:
-#             problem_kwargs[key] = t_kwargs[key]
-#     return problem_kwargs
-#
-#
-# def print_case_info(**problem_kwargs):
-#     fileHandle = problem_kwargs['fileHandle']
-#     PETSc.Sys.Print('-->Ecoli in free space, force free case.')
-#     print_solver_info(**problem_kwargs)
-#     print_forcefree_info(**problem_kwargs)
-#     print_ecoli_info(fileHandle, **problem_kwargs)
-#     return True
 
 
 # @profile
@@ -73,7 +43,7 @@ def main_fun(**main_kwargs):
         #     filename = fileHandle + '_' + str(obj)
         #     obj.get_u_geo().save_nodes(filename + '_U')
         #     obj.get_f_geo().save_nodes(filename + '_f')
-        problem = sf.forcefreeProblem(**problem_kwargs)
+        problem = sf.ForceFreeProblem(**problem_kwargs)
         problem.do_solve_process(ecoli_comp, pick_M=True)
         # # debug
         # problem.saveM_ASCII('%s_M.txt' % fileHandle)

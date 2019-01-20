@@ -54,7 +54,7 @@ def main_fun(**main_kwargs):
     if not problem_kwargs['restart']:
         print_case_info(**problem_kwargs)
         ecoli_comp = createEcoliComp_ellipse(name='ecoli_0', **problem_kwargs)
-        problem = sf.forcefreeProblem(**problem_kwargs)
+        problem = sf.ForceFreeProblem(**problem_kwargs)
         problem.do_solve_process((ecoli_comp,), pick_M=True)
         head_U, tail_U = print_single_ecoli_forcefree_result(ecoli_comp, **problem_kwargs)
         save_singleEcoli_vtk(problem, createHandle=createEcoliComp_ellipse)
@@ -63,7 +63,7 @@ def main_fun(**main_kwargs):
         # with open(fileHandle + '_pick.bin', 'rb') as input:
         #     unpick = pickle.Unpickler(input)
         #     problem = unpick.load( )
-        #     problem.unpickmyself( )
+        #     problem.unpick_myself( )
         # problem_kwargs = problem.get_kwargs( )
         # forcepipe = problem_kwargs['forcepipe']
         # rh1 = problem_kwargs['rh1']

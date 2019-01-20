@@ -19,7 +19,7 @@ def main_fun(**main_kwargs):
         with open(fileHandle + '_pick.bin', 'rb') as input_bin:
             unpick = pickle.Unpickler(input_bin)
             problem = unpick.load()
-            problem.unpickmyself()
+            problem.unpick_myself()
             problem.saveM_mat(fileHandle + '_M')
             problem.destroy()
             for obj in problem.get_obj_list():

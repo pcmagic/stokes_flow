@@ -58,7 +58,7 @@ def main_fun(**main_kwargs):
         ecoli_comp = createEcoliComp_tunnel(name='ecoli_0', **problem_kwargs)
         # ecoli_comp.show_u_nodes(linestyle=' ')
         obj_list = (ecoli_comp,)
-        problem = sf.forcefreeProblem(**problem_kwargs)
+        problem = sf.ForceFreeProblem(**problem_kwargs)
         problem.do_solve_process(obj_list)
         # # debug
         # problem.saveM_ASCII('%s_M.txt' % fileHandle)

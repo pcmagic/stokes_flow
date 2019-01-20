@@ -146,7 +146,7 @@ def main_fun_bck(**main_kwargs):
     with open(fileHandle + '_pick.bin', 'rb') as myinput:
         unpick = pickle.Unpickler(myinput)
         problem = unpick.load()
-        problem.unpickmyself()
+        problem.unpick_myself()
     kwargs = problem.get_kwargs()
     # assume ecoli_U==0, rel_Us and rel_Uh are true (physical) velocity of head and tail respectively.
     kwargs['ecoli_U'] = np.zeros(6)
@@ -402,7 +402,7 @@ def main_4part(**main_kwargs):
     with open(fileHandle + '_pick.bin', 'rb') as myinput:
         unpick = pickle.Unpickler(myinput)
         problem = unpick.load()
-        problem.unpickmyself()
+        problem.unpick_myself()
     kwargs = problem.get_kwargs()
     # given velocity part by part
     kwargs['ecoli_U'] = np.zeros(6)
@@ -435,7 +435,7 @@ def main_fun():
     with open(fileHandle + '_pick.bin', 'rb') as myinput:
         unpick = pickle.Unpickler(myinput)
         problem = unpick.load()
-        problem.unpickmyself()
+        problem.unpick_myself()
     kwargs = problem.get_kwargs()
     # assume ecoli_U==0, rel_Us and rel_Uh are true (physical) velocity of head and tail respectively.
     kwargs['ecoli_U'] = np.zeros(6)

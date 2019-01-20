@@ -6,9 +6,11 @@ petsc4py.init(sys.argv)
 import numpy as np
 from petsc4py import PETSc
 from src import stokes_flow as sf
+from src.support_class import *
 
 __all__ = ['get_solver_kwargs', 'get_forcefree_kwargs', 'get_givenForce_kwargs', 'get_vtk_tetra_kwargs',
            'print_solver_info', 'print_forcefree_info', 'print_givenForce_info',
+           'get_update_kwargs', 'print_update_info',
            'get_shearFlow_kwargs', 'print_shearFlow_info',
            'get_PoiseuilleFlow_kwargs', 'print_PoiseuilleFlow_info',
            'get_ecoli_kwargs', 'print_ecoli_info', 'print_ecoli_U_info',
@@ -20,7 +22,7 @@ __all__ = ['get_solver_kwargs', 'get_forcefree_kwargs', 'get_givenForce_kwargs',
            'get_pipe_kwargs', 'print_pipe_info', ]
 
 
-def print_single_ecoli_force_result(ecoli_comp: sf.forcefreeComposite, prefix='', part='full', **kwargs):
+def print_single_ecoli_force_result(ecoli_comp: sf.ForceFreeComposite, prefix='', part='full', **kwargs):
     def print_full():
         head_obj = ecoli_comp.get_obj_list()[0]
         tail_obj = ecoli_comp.get_obj_list()[1:]
@@ -82,7 +84,7 @@ def print_single_ecoli_force_result(ecoli_comp: sf.forcefreeComposite, prefix=''
 def print_single_ecoli_forcefree_result(ecoli_comp, **kwargs):
     rh1 = kwargs['rh1']
     zoom_factor = kwargs['zoom_factor']
-    if isinstance(ecoli_comp, sf.forcefreeComposite):
+    if isinstance(ecoli_comp, sf.ForceFreeComposite):
         # normally, input is a force free composite object
         ref_U = ecoli_comp.get_ref_U()
     else:
@@ -130,6 +132,7 @@ def get_ecoli_kwargs():
     ch = OptDB.getReal('ch', 0.1)  # cycles of helix
     ph = OptDB.getReal('ph', 3)  # helix pitch
     hfct = OptDB.getReal('hfct', 1)  # helix axis line factor, put more nodes near both tops
+    n_tail = OptDB.getInt('n_tail', 2)  # total of tails
     with_cover = OptDB.getInt('with_cover', 2)
     left_hand = OptDB.getBool('left_hand', False)
     rs = OptDB.getReal('rs', 0.5)  # radius of head
@@ -183,6 +186,7 @@ def get_ecoli_kwargs():
         'ch':          ch,
         'ph':          ph,
         'hfct':        hfct,
+        'n_tail':      n_tail,
         'with_cover':  with_cover,
         'left_hand':   left_hand,
         'rs1':         rs1,
@@ -425,6 +429,38 @@ def print_solver_info(**problem_kwargs):
     PETSc.Sys.Print('  MPI size: %d' % size)
 
 
+def get_update_kwargs():
+    OptDB = PETSc.Options()
+    max_iter = OptDB.getInt('max_iter', 3)
+    eval_dt = OptDB.getReal('eval_dt', 0.1)
+    update_order = OptDB.getInt('update_order', 1)
+    update_fun = OptDB.getString('update_fun', 'Adams_Moulton_Methods')
+    if update_fun == 'Adams_Bashforth_Methods':
+        update_fun = Adams_Bashforth_Methods
+    elif update_fun == 'Adams_Moulton_Methods':
+        update_fun = Adams_Moulton_Methods
+    else:
+        acceptType = ('Adams_Bashforth_Methods', 'Adams_Moulton_Methods')
+        err_msg = 'update_fun are accept for this main code are: %s' % str(acceptType)
+        assert update_fun in acceptType, err_msg
+
+    problem_kwargs = {'max_iter':     max_iter,
+                      'eval_dt':      eval_dt,
+                      'update_order': update_order,
+                      'update_fun':   update_fun, }
+    return problem_kwargs
+
+
+def print_update_info(**problem_kwargs):
+    max_iter = problem_kwargs['max_iter']
+    eval_dt = problem_kwargs['eval_dt']
+    update_order = problem_kwargs['update_order']
+    update_fun = problem_kwargs['update_fun']
+    PETSc.Sys.Print('Iteration Loop: max_iter %d, eval_dt %f, update_order %d, update_fun %s' %
+                    (max_iter, eval_dt, update_order, update_fun))
+    return True
+
+
 def get_shearFlow_kwargs():
     OptDB = PETSc.Options()
     planeShearRatex = OptDB.getReal('planeShearRatex', 0)  #
@@ -440,6 +476,7 @@ def print_shearFlow_info(**problem_kwargs):
     PETSc.Sys.Print('Given background flow: shear flow, rate: %s ' % str(planeShearRate.flatten()))
     return True
 
+
 def get_PoiseuilleFlow_kwargs():
     OptDB = PETSc.Options()
     PoiseuilleStrength = OptDB.getReal('PoiseuilleStrength', 0)
@@ -447,11 +484,13 @@ def get_PoiseuilleFlow_kwargs():
     problem_kwargs = {'PoiseuilleStrength': PoiseuilleStrength}
     return problem_kwargs
 
+
 def print_PoiseuilleFlow_info(**problem_kwargs):
     PoiseuilleStrength = problem_kwargs['PoiseuilleStrength']
     PETSc.Sys.Print('Given background flow: Poiseuille flow, rate: %f ' % PoiseuilleStrength)
     PETSc.Sys.Print('  current assumes flow along z axis and pipe radius==1, vz = rate*(1-r^2)')
     return True
+
 
 def get_forcefree_kwargs():
     OptDB = PETSc.Options()

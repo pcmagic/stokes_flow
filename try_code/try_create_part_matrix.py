@@ -20,7 +20,7 @@ fileHandle = 'singleEcoliPro'
 with open(fileHandle + '_pick.bin', 'rb') as input:
     unpick = pickle.Unpickler(input)
     problem = unpick.load()
-    problem.unpickmyself()
+    problem.unpick_myself()
 kwargs = problem.get_kwargs()
 
 rigid_velocity = [2.88870196e-08, 1.25399086e-08, -5.91414513e-03, 7.34158974e-09, 2.73837520e-08, 4.32433478e-01]

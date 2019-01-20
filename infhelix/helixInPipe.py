@@ -22,7 +22,7 @@ def get_problem_kwargs(**main_kwargs):
     OptDB.setValue('n_helix', n_helix)
     problem_kwargs['n_helix'] = n_helix
 
-    kwargs_list = (main_kwargs, get_hehtolix_kwargs(), get_givenForce_kwargs())
+    kwargs_list = (main_kwargs, get_helix_kwargs(), get_givenForce_kwargs())
     for t_kwargs in kwargs_list:
         for key in t_kwargs:
             problem_kwargs[key] = t_kwargs[key]
@@ -50,7 +50,8 @@ def main_fun(**main_kwargs):
     rh1 = problem_kwargs['rh1']
     rh2 = problem_kwargs['rh2']
     helix_theta = np.arctan(2 * np.pi * rh1 / ph)
-    R = (rh1 + rh2 * np.cos(helix_theta)) / problem_kwargs['zoom_factor']
+    # R = (rh1 + rh2 * np.cos(helix_theta)) / problem_kwargs['zoom_factor']
+    R = rh1 / problem_kwargs['zoom_factor']
     objname = 'infhelix'
     print_case_info(objname, **problem_kwargs)
 
@@ -79,7 +80,7 @@ def main_fun(**main_kwargs):
     # problem.print_info()
     # problem.create_matrix()
     #
-    # # case 1, translation, translation
+    # # case 1, translation
     # for tobj in helix_list:
     #     tobj.set_rigid_velocity((0, 0, 1, 0, 0, 0))
     # infPipe_ugeo.set_rigid_velocity((0, 0, 0, 0, 0, 0))
@@ -114,7 +115,7 @@ def main_fun(**main_kwargs):
     # fct = (2 * (maxtheta / (2 * np.pi)) * ph) / nSegment  # rescale factor
     # helix_givenF = np.array((0, 0, 0, 0, 0, 1))
     # helix_rel_U = np.array((0, 0, 0, 0, 0, 0))
-    # helix_composite = sf.givenForce1DInfComposite(name='helix_composite', givenF=helix_givenF * fct)
+    # helix_composite = sf.GivenForce1DInfComposite(name='helix_composite', givenF=helix_givenF * fct)
     # for tobj in helix_list:
     #     helix_composite.add_obj(tobj, rel_U=helix_rel_U)
     # problem.add_obj(helix_composite)
@@ -132,9 +133,11 @@ def main_fun(**main_kwargs):
     # PETSc.Sys.Print('---->>>Norm forward helix velocity is', helixU[2] / (helixU[5] * rh1))
 
     # case 4, create problem, given force and torque, iterate method
-    helix_composite = sf.forcefreeComposite(name='helix_composite')
+    helix_composite = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((0, 0, 1)), name='helix_composite')
     problem_kwargs['givenF'] = 0
-    problem = sf.GivenTorqueIterateVelocity1DProblem(axis='z', tolerate=1e-3, **problem_kwargs)
+    problem_kwargs['axis'] = 'z'
+    problem_kwargs['tolerate'] = 1e-3
+    problem = sf.GivenTorqueIterateVelocity1DProblem(**problem_kwargs)
     for tobj in helix_list:
         helix_composite.add_obj(tobj, rel_U=np.zeros(6))
         problem.add_obj(tobj)
