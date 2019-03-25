@@ -18,9 +18,9 @@ def get_problem_kwargs(**main_kwargs):
     fileHandle = OptDB.getString('f', 'HelixInPipe')
     OptDB.setValue('f', fileHandle)
     problem_kwargs['fileHandle'] = fileHandle
-    n_helix = OptDB.getReal('n_helix', 2)
-    OptDB.setValue('n_helix', n_helix)
-    problem_kwargs['n_helix'] = n_helix
+    n_tail = OptDB.getReal('n_tail', 2)
+    OptDB.setValue('n_tail', n_tail)
+    problem_kwargs['n_tail'] = n_tail
 
     kwargs_list = (main_kwargs, get_helix_kwargs(), get_givenForce_kwargs())
     for t_kwargs in kwargs_list:
@@ -31,11 +31,11 @@ def get_problem_kwargs(**main_kwargs):
 
 def print_case_info(obj_name, **problem_kwargs):
     fileHandle = problem_kwargs['fileHandle']
-    n_helix = problem_kwargs['n_helix']
+    n_tail = problem_kwargs['n_tail']
     print_solver_info(**problem_kwargs)
     print_forcefree_info(**problem_kwargs)
     print_helix_info(obj_name, **problem_kwargs)
-    PETSc.Sys.Print('  given unite spin wz, # helix %d. ' % n_helix)
+    PETSc.Sys.Print('  given unite spin wz, # helix %d. ' % n_tail)
     return True
 
 
@@ -144,6 +144,7 @@ def main_fun(**main_kwargs):
     problem.add_obj(infPipe_obj)
     problem.set_iterate_obj(helix_list)
     problem.print_info()
+    problem.create_matrix()
     u0, tol = problem.do_iterate()
     PETSc.Sys.Print('---->>>helix force relative tolerate', tol)
     helixU = np.array((0, 0, u0, 0, 0, 1))

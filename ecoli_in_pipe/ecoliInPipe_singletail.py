@@ -73,14 +73,15 @@ def main_fun(**main_kwargs):
         ecoli_comp.add_obj(ecoli_comp0.get_obj_list()[1], rel_U=ecoli_comp0.get_rel_U_list()[1])
 
         iterateTolerate = OptDB.getReal('iterateTolerate', 1e-4)
-        problem = sf.stokesletsInPipeforcefreeIterateProblem(tolerate=iterateTolerate, **problem_kwargs)
+        problem = sf.stokesletsInPipeforcefreeIterateProblem(**problem_kwargs)
         problem.set_prepare(forcepipe)
         problem.add_obj(ecoli_comp)
         if problem_kwargs['pickProblem']:
             problem.pickmyself(fileHandle, check=True)
         problem.set_iterate_comp(ecoli_comp)
         problem.print_info()
-        refU, Ftol, Ttol = problem.do_iterate()
+        problem.create_matrix()
+        refU, Ftol, Ttol = problem.do_iterate(tolerate=iterateTolerate)
         ecoli_comp.set_ref_U(refU)
         PETSc.Sys.Print('---->>>reference velocity is', refU)
 

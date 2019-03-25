@@ -26,6 +26,9 @@ Zhang Ji, 20181219
 import numpy as np
 from src.support_class import *
 import abc
+from scipy import interpolate
+import os
+import pickle
 
 __all__ = ['JefferyObj',
            'ShearJefferyProblem', ]
@@ -35,10 +38,11 @@ class _JefferyProblem:
     def __init__(self, name='...', **kwargs):
         self._name = name
         self._kwargs = kwargs
+        self._type = '_JefferyProblem'
         self._obj_list = uniqueList()  # contain objects
 
     def __repr__(self):
-        return type(self).__name__
+        return self._type
 
     def __str__(self):
         return self.get_name()
@@ -93,12 +97,19 @@ class _JefferyProblem:
             obj.update_location(eval_dt, print_handle)
 
 
+# class _Jeffery3DProblem(_JefferyProblem):
+#     def __init__(self, name='...', **kwargs):
+#         super().__init__(name=name, **kwargs)
+#         self._type = 'Jeffery3DProblem'
+
+
 class ShearJefferyProblem(_JefferyProblem):
     _planeShearRate = ...  # type: np.ndarray
 
     # current version the velocity of shear flow points to the x axis and only varys in the z axis.
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self._type = 'ShearJefferyProblem'
         self._planeShearRate = np.array(kwargs['planeShearRate']).reshape((1, 3))
         err_msg = 'shear flow velocity is must vertical to (y, z) plane. '
         assert np.all(np.isclose(self._planeShearRate[0, -2:], (0, 0))), err_msg
@@ -128,11 +139,17 @@ class ShearJefferyProblem(_JefferyProblem):
         return self._planeShearRate
 
 
+class ShearTableProblem(ShearJefferyProblem):
+    def nothing(self):
+        pass
+
+
 class SingleStokesletsJefferyProblem(_JefferyProblem):
     _StokesletsStrength = ...  # type: np.ndarray
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self._type = 'SingleStokesletsJefferyProblem'
         self._StokesletsStrength = np.array(kwargs['StokesletsStrength']).reshape((1, 3)).flatten()
 
     def flow_strain(self, location):
@@ -207,6 +224,7 @@ class HalfSpaceJefferyProblem(_JefferyProblem):
 
     def __init__(self, h, **kwargs):
         super().__init__(**kwargs)
+        self._type = 'HalfSpaceJefferyProblem'
         self._StokesletsStrength = np.array(kwargs['StokesletsStrength']).reshape((1, 3)).flatten()
         self._h = h
 
@@ -548,6 +566,7 @@ class SingleDoubleletJefferyProblem(_JefferyProblem):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self._type = 'SingleDoubleletJefferyProblem'
         self._DoubleletStrength = np.array(kwargs['DoubleletStrength']).reshape((1, 3)).flatten()
         self._B = np.array(kwargs['B']).reshape((1, 3)).flatten()
 
@@ -709,29 +728,30 @@ class SingleDoubleletJefferyProblem(_JefferyProblem):
 
 
 class JefferyObj:
-    _center = ...  # type: np.ndarray
-    _norm = ...  # type: np.ndarray
-    _velocity = ...  # type: np.ndarray
-    _lbd = ...  # type: np.ndarray
-    _father = ...  # type: _JefferyProblem
-
-    def __init__(self, name='...', **kwargs):
-        self._center = kwargs['center']
-        self._norm = None
-        self.set_norm(kwargs['norm'])
-        self._velocity = kwargs['velocity']
-        self._lbd = kwargs['lbd']  # lbd = (a^2-1)/(a^2+1), a = rs1 / rs2, rs1(2) is the major (minor) axis.
-        self._index = -1
-        self._father = None
-        self._name = name
+    def __init__(self, name='...', rot_speed=0, **kwargs):
         self._type = 'JefferyObj'
+        self._center = kwargs['center']  # type: np.ndarray
+        self._norm = ...  # type: np.ndarray
+        self._lateral_norm = ...  # type: np.ndarray
+        self._set_norm(kwargs['norm'])
+        self._set_lateral_norm(kwargs['lateral_norm'])
+        self._speed = kwargs['speed']
+        self._rot_speed = rot_speed
+        # lbd = (a^2-1)/(a^2+1), a = rs2 / rs1, rs1(2) is the major (minor) axis.
+        self._lbd = kwargs['lbd']  # type: np.ndarray
+        self._index = -1
+        self._father = None  # type: _JefferyProblem
+        self._name = name
         # the following properties store the location history of the composite.
         self._update_fun = Adams_Moulton_Methods  # funHandle and order
         self._update_order = 1  # funHandle and order
         self._locomotion_fct = np.ones(3)
         self._center_hist = []
         self._norm_hist = []
+        self._lateral_norm_hist = []
         self._U_hist = []
+        self._dP_hist = []
+        self._dP2_hist = []
         self._displace_hist = []
         self._rotation_hist = []
 
@@ -740,12 +760,6 @@ class JefferyObj:
 
     def __str__(self):
         return self._name
-
-    def set_norm(self, norm):
-        err_msg = 'norm=[x, y, z] has 3 components and ||norm|| > 0. '
-        assert norm.size == 3 and np.linalg.norm(norm) > 0, err_msg
-        self._norm = norm / np.linalg.norm(norm)
-        return True
 
     @property
     def center(self):
@@ -763,20 +777,49 @@ class JefferyObj:
 
     @norm.setter
     def norm(self, norm: np.ndarray):
-        err_msg = 'norm=[x, y, z] has 3 components. '
-        assert norm.size == 3, err_msg
-        self._norm = norm
+        self._set_norm(norm)
 
     @property
-    def velocity(self):
-        return self._velocity
+    def lateral_norm(self):
+        return self._lateral_norm
 
-    @velocity.setter
-    def velocity(self, velocity):
-        velocity = np.array(velocity).flatten()
-        err_msg = 'velocity is a scalar. '
-        assert velocity.size == 1, err_msg
-        self._velocity = velocity
+    @lateral_norm.setter
+    def lateral_norm(self, lateral_norm: np.ndarray):
+        self._set_lateral_norm(lateral_norm)
+
+    def _set_norm(self, norm: np.ndarray):
+        err_msg = 'norm=[x, y, z] has 3 components and ||norm|| > 0. '
+        assert norm.size == 3 and np.linalg.norm(norm) > 0, err_msg
+        self._norm = norm / np.linalg.norm(norm)
+        return True
+
+    def _set_lateral_norm(self, lateral_norm: np.ndarray):
+        err_msg = 'lateral_norm=[x, y, z] has 3 components and ||lateral_norm|| > 0. '
+        assert lateral_norm.size == 3 and np.linalg.norm(lateral_norm) > 0, err_msg
+        self._lateral_norm = lateral_norm / np.linalg.norm(lateral_norm)
+        return True
+
+    @property
+    def speed(self):
+        return self._speed
+
+    @speed.setter
+    def speed(self, speed):
+        speed = np.array(speed).flatten()
+        err_msg = 'speed is a scalar. '
+        assert speed.size == 1, err_msg
+        self._speed = speed
+
+    @property
+    def rot_speed(self):
+        return self._rot_speed
+
+    @rot_speed.setter
+    def rot_speed(self, rot_speed):
+        rot_speed = np.array(rot_speed).flatten()
+        err_msg = 'rot_speed is a scalar. '
+        assert rot_speed.size == 1, err_msg
+        self._rot_speed = rot_speed
 
     @property
     def lbd(self):
@@ -814,6 +857,10 @@ class JefferyObj:
         return self._norm_hist
 
     @property
+    def lateral_norm_hist(self):
+        return self._lateral_norm_hist
+
+    @property
     def U_hist(self):
         return self._U_hist
 
@@ -825,77 +872,90 @@ class JefferyObj:
     def rotation_hist(self):
         return self._rotation_hist
 
+    @property
+    def update_order(self):
+        return self._update_order
+
     def set_update_para(self, fix_x=False, fix_y=False, fix_z=False,
                         update_fun=Adams_Moulton_Methods, update_order=1):
-        # for a cutoff infinity symmetric problem, each time step set the obj in the center of the cutoff region to improve the accuracy.
+        # for a cutoff infinity symmetric problem,
+        #   each time step set the obj in the center of the cutoff region to improve the accuracy.
         self._locomotion_fct = np.array((not fix_x, not fix_y, not fix_z), dtype=np.float)
         self._update_fun = update_fun
         self._update_order = update_order
         return self._locomotion_fct
 
     def dbg_set_update_para(self, fix_x=1, fix_y=1, fix_z=1, update_fun=Adams_Moulton_Methods, update_order=1):
-        # for a cutoff infinity symmetric problem, each time step set the obj in the center of the cutoff region to improve the accuracy.
+        # for a cutoff infinity symmetric problem,
+        #   each time step set the obj in the center of the cutoff region to improve the accuracy.
         self._locomotion_fct = np.array((fix_x, fix_y, fix_z))
         self._update_fun = update_fun
         self._update_order = update_order
         return self._locomotion_fct
 
-    @property
-    def update_order(self):
-        return self._update_order
-
     def move(self, displacement):
         self._center = self._center + displacement
         return True
 
-    def rotate(self, rotation):
+    def rotate(self, rotation, rotation2):
         self._norm = self._norm + rotation
         self._norm = self._norm / np.linalg.norm(self._norm)
+        self._lateral_norm = self._lateral_norm + rotation2
+        self._lateral_norm = self._lateral_norm / np.linalg.norm(self._lateral_norm)
         # # dbg
         # print(self._norm, np.linalg.norm(self._norm))
         return True
 
+    def get_dP_at(self, X, P, P2, rot_v):
+        S, Omega = self.father.flow_strain_rotation(X)
+
+        dP = np.dot(Omega, P) + self._lbd * (np.dot(S, P) - np.dot(P, np.dot(S, P)) * P) + \
+             np.cross(P2 * rot_v, P)
+        dP2 = np.dot(Omega, P2) - self._lbd * np.dot(P, np.dot(S, P2)) * P
+        omega = np.cross(P, dP) / np.dot(P, P)
+        return dP, dP2, omega
+
+    def get_dX_at(self, X, P, trs_v):
+        Ub = self.father.flow_velocity(X)  # background velocity
+        dX = trs_v * P + Ub
+        # print(trs_v, P, Ub)
+        return dX
+
+    def get_velocity_at(self, X, P, P2, trs_v, rot_v):
+        dX = self.get_dX_at(X, P, trs_v)
+        dP, dP2, omega = self.get_dP_at(X, P, P2, rot_v)
+        return dX, dP, dP2, omega
+
     def update_location(self, eval_dt, print_handle=''):
         P = self.norm
+        P2 = self.lateral_norm
         X = self.center
-        v = self.velocity
-        problem = self.father
-        # Omega = problem.flow_rotation(X)
-        # S = problem.flow_strain(X)
-        S, Omega = problem.flow_strain_rotation(X)
-        Ub = problem.flow_velocity(X)  # background velocity
+        trs_v = self.speed
+        rot_v = self.rot_speed
+
+        dX, dP, dP2, omega = self.get_velocity_at(X, P, P2, trs_v, rot_v)
+        self._U_hist.append(np.hstack((dX, omega)))
+        self._dP_hist.append(dP)
+        self._dP2_hist.append(dP2)
+
         fct = self._locomotion_fct
-        # # dbg
-        # print(Omega[2,1], Omega[0,2], Omega[1,0])
-        # print(S)
-        # print(Ub)
-        # print()
-
-        dP = np.dot(Omega, P) + self._lbd * (np.dot(S, P) - np.dot(P, np.dot(S, P)) * P)
-        # # dbg
-        # print(Omega)
-        # print(P)
-        # print(dP)
-        # print()
-        dX = v * P + Ub
-        U = np.hstack((dX, dP))
-        self._U_hist.append(U)
-
         order = np.min((len(self.U_hist), self.update_order))
-        fct_list = self.U_hist[-1:-(order + 1):-1]
-        dst_fct_list = [fct[:3] for fct in fct_list]
-        rot_fct_list = [fct[3:] for fct in fct_list]
+        dst_fct_list = [fct[:3] for fct in self.U_hist[-1:-(order + 1):-1]]
+        rot_fct_list = [fct for fct in self._dP_hist[-1:-(order + 1):-1]]
+        rot2_fct_list = [fct for fct in self._dP2_hist[-1:-(order + 1):-1]]
         distance_true = self._update_fun(order, dst_fct_list, eval_dt)
         rotation = self._update_fun(order, rot_fct_list, eval_dt)
+        rotation2 = self._update_fun(order, rot2_fct_list, eval_dt)
         # # dbg
         # print(distance_true)
         # print(rotation, np.linalg.norm(rotation))
         # print()
         distance = distance_true * fct
         self.move(distance)
-        self.rotate(rotation)
+        self.rotate(rotation, rotation2)
         self._center_hist.append(self.center)
         self._norm_hist.append(self.norm)
+        self._lateral_norm_hist.append(self.lateral_norm)
         self._displace_hist.append(distance_true)
         self._rotation_hist.append(rotation)
 
@@ -914,3 +974,121 @@ class JefferyObj:
         # tU = np.dot(U[:3], P) / np.dot(P, P)
         # tW = np.dot(U[3:], P) / np.dot(P, P)
         # print('    ref_U projection on norm', np.hstack((tU, tW)))
+
+
+class TableObj(JefferyObj):
+    def __init__(self, table_name, name='...', rot_speed=0, **kwargs):
+        self._lateral_norm0 = ...  # type: np.ndarray # ini direction of lateral norm
+        super().__init__(name=name, rot_speed=rot_speed, **kwargs)
+        self._type = 'TableObj'
+        self._intp_fun_list = []
+        self._intp_psi_list = []
+        self.load_table(table_name=table_name)
+
+    def _set_lateral_norm(self, lateral_norm: np.ndarray):
+        err_msg = 'lateral_norm=[x, y, z] has 3 components and ||lateral_norm|| > 0. '
+        assert lateral_norm.size == 3 and np.linalg.norm(lateral_norm) > 0, err_msg
+        self._lateral_norm = lateral_norm / np.linalg.norm(lateral_norm)
+        self._lateral_norm0 = lateral_norm / np.linalg.norm(lateral_norm)
+        return True
+
+    def load_table(self, table_name):
+        t_path = os.path.dirname(os.path.abspath(__file__))
+        full_path = os.path.normpath(t_path + '/' + '%s.pickle' % table_name)
+        with open(full_path, 'rb') as handle:
+            table_data = pickle.load(handle)
+        intp_fun_list = self._intp_fun_list
+        intp_psi_list = self._intp_psi_list
+        for tpsi, table_psi_data in table_data:
+            tintp_fun_list = []
+            intp_psi_list.append(tpsi)
+            for tx, ty, tU in table_psi_data:
+                tfun = interpolate.RectBivariateSpline(tx, ty, tU, kx=3, ky=3)
+                # tfun = interpolate.interp2d(tx, ty, tU.T, kind='quintic', copy=False, )
+                tintp_fun_list.append(tfun)
+            intp_fun_list.append(tintp_fun_list)
+        return True
+
+    def intp_U_fun(self, t_theta, t_phi, t_psi):
+        # if 0 <= t_theta < np.pi and 0 <= t_phi < np.pi:  # letf down
+        #     sign_list = [1, 1, 1, 1, 1, 1]
+        # elif 0 <= t_theta < np.pi and np.pi <= t_phi <= 2 * np.pi:  # right down
+        #     t_theta = t_theta
+        #     t_phi = t_phi - np.pi
+        #     sign_list = [1, 1, -1, 1, 1, -1]
+        # elif np.pi <= t_theta <= 2 * np.pi and np.pi <= t_phi <= 2 * np.pi:  # right up
+        #     t_theta = t_theta - np.pi
+        #     t_phi = 2 * np.pi - t_phi
+        #     sign_list = [-1, 1, -1, -1, 1, -1]
+        # elif np.pi <= t_theta <= 2 * np.pi and 0 <= t_phi < np.pi:  # left up
+        #     t_theta = t_theta - np.pi
+        #     t_phi = np.pi - t_phi
+        #     sign_list = [-1, 1, 1, -1, 1, 1]
+        # else:
+        #     raise Exception('norm_theta %f and (or) norm_phi %f out of range (0, 2*pi)' % (t_theta, t_phi))
+        if 0 <= t_theta <= np.pi and 0 <= t_phi < np.pi:  # letf down
+            sign_list = [1, 1, 1, 1, 1, 1]
+        elif 0 <= t_theta <= np.pi and np.pi <= t_phi <= 2 * np.pi:  # right down
+            t_theta = t_theta
+            t_phi = t_phi - np.pi
+            sign_list = [1, 1, -1, 1, 1, -1]
+        else:
+            raise Exception('norm_theta %f and (or) norm_phi %f out of range (0, pi) * (0, 2pi)' % (t_theta, t_phi))
+
+        intp_U = []
+        for tfun in self._intp_fun_list:
+            t_U = []
+            for intp_fun, sign in zip(tfun, sign_list):
+                t_U.append(intp_fun(t_theta, t_phi) * sign)
+            intp_U.append(np.hstack(t_U).flatten())
+        intp_U.append(intp_U[0].copy())
+        intp_U = np.vstack(intp_U)
+        intp_psi = np.hstack([self._intp_psi_list, np.pi * 2])
+        intp_fun1d = interpolate.interp1d(intp_psi, intp_U, kind='quadratic', copy=False, axis=0, bounds_error=True)
+        return intp_fun1d(t_psi)
+
+    def get_dP_at(self, X, P, P2, rot_v):
+        raise Exception('This function do NOT work in %s Obj' % self._name)
+
+    def get_dX_at(self, X, P, trs_v):
+        raise Exception('This function do NOT work in %s Obj' % self._name)
+
+    def get_velocity_at(self, X, P, P2, trs_v, rot_v=0):
+        err_msg = 'current version rot_v==0'
+        assert rot_v == 0, err_msg
+
+        Ub = self.father.flow_velocity(X)  # background velocity
+        P20 = self._lateral_norm0  # ini direction of lateral norm
+        t_theta = np.arccos(P[2] / np.linalg.norm(P))
+        t_phi = np.arctan2(P[1], P[0])
+        t_phi = t_phi + 2 * np.pi if t_phi < 0 else t_phi
+        rot_mtx = np.array(((np.cos(-t_phi), np.sin(-t_phi), 0), (np.sin(t_phi), np.cos(-t_phi), 0), (0, 0, 1)))
+        P21 = np.dot(rot_mtx, P2)
+        rot_mtx = np.array(((np.cos(-t_phi), 0, np.sin(-t_phi)), (0, 1, 0), (np.sin(t_phi), 0, np.cos(-t_phi))))
+        P21 = np.dot(rot_mtx, P21)
+        sign = np.sign(np.cross(P20, P21)[2])
+        t_psi = sign * np.arccos(np.clip(np.dot(P20, P21) / np.linalg.norm(P20) / np.linalg.norm(P21), -1, 1))
+        t_psi = 2 * np.pi * (sign < 0) + t_psi  # (-pi,pi) -> (0, 2pi)
+        tU = self.intp_U_fun(t_theta, t_phi, t_psi)
+        dX = tU[:3] + Ub + trs_v * P
+        omega = tU[3:]
+        dP = np.cross(omega, P)
+        dP2 = np.cross(omega, P2)
+        return dX, dP, dP2, omega
+
+# class JefferyObj3D(JefferyObj):
+#     def __init__(self, name='...', **kwargs):
+#         super().__init__(name, **kwargs)
+#         self._type = 'JefferyObj3D'
+#         self._norm = ...  # type: np.ndarray
+#         self._set_norm(kwargs['norm'])
+#         # lbd   = (a^2-1)/(a^2+1), a = rs2 / rs1
+#         # kappa = (b^2-1)/(b^2+1), b = rs3 / rs1
+#         # rs1, rs2, rs3 are 3 half length of the ellipse.
+#         self._lbd = kwargs['lbd']  # type: np.ndarray
+#         self._kappa = kwargs['kappa']  # type: np.ndarray
+#         # the following properties store the location history of the composite.
+#         self._norm_hist = []  # each element is a (9,) array contain 3 norms.
+#
+#     def nothint(self):
+#         pass

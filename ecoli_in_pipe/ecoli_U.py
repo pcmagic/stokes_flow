@@ -120,7 +120,7 @@ def main_fun(**main_kwargs):
         problem.create_F_U()
         problem.solve()
         print_single_ecoli_force_result(problem, part=ecoli_part, prefix='tran', **problem_kwargs)
-        # save_singleEcoli_U_vtk(problem, createHandle=createEcoli_tunnel, part=ecoli_part)
+        save_singleEcoli_U_vtk(problem, createHandle=createEcoli_tunnel, part=ecoli_part)
 
         # 2. rotation
         set_part_velocity(weight=(0, 0, 0, 1, 1, 1))
@@ -128,7 +128,7 @@ def main_fun(**main_kwargs):
         problem.create_F_U()
         problem.solve()
         print_single_ecoli_force_result(problem, part=ecoli_part, prefix='rota', **problem_kwargs)
-        # save_singleEcoli_U_vtk(problem, createHandle=createEcoli_tunnel, part=ecoli_part)
+        save_singleEcoli_U_vtk(problem, createHandle=createEcoli_tunnel, part=ecoli_part)
 
         # 3. move
         set_part_velocity(weight=(1, 1, 1, 1, 1, 1))
@@ -137,7 +137,7 @@ def main_fun(**main_kwargs):
         problem.create_F_U()
         problem.solve()
         print_single_ecoli_force_result(problem, part=ecoli_part, prefix='move', **problem_kwargs)
-        # save_singleEcoli_U_vtk(problem, createHandle=createEcoli_tunnel, part=ecoli_part)
+        save_singleEcoli_U_vtk(problem, createHandle=createEcoli_tunnel, part=ecoli_part)
 
         if pickProblem:
             problem.pickmyself(fileHandle, pick_M=True, unpick=False)

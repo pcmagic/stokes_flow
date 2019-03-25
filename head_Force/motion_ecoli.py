@@ -74,8 +74,8 @@ def main_fun(**main_kwargs):
         for obj in [ecoli_comp, ]:
             problem.add_obj(obj)
         problem.print_info()
-        problem.create_matrix()
         # # dbg
+        # problem.create_matrix()
         # problem.solve()
         # print_single_ecoli_force_result(ecoli_comp, prefix='', part='full', **problem_kwargs)
         # ref_U = ecoli_comp.get_ref_U()
@@ -90,44 +90,65 @@ def main_fun(**main_kwargs):
         # evaluation loop
         t0 = time()
         for idx in range(1, max_iter + 1):
-            problem.solve()
-            print_single_ecoli_force_result(ecoli_comp, prefix='', part='full', **problem_kwargs)
-            if rank == 0:
-                savemat('%s_%05d' % (fileHandle, idx), {
-                    'ecoli_center': np.vstack(ecoli_comp.get_center()),
-                    'ecoli_nodes':  np.vstack([tobj.get_u_nodes() for tobj in
-                                               ecoli_comp.get_obj_list()]),
-                    'ecoli_f':      np.hstack(
-                            [tobj.get_force() for tobj in ecoli_comp.get_obj_list()]
-                    ).reshape(-1, 3),
-                    'ecoli_u':      np.hstack([tobj.get_re_velocity() for tobj in
-                                               ecoli_comp.get_obj_list()]
-                                              ).reshape(-1, 3),
-                    'ecoli_norm':   np.vstack(
-                            ecoli_comp.get_obj_list()[0].get_u_geo().get_geo_norm()),
-                    'ecoli_U':      np.vstack(ecoli_comp.get_ref_U())}, oned_as='column')
-            # ref_U = ecoli_comp.get_ref_U()
-            # fct = rs1 / np.linalg.norm(ref_U[:3])
-            # Todo: check if ecoli out of pipe boundary.
-            problem.update_location(eval_dt, print_handle='%d / %d' % (idx, max_iter))
+            PETSc.Sys.Print()
+            PETSc.Sys.Print('#########################################################################################')
             problem.create_matrix()
-            # problem.show_u_nodes()
-            # problem.vtk_obj(fileHandle, idx)
-            # problem.vtk_tetra('%s_vtkU_%05d' % (fileHandle, idx), vtk_geo)
-        t1 = time()
-        PETSc.Sys.Print('%s: run %d loops using %f' % (fileHandle, max_iter, (t1 - t0)))
-        # # dbg
-        # PETSc.Sys.Print(ecoli_comp.get_center_hist())
-        # PETSc.Sys.Print(ecoli_comp.get_obj_list()[0].get_obj_norm_hist())
-        # PETSc.Sys.Print(ecoli_comp.get_ref_U_hist())
+            problem.solve()
+            # print_single_ecoli_force_result(ecoli_comp, prefix='', part='full', **problem_kwargs)
+            # if rank == 0:
+            #     savemat('%s_%05d' % (fileHandle, idx), {
+            #         'ecoli_center': np.vstack(ecoli_comp.get_center()),
+            #         'ecoli_nodes':  np.vstack([tobj.get_u_nodes() for tobj in
+            #                                    ecoli_comp.get_obj_list()]),
+            #         'ecoli_f':      np.hstack(
+            #                 [tobj.get_force() for tobj in ecoli_comp.get_obj_list()]
+            #         ).reshape(-1, 3),
+            #         'ecoli_u':      np.hstack([tobj.get_re_velocity() for tobj in
+            #                                    ecoli_comp.get_obj_list()]
+            #                                   ).reshape(-1, 3),
+            #         'ecoli_norm':   np.vstack(
+            #                 ecoli_comp.get_obj_list()[0].get_u_geo().get_geo_norm()),
+            #         'ecoli_U':      np.vstack(ecoli_comp.get_ref_U())}, oned_as='column')
+            # # Todo: check if ecoli out of pipe boundary.
+            # problem.update_location(eval_dt, print_handle='%d / %d' % (idx, max_iter))
+            # # problem.show_u_nodes()
+            # # problem.vtk_obj(fileHandle, idx)
+            # # problem.vtk_tetra('%s_vtkU_%05d' % (fileHandle, idx), vtk_geo)
+        # t1 = time()
+        # PETSc.Sys.Print('%s: run %d loops using %f' % (fileHandle, max_iter, (t1 - t0)))
+        # # # dbg
+        # # PETSc.Sys.Print(ecoli_comp.get_center_hist())
+        # # PETSc.Sys.Print(ecoli_comp.get_obj_list()[0].get_obj_norm_hist())
+        # # PETSc.Sys.Print(ecoli_comp.get_ref_U_hist())
+        #
+        # problem.destroy()
+        # if rank == 0:
+        #     savemat(fileHandle,
+        #             {'ecoli_center': np.vstack(ecoli_comp.get_center_hist()),
+        #              'ecoli_norm':   np.vstack(ecoli_comp.get_norm_hist()),
+        #              'ecoli_U':      np.vstack(ecoli_comp.get_ref_U_hist())},
+        #             oned_as='column')
 
-        problem.destroy()
-        if rank == 0:
-            savemat(fileHandle,
-                    {'ecoli_center': np.vstack(ecoli_comp.get_center_hist()),
-                     'ecoli_norm':   np.vstack(ecoli_comp.get_norm_hist()),
-                     'ecoli_U':      np.vstack(ecoli_comp.get_ref_U_hist())},
-                    oned_as='column')
+        # dbg, check if force and torque free
+        ref_U = ecoli_comp.get_ref_U()
+        center = ecoli_comp.get_center()
+        problem = sf.ShearFlowProblem(**problem_kwargs)
+        for obj, rel_U in zip(ecoli_comp.get_obj_list(), ecoli_comp.get_rel_U_list()):
+            u_geo = obj.get_u_geo()
+            u_geo.set_rigid_velocity(ref_U + rel_U, center=center)
+            problem.add_obj(obj)
+        # problem.print_info()
+        problem.create_matrix()
+        problem.solve()
+        print_single_ecoli_force_result(ecoli_comp, prefix='', part='full', **problem_kwargs)
+        PETSc.Sys.Print('ref_U %s' % str(ref_U))
+        PETSc.Sys.Print('|ref_U| %s, %s' % (str(np.linalg.norm(ref_U[:3])), str(np.linalg.norm(ref_U[3:]))))
+        PETSc.Sys.Print('U_head %s' % str(ref_U + ecoli_comp.get_rel_U_list()[0]))
+        PETSc.Sys.Print('U_tail %s' % str(ref_U + ecoli_comp.get_rel_U_list()[1]))
+        sumF = np.sum(np.vstack([tobj.get_total_force(center=center) for tobj in ecoli_comp.get_obj_list()]), axis=0)
+        PETSc.Sys.Print('check, sumF is %s' % str(sumF))
+        PETSc.Sys.Print('check, sumF/headF is %s' %
+                        str(sumF / ecoli_comp.get_obj_list()[0].get_total_force(center=center)))
     else:
         pass
     return True

@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import copy
 import numpy as np
 from scipy.io import savemat, loadmat
+from scipy import interpolate
 from evtk.hl import pointsToVTK, gridToVTK
 from petsc4py import PETSc
 import pickle
@@ -161,9 +162,12 @@ class StokesFlowProblem:
         # global index
         f_isglb = self._f_pkg.getGlobalISs()
         u_isglb = self._u_pkg.getGlobalISs()
-        for i0, obj0 in enumerate(self.get_obj_list()):
-            obj0.get_f_geo().set_glbIdx(f_isglb[i0].getIndices())
-            obj0.get_u_geo().set_glbIdx(u_isglb[i0].getIndices())
+        # for i0, obj0 in enumerate(self.get_obj_list()):
+        #     obj0.get_f_geo().set_glbIdx(f_isglb[i0].getIndices())
+        #     obj0.get_u_geo().set_glbIdx(u_isglb[i0].getIndices())
+        for obj0, t_f_isglb, t_u_isglb in zip(self.get_all_obj_list(), f_isglb, u_isglb):
+            obj0.get_f_geo().set_glbIdx(t_f_isglb.getIndices())
+            obj0.get_u_geo().set_glbIdx(t_u_isglb.getIndices())
         return True
 
     def create_F_U(self):
@@ -208,7 +212,7 @@ class StokesFlowProblem:
             self._create_matrix_obj(obj1, self._M_petsc, INDEX)
         # self._M_petsc.view()
         t1 = time()
-        PETSc.Sys.Print('%s: create matrix use: %fs' % (str(self), (t1 - t0)))
+        PETSc.Sys.Print('    %s: create matrix use: %fs' % (str(self), (t1 - t0)))
         return True
 
     def set_matrix(self, m_petsc):
@@ -445,7 +449,7 @@ class StokesFlowProblem:
             rel_err_y = np.abs(velocity_err_y / velocity_y)
             rel_err_z = np.abs(velocity_err_z / velocity_z)
             nodes = obj.get_u_nodes()
-            pointsToVTK(filename, nodes[:, 0], nodes[:, 1], nodes[:, 2],
+            pointsToVTK(filename, nodes[:, 0].copy(), nodes[:, 1].copy(), nodes[:, 2].copy(),
                         data={"velocity_err": (velocity_err_x, velocity_err_y, velocity_err_z),
                               "velocity":     (velocity_x, velocity_y, velocity_z),
                               "rel_err":      (rel_err_x, rel_err_y, rel_err_z)})
@@ -828,7 +832,7 @@ class StokesFlowProblem:
         return M
 
     def get_M_petsc(self):
-        return self.get_M_petsc()
+        return self._M_petsc
 
     def get_n_f_node(self):
         return self._n_fnode
@@ -850,6 +854,9 @@ class StokesFlowProblem:
 
     def get_n_obj(self):
         return len(self._obj_list)
+
+    def dbg_get_U(self):
+        return self.vec_scatter(self._velocity_petsc, destroy=False)
 
     def get_force(self):
         return self._force
@@ -1001,6 +1008,8 @@ class StokesFlowObj:
         PETSc.Sys.Print('%s: father %s, type %s, index %d, force nodes %d, velocity nodes %d'
                         % (self.get_name(), self._problem.get_name(), self._type, self.get_index(),
                            self.get_n_f_node(), self.get_n_u_node()))
+        self.get_u_geo().print_info()
+        self.get_f_geo().print_info()
         return True
 
     def save_mat(self, addInfo=''):
@@ -1059,7 +1068,7 @@ class StokesFlowObj:
         self._matrix_method = matrix_method
         return True
 
-    def copy(self) -> object:
+    def copy(self):
         """
         copy a new object.
         """
@@ -1069,7 +1078,7 @@ class StokesFlowObj:
         if self.get_f_geo() is not self.get_u_geo():
             self.get_u_geo().destroy_dmda()
 
-        obj2 = copy.deepcopy(self)
+        obj2 = copy.deepcopy(self)  # type: StokesFlowObj
         self.set_problem(problem)
         obj2.set_problem(problem)
         obj2.set_index(-1)
@@ -1094,7 +1103,7 @@ class StokesFlowObj:
         ugeo = geo()
         fgeo.combine(fgeo_list)
         ugeo.combine(ugeo_list)
-        self.set_data(fgeo, ugeo)
+        self.set_data(fgeo, ugeo, name=self.get_name())
 
         if set_re_u:
             self.set_re_velocity(np.zeros([0]))
@@ -1959,7 +1968,8 @@ class StokesletsInPipeProblem(StokesFlowProblem):
         uPhi3 = np.zeros_like(uR1)
         uz3 = np.zeros_like(uR1)
         # 2 velocity at cover
-        #  see Liron, N., and R. Shahar. "Stokes flow due to a Stokeslet in a pipe." Journal of Fluid Mechanics 86.04 (1978): 727-744.
+        #  see Liron, N., and R. Shahar. "Stokes flow due to a Stokeslet in a pipe."
+        #    Journal of Fluid Mechanics 86.04 (1978): 727-744.
         tuR1_list = []
         tuPhi1_list = []
         tuz1_list = []
@@ -2239,6 +2249,7 @@ class ForceFreeComposite:
         self.set_center(center)
         self._norm = None
         self.set_norm(norm)
+        self._psi = 0  # rotate of the Composite about the norm axis
         self._n_fnode = 0
         self._n_unode = 0
         self._f_glbIdx = np.array([])  # global indices
@@ -2319,6 +2330,10 @@ class ForceFreeComposite:
     def get_n_u_node(self):
         return self._n_unode
 
+    def dbg_set_rel_U_list(self, rel_U_list):
+        self._rel_U_list = rel_U_list
+        return True
+
     def get_rel_U_list(self):
         return self._rel_U_list
 
@@ -2333,6 +2348,9 @@ class ForceFreeComposite:
 
     def get_norm(self):
         return self._norm
+
+    def get_psi(self):
+        return self._psi
 
     def set_norm(self, norm):
         err_msg = 'norm=[x, y, z] has 3 components and ||norm|| > 0. '
@@ -2428,6 +2446,7 @@ class ForceFreeComposite:
 
         rotation = get_rot_matrix(norm, theta)
         t_origin = self._center
+        t_norm = self._norm.copy()
         self._center = np.dot(rotation, (self._center - rotation_origin)) + rotation_origin
         self._norm = np.dot(rotation, (self._norm + t_origin - rotation_origin)) \
                      + rotation_origin - self._center
@@ -2440,6 +2459,14 @@ class ForceFreeComposite:
                  + rotation_origin - self._center
             rel_U_list.append(np.hstack((tU, tW)))
         self._rel_U_list = rel_U_list
+        ref_U0 = self.get_ref_U()
+        tU = np.dot(rotation, (ref_U0[:3] + t_origin - rotation_origin)) \
+             + rotation_origin - self._center
+        tW = np.dot(rotation, (ref_U0[3:] + t_origin - rotation_origin)) \
+             + rotation_origin - self._center
+        self.set_ref_U(np.hstack((tU, tW)))
+
+        self._psi = self._psi + np.dot(t_norm, norm) / (np.linalg.norm(t_norm) * np.linalg.norm(norm)) * theta
         return True
 
     def set_ref_U(self, U):
@@ -2467,12 +2494,13 @@ class ForceFreeComposite:
     def get_ref_Omegaz(self):
         return self._ref_U[5]
 
-    def set_total_force(self, sum_force):
-        self._sum_force = sum_force
-        return True
+    # def set_total_force(self, sum_force):
+    #     self._sum_force = sum_force
+    #     return True
 
     def get_total_force(self):
-        return self._sum_force
+        sum_F = np.sum([tobj.get_total_force(center=self.get_center()) for tobj in self.get_obj_list()], axis=0)
+        return sum_F
 
     def show_velocity(self, length_factor=1, show_nodes=True):
         geo_list = uniqueList()
@@ -2566,7 +2594,8 @@ class ForceFreeComposite:
 
     def set_update_para(self, fix_x=False, fix_y=False, fix_z=False, update_fun=Adams_Moulton_Methods,
                         update_order=1):
-        # for a cutoff infinity symmetric problem, each time step set the obj in the center of the cutoff region to improve the accuracy.
+        # for a cutoff infinity symmetric problem,
+        #   each time step set the obj in the center of the cutoff region to improve the accuracy.
         self._locomotion_fct = np.array((not fix_x, not fix_y, not fix_z), dtype=np.float)
         self._update_fun = update_fun
         self._update_order = update_order
@@ -2584,6 +2613,11 @@ class ForceFreeComposite:
         tW = np.dot(ref_U[3:], norm) / np.dot(norm, norm)
         PETSc.Sys.Print('      |ref_U|', np.hstack((np.linalg.norm(ref_U[:3]), np.linalg.norm(ref_U[3:]))))
         PETSc.Sys.Print('      ref_U projection on norm', np.hstack((tU, tW)))
+        # # dbg
+        # rel_U_head = self.get_rel_U_list()[0]
+        # rel_U_tail = self.get_rel_U_list()[1]
+        # PETSc.Sys.Print('      U_head', rel_U_head + ref_U)
+        # PETSc.Sys.Print('      U_tail', rel_U_tail + ref_U)
 
         order = np.min((len(self.get_ref_U_hist()), self._update_order))
         fct_list = self.get_ref_U_hist()[-1:-(order + 1):-1]
@@ -2770,7 +2804,9 @@ class GivenVelocityComposite(ForceFreeComposite):
         PETSc.Sys.Print('      ref_U projection on norm', np.hstack((tU, tW)))
         PETSc.Sys.Print('      U_rel_head', U_rel_head)
         PETSc.Sys.Print('      U_rel_tail', U_rel_tail)
-        PETSc.Sys.Print('      Wrel_motor', (U_rel_head - U_rel_tail)[3:])
+        PETSc.Sys.Print('      Wrel_motor', (- U_rel_head + U_rel_tail)[3:])
+        PETSc.Sys.Print('      U_head', U_rel_head + ref_U)
+        PETSc.Sys.Print('      U_tail', U_rel_tail + ref_U)
 
         order = np.min((len(self.get_ref_U_hist()), self._update_order))
         fct_list = self.get_ref_U_hist()[-1:-(order + 1):-1]
@@ -2916,12 +2952,22 @@ class GivenForce1DInfComposite(GivenForceComposite, ForceFree1DInfComposite):
 
 
 class ForceFreeProblem(StokesFlowProblem):
+    # _ffweigth # type: np.ndarray
+
     def _init_kwargs(self, **kwargs):
         super()._init_kwargs(**kwargs)
         ffweightx = kwargs['ffweightx'] / kwargs['zoom_factor']
         ffweighty = kwargs['ffweighty'] / kwargs['zoom_factor']
         ffweightz = kwargs['ffweightz'] / kwargs['zoom_factor']
         ffweightT = kwargs['ffweightT'] / kwargs['zoom_factor']
+        self._ffweigth = ...  # type: np.ndarray
+        self.set_ffweight(ffweightx, ffweighty, ffweightz, ffweightT)
+        return True
+
+    def get_ffweight(self):
+        return self._ffweigth
+
+    def set_ffweight(self, ffweightx, ffweighty, ffweightz, ffweightT):
         self._ffweigth = np.array([ffweightx, ffweighty, ffweightz,
                                    ffweightT ** 2, ffweightT ** 2, ffweightT ** 2])
         assert self._ffweigth[3] == self._ffweigth[4] == self._ffweigth[5], \
@@ -2930,6 +2976,7 @@ class ForceFreeProblem(StokesFlowProblem):
         return True
 
     def __init__(self, **kwargs):
+        # self._ffweigth = ...
         super().__init__(**kwargs)
         self._all_obj_list = uniqueList()  # contain all objects, including subobj within forcefreeComposite.
         self._compst_list = uniqueList()  # forcefreeComposite list.
@@ -3084,16 +3131,18 @@ class ForceFreeProblem(StokesFlowProblem):
             self._convergenceHistory = ksp.getConvergenceHistory()
         else:
             ksp.solve(self._velocity_petsc, self._force_petsc)
-        self._force = self.vec_scatter(self._force_petsc, destroy=False)
+        t_force = self.vec_scatter(self._force_petsc, destroy=False)
 
+        tmp = []
         for obj0 in self.get_obj_list():
             if isinstance(obj0, ForceFreeComposite):
                 center = obj0.get_center()
                 for sub_obj in obj0.get_obj_list():
                     _, f_glbIdx_all = sub_obj.get_f_geo().get_glbIdx()
-                    sub_obj.set_force(self._force[f_glbIdx_all])
+                    sub_obj.set_force(t_force[f_glbIdx_all])
+                    tmp.append(t_force[f_glbIdx_all])
                 _, f_glbIdx_all = obj0.get_f_glbIdx()
-                ref_U = self._force[f_glbIdx_all] * ffweight
+                ref_U = t_force[f_glbIdx_all] * ffweight
                 obj0.set_ref_U(ref_U)
                 ref_U = obj0.get_ref_U()
                 # absolute speed
@@ -3102,7 +3151,9 @@ class ForceFreeProblem(StokesFlowProblem):
                     sub_obj.get_u_geo().set_rigid_velocity(abs_U, center=center)
             else:
                 _, f_glbIdx_all = obj0.get_f_geo().get_glbIdx()
-                obj0.set_force(self._force[f_glbIdx_all])
+                obj0.set_force(t_force[f_glbIdx_all])
+                tmp.append(t_force[f_glbIdx_all])
+        self._force = np.hstack(tmp)
         return True
 
     def _resolve_velocity(self, ksp):
@@ -3143,9 +3194,9 @@ class ForceFreeProblem(StokesFlowProblem):
                 # t_geo2.combine(t_list)
                 # t_geo2.show_velocity()
 
-                _, u_glbIdx_all = obj0.get_u_glbIdx()
-                re_sum = self._re_velocity[u_glbIdx_all] * ([-1] * 3 + [1] * 3) / ffweight
-                obj0.set_total_force(re_sum)  # force free, analytically they are zero.
+                # _, u_glbIdx_all = obj0.get_u_glbIdx()
+                # re_sum = self._re_velocity[u_glbIdx_all] * ([-1] * 3 + [1] * 3) / ffweight
+                # obj0.set_total_force(re_sum)  # force free, analytically they are zero.
             else:
                 _, u_glbIdx_all = obj0.get_u_geo().get_glbIdx()
                 obj0.set_re_velocity(self._re_velocity[u_glbIdx_all])
@@ -3280,10 +3331,92 @@ class ForceFreeProblem(StokesFlowProblem):
 
 
 class ForceFreeIterateProblem(ForceFreeProblem):
-    def __init__(self, tolerate=1e-3, **kwargs):
+    def set_ffweight(self, ffweightx, ffweighty, ffweightz, ffweightT):
+        pass
+        return True
+
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._iterComp = ForceFreeComposite()
-        self._tolerate = tolerate
+        self._iterComp = ...  # type:  ForceFreeComposite
+
+    def add_obj(self, obj):
+        if isinstance(obj, ForceFreeComposite):
+            self._obj_list.append(obj)
+            obj.set_index(self.get_n_obj())
+            obj.set_problem(self)
+            for sub_obj in obj.get_obj_list():
+                self._check_add_obj(sub_obj)
+                self._all_obj_list.append(sub_obj)
+                self._f_pkg.addDM(sub_obj.get_f_geo().get_dmda())
+                self._u_pkg.addDM(sub_obj.get_u_geo().get_dmda())
+                self._n_fnode += sub_obj.get_n_f_node()
+                self._n_unode += sub_obj.get_n_u_node()
+                sub_obj.set_matrix_method(self.get_matrix_method())
+        else:
+            self._all_obj_list.append(obj)
+            super().add_obj(obj)
+        return True
+
+    def _set_glbIdx(self):
+        return StokesFlowProblem._set_glbIdx(self)
+
+    def _solve_force(self, ksp):
+        kwargs = self._kwargs
+        getConvergenceHistory = kwargs['getConvergenceHistory']
+        if getConvergenceHistory:
+            ksp.setConvergenceHistory()
+            ksp.solve(self._velocity_petsc, self._force_petsc)
+            self._convergenceHistory = ksp.getConvergenceHistory()
+        else:
+            ksp.solve(self._velocity_petsc, self._force_petsc)
+        t_force = self.vec_scatter(self._force_petsc, destroy=False)
+
+        tmp = []
+        for obj0 in self.get_obj_list():
+            if isinstance(obj0, ForceFreeComposite):
+                center = obj0.get_center()
+                for sub_obj in obj0.get_obj_list():
+                    _, f_glbIdx_all = sub_obj.get_f_geo().get_glbIdx()
+                    sub_obj.set_force(t_force[f_glbIdx_all])
+                    tmp.append(t_force[f_glbIdx_all])
+                ref_U = obj0.get_ref_U()
+                # absolute speed
+                for sub_obj, rel_U in zip(obj0.get_obj_list(), obj0.get_rel_U_list()):
+                    abs_U = ref_U + rel_U
+                    sub_obj.get_u_geo().set_rigid_velocity(abs_U, center=center)
+            else:
+                _, f_glbIdx_all = obj0.get_f_geo().get_glbIdx()
+                obj0.set_force(t_force[f_glbIdx_all])
+                tmp.append(t_force[f_glbIdx_all])
+        self._force = np.hstack(tmp)
+        return True
+
+    def _resolve_velocity(self, ksp):
+        # self._re_velocity = u_rel + w_rel×ri
+        # self._re_velocity + u_ref + w_ref×ri = u_ref + w_ref×ri + u_rel + w_rel×ri
+        ffweight = self._ffweigth
+        re_velocity_petsc = self._M_petsc.createVecLeft()
+        # re_velocity_petsc.set(0)
+        self._M_petsc.mult(self._force_petsc, re_velocity_petsc)
+        self._re_velocity = self.vec_scatter(re_velocity_petsc)
+
+        for obj0 in self.get_obj_list():
+            if isinstance(obj0, ForceFreeComposite):
+                ref_U = obj0.get_ref_U()
+                center = obj0.get_center()
+                for sub_obj in obj0.get_obj_list():
+                    _, u_glbIdx_all = sub_obj.get_u_geo().get_glbIdx()
+                    re_rel_U = self._re_velocity[u_glbIdx_all]
+                    sub_nodes = sub_obj.get_u_geo().get_nodes()
+                    r = sub_nodes - center
+                    t_u = (ref_U[:3] + np.cross(ref_U[3:], r)).flatten()
+                    re_abs_U = t_u + re_rel_U
+                    sub_obj.set_re_velocity(re_abs_U)
+            else:
+                _, u_glbIdx_all = obj0.get_u_geo().get_glbIdx()
+                obj0.set_re_velocity(self._re_velocity[u_glbIdx_all])
+        self._finish_solve = True
+        return ksp.getResidualNorm()
 
     def set_iterate_comp(self, iterComp):
         # set objects that varying their velocity to reach force free condition.
@@ -3324,7 +3457,8 @@ class ForceFreeIterateProblem(ForceFreeProblem):
         self._iterComp.set_ref_U(refU)
         self.create_F_U()
         self.solve()
-        sum_force = np.sum([tobj.get_total_force() for tobj in self._iterComp.get_obj_list()], axis=0)
+        center = self._iterComp.get_center()
+        sum_force = np.sum([tobj.get_total_force(center=center) for tobj in self._iterComp.get_obj_list()], axis=0)
         tF = sum_force[:3]
         tT = sum_force[3:]
         return tF, tT
@@ -3340,18 +3474,18 @@ class ForceFreeIterateProblem(ForceFreeProblem):
         PETSc.Sys.Print('  u0=%s, u1=%s, F02=%s, F12=%s, u2=%s' % (u0, u1, F02, F12, u2))
         return u2, w2
 
-    def do_iterate(self, ini_refU=np.ones(6), max_it=1000):
-        self.create_matrix()
-        u0 = np.array((0, 0, 0))
-        u1 = ini_refU[:3]
-        w0 = np.array((0, 0, 0))
-        w1 = ini_refU[3:]
+    def do_iterate(self, ini_refU0=np.zeros(6), ini_refU1=np.ones(6), max_it=1000, tolerate=1e-3):
+        u0 = ini_refU0[:3]
+        u1 = ini_refU1[:3]
+        w0 = ini_refU0[3:]
+        w1 = ini_refU1[3:]
+        PETSc.Sys.Print('-->>iterate: %d' % 0)
         F_reference, _ = self.solve_sumForce(refU=np.hstack((u1, w0)))
         _, T_reference = self.solve_sumForce(refU=np.hstack((u0, w1)))
-        tol = self._tolerate * 100
+        tol = tolerate * 100
         n_it = 0  # # of iterate
-        while np.any(tol > self._tolerate) and n_it < max_it:
-            PETSc.Sys.Print('-->>interate: %d' % (n_it + 1))
+        while np.any(tol > tolerate) and n_it < max_it:
+            PETSc.Sys.Print('-->>iterate: %d' % (n_it + 1))
             u2, w2 = self.each_iterate(u0, w0, u1, w1)
             F22, T22 = self.solve_sumForce(np.hstack((u2, w2)))
             Ftol = np.abs(F22 / F_reference)
@@ -3362,6 +3496,137 @@ class ForceFreeIterateProblem(ForceFreeProblem):
             w0, w1 = w1, w2
             n_it = n_it + 1
         return np.hstack((u2, w2)), Ftol, Ttol
+
+    def each_iterate2(self, u0, w0, u1, w1, F11, T11, relax_fct=1):
+        F10, T10 = self.solve_sumForce(np.hstack((u1, w0)))
+        F01, T01 = self.solve_sumForce(np.hstack((u0, w1)))
+        w2 = (w0 - w1) / (T10 - T11) * (0 - T10) * relax_fct + w0
+        u2 = (u0 - u1) / (F01 - F11) * (0 - F01) * relax_fct + u0
+        PETSc.Sys.Print('  w0=%s, w1=%s, T10=%s, T11=%s, w2=%s' % (w0, w1, T10, T11, w2))
+        PETSc.Sys.Print('  u0=%s, u1=%s, F01=%s, F11=%s, u2=%s' % (u0, u1, F01, F11, u2))
+        return u2, w2
+
+    def do_iterate2(self, ini_refU0=np.zeros(6), ini_refU1=np.ones(6), max_it=1000, tolerate=1e-3):
+        u0 = ini_refU0[:3]
+        u1 = ini_refU1[:3]
+        w0 = ini_refU0[3:]
+        w1 = ini_refU1[3:]
+        PETSc.Sys.Print('-->>iterate: %d' % 0)
+        F_reference, _ = self.solve_sumForce(refU=np.hstack((u1, w0)))
+        _, T_reference = self.solve_sumForce(refU=np.hstack((u0, w1)))
+        n_it = 0  # # of iterate
+        F11, T11 = self.solve_sumForce(np.hstack((u1, w1)))
+        Ftol = np.abs(F11 / F_reference)
+        Ttol = np.abs(T11 / T_reference)
+        PETSc.Sys.Print('  u1=%s, w1=%s, F11=%s, T11=%s, Ftol=%s, Ttol=%s' % (u1, w1, F11, T11, Ftol, Ttol))
+        tol = np.hstack((Ftol, Ttol))
+        while np.any(tol > tolerate) and n_it < max_it:
+            PETSc.Sys.Print('-->>iterate: %d' % (n_it + 1))
+            u2, w2 = self.each_iterate2(u0, w0, u1, w1, F11, T11)
+            F22, T22 = self.solve_sumForce(np.hstack((u2, w2)))
+            Ftol = np.abs(F22 / F_reference)
+            Ttol = np.abs(T22 / T_reference)
+            tol = np.hstack((Ftol, Ttol))
+            PETSc.Sys.Print('  u2=%s, w2=%s, F22=%s, T22=%s, Ftol=%s, Ttol=%s' % (u2, w2, F22, T22, Ftol, Ttol))
+            u0, u1 = u1, u2
+            w0, w1 = w1, w2
+            F11, T11 = F22, T22
+            n_it = n_it + 1
+        return np.hstack((u2, w2)), Ftol, Ttol
+
+    def do_iterate3(self, ini_refU0=np.zeros(6), ini_refU1=np.ones(6), max_it=1000, tolerate=1e-3, relax_fct=1):
+        u0 = ini_refU0[:3]
+        u1 = ini_refU1[:3]
+        w0 = ini_refU0[3:]
+        w1 = ini_refU1[3:]
+        n_it = 0  # # of iterate
+        F11, T11 = self.solve_sumForce(np.hstack((u1, w1)))
+        # max_err = np.max((2 * np.abs(u0 - u1) / (np.abs(u0) + np.abs(u1)),
+        #                   2 * np.abs(w0 - w1) / (np.abs(w0) + np.abs(w1))))
+        max_err = np.max((np.abs((u0 - u1) / np.linalg.norm(u1)),
+                          np.abs((w0 - w1) / np.linalg.norm(w1))))
+        PETSc.Sys.Print('  u0=%s, w0=%s, u1=%s, w1=%s' % (u0, w0, u1, w1))
+        PETSc.Sys.Print('  max_err=%f' % max_err)
+        while np.any(max_err > tolerate) and n_it < max_it:
+            PETSc.Sys.Print('-->>iterate: %d' % (n_it + 1))
+            u2, w2 = self.each_iterate2(u0, w0, u1, w1, F11, T11, relax_fct=relax_fct)
+            F22, T22 = self.solve_sumForce(np.hstack((u2, w2)))
+            u0, u1 = u1, u2
+            w0, w1 = w1, w2
+            F11, T11 = F22, T22
+            n_it = n_it + 1
+            # max_err = np.max((2 * np.abs(u0 - u1) / (np.linalg.norm(u0) + np.linalg.norm(u1)),
+            #                   2 * np.abs(w0 - w1) / (np.linalg.norm(w0) + np.linalg.norm(w1))))
+            max_err = np.max((np.abs((u0 - u1) / np.linalg.norm(u1)),
+                              np.abs((w0 - w1) / np.linalg.norm(w1))))
+            PETSc.Sys.Print('  max_err=%f' % max_err)
+        return np.hstack((u1, w1))
+
+    def set_force_free(self):
+        pass
+
+
+# class ForceFreeLookUpTable(ForceFreeProblem):
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
+#         self._intp_fun_list = []
+#
+#     def _init_kwargs(self, **kwargs):
+#         super()._init_kwargs(**kwargs)
+#
+#     def load_table(self, filename):
+#         with open('%s.pickle' % filename, 'rb') as handle:
+#             table_data = pickle.load(handle)
+#         intp_fun_list = self._intp_fun_list
+#         for tpsi, table_psi_data in table_data:
+#             tintp_fun_list = []
+#             for ty, tx, tU in table_psi_data:
+#                 tfun = interpolate.RectBivariateSpline(ty, tx, tU)
+#                 tintp_fun_list.append(tfun)
+#             intp_fun_list.append(tintp_fun_list)
+#
+#     def create_matrix(self):
+#         pass
+#
+#     def solve(self, ini_guess=None):
+#         def intp_U_fun(t_theta, t_phi, t_psi):
+#             if t_theta >= 0 and t_theta < np.pi and t_phi >= 0 and t_phi < np.pi:  # letf down
+#                 sign_list = [1, 1, 1, 1, 1, 1]
+#             elif t_theta >= 0 and t_theta < np.pi and t_phi >= np.pi and t_phi <= 2 * np.pi:  # right down
+#                 t_theta = t_theta
+#                 t_phi = t_phi - np.pi
+#                 sign_list = [1, 1, -1, 1, 1, -1]
+#             elif t_theta >= np.pi and t_theta <= 2 * np.pi and t_phi >= np.pi and t_phi <= 2 * np.pi:  # right up
+#                 t_theta = t_theta - np.pi
+#                 t_phi = 2 * np.pi - t_phi
+#                 sign_list = [-1, 1, -1, -1, 1, -1]
+#             elif t_theta >= np.pi and t_theta <= 2 * np.pi and t_phi >= 0 and t_phi < np.pi:  # left up
+#                 t_theta = t_theta - np.pi
+#                 t_phi = np.pi - t_phi
+#                 sign_list = [-1, 1, 1, -1, 1, 1]
+#             else:
+#                 raise Exception('norm_theta and (or) norm_phi out of range (0, 2*pi)')
+#
+#             intp_U = []
+#             for tfun in intp_fun_list:
+#                 t_U = []
+#                 for intp_fun in tfun:
+#                     t_U.append(intp_fun(t_theta, t_phi) * sign)
+#                 intp_U.append(np.hstack(t_U).flatten())
+#             intp_U.append(intp_U[0].copy())
+#             intp_U = np.vstack(intp_U)
+#             intp_psi = np.hstack([use_psi_list, np.pi * 2])
+#             intp_fun1d = interpolate.interp1d(intp_psi, intp_U, kind='quadratic', axis=0, fill_value='extrapolate')
+#             return intp_fun1d(t_psi)
+#
+#         for obj in self.get_obj_list():
+#             assert isinstance(obj, ForceFreeComposite)
+#             tX = obj.get_center()
+#             tP = obj.get_norm()
+#             t_theta = np.arccos(tP[2] / np.linalg.norm(tP))
+#             t_phi = np.arctan(tP[1] / tP[0])
+#             t_psi = obj.get_psi()
+#             obj.set_ref_U(intp_U_fun(t_theta, t_phi, t_psi))
 
 
 class ForceFree1DInfProblem(ForceFreeProblem):
@@ -3502,7 +3767,7 @@ class ForceFree1DInfProblem(ForceFreeProblem):
     #     # self._M_petsc.view()
     #
     #     t1 = time()
-    #     PETSc.Sys.Print('%s: create matrix use: %fs' % (str(self), (t1 - t0)))
+    #     PETSc.Sys.Print('    %s: create matrix use: %fs' % (str(self), (t1 - t0)))
     #     return True
 
     def _solve_force(self, ksp):
@@ -3519,16 +3784,18 @@ class ForceFree1DInfProblem(ForceFreeProblem):
             # # dbg
             # re_velocity_petsc = self._M_petsc.createVecLeft()
             # self._M_petsc.mult(self._force_petsc, re_velocity_petsc)
-        self._force = self.vec_scatter(self._force_petsc, destroy=False)
+        t_force = self.vec_scatter(self._force_petsc, destroy=False)
 
+        tmp = []
         for obj0 in self.get_obj_list():
             if isinstance(obj0, ForceFreeComposite):
                 center = obj0.get_center()
                 for sub_obj in obj0.get_obj_list():
                     _, f_glbIdx_all = sub_obj.get_f_geo().get_glbIdx()
-                    sub_obj.set_force(self._force[f_glbIdx_all])
+                    sub_obj.set_force(t_force[f_glbIdx_all])
+                    tmp.append(t_force[f_glbIdx_all])
                 _, f_glbIdx_all = obj0.get_f_glbIdx()
-                ref_U = self._force[f_glbIdx_all] * ffweight
+                ref_U = t_force[f_glbIdx_all] * ffweight
                 if axis is 'x':
                     ref_U = np.array([ref_U[0], 0, 0, ref_U[1], 0, 0])
                 elif axis is 'y':
@@ -3542,7 +3809,9 @@ class ForceFree1DInfProblem(ForceFreeProblem):
                     sub_obj.get_u_geo().set_rigid_velocity(abs_U, center=center)
             else:
                 _, f_glbIdx_all = obj0.get_f_geo().get_glbIdx()
-                obj0.set_force(self._force[f_glbIdx_all])
+                obj0.set_force(t_force[f_glbIdx_all])
+                tmp.append(t_force[f_glbIdx_all])
+        self._force = np.hstack(tmp)
         return True
 
     def _resolve_velocity(self, ksp):
@@ -3565,15 +3834,15 @@ class ForceFree1DInfProblem(ForceFreeProblem):
                     t_u = (ref_U[:3] + np.cross(ref_U[3:], r)).flatten()
                     re_abs_U = t_u + re_rel_U
                     sub_obj.set_re_velocity(re_abs_U)
-                _, u_glbIdx_all = obj0.get_u_glbIdx()
-                re_sum = self._re_velocity[u_glbIdx_all] * [-1, 1] / ffweight
-                if axis is 'x':
-                    re_sum = np.array([re_sum[0], 0, 0, re_sum[1], 0, 0])
-                elif axis is 'y':
-                    re_sum = np.array([0, re_sum[0], 0, 0, re_sum[1], 0])
-                elif axis is 'z':
-                    re_sum = np.array([0, 0, re_sum[0], 0, 0, re_sum[1]])
-                obj0.set_total_force(re_sum)  # force free, analytically they are zero.
+                # _, u_glbIdx_all = obj0.get_u_glbIdx()
+                # re_sum = self._re_velocity[u_glbIdx_all] * [-1, 1] / ffweight
+                # if axis is 'x':
+                #     re_sum = np.array([re_sum[0], 0, 0, re_sum[1], 0, 0])
+                # elif axis is 'y':
+                #     re_sum = np.array([0, re_sum[0], 0, 0, re_sum[1], 0])
+                # elif axis is 'z':
+                #     re_sum = np.array([0, 0, re_sum[0], 0, 0, re_sum[1]])
+                # obj0.set_total_force(re_sum)  # force free, analytically they are zero.
             else:
                 _, u_glbIdx_all = obj0.get_u_geo().get_glbIdx()
                 obj0.set_re_velocity(self._re_velocity[u_glbIdx_all])
@@ -3739,9 +4008,8 @@ class _GivenFlowProblem(StokesFlowProblem):
 class ShearFlowProblem(_GivenFlowProblem):
     def _init_kwargs(self, **kwargs):
         super()._init_kwargs(**kwargs)
-        self._planeShearRate = np.array(kwargs['planeShearRate']).reshape((1, 3))
-        err_msg = 'shear flow velocity is must vertical to z axis. '
-        assert self._planeShearRate[0, -1] == 0. and self._planeShearRate.size == 3, err_msg
+        self._planeShearRate = ...  # type: np.ndarray
+        self.set_planeShearRate(kwargs['planeShearRate'])
         return True
 
     def get_given_flow(self, obj):
@@ -3751,6 +4019,61 @@ class ShearFlowProblem(_GivenFlowProblem):
         ugeo = obj.get_u_geo()
         given_u = given_u + np.dot(ugeo.get_nodes()[:, 2].reshape((-1, 1)), u_weight).flatten()
         return given_u
+
+    def set_planeShearRate(self, planeShearRate):
+        self._planeShearRate = np.array(planeShearRate).reshape((1, 3))
+        err_msg = 'shear flow velocity is must vertical to z axis. '
+        assert self._planeShearRate[0, -1] == 0. and self._planeShearRate.size == 3, err_msg
+        return True
+
+    def get_planeShearRate(self):
+        return self._planeShearRate
+
+
+class FreeVortexProblem(_GivenFlowProblem):
+    # assume vortex is in XY plane
+    def _init_kwargs(self, **kwargs):
+        super()._init_kwargs(**kwargs)
+        self._vortexStrength = kwargs['vortexStrength']
+        return True
+
+    def get_given_flow(self, obj):
+        given_u = super().get_given_flow(obj)
+        # in this case, background flow is a given Free Vortex flow
+        phi, rho, z = obj.get_u_geo().get_polar_coord()
+        u_phi = self._vortexStrength / (2 * np.pi * rho)
+        given_u = given_u + np.dstack((-u_phi * np.sin(phi), u_phi * np.cos(phi), np.zeros_like(phi))).flatten()
+        return given_u
+
+    def set_vortexStrength(self, vortexStrength):
+        self._vortexStrength = vortexStrength
+        return True
+
+    def get_vortexStrength(self):
+        return self._vortexStrength
+
+
+class LambOseenVortexProblem(_GivenFlowProblem):
+    # assume vortex is in XY plane
+    def _init_kwargs(self, **kwargs):
+        super()._init_kwargs(**kwargs)
+        self._vortexStrength = kwargs['vortexStrength']
+        return True
+
+    def get_given_flow(self, obj):
+        given_u = super().get_given_flow(obj)
+        # in this case, background flow is a given Free Vortex flow
+        phi, rho, z = obj.get_u_geo().get_polar_coord()
+        u_phi = self._vortexStrength / (2 * np.pi * rho) * (1 - np.exp(-rho ** 2))
+        given_u = given_u + np.dstack((-u_phi * np.sin(phi), u_phi * np.cos(phi), np.zeros_like(phi))).flatten()
+        return given_u
+
+    def set_vortexStrength(self, vortexStrength):
+        self._vortexStrength = vortexStrength
+        return True
+
+    def get_vortexStrength(self):
+        return self._vortexStrength
 
 
 class StokesletsFlowProblem(_GivenFlowProblem):
@@ -3863,8 +4186,15 @@ class PointForceObj(StokesFlowObj):
         return self._force_norm_hist
 
 
-class ShearFlowForceFreeProblem(ShearFlowProblem, ForceFreeProblem):
+class _GivenFlowForceFreeProblem(_GivenFlowProblem, ForceFreeProblem):
     def _create_U(self):
+        # u_fi:         velocity due to point force on the boundary, unknown;
+        # u_ref, w_ref: reference velocity of the composite, rigid body motion, unknown;
+        # u_rel, w_rel: relative velocity of each part, rigid body motion, known;
+        # u_bi:         background flow velocity, known;
+        # u_ti:         total velocity that keeps rigid body motion on the surfaces of each part.
+        # u_fi + u_bi = u_ti = u_ref + w_ref × ri + u_rel + w_rel × ri .
+        # u_fi - u_ref - w_ref × ri = u_rel + w_rel × ri - u_bi
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
         velocity = self._u_pkg.createGlobalVector()
@@ -3902,6 +4232,142 @@ class ShearFlowForceFreeProblem(ShearFlowProblem, ForceFreeProblem):
         return True
 
 
+class _GivenFlowForceFreeIterateProblem(_GivenFlowProblem, ForceFreeIterateProblem):
+    def _create_U(self):
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
+        velocity = self._u_pkg.createGlobalVector()
+        velocity.zeroEntries()
+        for obj0 in self.get_obj_list():
+            if isinstance(obj0, ForceFreeComposite):
+                center = obj0.get_center()
+                for sub_obj, rel_U in zip(obj0.get_obj_list(), obj0.get_rel_U_list()):
+                    sub_nodes = sub_obj.get_u_geo().get_nodes()
+                    # sub_obj.show_velocity(length_factor=0.1, show_nodes=True)
+                    r = sub_nodes - center
+                    abs_U = rel_U + obj0.get_ref_U()
+                    t_u = (abs_U[:3] + np.cross(abs_U[3:], r)).flatten()
+                    _, u_glbIdx_all = sub_obj.get_u_geo().get_glbIdx()
+                    givenU = self.get_given_flow(sub_obj)
+                    if rank == 0:
+                        velocity[u_glbIdx_all] = t_u[:] - givenU
+            else:
+                u0 = obj0.get_velocity()
+                _, u_glbIdx_all = obj0.get_u_geo().get_glbIdx()
+                givenU = self.get_given_flow(obj0)
+                if rank == 0:
+                    velocity[u_glbIdx_all] = u0[:] - givenU
+        velocity.assemble()
+        self._velocity_petsc = velocity
+        return True
+
+
+class ShearFlowForceFreeProblem(ShearFlowProblem, _GivenFlowForceFreeProblem):
+    def nothing(self):
+        pass
+
+
+# class ShearFlowForceFreeLookUpTable(ShearFlowForceFreeProblem):
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
+#         self._intp_fun_list = []
+#         self._intp_psi_list = []
+#
+#     def _init_kwargs(self, **kwargs):
+#         super()._init_kwargs(**kwargs)
+#
+#     def create_matrix(self):
+#         self.create_F_U()
+#         if not self._M_petsc.isAssembled():
+#             self.create_empty_M()
+#         return True
+#
+#     def load_table(self, filename):
+#         t_path = os.path.dirname(os.path.abspath(__file__))
+#         full_path = os.path.normpath(t_path + '/' + '%s.pickle' % filename)
+#         with open(full_path, 'rb') as handle:
+#             table_data = pickle.load(handle)
+#         intp_fun_list = self._intp_fun_list
+#         intp_psi_list = self._intp_psi_list
+#         for tpsi, table_psi_data in table_data:
+#             tintp_fun_list = []
+#             intp_psi_list.append(tpsi)
+#             for ty, tx, tU in table_psi_data:
+#                 tfun = interpolate.RectBivariateSpline(ty, tx, tU)
+#                 tintp_fun_list.append(tfun)
+#             intp_fun_list.append(tintp_fun_list)
+#
+#     def solve(self, ini_guess=None):
+#         def intp_U_fun(t_theta, t_phi, t_psi):
+#             if 0 <= t_theta < np.pi and 0 <= t_phi < np.pi:  # letf down
+#                 sign_list = [1, 1, 1, 1, 1, 1]
+#             elif 0 <= t_theta < np.pi and np.pi <= t_phi <= 2 * np.pi:  # right down
+#                 t_theta = t_theta
+#                 t_phi = t_phi - np.pi
+#                 sign_list = [1, 1, -1, 1, 1, -1]
+#             elif np.pi <= t_theta <= 2 * np.pi and np.pi <= t_phi <= 2 * np.pi:  # right up
+#                 t_theta = t_theta - np.pi
+#                 t_phi = 2 * np.pi - t_phi
+#                 sign_list = [-1, 1, -1, -1, 1, -1]
+#             elif np.pi <= t_theta <= 2 * np.pi and 0 <= t_phi < np.pi:  # left up
+#                 t_theta = t_theta - np.pi
+#                 t_phi = np.pi - t_phi
+#                 sign_list = [-1, 1, 1, -1, 1, 1]
+#             else:
+#                 raise Exception('norm_theta %f and (or) norm_phi %f out of range (0, 2*pi)' % (t_theta, t_phi))
+#
+#             intp_U = []
+#             for tfun in self._intp_fun_list:
+#                 t_U = []
+#                 for intp_fun, sign in zip(tfun, sign_list):
+#                     t_U.append(intp_fun(t_theta, t_phi) * sign)
+#                 intp_U.append(np.hstack(t_U).flatten())
+#             intp_U.append(intp_U[0].copy())
+#             intp_U = np.vstack(intp_U)
+#             intp_psi = np.hstack([self._intp_psi_list, np.pi * 2])
+#             intp_fun1d = interpolate.interp1d(intp_psi, intp_U, kind='quadratic', axis=0, fill_value='extrapolate')
+#             return intp_fun1d(t_psi)
+#
+#         for obj in self.get_obj_list():
+#             assert isinstance(obj, ForceFreeComposite)
+#             tX = obj.get_center()
+#             tP = obj.get_norm()
+#             t_theta = np.arccos(tP[2] / np.linalg.norm(tP))
+#             t_phi = np.arctan(tP[1] / tP[0])
+#             t_phi = t_phi if np.isfinite(t_phi) else 0
+#             t_phi = t_phi + 2 * np.pi if t_phi < 0 else t_phi
+#             t_psi = obj.get_psi() % np.pi
+#             Ub = np.hstack((self.get_given_flow_at(tX), np.zeros(3)))
+#             # Ub = 0
+#             obj.set_ref_U(intp_U_fun(t_theta, t_phi, t_psi) + Ub)
+#         return True
+
+
+class ShearFlowForceFreeIterateProblem(ShearFlowProblem, _GivenFlowForceFreeIterateProblem):
+    def nothing(self):
+        pass
+
+
+class FreeVortexForceFreeProblem(FreeVortexProblem, _GivenFlowForceFreeProblem):
+    def nothing(self):
+        pass
+
+
+class FreeVortexForceFreeIterateProblem(FreeVortexProblem, _GivenFlowForceFreeIterateProblem):
+    def nothing(self):
+        pass
+
+
+class LambOseenVortexForceFreeProblem(LambOseenVortexProblem, _GivenFlowForceFreeProblem):
+    def nothing(self):
+        pass
+
+
+class LambOseenVortexForceFreeIterateProblem(LambOseenVortexProblem, _GivenFlowForceFreeIterateProblem):
+    def nothing(self):
+        pass
+
+
 class DualPotentialProblem(StokesFlowProblem):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -3930,14 +4396,13 @@ class DualPotentialObj(StokesFlowObj):
 
 
 class GivenTorqueIterateVelocity1DProblem(StokesFlowProblem):
-    def __init__(self, axis='z', givenF=0, tolerate=1e-3, **kwargs):
+    def __init__(self, axis='z', givenF=0, **kwargs):
         super().__init__(**kwargs)
         err_msg = 'wrong symmetrical axis, it should be one of (x, y, z). '
         assert axis in ('x', 'y', 'z'), err_msg
         self._axis = axis  # symmetrical axis
         self._iterObj = []
-        self._givenF = givenF
-        self._tolerate = tolerate
+        self._givenF = givenF[2]
 
     def set_iterate_obj(self, obj_list):
         # set objects that varying their velocity to reach force free condition.
@@ -3945,8 +4410,9 @@ class GivenTorqueIterateVelocity1DProblem(StokesFlowProblem):
         self._iterObj = list(tube_flatten((obj_list,)))
         return True
 
-    def solve_sumForce(self, U, W=1):
+    def solve_sumForce(self, U, W=1, center=np.zeros(3)):
         axis = self._axis  # type: str
+        # assert 1 == 2, 'check center of the tobj.set_rigid_velocity()'
         if axis is 'x':
             for tobj in self._iterObj:
                 tobj.set_rigid_velocity((U, 0, 0, W, 0, 0))
@@ -3958,7 +4424,7 @@ class GivenTorqueIterateVelocity1DProblem(StokesFlowProblem):
                 tobj.set_rigid_velocity((0, 0, U, 0, 0, W))
         self.create_F_U()
         self.solve()
-        sum_force = np.sum([tobj.get_total_force() for tobj in self._iterObj], axis=0)
+        sum_force = np.sum([tobj.get_total_force(center=center) for tobj in self._iterObj], axis=0)
         if axis is 'x':
             tf = sum_force[0]
         elif axis is 'y':
@@ -3968,20 +4434,19 @@ class GivenTorqueIterateVelocity1DProblem(StokesFlowProblem):
         return tf
 
     def each_iterate(self, u0, u1):
-        f0 = self.solve_sumForce(u0)
-        f1 = self.solve_sumForce(u1)
+        f0 = self.solve_sumForce(u0, W=1)
+        f1 = self.solve_sumForce(u1, W=1)
         u2 = (u0 - u1) / (f0 - f1) * (self._givenF - f0) + u0
         PETSc.Sys.Print('  u0=%f, u1=%f, f0=%f, f1=%f, u2=%f' % (u0, u1, f0, f1, u2))
         return f0, f1, u2
 
-    def do_iterate(self, max_it=1000):
-        self.create_matrix()
+    def do_iterate(self, tolerate=1e-3, max_it=1000):
         f_reference = self.solve_sumForce(U=1, W=0)
         u0 = 0
         u1 = 1
-        tol = self._tolerate * 100
+        tol = tolerate * 100
         n_it = 0  # # of iterate
-        while tol > self._tolerate and n_it < max_it:
+        while tol > tolerate and n_it < max_it:
             f0, f1, u2 = self.each_iterate(u0, u1)
             u0, u1 = u1, u2
             tol = np.abs(f1 / f_reference)
@@ -4037,132 +4502,6 @@ class _GivenForceGivenFlowProblem(GivenForceProblem, _GivenFlowProblem):
             given_u = self.get_given_flow(obj0)
             obj0.set_re_velocity(obj0.get_re_velocity() + given_u)
         return ksp_norm
-
-
-class GivenVelocityProblem(ForceFreeProblem):
-    def _create_U(self):
-        comm = PETSc.COMM_WORLD.tompi4py()
-        rank = comm.Get_rank()
-        velocity = self._u_pkg.createGlobalVector()
-        velocity.zeroEntries()
-        for obj0 in self.get_obj_list():
-            if isinstance(obj0, GivenVelocityComposite):
-                givenU = obj0.get_givenU()
-                for sub_obj, rel_U in zip(obj0.get_obj_list(), obj0.get_rel_U_list()):
-                    nnode = sub_obj.get_n_u_node()
-                    t_u = np.repeat((rel_U[:3] + givenU).reshape((1, 3)), nnode, axis=0).flatten()
-                    _, u_glbIdx_all = sub_obj.get_u_geo().get_glbIdx()
-                    if rank == 0:
-                        velocity[u_glbIdx_all] = t_u[:]
-            else:
-                u0 = obj0.get_velocity()
-                _, u_glbIdx_all = obj0.get_u_geo().get_glbIdx()
-                if rank == 0:
-                    velocity[u_glbIdx_all] = u0[:]
-        velocity.assemble()
-        self._velocity_petsc = velocity
-        return True
-
-    def _resolve_velocity(self, ksp):
-        # self._re_velocity = u_rel + w_rel×ri
-        # self._re_velocity + u_ref + w_ref×ri = u_ref + w_ref×ri + u_rel + w_rel×ri
-        ffweight = self._ffweigth
-        re_velocity_petsc = self._M_petsc.createVecLeft()
-        # re_velocity_petsc.set(0)
-        self._M_petsc.mult(self._force_petsc, re_velocity_petsc)
-        self._re_velocity = self.vec_scatter(re_velocity_petsc)
-
-        for obj0 in self.get_obj_list():
-            if isinstance(obj0, ForceFreeComposite):
-                ref_U = obj0.get_ref_U()
-                center = obj0.get_center()
-                for sub_obj in obj0.get_obj_list():
-                    _, u_glbIdx_all = sub_obj.get_u_geo().get_glbIdx()
-                    re_rel_U = self._re_velocity[u_glbIdx_all]
-                    sub_nodes = sub_obj.get_u_geo().get_nodes()
-                    r = sub_nodes - center
-                    t_u = (ref_U[:3] + np.cross(ref_U[3:], r)).flatten()
-                    re_abs_U = t_u + re_rel_U
-                    sub_obj.set_re_velocity(re_abs_U)
-
-                # # dbg
-                # t_list = []
-                # for sub_obj in obj0.get_obj_list():
-                #     _, u_glbIdx_all = sub_obj.get_u_geo().get_glbIdx()
-                #     re_rel_U = self._re_velocity[u_glbIdx_all]
-                #     sub_nodes = sub_obj.get_u_geo().get_nodes()
-                #     r = sub_nodes - center
-                #     t_u = (ref_U[:3] + np.cross(ref_U[3:], r)).flatten()
-                #     re_abs_U = t_u + re_rel_U
-                #     t_geo = sub_obj.get_u_geo().copy()
-                #     t_geo.set_velocity(re_abs_U)
-                #     t_list.append(t_geo)
-                # t_geo2 = geo()
-                # t_geo2.combine(t_list)
-                # t_geo2.show_velocity()
-
-                _, u_glbIdx_all = obj0.get_u_glbIdx()
-                re_sum = self._re_velocity[u_glbIdx_all] * ([-1] * 3 + [1] * 3) / ffweight
-                obj0.set_total_force(re_sum)  # force free, analytically they are zero.
-            else:
-                _, u_glbIdx_all = obj0.get_u_geo().get_glbIdx()
-                obj0.set_re_velocity(self._re_velocity[u_glbIdx_all])
-        self._finish_solve = True
-        return ksp.getResidualNorm()
-
-    def set_force_free(self):
-        import numpy.matlib as npm
-        ffweight = self._ffweigth
-        err_msg = 'self._M_petsc is NOT assembled'
-        assert self._M_petsc.isAssembled(), err_msg
-        err_msg = 'current version: len(self.get_all_obj_list()) == 2'
-        assert len(self.get_all_obj_list()) == 2, err_msg
-
-        for obj1 in self.get_obj_list():
-            if isinstance(obj1, ForceFreeComposite):
-                err_msg = 'current version: len(obj1.get_obj_list()) == 2'
-                assert len(obj1.get_obj_list()) == 2, err_msg
-                center = obj1.get_center()
-                _, u_glbIdx_all = obj1.get_u_glbIdx()
-                _, f_glbIdx_all = obj1.get_f_glbIdx()
-                # part 1
-                sub_obj = obj1.get_obj_list()[0]
-                u_glbIdx_1 = u_glbIdx_all[:3]
-                f_glbIdx_1 = f_glbIdx_all[:3]
-                r_u = sub_obj.get_u_geo().get_nodes() - center
-                r_f = sub_obj.get_f_geo().get_nodes() - center
-                tmu2 = np.vstack([((0, -ri[2], ri[1]),
-                                   (ri[2], 0, -ri[0]),
-                                   (-ri[1], ri[0], 0))
-                                  for ri in r_u]) * ffweight[3]
-                tmf2 = np.hstack([((0, -ri[2], ri[1]),
-                                   (ri[2], 0, -ri[0]),
-                                   (-ri[1], ri[0], 0))
-                                  for ri in r_f]) * ffweight[3]
-                _, sub_u_glbIdx_all = sub_obj.get_u_geo().get_glbIdx()
-                _, sub_f_glbIdx_all = sub_obj.get_f_geo().get_glbIdx()
-                self._M_petsc.setValues(sub_u_glbIdx_all, f_glbIdx_1, tmu2, addv=False)
-                self._M_petsc.setValues(u_glbIdx_1, sub_f_glbIdx_all, tmf2, addv=False)
-                # part 2
-                sub_obj = obj1.get_obj_list()[1]
-                u_glbIdx_2 = u_glbIdx_all[3:]
-                f_glbIdx_2 = f_glbIdx_all[3:]
-                r_u = sub_obj.get_u_geo().get_nodes() - center
-                r_f = sub_obj.get_f_geo().get_nodes() - center
-                tmu2 = np.vstack([((0, -ri[2], ri[1]),
-                                   (ri[2], 0, -ri[0]),
-                                   (-ri[1], ri[0], 0))
-                                  for ri in r_u]) * ffweight[3]
-                tmf2 = np.hstack([((0, -ri[2], ri[1]),
-                                   (ri[2], 0, -ri[0]),
-                                   (-ri[1], ri[0], 0))
-                                  for ri in r_f]) * ffweight[3]
-                _, sub_u_glbIdx_all = sub_obj.get_u_geo().get_glbIdx()
-                _, sub_f_glbIdx_all = sub_obj.get_f_geo().get_glbIdx()
-                self._M_petsc.setValues(sub_u_glbIdx_all, f_glbIdx_2, tmu2, addv=False)
-                self._M_petsc.setValues(u_glbIdx_2, sub_f_glbIdx_all, tmf2, addv=False)
-        self._M_petsc.assemble()
-        return True
 
 
 class _GivenTorqueGivenVelocityGivenFlowProblem(GivenForceProblem, _GivenFlowProblem):
@@ -4231,7 +4570,7 @@ class _GivenTorqueGivenVelocityGivenFlowProblem(GivenForceProblem, _GivenFlowPro
             if isinstance(obj0, GivenTorqueComposite):
                 ref_U = obj0.get_ref_U()
                 center = obj0.get_center()
-                re_sum = 0
+                # re_sum = 0
                 for sub_obj in obj0.get_obj_list():
                     u_b = self.get_given_flow(sub_obj)
                     _, u_glbIdx_all = sub_obj.get_u_geo().get_glbIdx()
@@ -4241,8 +4580,8 @@ class _GivenTorqueGivenVelocityGivenFlowProblem(GivenForceProblem, _GivenFlowPro
                     t_u = (ref_U[:3] + np.cross(ref_U[3:], r)).flatten()
                     re_abs_U = t_u + re_rel_U + u_b
                     sub_obj.set_re_velocity(re_abs_U)
-                    re_sum = re_sum + sub_obj.get_total_force(center=center)
-                obj0.set_total_force(re_sum)  # torque free, analytically they are zero.
+                    # re_sum = re_sum + sub_obj.get_total_force(center=center)
+                # obj0.set_total_force(re_sum)  # torque free, analytically they are zero.
             else:
                 _, u_glbIdx_all = obj0.get_u_geo().get_glbIdx()
                 u_b = self.get_given_flow(obj0)

@@ -72,14 +72,26 @@ def save_singleEcoli_U_vtk(problem: sf.StokesFlowProblem,
         PETSc.Sys.Print('velocity error of sphere (total, x, y, z): ', velocity_err_sphere)
 
     def save_tail():
+        # tail_obj_list = createHandle(**check_kwargs)[1]
+        # for tail_obj in tail_obj_list:
+        #     tail_obj.set_rigid_velocity(rel_Uh + ecoli_U, center=center)
+        # velocity_err_list = problem.vtk_check(fileHandle, tail_obj_list)
+        # PETSc.Sys.Print('velocity error of helix0 (total, x, y, z): ', next(velocity_err_list))
+        # PETSc.Sys.Print('velocity error of helix1 (total, x, y, z): ', next(velocity_err_list))
+        # if with_T_geo:
+        #     PETSc.Sys.Print('velocity error of Tgeo (total, x, y, z): ', next(velocity_err_list))
+
         tail_obj_list = createHandle(**check_kwargs)[1]
-        for tail_obj in tail_obj_list:
-            tail_obj.set_rigid_velocity(rel_Uh + ecoli_U, center=center)
-        velocity_err_list = problem.vtk_check(fileHandle, tail_obj_list)
-        PETSc.Sys.Print('velocity error of helix0 (total, x, y, z): ', next(velocity_err_list))
-        PETSc.Sys.Print('velocity error of helix1 (total, x, y, z): ', next(velocity_err_list))
-        if with_T_geo:
-            PETSc.Sys.Print('velocity error of Tgeo (total, x, y, z): ', next(velocity_err_list))
+        tail_obj_all = sf.StokesFlowObj()
+        tail_obj_all.combine(tail_obj_list, set_re_u=True, set_force=True)
+        tidx = np.arange(tail_obj_all.get_n_u_node())
+        np.random.shuffle(tidx)
+        tidx = tidx[:np.min((tidx.size, 3000))]
+        tail_obj_all.get_u_geo().set_nodes(tail_obj_all.get_u_nodes()[tidx].copy(), deltalength=0)
+        tail_obj_all.get_f_geo().set_nodes(tail_obj_all.get_f_nodes()[tidx].copy(), deltalength=0)
+        tail_obj_all.set_rigid_velocity(rel_Uh + ecoli_U, center=center)
+        velocity_err_list = problem.vtk_check(fileHandle, tail_obj_all)
+        PETSc.Sys.Print('  velocity error of tails (total, x, y, z): ', next(velocity_err_list))
 
     def save_full():
         save_head()
@@ -116,8 +128,10 @@ def save_singleEcoli_U_vtk(problem: sf.StokesFlowProblem,
 
     # create check obj
     check_kwargs = problem_kwargs.copy()
-    check_kwargs['nth'] = problem_kwargs['nth'] - 2 if problem_kwargs['nth'] >= 6 else problem_kwargs['nth'] + 1
-    check_kwargs['ds'] = problem_kwargs['ds'] * 1.2
+    # check_kwargs['nth'] = problem_kwargs['nth'] - 2 if problem_kwargs['nth'] >= 6 else problem_kwargs['nth'] + 1
+    # check_kwargs['ds'] = problem_kwargs['ds'] * 1.2
+    check_kwargs['nth'] = problem_kwargs['nth'] * 2
+    check_kwargs['ds'] = problem_kwargs['ds'] * 2
     check_kwargs['hfct'] = 1
     check_kwargs['Tfct'] = 1
     check_kwargs['eh'] = 0
@@ -130,10 +144,10 @@ def save_singleEcoli_U_vtk(problem: sf.StokesFlowProblem,
     return True
 
 
-# given velocity case,
-#  consider the ecoli constituted by four separate part: head, helix0, helix1, and Tgeo.
-#  each part have its own velocity U=[ux, uy, uz, wx, wy ,wz]
 def save_singleEcoli_U_4part_vtk(problem: sf.StokesFlowProblem, U_list, createHandle=createEcoliComp_tunnel):
+    # given velocity case,
+    #  consider the ecoli constituted by four separate part: head, helix0, helix1, and Tgeo.
+    #  each part have its own velocity U=[ux, uy, uz, wx, wy ,wz]
     OptDB = PETSc.Options()
     if not OptDB.getBool('save_singleEcoli_vtk', True):
         return False

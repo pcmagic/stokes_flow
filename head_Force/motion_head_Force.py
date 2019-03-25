@@ -108,15 +108,20 @@ def main_fun(**main_kwargs):
     eval_dt = problem_kwargs['eval_dt']
     update_order = problem_kwargs['update_order']
     update_fun = problem_kwargs['update_fun']
+    norm_theta = problem_kwargs['norm_theta']
+    norm_phi = problem_kwargs['norm_phi']
+    PETSc.Sys.Print('-->norm_theta=%f, norm_phi=%f' % (norm_theta, norm_phi))
 
     if not problem_kwargs['restart']:
         # create obj
         ellipse_obj = create_ellipse_obj(**problem_kwargs)
+        ellipse_obj.node_rotation(np.array((0, 1, 0)), norm_theta)
+        ellipse_obj.node_rotation(np.array((0, 0, 1)), norm_phi)
         ellipse_geo0 = ellipse_obj.get_u_geo()
         F_ellipse = ellipse_obj.get_point_force_list()[0][1]
         givenF = np.hstack((F_ellipse, np.zeros(3)))
-        ecoli_comp = sf.GivenForceComposite(center=ellipse_geo0.get_center(),
-                                            norm=ellipse_geo0.get_geo_norm(), name='ecoli_0', givenF=givenF)
+        ecoli_comp = sf.GivenForceComposite(center=ellipse_geo0.get_center(), norm=ellipse_geo0.get_geo_norm(),
+                                            name='ecoli_0', givenF=givenF)
         ecoli_comp.add_obj(obj=ellipse_obj, rel_U=np.zeros(6))
         ecoli_comp.set_update_para(fix_x=False, fix_y=False, fix_z=False,
                                    update_fun=update_fun, update_order=update_order)
@@ -163,4 +168,7 @@ def main_fun(**main_kwargs):
 
 
 if __name__ == '__main__':
-    main_fun()
+    OptDB = PETSc.Options()
+    norm_theta = OptDB.getReal('norm_theta', 0)
+    norm_phi = OptDB.getReal('norm_phi', 0)
+    main_fun(norm_theta=norm_theta, norm_phi=norm_phi)

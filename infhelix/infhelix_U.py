@@ -18,9 +18,9 @@ def get_problem_kwargs(**main_kwargs):
     fileHandle = OptDB.getString('f', 'infhelixPro')
     OptDB.setValue('f', fileHandle)
     problem_kwargs['fileHandle'] = fileHandle
-    n_helix = OptDB.getReal('n_helix', 2)
-    OptDB.setValue('n_helix', n_helix)
-    problem_kwargs['n_helix'] = n_helix
+    n_tail = OptDB.getReal('n_tail', 2)
+    OptDB.setValue('n_tail', n_tail)
+    problem_kwargs['n_tail'] = n_tail
 
     kwargs_list = (main_kwargs, get_helix_kwargs(), get_givenForce_kwargs())
     for t_kwargs in kwargs_list:
@@ -31,10 +31,10 @@ def get_problem_kwargs(**main_kwargs):
 
 def print_case_info(obj_name, **problem_kwargs):
     fileHandle = problem_kwargs['fileHandle']
-    n_helix = problem_kwargs['n_helix']
+    n_tail = problem_kwargs['n_tail']
     print_solver_info(**problem_kwargs)
     print_helix_info(obj_name, **problem_kwargs)
-    PETSc.Sys.Print('  given unite spin wz, # helix %d. ' % n_helix)
+    PETSc.Sys.Print('  given unite spin wz, # helix %d. ' % n_tail)
     return True
 
 
@@ -42,18 +42,20 @@ def print_case_info(obj_name, **problem_kwargs):
 def main_fun(**main_kwargs):
     main_kwargs['matrix_method'] = 'pf_infhelix'
     problem_kwargs = get_problem_kwargs(**main_kwargs)
-    objname = 'infhelix'
+    objname = 'InfHelix_U'
+    rh1 = problem_kwargs['rh1']
     print_case_info(objname, **problem_kwargs)
 
     # helix obj
-    helix_list = create_infHelix(objname, **problem_kwargs)
+    helix_list = create_infHelix(objname, normalize=False, **problem_kwargs)
     nSegment = helix_list[0].get_u_geo().get_nSegment()
-    maxtheta = helix_list[0].get_u_geo().get_maxlength()
+    ch = helix_list[0].get_u_geo().get_max_period()
 
     # create problem, given velocity
     problem = sf.StokesFlowProblem(**problem_kwargs)
     for tobj in helix_list:
         problem.add_obj(tobj)
+    problem.print_info()
     problem.create_matrix()
 
     # case 1, translation
@@ -64,8 +66,9 @@ def main_fun(**main_kwargs):
     # problem.show_velocity(length_factor=0.003)
     # problem.show_force(length_factor=0.5)
     helix_force = np.sum([tobj.get_total_force() for tobj in helix_list], axis=0)
-    norm_force = helix_force * nSegment / (2 * maxtheta / (2 * np.pi))   # total force / helix arc length
+    norm_force = helix_force * nSegment  # total force per period
     PETSc.Sys.Print('Translation, helix forces and torques', norm_force)
+    PETSc.Sys.Print('Calculated force free forward speed is ', (-norm_force[5] / norm_force[2]))
 
     # case 2, rotation
     for tobj in helix_list:
@@ -75,8 +78,21 @@ def main_fun(**main_kwargs):
     # problem.show_velocity(length_factor=0.003)
     # problem.show_force(length_factor=0.5)
     helix_force = np.sum([tobj.get_total_force() for tobj in helix_list], axis=0)
-    norm_force = helix_force * nSegment / (2 * maxtheta / (2 * np.pi))   # total force / helix arc length
+    norm_force = helix_force * nSegment  # total force per period
     PETSc.Sys.Print('Rotation, helix forces and torques', norm_force)
+
+    # case 3, force free problem, iterate method
+    problem_ff = sf.GivenTorqueIterateVelocity1DProblem(axis='z', **problem_kwargs)
+    for tobj in helix_list:
+        problem_ff.add_obj(tobj)
+    problem_ff.set_iterate_obj(helix_list)
+    # problem_ff.print_info()
+    problem_ff.set_matrix(problem.get_M_petsc())
+    u0, tol = problem_ff.do_iterate(tolerate=1e-3)
+    PETSc.Sys.Print('---->>>helix force relative tolerate', tol)
+    helixU = np.array((0, 0, u0, 0, 0, 1))
+    PETSc.Sys.Print('---->>>helix velocity is', helixU)
+    PETSc.Sys.Print('---->>>Norm forward helix velocity is', helixU[2] / (helixU[5] * rh1))
 
     PETSc.Sys.Print(problem_kwargs)
     return True

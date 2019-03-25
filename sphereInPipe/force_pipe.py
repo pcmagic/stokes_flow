@@ -324,7 +324,7 @@ def construct(**main_kwargs):
         PETSc.Sys().Print(np.hstack((b.reshape((-1, 1)), err)))
 
 
-def debug_stokeslets_b(b, node):
+def debug_stokeslets_b(b, node, threshold=10):
     problem_kwargs = get_problem_kwargs()
     fileHandle = problem_kwargs['fileHandle']
     problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
@@ -344,26 +344,51 @@ def debug_stokeslets_b(b, node):
     num_ans1, num_ans2, num_ans3 = problem.debug_solve_stokeslets_b(b=b, node=node)
 
     tR, tphi = cart2pol(node[:, 0], node[:, 1])
-    greenFun = detail(threshold=10, b=b)
+    greenFun = detail(threshold=threshold, b=b)
     greenFun.solve_prepare()
     any_ans1 = np.hstack([greenFun.solve_u1(R, phi, z) for R, phi, z in zip(tR, tphi, node[:, 2])])
     any_ans2 = np.hstack([greenFun.solve_u2(R, phi, z) for R, phi, z in zip(tR, tphi, node[:, 2])])
     any_ans3 = np.hstack([greenFun.solve_u3(R, phi, z) for R, phi, z in zip(tR, tphi, node[:, 2])])
-    print('analitical, numerical, abs_err, relative_err')
-    print('u1')
-    print(np.vstack((any_ans1, num_ans1[:], num_ans1[:] - any_ans1,
+    PETSc.Sys.Print('analitical, numerical, abs_err, relative_err')
+    PETSc.Sys.Print('u1')
+    PETSc.Sys.Print(np.vstack((any_ans1, num_ans1[:], num_ans1[:] - any_ans1,
                      (num_ans1[:] - any_ans1) / any_ans1)).T)
-    print('u2')
-    print(np.vstack((any_ans2, num_ans2[:], num_ans2[:] - any_ans2,
+    PETSc.Sys.Print('u2')
+    PETSc.Sys.Print(np.vstack((any_ans2, num_ans2[:], num_ans2[:] - any_ans2,
                      (num_ans2[:] - any_ans2) / any_ans2)).T)
-    print('u3')
-    print(np.vstack((any_ans3, num_ans3[:], num_ans3[:] - any_ans3,
+    PETSc.Sys.Print('u3')
+    PETSc.Sys.Print(np.vstack((any_ans3, num_ans3[:], num_ans3[:] - any_ans3,
                      (num_ans3[:] - any_ans3) / any_ans3)).T)
-    print(np.sqrt(np.sum((num_ans1[:] - any_ans1) ** 2 +
+    PETSc.Sys.Print(np.sqrt(np.sum((num_ans1[:] - any_ans1) ** 2 +
                          (num_ans2[:] - any_ans2) ** 2 +
                          (num_ans3[:] - any_ans3) ** 2)
                   / np.sum(any_ans1 ** 2 + any_ans2 ** 2 + any_ans3 ** 2)))
     return True
+
+
+def debug_uana_b(b, node, threshold=10, ifprint=True):
+    # calculate u33 for given b and given nodes.
+    # problem_kwargs = get_problem_kwargs()
+    # fileHandle = problem_kwargs['fileHandle']
+    # problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
+    # problem.set_prepare(fileHandle)
+    # node = np.array(node).reshape((-1, 3))
+    # num_ans1, num_ans2, num_ans3 = problem.debug_solve_stokeslets_b(b=b, node=node)
+
+    tR, tphi = cart2pol(node[:, 0], node[:, 1])
+    greenFun = detail(threshold=threshold, b=b)
+    greenFun.solve_prepare()
+    any_ans1 = np.vstack([greenFun.solve_u1(R, phi, z) for R, phi, z in zip(tR, tphi, node[:, 2])])
+    any_ans2 = np.vstack([greenFun.solve_u2(R, phi, z) for R, phi, z in zip(tR, tphi, node[:, 2])])
+    any_ans3 = np.vstack([greenFun.solve_u3(R, phi, z) for R, phi, z in zip(tR, tphi, node[:, 2])])
+    if ifprint:
+        PETSc.Sys.Print('u1')
+        PETSc.Sys.Print(np.hstack((node[:, 2].reshape((1, -1)).T, any_ans1)))
+        PETSc.Sys.Print('u2')
+        PETSc.Sys.Print(np.hstack((node[:, 2].reshape((1, -1)).T, any_ans2)))
+        PETSc.Sys.Print('u3')
+        PETSc.Sys.Print(np.hstack((node[:, 2].reshape((1, -1)).T, any_ans3)))
+    return any_ans1, any_ans2, any_ans3
 
 
 def debug_num_speed(nnode=1000):
@@ -526,14 +551,38 @@ if __name__ == '__main__':
     # debug_solve_stokeslets_fnode((0.3/2**0.5, 0.3/2**0.5, 0))
 
     OptDB = PETSc.Options()
-    # if OptDB.getBool('show_err', False):
-    #     OptDB.setValue('main_fun', False)
-    #     show_err()
-    #
-    # if OptDB.getBool('export_mat', False):
-    #     OptDB.setValue('main_fun', False)
-    #     export_mat()
-    #
+    if OptDB.getBool('debug_stokeslets_b', False):
+        OptDB.setValue('main_fun', False)
+        stokeslets_b = OptDB.getReal('stokeslets_b', 0)
+        stokeslets_threshold = OptDB.getReal('stokeslets_threshold', 10)
+        stokeslets_n_node = OptDB.getInt('stokeslets_n_node', 10)
+        stokeslets_threshold = OptDB.getInt('stokeslets_threshold', 10)
+        t_nodes = np.vstack((np.ones(stokeslets_n_node) * stokeslets_b,
+                             np.zeros(stokeslets_n_node),
+                             np.linspace(10, 0, stokeslets_n_node, endpoint=False))).T
+        debug_stokeslets_b(stokeslets_b, t_nodes, stokeslets_threshold)
+
+    if OptDB.getBool('debug_uana_b', False):
+        OptDB.setValue('main_fun', False)
+        stokeslets_b = OptDB.getReal('stokeslets_b', 0)
+        stokeslets_zmax = OptDB.getReal('stokeslets_zmax', 2)
+        stokeslets_zmin = OptDB.getReal('stokeslets_zmin', 0)
+        stokeslets_threshold = OptDB.getReal('stokeslets_threshold', 10)
+        stokeslets_n_node = OptDB.getInt('stokeslets_n_node', 10)
+        stokeslets_threshold = OptDB.getInt('stokeslets_threshold', 10)
+        t_nodes = np.vstack((np.ones(stokeslets_n_node) * stokeslets_b,
+                             np.zeros(stokeslets_n_node),
+                             np.linspace(stokeslets_zmax, stokeslets_zmin, stokeslets_n_node, endpoint=False))).T
+        debug_uana_b(stokeslets_b, t_nodes, stokeslets_threshold)
+
+    if OptDB.getBool('show_err', False):
+        OptDB.setValue('main_fun', False)
+        show_err()
+
+    if OptDB.getBool('export_mat', False):
+        OptDB.setValue('main_fun', False)
+        export_mat()
+
     if OptDB.getBool('debug_num_speed', False):
         OptDB.setValue('main_fun', False)
         debug_num_speed(nnode=1000)

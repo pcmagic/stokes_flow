@@ -2,13 +2,15 @@ import numpy as np
 from petsc4py import PETSc
 from src.geo import *
 from src import stokes_flow as sf
+from src.support_class import *
 
 __all__ = ['createEcoli_ellipse', 'createEcoliComp_ellipse',
            'createEcoliComp_tunnel', 'createEcoli_tunnel',
+           'create_ecoli_2part', 'create_ecoli_tail',
            'create_capsule',
            'create_rod',
            'create_infHelix',
-           'create_sphere', 'create_move_single_sphere']
+           'create_sphere', 'create_move_single_sphere', 'create_one_ellipse']
 
 
 def create_capsule(rs1, rs2, ls, ds, node_dof=3):
@@ -76,7 +78,7 @@ def create_ecoli_tail(moveh, **kwargs):
     vhobj0.node_rotation(norm=np.array((0, 0, 1)), theta=theta)
     vhobj0.move(moveh * zoom_factor)
 
-    tail_list = []
+    tail_list = uniqueList()
     for i0 in range(n_tail):
         theta = 2 * np.pi / n_tail * i0
         vhobj1 = vhobj0.copy()
@@ -112,7 +114,7 @@ def createEcoli_ellipse(name='...', **kwargs):
     # create head
     vsgeo = ellipse_geo()  # velocity node geo of sphere
     vsgeo.create_delta(ds, rs1, rs2)
-    vsgeo.node_rotation(norm=np.array((0, 1, 0)), theta=np.pi / 2)
+    vsgeo.node_rotation(norm=np.array((0, 1, 0)), theta=-np.pi / 2)
     fsgeo = vsgeo.copy()  # force node geo of sphere
     fsgeo.node_zoom(1 + ds / (0.5 * (rs1 + rs2)) * es)
     vsobj = objtype()
@@ -231,6 +233,31 @@ def createEcoliComp_tunnel(name='...', **kwargs):
     return ecoli_comp
 
 
+def create_ecoli_2part(**problem_kwargs):
+    # create a ecoli contain two parts, one is head and one is tail.
+    rel_Us = problem_kwargs['rel_Us']
+    rel_Uh = problem_kwargs['rel_Uh']
+    update_order = problem_kwargs['update_order'] if 'update_order' in problem_kwargs.keys() else 1
+    update_fun = problem_kwargs['update_fun'] if 'update_fun' in problem_kwargs.keys() else Adams_Bashforth_Methods
+    with_T_geo = problem_kwargs['with_T_geo']
+    err_msg = 'currently, do not support with_T_geo for this kind of ecoli. '
+    assert not with_T_geo, err_msg
+
+    head_obj, tail_obj_list = createEcoli_ellipse(name='ecoli0', **problem_kwargs)
+    head_obj.set_name('head_obj')
+    tail_obj = sf.StokesFlowObj()
+    tail_obj.set_name('tail_obj')
+    tail_obj.combine(tail_obj_list)
+    head_geo = head_obj.get_u_geo()
+    # ecoli_comp = sf.ForceFreeComposite(center=head_geo.get_center(), norm=head_geo.get_geo_norm(), name='ecoli_0')
+    ecoli_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=head_geo.get_geo_norm(), name='ecoli_0')
+    ecoli_comp.add_obj(obj=head_obj, rel_U=rel_Us)
+    ecoli_comp.add_obj(obj=tail_obj, rel_U=rel_Uh)
+    ecoli_comp.set_update_para(fix_x=False, fix_y=False, fix_z=False,
+                               update_fun=update_fun, update_order=update_order)
+    return ecoli_comp
+
+
 def create_sphere(namehandle='sphereObj', **kwargs):
     matrix_method = kwargs['matrix_method']
     rs = kwargs['rs']
@@ -258,6 +285,29 @@ def create_sphere(namehandle='sphereObj', **kwargs):
         obj2.get_u_geo().set_rigid_velocity(t_velocity)
         obj_list.append(obj2)
     return obj_list
+
+
+def create_one_ellipse(namehandle='sphereObj', **kwargs):
+    matrix_method = kwargs['matrix_method']
+    rs1 = kwargs['rs1']
+    rs2 = kwargs['rs2']
+    sphere_velocity = kwargs['sphere_velocity']
+    ds = kwargs['ds']
+    es = kwargs['es']
+    sphere_coord = kwargs['sphere_coord']
+    objtype = sf.obj_dic[matrix_method]
+
+    obj_sphere = objtype()  # type: sf.StokesFlowObj
+    sphere_geo0 = ellipse_geo()  # force geo
+    sphere_geo0.set_dof(obj_sphere.get_n_unknown())
+    sphere_geo0.create_delta(ds, rs1, rs2)
+    sphere_geo0.set_rigid_velocity(sphere_velocity)
+    sphere_geo1 = sphere_geo0.copy()
+    if 'pf' in matrix_method:
+        sphere_geo1.node_zoom(1 + ds / (0.5 * (rs1 + rs2)) * es)
+    obj_sphere.set_data(sphere_geo1, sphere_geo0, name=namehandle)
+    obj_sphere.move(sphere_coord)
+    return obj_sphere
 
 
 def create_move_single_sphere(namehandle='sphereObj', **kwargs):
@@ -310,24 +360,24 @@ def create_rod(namehandle='rod_obj', **problem_kwargs):
 
 
 def create_infHelix(namehandle='infhelix', normalize=False, **problem_kwargs):
-    n_helix = problem_kwargs['n_helix']
+    n_tail = problem_kwargs['n_tail']
     eh = problem_kwargs['eh']
     ch = problem_kwargs['ch']
     rh1 = problem_kwargs['rh1']
     rh2 = problem_kwargs['rh2']
     ph = problem_kwargs['ph']
     nth = problem_kwargs['nth']
+    zoom_factor = problem_kwargs['zoom_factor']
 
     if normalize:
-        zoom_factor = problem_kwargs['zoom_factor']
         rh2 = rh2 * zoom_factor
         ph = ph * zoom_factor
         rh1 = rh1 * zoom_factor
 
     helix_list = []
-    for i0, theta0 in enumerate(np.linspace(0, 2 * np.pi, n_helix, endpoint=False)):
-        infhelix_ugeo = infHelix(ch * 2 * np.pi)
-        infhelix_ugeo.create_n(rh1, rh2, ph, nth, theta0=theta0)
+    for i0, theta0 in enumerate(np.linspace(0, 2 * np.pi, n_tail, endpoint=False)):
+        infhelix_ugeo = infHelix()
+        infhelix_ugeo.create_n(rh1, rh2, ph, ch, nth, theta0=theta0)
         infhelix_fgeo = infhelix_ugeo.create_fgeo(epsilon=eh)
         infhelix_obj = sf.StokesFlowObj()
         infhelix_obj.set_data(f_geo=infhelix_fgeo, u_geo=infhelix_ugeo, name=namehandle + '%02d' % i0)

@@ -6,7 +6,7 @@ __all__ = ['uniqueList', 'typeList', 'intList', 'floatList',
            'abs_comp', 'abs_construct_matrix',
            'check_file_extension', 'mpiprint',
            'coordinate_transformation',
-           'tube_flatten', 'get_rot_matrix', 'rot_vec2rot_mtx',
+           'tube_flatten', 'get_rot_matrix', 'rot_vec2rot_mtx', 'rotMatrixA2B',
            'Adams_Moulton_Methods', 'Adams_Bashforth_Methods']
 
 
@@ -191,6 +191,29 @@ def tube_flatten(container):
             yield i
 
 
+def rot_vec2rot_mtx(rot_vct):
+    rot_vct = np.array(rot_vct).flatten()
+    err_msg = 'rot_vct is a numpy array contain three components. '
+    assert rot_vct.size == 3, err_msg
+
+    def S(n):
+        Sn = np.array([[0, -n[2], n[1]],
+                       [n[2], 0, -n[0]],
+                       [-n[1], n[0], 0]])
+        return Sn
+
+    theta = np.linalg.norm(rot_vct)
+    if theta > 1e-6:
+        n = rot_vct / theta
+        Sn = S(n)
+        R = np.eye(3) + np.sin(theta) * Sn + (1 - np.cos(theta)) * np.dot(Sn, Sn)
+    else:
+        Sr = S(rot_vct)
+        theta2 = theta ** 2
+        R = np.eye(3) + (1 - theta2 / 6.) * Sr + (.5 - theta2 / 24.) * np.dot(Sr, Sr)
+    return R
+
+
 def get_rot_matrix(norm=np.array([0, 0, 1]), theta=0):
     norm = np.array(norm).reshape((3,))
     theta = -1 * float(theta)
@@ -200,23 +223,37 @@ def get_rot_matrix(norm=np.array([0, 0, 1]), theta=0):
     b = norm[1]
     c = norm[2]
     rotation = np.array([
-        [a ** 2 + (1 - a ** 2) * np.cos(theta), a * b * (1 - np.cos(theta)) + c * np.sin(theta),
+        [a ** 2 + (1 - a ** 2) * np.cos(theta),
+         a * b * (1 - np.cos(theta)) + c * np.sin(theta),
          a * c * (1 - np.cos(theta)) - b * np.sin(theta)],
-        [a * b * (1 - np.cos(theta)) - c * np.sin(theta), b ** 2 + (1 - b ** 2) * np.cos(theta),
+        [a * b * (1 - np.cos(theta)) - c * np.sin(theta),
+         b ** 2 + (1 - b ** 2) * np.cos(theta),
          b * c * (1 - np.cos(theta)) + a * np.sin(theta)],
-        [a * c * (1 - np.cos(theta)) + b * np.sin(theta), b * c * (1 - np.cos(theta)) - a * np.sin(theta),
+        [a * c * (1 - np.cos(theta)) + b * np.sin(theta),
+         b * c * (1 - np.cos(theta)) - a * np.sin(theta),
          c ** 2 + (1 - c ** 2) * np.cos(theta)]])
     return rotation
 
 
-def rot_vec2rot_mtx(rot_vct):
-    rot_vct = np.array(rot_vct).flatten()
-    err_msg = 'rot_vct is a numpy array contain three components. '
-    assert rot_vct.size == 3, err_msg
-    rot_mtx = np.array(((0, -rot_vct[2], rot_vct[1]),
-                        (rot_vct[2], 0, -rot_vct[0]),
-                        (-rot_vct[1], rot_vct[0], 0),))
-    return rot_mtx
+def rotMatrixA2B(a, b):
+    def S(n):
+        Sn = np.array([[0, -n[2], n[1]],
+                       [n[2], 0, -n[0]],
+                       [-n[1], n[0], 0]])
+        return Sn
+
+    a = a / np.linalg.norm(a)
+    b = b / np.linalg.norm(b)
+    c = np.dot(a, b)
+    v = np.cross(a, b)
+    if theta > 1e-6:
+        Sn = S(v)
+        R = np.eye(3) + Sn + np.dot(Sn, Sn) / (1 + c)
+    else:
+        Sr = S(v)
+        theta2 = theta ** 2
+        R = np.eye(3) + (1 - theta2 / 6.) * Sr + (.5 - theta2 / 24.) * np.dot(Sr, Sr)
+    return R
 
 
 class coordinate_transformation:

@@ -32,6 +32,7 @@ class geo():
         self._glbIdx_all = np.array([])  # global indices for all process.
         self._selfIdx = np.array([])  # indices of _glbIdx in _glbIdx_all
         self._dof = 3  # degrees of freedom pre node.
+        self._type = 'general_geo'  # geo type
 
     def mat_nodes(self, filename: str = '..',
                   mat_handle: str = 'nodes'):
@@ -290,7 +291,7 @@ class geo():
         self.set_origin(self.get_origin() + displacement)
         return True
 
-    def combine(self, geo_list, deltaLength=None):
+    def combine(self, geo_list, deltaLength=None, origin=None, geo_norm=None):
         if len(geo_list) == 0:
             return False
         for geo1 in geo_list:
@@ -300,6 +301,11 @@ class geo():
             assert geo1.get_n_nodes() != 0, err_msg
         if deltaLength is None:
             deltaLength = geo_list[0].get_deltaLength()
+        if origin is None:
+            origin = geo_list[0].get_origin()
+        if geo_norm is None:
+            geo_norm = geo_list[0].get_geo_norm()
+
 
         geo1 = geo_list.pop(0)
         self.set_nodes(geo1.get_nodes(), deltalength=deltaLength)
@@ -308,6 +314,8 @@ class geo():
             self.set_nodes(np.vstack((self.get_nodes(), geo1.get_nodes())), deltalength=deltaLength)
             self.set_velocity(np.hstack((self.get_velocity(), geo1.get_velocity())))
         self.set_dmda()
+        self._geo_norm = geo_norm
+        self.set_origin(origin)
         return True
 
     def save_nodes(self, filename):
@@ -474,6 +482,12 @@ class geo():
         #     x = np.linspace(-0.5, 0.5, n)
         #     return (f(x) - f(-0.5)) / (f(0.5) - f(-0.5))
 
+    def get_type(self):
+        return self._type
+
+    def print_info(self):
+        pass
+
 
 class geoComposit(uniqueList):
     def __init__(self, geo_list=[]):
@@ -563,6 +577,7 @@ class _ThickLine_geo(geo):
         self._factor = 1e-5
         self._left_hand = False
         self._check_epsilon = True
+        self._type = '_ThickLine_geo'  # geo type
 
     def set_check_epsilon(self, check_epsilon):
         self._check_epsilon = check_epsilon
@@ -747,6 +762,10 @@ class _ThickLine_geo(geo):
 
 
 class ellipse_geo(geo):
+    def __init__(self):
+        super().__init__()
+        self._type = 'ellipse_geo'  # geo type
+
     def create_n(self, n: int,  # number of nodes.
                  headA: float,  # major axis = 2*headA
                  headC: float):  # minor axis = 2*headC
@@ -894,6 +913,10 @@ class ellipse_geo(geo):
 
 
 class sphere_geo(ellipse_geo):
+    def __init__(self):
+        super().__init__()
+        self._type = 'sphere_geo'  # geo type
+
     def create_n(self, n: int,  # number of nodes.
                  radius: float, *args):  # radius
         err_msg = 'additional parameters are useless.  '
@@ -931,6 +954,7 @@ class tunnel_geo(_ThickLine_geo):
         self._length = 0
         self._cover_strat_list = []
         self._cover_end_list = []
+        self._type = 'tunnel_geo'  # geo type
 
     def create_n(self, n: int,  # number of nodes.
                  length: float,  # length of the tunnel
@@ -1102,6 +1126,7 @@ class pipe_cover_geo(tunnel_geo):
     def __init__(self):
         super().__init__()
         self._cover_node_list = uniqueList()
+        self._type = 'pipe_cover_geo'  # geo type
 
     def create_with_cover(self, deltaLength: float,  # length of the mesh
                           length: float,  # length of the tunnel
@@ -1205,6 +1230,7 @@ class supHelix(_ThickLine_geo):
         self._rho = 0  # minor radius of helix
         self._B = 0  # B = pitch / (2 * np.pi)
         self._n_c = 0  # number of period
+        self._type = 'supHelix'  # geo type
 
     def supHelixLength(self, R, B, r, b, s):
         import scipy.integrate as integrate
@@ -1323,56 +1349,79 @@ class supHelix(_ThickLine_geo):
 
 
 # symmetric geo with infinity length, i.e. infinite long helix, infinite long tube.
-class infgeo_1d(geo):  # periodism along z direction.
-    def __init__(self, max_length):
+class infgeo_1d(geo):
+    # the system have a rotational symmetry.
+    # currently, assume the symmetry is along the z axis.
+    def __init__(self):
         super().__init__()
-        self._max_length = max_length  # cut of of infinite long geo
-        self._nSegment = 0  # number of subsections of geo
+        self._max_period = 0  # cut off in the range (-max_period*2*pi, max_period*2*pi).
+        self._nSegment = 0  # number of subsections of geo per period
+        self._type = 'infgeo_1d'  # geo type
+        self._phi = ...  # type: np.ndarray # define the coordinates of nodes at the reference cross section.
+        self._ph = 0  # the length of the period of the infgeo, assume the system repeat itself at z axis infinitely.
 
     def get_nSegment(self):
         return self._nSegment
 
-    def get_maxlength(self):
-        return self._max_length
+    def get_max_period(self):
+        return self._max_period
+
+    def get_phi(self):
+        return self._phi
 
     @abc.abstractmethod
-    def coord_x123(self, percentage):
+    def coord_x123(self, theta):
         return
 
-    def rot_matrix(self, percentage):
-        return np.identity(3)
+    @abc.abstractmethod
+    def Frenetframe(self, theta):
+        return
+
+    def rot_matrix(self, theta):
+        # local -> reference
+        # currently, assume the symmetry is along the z axis.
+        Rmxt = np.identity(3)
+        Rmxt[0][0] = np.cos(theta)
+        Rmxt[0][1] = -np.sin(theta)
+        Rmxt[1][0] = np.sin(theta)
+        Rmxt[1][1] = np.cos(theta)
+        return Rmxt
 
     def show_segment(self, linestyle='-'):
         return super().show_nodes(linestyle)
 
     def show_nodes(self, linestyle='-'):
         t_nodes = []
-        for percentage in np.linspace(-1, 1, self.get_nSegment()):
-            t_nodes.append(self.coord_x123(percentage))
+        for ni in np.arange(-self.get_max_period(), self.get_max_period()):
+            for thi in np.linspace(0, 2*np.pi, self.get_nSegment(), endpoint=False):
+                th = ni * 2 * np.pi + thi
+                t_nodes.append(self.coord_x123(th))
         t_nodes = np.vstack(t_nodes)
         t_geo = geo()
         t_geo.set_nodes(t_nodes, deltalength=0)
         return t_geo.show_nodes(linestyle)
 
+    def print_info(self):
+        PETSc.Sys.Print('    %s: # of Segment: %d' % (self.get_type(), self.get_nSegment()))
+        return True
+
 
 # a infinite long helix along z axis
 class infHelix(infgeo_1d):
-    def __init__(self, max_length):
-        super().__init__(max_length)  # here maxlength means the cut off max theta of helix
+    def __init__(self):
+        super().__init__()  # here max_theta means the cut off max theta of helix
         self._R = 0  # major radius of helix
         self._rho = 0  # minor radius of helix
-        self._ph = 0  # pitch of helix
-        self._phi = 0  # define the coordinates of nodes at the reference cross section.
-        self._theta0 = 0  # define the reference location (original rotation) of the helix
+        self._type = 'infHelix'  # geo type
+        self._theta0 = 0  # define the reference location (original rotation) of the helix (for multi helix)
 
-    def coord_x123(self, percentage):
+    def coord_x123(self, th):
         R = self._R
         rho = self._rho
         ph = self._ph
         phi = self._phi
-        theta0 = self._theta0
-        th = (percentage * self._max_length) % (2 * np.pi) + theta0
-        # th = percentage * self._maxlength + theta0
+        th1 = th % (2 * np.pi) + self._theta0
+        # th = th + self._theta0
 
         # definition of parameters see __init__()
         # x1, x2, x3, coordinates of helix nodes
@@ -1382,19 +1431,10 @@ class infHelix(infgeo_1d):
                 ph ** 2 + 4 * np.pi ** 2 * R ** 2) + (R - rho * np.sin(phi)) * np.sin(theta)
         x3 = lambda theta: (ph * theta) / (2. * np.pi) + (2 * np.pi * R * rho * np.cos(phi)) / np.sqrt(
                 ph ** 2 + 4 * np.pi ** 2 * R ** 2)
-        return np.vstack((x1(th), x2(th), x3(percentage * self._max_length))).T
+        return np.vstack((x1(th1), x2(th1), x3(th))).T
 
-    def rot_matrix(self, percentage):
-        th = percentage * self._max_length
-        Rmxt = np.identity(3)
-        Rmxt[0][0] = np.cos(th)
-        Rmxt[0][1] = -np.sin(th)
-        Rmxt[1][0] = np.sin(th)
-        Rmxt[1][1] = np.cos(th)
-        return Rmxt
-
-    def Frenetframe(self, percentage):
-        th = percentage * self._max_length + self._theta0
+    def Frenetframe(self, th):
+        th = th % (2 * np.pi) + self._theta0
         ph = self._ph
         lh = 2 * np.pi * self._R
         s = np.sqrt(lh ** 2 + ph ** 2)
@@ -1403,17 +1443,18 @@ class infHelix(infgeo_1d):
         B = np.array((-np.cos(th), -np.sin(th), 0))
         return T, N, B
 
-    def create_n(self, R, rho, ph, n, theta0=0):
-        ch = self.get_maxlength() / (2 * np.pi) * 2  # it ranges from -1 to 1, so times two.
-        ntheta = (ch * np.sqrt(ph ** 2 + (2 * np.pi * R) ** 2) * n) / (2 * np.pi * rho)
-        self._nSegment = ntheta
+    def create_n(self, R, rho, ph, ch, nth, theta0=0, nSegment=None):
+        self._max_period = ch
+        if nSegment is None:
+            nSegment = np.ceil(np.sqrt(ph ** 2 + (2 * np.pi * R) ** 2) / (2 * np.pi * rho)) * nth
+        self._nSegment = nSegment
         self._R = R
         self._rho = rho
         self._ph = ph
         self._theta0 = theta0
-        self._phi = np.linspace(0, 2 * np.pi, n, endpoint=False)
+        self._phi = np.linspace(0, 2 * np.pi, nth, endpoint=False)
         self._nodes = self.coord_x123(0)
-        self.set_deltaLength(2 * np.pi * rho / n)
+        self.set_deltaLength(2 * np.pi * rho / nth)
         self.set_origin((0, 0, 0))
         self._u = np.zeros(self._nodes.size)
         self.set_dmda()
@@ -1426,40 +1467,40 @@ class infHelix(infgeo_1d):
         return True
 
     def create_fgeo(self, epsilon):
-        fgeo = infHelix(self.get_maxlength())
+        fgeo = infHelix()
         deltalength = self.get_deltaLength()
         f_rho = (self._rho + epsilon * deltalength)
         err_msg = 'epsilon > %f. ' % (-self._rho / deltalength)
         assert f_rho > 0, err_msg
-        fgeo.create_n(self._R, f_rho, self._ph, self.get_n_nodes(), self._theta0)
+        fgeo.create_n(self._R, f_rho, self._ph, self.get_max_period(), self.get_n_nodes(),
+                      self._theta0, self.get_nSegment())
         return fgeo
-
-    def get_phi(self):
-        return self._phi
 
 
 # a infinite long pipe along z axis
 class infPipe(infgeo_1d):
-    def __init__(self, max_length):
-        super().__init__(max_length)
+    def __init__(self):
+        super().__init__()
         self._R = 0  # radius of pipe
-        self._phi = 0  # define the coordinates of nodes at the reference cross section.
-        self._theta = 0  # the angle between the cut plane and the z axis
+        # self._theta = 0  # the angle between the cut plane and the z axis
+        self._type = 'infPipe'  # geo type
 
-    def coord_x123(self, percentage):
-        # return coordinates of helix nodes
-        xz = percentage * self._max_length
+    def coord_x123(self, th):
+        # return coordinates of inf pipe nodes
+        xz = th / (2 * np.pi) * self._ph
         R = self._R
-        phi = self._phi
-        theta = self._theta
-        return np.vstack((np.cos(phi) * R, np.sin(phi) * R, np.cos(phi) * R * np.sin(theta) + np.ones_like(phi) * xz)).T
+        phi = (self._phi + th) % (2 * np.pi)
+        return np.vstack((np.cos(phi) * R, np.sin(phi) * R, np.ones_like(phi) * xz)).T
 
-    def create_n(self, R, n, theta=0):
-        deltaLength = 2 * np.pi * R / n
-        self._nSegment = np.ceil(self.get_maxlength() / deltaLength)
+    def create_n(self, R, ph, ch, nth, nSegment=None):
+        deltaLength = 2 * np.pi * R / nth
+        if nSegment is None:
+            nSegment = np.ceil(ph / deltaLength)
+        self._max_period = ch
+        self._nSegment = nSegment
         self._R = R
-        self._phi = np.linspace(0, 2 * np.pi, n, endpoint=False)
-        self._theta = theta
+        self._ph = ph
+        self._phi = np.linspace(0, 2 * np.pi, nth, endpoint=False)
         self._nodes = self.coord_x123(0)
         self.set_deltaLength(deltaLength)
         self.set_origin((0, 0, 0))
@@ -1468,14 +1509,13 @@ class infPipe(infgeo_1d):
         return True
 
     def create_fgeo(self, epsilon):
-        fgeo = infPipe(self.get_maxlength())
+        fgeo = infPipe()
         deltalength = self.get_deltaLength()
         f_R = self._R + epsilon * deltalength
-        fgeo.create_n(f_R, self.get_n_nodes(), self._theta)
+        err_msg = 'epsilon > %f. ' % (-self._R / deltalength)
+        assert f_R > 0, err_msg
+        fgeo.create_n(f_R, self._ph, self.get_max_period(), self.get_n_nodes(), self.get_nSegment())
         return fgeo
-
-    def get_phi(self):
-        return self._phi
 
 
 class region:
@@ -1536,6 +1576,7 @@ class region:
         full_region_z = temp_r * np.sin(temp_theta)
 
         return full_region_x, full_region_y, full_region_z
+
 
 def set_axes_equal(ax):
     '''Make axes of 3D plot have equal scale so that spheres appear as spheres,

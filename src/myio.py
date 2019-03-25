@@ -12,11 +12,13 @@ __all__ = ['get_solver_kwargs', 'get_forcefree_kwargs', 'get_givenForce_kwargs',
            'print_solver_info', 'print_forcefree_info', 'print_givenForce_info',
            'get_update_kwargs', 'print_update_info',
            'get_shearFlow_kwargs', 'print_shearFlow_info',
+           'get_freeVortex_kwargs', 'print_freeVortex_info',
            'get_PoiseuilleFlow_kwargs', 'print_PoiseuilleFlow_info',
            'get_ecoli_kwargs', 'print_ecoli_info', 'print_ecoli_U_info',
            'get_helix_kwargs', 'print_helix_info',
            'print_single_ecoli_forcefree_result', 'print_single_ecoli_force_result',
            'get_rod_kwargs', 'print_Rod_info',
+           'get_one_ellipse_kwargs', 'print_one_ellipse_info',
            # 'print_infhelix_info',
            'get_sphere_kwargs', 'print_sphere_info',
            'get_pipe_kwargs', 'print_pipe_info', ]
@@ -39,17 +41,17 @@ def print_single_ecoli_force_result(ecoli_comp: sf.ForceFreeComposite, prefix=''
         non_dim_F = total_force / temp_F
         non_dim_sumF = np.sqrt(np.sum(non_dim_F[:3] ** 2))
         non_dim_sumT = np.sqrt(np.sum(non_dim_F[3:] ** 2))
-        PETSc.Sys.Print('%s head resultant is' % prefix, head_force)
-        PETSc.Sys.Print('%s tail resultant is' % prefix, tail_force)
-        PETSc.Sys.Print('%s helix0 resultant is' % prefix, helix0_force)
+        PETSc.Sys.Print('  %s head resultant is' % prefix, head_force)
+        PETSc.Sys.Print('  %s tail resultant is' % prefix, tail_force)
+        PETSc.Sys.Print('  %s helix0 resultant is' % prefix, helix0_force)
         if len(tail_obj) > 1:
-            PETSc.Sys.Print('%s helix1 resultant is' % prefix, helix1_force)
+            PETSc.Sys.Print('  %s helix1 resultant is' % prefix, helix1_force)
         if len(tail_obj) == 3:
-            PETSc.Sys.Print('%s Tgeo resultant is' % prefix, tail_obj[2].get_total_force())
+            PETSc.Sys.Print('  %s Tgeo resultant is' % prefix, tail_obj[2].get_total_force())
 
-        PETSc.Sys.Print('%s total resultant is' % prefix, total_force)
-        PETSc.Sys.Print('%s non_dim_F' % prefix, non_dim_F)
-        PETSc.Sys.Print('%s non_dim: sumF = %f, sumT = %f' % (prefix, non_dim_sumF, non_dim_sumT))
+        PETSc.Sys.Print('  %s total resultant is' % prefix, total_force)
+        PETSc.Sys.Print('  %s non_dim_F' % prefix, non_dim_F)
+        PETSc.Sys.Print('  %s non_dim: sumF = %f, sumT = %f' % (prefix, non_dim_sumF, non_dim_sumT))
         return total_force
 
     def print_head():
@@ -259,6 +261,7 @@ def get_helix_kwargs():
 
 def print_ecoli_info(ecoName, **problem_kwargs):
     nth = problem_kwargs['nth']
+    n_tail = problem_kwargs['n_tail']
     hfct = problem_kwargs['hfct']
     eh = problem_kwargs['eh']
     ch = problem_kwargs['ch']
@@ -292,7 +295,7 @@ def print_ecoli_info(ecoName, **problem_kwargs):
 
     PETSc.Sys.Print(ecoName, 'geo information: ')
     PETSc.Sys.Print('  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
-    PETSc.Sys.Print('    nth, hfct and epsilon of helix are %d, %f and %f, ' % (nth, hfct, eh))
+    PETSc.Sys.Print('    nth, n_tail, hfct and epsilon of helix are %d, %d, %f and %f, ' % (nth, n_tail, hfct, eh))
     PETSc.Sys.Print('  head radius: %f and %f, length: %f, delta length: %f, epsilon: %f' % (rs1, rs2, ls, ds, es))
     PETSc.Sys.Print('  Tgeo radius: %f and %f' % (rT1, rT2))
     PETSc.Sys.Print('    ntT, eT and Tfct of Tgeo are: %d, %f and %f' % (ntT, eT, Tfct))
@@ -311,6 +314,7 @@ def print_helix_info(helixName, **problem_kwargs):
     ch = problem_kwargs['ch']
     ph = problem_kwargs['ph']
     hfct = problem_kwargs['hfct']
+    n_tail = problem_kwargs['n_tail']
     with_cover = problem_kwargs['with_cover']
     left_hand = problem_kwargs['left_hand']
     rel_Uh = problem_kwargs['rel_Uh']
@@ -327,8 +331,8 @@ def print_helix_info(helixName, **problem_kwargs):
 
     PETSc.Sys.Print(helixName, 'geo information: ')
     PETSc.Sys.Print('  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
-    PETSc.Sys.Print('    nth, hfct and epsilon of helix are %d, %f and %f, ' % (nth, hfct, eh))
-    PETSc.Sys.Print('  relative velocity of helixs is %s' % (str(rel_Uh)))
+    PETSc.Sys.Print('    nth, n_tail, hfct and epsilon of helix are %d, %d, %f and %f, ' % (nth, n_tail, hfct, eh))
+    PETSc.Sys.Print('  relative velocity of helix is %s' % (str(rel_Uh)))
     PETSc.Sys.Print('  rot_norm is %s, rot_theta is %f*pi' % (str(rot_norm), rot_theta))
     PETSc.Sys.Print('  geometry zoom factor is %f' % zoom_factor)
     return True
@@ -474,6 +478,19 @@ def get_shearFlow_kwargs():
 def print_shearFlow_info(**problem_kwargs):
     planeShearRate = problem_kwargs['planeShearRate']
     PETSc.Sys.Print('Given background flow: shear flow, rate: %s ' % str(planeShearRate.flatten()))
+    return True
+
+
+def get_freeVortex_kwargs():
+    OptDB = PETSc.Options()
+    vortexStrength = OptDB.getReal('vortexStrength', 0)  #
+    problem_kwargs = {'vortexStrength': vortexStrength}
+    return problem_kwargs
+
+
+def print_freeVortex_info(**problem_kwargs):
+    vortexStrength = problem_kwargs['vortexStrength']
+    PETSc.Sys.Print('Given background flow: FreeVortex flow, rate: %f ' % vortexStrength)
     return True
 
 
@@ -666,6 +683,57 @@ def print_sphere_info(sphereName, **problem_kwargs):
     return True
 
 
+def get_one_ellipse_kwargs():
+    """
+    u: translating velocity of sphere.
+    w: rotation velocity of sphere.
+    ds: distance between two point on sphere.
+    es: distance between tow point on force sphere.
+    """
+    OptDB = PETSc.Options()
+    rs1 = OptDB.getReal('rs1', 0.5)
+    rs2 = OptDB.getReal('rs2', 0.5)
+    ds = OptDB.getReal('ds', 0.1)
+    es = OptDB.getReal('es', -0.1)
+    ux = OptDB.getReal('ux', 0)
+    uy = OptDB.getReal('uy', 0)
+    uz = OptDB.getReal('uz', 0)
+    wx = OptDB.getReal('wx', 0)
+    wy = OptDB.getReal('wy', 0)
+    wz = OptDB.getReal('wz', 0)
+    random_velocity = OptDB.getBool('random_velocity', False)
+    t_velocity = np.array((ux, uy, uz, wx, wy, wz))
+    if random_velocity:
+        sphere_velocity = np.random.sample(6) * t_velocity
+    else:
+        sphere_velocity = np.ones(6) * t_velocity
+
+    sphere_kwargs = {
+        'rs1':             rs1,
+        'rs2':             rs2,
+        'sphere_velocity': sphere_velocity,
+        'ds':              ds,
+        'es':              es,
+        'sphere_coord':    np.zeros(3), }
+    return sphere_kwargs
+
+
+def print_one_ellipse_info(sphereName, **problem_kwargs):
+    rs1 = problem_kwargs['rs1']
+    rs2 = problem_kwargs['rs2']
+    sphere_velocity = problem_kwargs['sphere_velocity']
+    ds = problem_kwargs['ds']
+    es = problem_kwargs['es']
+    sphere_coord = problem_kwargs['sphere_coord']
+
+    PETSc.Sys.Print(sphereName, 'geo information: ')
+    PETSc.Sys.Print('  radius deltalength and epsilon of sphere: {rs1}, {rs2}, {ds}, {es}'
+                    .format(rs1=rs1, rs2=rs2, ds=ds, es=es))
+    PETSc.Sys.Print('  center coordinates and rigid body velocity are:')
+    PETSc.Sys.Print(' ', sphere_coord, '&', sphere_velocity)
+    return True
+
+
 # def print_infhelix_info(objName, **problem_kwargs):
 #     infhelix_maxtheta = problem_kwargs['infhelix_maxtheta']
 #     infhelix_ntheta = problem_kwargs['infhelix_ntheta']
@@ -674,6 +742,7 @@ def print_sphere_info(sphereName, **problem_kwargs):
 #     PETSc.Sys.Print(objName, 'geo information: ')
 #     PETSc.Sys.Print('  cut of max theta %f, # of segment %f, # of node %f' %
 #                     (infhelix_maxtheta, infhelix_ntheta, infhelix_nnode))
+
 
 def get_pipe_kwargs():
     OptDB = PETSc.Options()

@@ -159,6 +159,18 @@ def write_pbs_head(fpbs, job_name):
     fpbs.write('\n')
 
 
+def write_pbs_head_q03(fpbs, job_name):
+    fpbs.write('#! /bin/bash\n')
+    fpbs.write('#PBS -M zhangji@csrc.ac.cn\n')
+    fpbs.write('#PBS -l nodes=1:ppn=24\n')
+    fpbs.write('#PBS -l walltime=72:00:00\n')
+    fpbs.write('#PBS -q q03\n')
+    fpbs.write('#PBS -N %s\n' % job_name)
+    fpbs.write('\n')
+    fpbs.write('cd $PBS_O_WORKDIR\n')
+    fpbs.write('\n')
+
+
 def write_pbs_head_newturb(fpbs, job_name):
     fpbs.write('#!/bin/sh\n')
     fpbs.write('#PBS -M zhangji@csrc.ac.cn\n')
@@ -171,25 +183,37 @@ def write_pbs_head_newturb(fpbs, job_name):
 
 
 def set_axes_equal(ax):
-    '''Make axes of 3D plot have equal scale so that spheres appear as spheres,
-    cubes as cubes, etc..  This is one possible solution to Matplotlib's
-    ax.set_aspect('equal') and ax.axis('equal') not working for 3D.
+    if ax.name == "3d":
+        '''Make axes of 3D plot have equal scale so that spheres appear as spheres,
+        cubes as cubes, etc..  This is one possible solution to Matplotlib's
+        ax.set_aspect('equal') and ax.axis('equal') not working for 3D.
 
-    Input
-      ax: a matplotlib axis, e.g., as output from plt.gca().
-    '''
+        Input
+          ax: a matplotlib axis, e.g., as output from plt.gca().
+        '''
 
-    limits = np.array([
-        ax.get_xlim3d(),
-        ax.get_ylim3d(),
-        ax.get_zlim3d(),
-    ])
+        limits = np.array([
+            ax.get_xlim3d(),
+            ax.get_ylim3d(),
+            ax.get_zlim3d(),
+        ])
 
-    origin = np.mean(limits, axis=1)
-    radius = 0.5 * np.max(np.abs(limits[:, 1] - limits[:, 0]))
-    ax.set_xlim3d([origin[0] - radius, origin[0] + radius])
-    ax.set_ylim3d([origin[1] - radius, origin[1] + radius])
-    ax.set_zlim3d([origin[2] - radius, origin[2] + radius])
+        origin = np.mean(limits, axis=1)
+        radius = 0.6 * np.max(np.abs(limits[:, 1] - limits[:, 0]))
+        ax.set_xlim3d([origin[0] - radius, origin[0] + radius])
+        ax.set_ylim3d([origin[1] - radius, origin[1] + radius])
+        ax.set_zlim3d([origin[2] - radius, origin[2] + radius])
+    else:
+        limits = np.array([
+            ax.get_xlim(),
+            ax.get_ylim(),
+        ])
+
+        origin = np.mean(limits, axis=1)
+        radius = 0.6 * np.max(np.abs(limits[:, 1] - limits[:, 0]))
+        ax.set_xlim([origin[0] - radius, origin[0] + radius])
+        ax.set_ylim([origin[1] - radius, origin[1] + radius])
+    return ax
 
 
 # Topics: line, color, LineCollection, cmap, colorline, codex
@@ -251,3 +275,62 @@ def colorline(x, y, z=None, cmap=plt.get_cmap('copper'), ax=None, norm=plt.Norma
     lc = LineCollection(segments, array=z, cmap=cmap, norm=norm, linewidth=linewidth, alpha=alpha)
     ax.add_collection(lc)
     return lc
+
+
+def read_data_lookup_table(psi_dir, tcenter):
+    ecoli_U_list = []
+    ecoli_norm_list = []
+    ecoli_center_list = []
+    ecoli_nodes_list = []
+    ecoli_u_list = []
+    ecoli_f_list = []
+    ecoli_lateral_norm_list = []
+    norm_phi_list = []
+    norm_psi_list = []
+    norm_theta_list = []
+    planeShearRate = None
+    file_handle = os.path.basename(psi_dir)
+    mat_names = natsort.natsorted(glob.glob('%s/%s_*.mat' % (psi_dir, file_handle)))
+    for mati in mat_names:
+        mat_contents = loadmat(mati)
+        ecoli_U = mat_contents['ecoli_U'].flatten()
+        ecoli_norm = mat_contents['ecoli_norm'].flatten()
+        ecoli_center = mat_contents['ecoli_center'].flatten()
+        ecoli_nodes = mat_contents['ecoli_nodes']
+        ecoli_u = mat_contents['ecoli_u']
+        ecoli_f = mat_contents['ecoli_f']
+        planeShearRate = mat_contents['planeShearRate'].flatten()
+        norm_phi = mat_contents['norm_phi'].flatten()
+        norm_psi = mat_contents['norm_psi'].flatten()
+        norm_theta = mat_contents['norm_theta'].flatten()
+        ecoli_U_list.append(ecoli_U)
+        ecoli_norm_list.append(ecoli_norm)
+        ecoli_center_list.append(ecoli_center)
+        norm_phi_list.append(norm_phi)
+        norm_psi_list.append(norm_psi)
+        norm_theta_list.append(norm_theta)
+        r0 = ecoli_nodes[-1] - ecoli_center
+        n0 = np.dot(r0, ecoli_norm) * ecoli_norm / np.dot(ecoli_norm, ecoli_norm)
+        t0 = r0 - n0
+        ecoli_lateral_norm_list.append(t0 / np.linalg.norm(t0))
+
+    ecoli_U = np.vstack(ecoli_U_list)
+    ecoli_norm = np.vstack(ecoli_norm_list)
+    ecoli_center = np.vstack(ecoli_center_list)
+    ecoli_lateral_norm = np.vstack(ecoli_lateral_norm_list)
+    norm_phi = np.hstack(norm_phi_list)
+    norm_psi = np.hstack(norm_psi_list)
+    norm_theta = np.hstack(norm_theta_list)
+    norm_tpp = np.vstack((norm_theta, norm_phi, norm_psi)).T
+
+    # calculate velocity u000(t,x,y,z) that the location initially at (0, 0, 0): u000(0, 0, 0, 0)
+    n_u000 = -np.linalg.norm(ecoli_center[0] - tcenter) * ecoli_norm
+    ecoli_u000 = ecoli_U[:, :3] + np.cross(ecoli_U[:, 3:], n_u000)
+    # calculate center center000(t,x,y,z) that at initially at (0, 0, 0): center000(0, 0, 0, 0)
+    ecoli_center000 = ecoli_center + n_u000
+    using_U = ecoli_U
+    omega_norm = np.array([np.dot(t1, t2) * t2 / np.dot(t2, t2) for t1, t2 in zip(using_U[:, 3:], ecoli_norm)])
+    omega_tang = using_U[:, 3:] - omega_norm
+
+    return ecoli_U, ecoli_norm, ecoli_center, ecoli_lateral_norm, norm_tpp, \
+           ecoli_u000, ecoli_center000, omega_norm, omega_tang, planeShearRate, file_handle

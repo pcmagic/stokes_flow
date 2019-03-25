@@ -1347,27 +1347,32 @@ def pf_infhelix_3d_petsc_mij(t_u_node, f_geo: 'geo.infgeo_1d', i0):
         tm20 = temp2 * dx2 * dx0
         tm21 = temp2 * dx2 * dx1
         tm22 = temp2 * dx2 * dx2 + temp1
-        return ((tm00, tm01, tm02), (tm10, tm11, tm12), (tm20, tm21, tm22))
+        # return np.dstack((np.vstack((tm00, tm01, tm02)).T,
+        #                   np.vstack((tm10, tm11, tm12)).T,
+        #                   np.vstack((tm20, tm21, tm22)).T))
+        # return np.dstack(((tm00, tm01, tm02),(tm10, tm11, tm12),(tm20, tm21, tm22)))
+        return (tm00, tm01, tm02), (tm10, tm11, tm12), (tm20, tm21, tm22)
 
     m00, m01, m02, m10, m11, m12, m20, m21, m22 = 0, 0, 0, 0, 0, 0, 0, 0, 0
-    for percentage in np.linspace(-1, 1, f_geo.get_nSegment()):
-        f_nodes = f_geo.coord_x123(percentage)
-        rm = f_geo.rot_matrix(percentage)  # rotation matrix
-        # rm = rm.T
-        tm = tmij(t_u_node, f_nodes)
-        # # dbg code
-        # dr1 = np.sqrt(np.sum((t_u_node - f_nodes).T ** 2, axis=0))
-        # wgf = 1 / np.exp(0.1 * dr1)
-        wgf = 1
-        m00 = wgf * (m00 + tm[0][0] * rm[0][0] + tm[0][1] * rm[1][0] + tm[0][2] * rm[2][0])
-        m01 = wgf * (m01 + tm[0][0] * rm[0][1] + tm[0][1] * rm[1][1] + tm[0][2] * rm[2][1])
-        m02 = wgf * (m02 + tm[0][0] * rm[0][2] + tm[0][1] * rm[1][2] + tm[0][2] * rm[2][2])
-        m10 = wgf * (m10 + tm[1][0] * rm[0][0] + tm[1][1] * rm[1][0] + tm[1][2] * rm[2][0])
-        m11 = wgf * (m11 + tm[1][0] * rm[0][1] + tm[1][1] * rm[1][1] + tm[1][2] * rm[2][1])
-        m12 = wgf * (m12 + tm[1][0] * rm[0][2] + tm[1][1] * rm[1][2] + tm[1][2] * rm[2][2])
-        m20 = wgf * (m20 + tm[2][0] * rm[0][0] + tm[2][1] * rm[1][0] + tm[2][2] * rm[2][0])
-        m21 = wgf * (m21 + tm[2][0] * rm[0][1] + tm[2][1] * rm[1][1] + tm[2][2] * rm[2][1])
-        m22 = wgf * (m22 + tm[2][0] * rm[0][2] + tm[2][1] * rm[1][2] + tm[2][2] * rm[2][2])
+    for ni in np.arange(-f_geo.get_max_period(), f_geo.get_max_period()):
+        for thi in np.linspace(0, 2 * np.pi, f_geo.get_nSegment(), endpoint=False):
+            th = ni * 2 * np.pi + thi
+            f_nodes = f_geo.coord_x123(th)
+            rm = f_geo.rot_matrix(th)  # rotation matrix, local->global
+            tm = tmij(t_u_node, f_nodes)
+            # # dbg code
+            # dr1 = np.sqrt(np.sum((t_u_node - f_nodes).T ** 2, axis=0))
+            # wgf = 1 / np.exp(0.1 * dr1)
+            wgf = 1
+            m00 = m00 + wgf * (tm[0][0] * rm[0][0] + tm[0][1] * rm[1][0] + tm[0][2] * rm[2][0])
+            m01 = m01 + wgf * (tm[0][0] * rm[0][1] + tm[0][1] * rm[1][1] + tm[0][2] * rm[2][1])
+            m02 = m02 + wgf * (tm[0][0] * rm[0][2] + tm[0][1] * rm[1][2] + tm[0][2] * rm[2][2])
+            m10 = m10 + wgf * (tm[1][0] * rm[0][0] + tm[1][1] * rm[1][0] + tm[1][2] * rm[2][0])
+            m11 = m11 + wgf * (tm[1][0] * rm[0][1] + tm[1][1] * rm[1][1] + tm[1][2] * rm[2][1])
+            m12 = m12 + wgf * (tm[1][0] * rm[0][2] + tm[1][1] * rm[1][2] + tm[1][2] * rm[2][2])
+            m20 = m20 + wgf * (tm[2][0] * rm[0][0] + tm[2][1] * rm[1][0] + tm[2][2] * rm[2][0])
+            m21 = m21 + wgf * (tm[2][0] * rm[0][1] + tm[2][1] * rm[1][1] + tm[2][2] * rm[2][1])
+            m22 = m22 + wgf * (tm[2][0] * rm[0][2] + tm[2][1] * rm[1][2] + tm[2][2] * rm[2][2])
     return m00, m01, m02, m10, m11, m12, m20, m21, m22, i0
 
 

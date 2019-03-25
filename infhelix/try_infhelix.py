@@ -18,9 +18,9 @@ def get_problem_kwargs(**main_kwargs):
     fileHandle = OptDB.getString('f', 'infhelixPro')
     OptDB.setValue('f', fileHandle)
     problem_kwargs['fileHandle'] = fileHandle
-    n_helix = OptDB.getReal('n_helix', 2)
-    OptDB.setValue('n_helix', n_helix)
-    problem_kwargs['n_helix'] = n_helix
+    n_tail = OptDB.getReal('n_tail', 2)
+    OptDB.setValue('n_tail', n_tail)
+    problem_kwargs['n_tail'] = n_tail
 
     kwargs_list = (main_kwargs, get_helix_kwargs(), get_givenForce_kwargs())
     for t_kwargs in kwargs_list:
@@ -31,10 +31,10 @@ def get_problem_kwargs(**main_kwargs):
 
 def print_case_info(obj_name, **problem_kwargs):
     fileHandle = problem_kwargs['fileHandle']
-    n_helix = problem_kwargs['n_helix']
+    n_tail = problem_kwargs['n_tail']
     print_solver_info(**problem_kwargs)
     print_helix_info(obj_name, **problem_kwargs)
-    PETSc.Sys.Print('  given unite spin wz, # helix %d. ' % n_helix)
+    PETSc.Sys.Print('  given unite spin wz, # helix %d. ' % n_tail)
     return True
 
 
@@ -120,13 +120,14 @@ def main_fun(**main_kwargs):
     # case 4, create problem, given force and torque, iterate method
     helix_composite = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((0, 0, 1)), name='helix_composite')
     problem_kwargs['givenF'] = 0
-    problem = sf.GivenTorqueIterateVelocity1DProblem(axis='z', tolerate=1e-3, **problem_kwargs)
+    problem = sf.GivenTorqueIterateVelocity1DProblem(axis='z', **problem_kwargs)
     for tobj in helix_list:
         helix_composite.add_obj(tobj, rel_U=np.zeros(6))
         problem.add_obj(tobj)
     problem.set_iterate_obj(helix_list)
     problem.print_info()
-    u0, tol = problem.do_iterate()
+    problem.create_matrix()
+    u0, tol = problem.do_iterate(tolerate=1e-3)
     PETSc.Sys.Print('---->>>helix force relative tolerate', tol)
     helixU = np.array((0, 0, u0, 0, 0, 1))
     PETSc.Sys.Print('---->>>helix velocity is', helixU)
