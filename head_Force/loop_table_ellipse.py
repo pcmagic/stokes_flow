@@ -160,10 +160,10 @@ def main_fun(**main_kwargs):
         PETSc.Sys.Print('    Current process uses: %07.3fs' % (t3 - t2))
         # 2). loop over parameter space
         # using the new orientation definition method, {norm_theta, norm_phi = 0, 0} is not a singularity now.
-        for i0, norm_theta in enumerate(np.linspace(0, np.pi, n_norm_theta)):
+        for i0, norm_theta in enumerate(np.linspace(0, 2 * np.pi, n_norm_theta)):
             ellipse_comp.set_ref_U(ref_U000)
             ellipse_comp.node_rotation(np.array((0, 1, 0)), norm_theta)
-            for i1, norm_phi in enumerate(np.linspace(0, np.pi, n_norm_phi)):
+            for i1, norm_phi in enumerate(np.linspace(0, 2 * np.pi, n_norm_phi)):
                 t2 = time()
                 idx = i0 * n_norm_phi + i1 + 1
                 ellipse_comp.node_rotation(np.array((0, 0, 1)), norm_phi)
@@ -209,11 +209,9 @@ def main_fun_noIter(**main_kwargs):
 
         # 2). loop over parameter space
         # using the new orientation definition method, {norm_theta, norm_phi = 0, 0} is not a singularity now.
-        # for i0, norm_theta in enumerate(np.linspace(0, np.pi, n_norm_theta)):
-        for i0, norm_theta in enumerate(np.linspace(0, np.pi, n_norm_theta)):
+        for i0, norm_theta in enumerate(np.linspace(0, 2 * np.pi, n_norm_theta)):
             ellipse_comp.node_rotation(np.array((0, 1, 0)), norm_theta)
-            # for i1, norm_phi in enumerate(np.linspace(0, np.pi, n_norm_phi)):
-            for i1, norm_phi in enumerate(np.linspace(0, np.pi, n_norm_phi)):
+            for i1, norm_phi in enumerate(np.linspace(0, 2 * np.pi, n_norm_phi)):
                 t2 = time()
                 idx = i0 * n_norm_phi + i1 + 1
                 ellipse_comp.node_rotation(np.array((0, 0, 1)), norm_phi)

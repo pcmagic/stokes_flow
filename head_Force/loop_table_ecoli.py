@@ -190,7 +190,7 @@ def main_fun_noIter(**main_kwargs):
         t3 = time()
         PETSc.Sys.Print('    Current process uses: %07.3fs' % (t3 - t2))
         # 2). loop over parameter space
-        for i0, norm_theta in enumerate(np.linspace(np.pi / 2, 0, n_norm_theta, endpoint=False)):
+        for i0, norm_theta in enumerate(np.linspace(0, np.pi, n_norm_theta)):
             ecoli_comp.node_rotation(np.array((0, 1, 0)), norm_theta)
             for i1, norm_phi in enumerate(np.linspace(0, np.pi, n_norm_phi)):
                 t2 = time()
@@ -419,7 +419,7 @@ def main_fun(**main_kwargs):
         t3 = time()
         PETSc.Sys.Print('    Current process uses: %07.3fs' % (t3 - t2))
         # 2). loop over parameter space
-        for i0, norm_theta in enumerate(np.linspace(np.pi / 2, 0, n_norm_theta, endpoint=False)):
+        for i0, norm_theta in enumerate(np.linspace(0, np.pi, n_norm_theta)):
             ecoli_comp.set_ref_U(ref_U000)
             ecoli_comp.node_rotation(np.array((0, 1, 0)), norm_theta)
             for i1, norm_phi in enumerate(np.linspace(0, np.pi, n_norm_phi)):

@@ -6,7 +6,7 @@ __all__ = ['uniqueList', 'typeList', 'intList', 'floatList',
            'abs_comp', 'abs_construct_matrix',
            'check_file_extension', 'mpiprint',
            'coordinate_transformation',
-           'tube_flatten', 'get_rot_matrix', 'rot_vec2rot_mtx', 'rotMatrixA2B',
+           'tube_flatten', 'get_rot_matrix', 'rot_vec2rot_mtx', 'rotMatrixA2B', 'vector_rotation',
            'Adams_Moulton_Methods', 'Adams_Bashforth_Methods']
 
 
@@ -233,6 +233,13 @@ def get_rot_matrix(norm=np.array([0, 0, 1]), theta=0):
          b * c * (1 - np.cos(theta)) - a * np.sin(theta),
          c ** 2 + (1 - c ** 2) * np.cos(theta)]])
     return rotation
+
+
+def vector_rotation(P2, norm=np.array([0, 0, 1]), theta=0, rotation_origin=np.zeros(3)):
+    rotation = get_rot_matrix(norm, theta)
+    P20 = np.dot(rotation, (P2 - rotation_origin)) + rotation_origin
+    P20 = P20 / np.linalg.norm(P20)
+    return P20
 
 
 def rotMatrixA2B(a, b):

@@ -2466,6 +2466,7 @@ class ForceFreeComposite:
              + rotation_origin - self._center
         self.set_ref_U(np.hstack((tU, tW)))
 
+        # dbg, current version have no effect.
         self._psi = self._psi + np.dot(t_norm, norm) / (np.linalg.norm(t_norm) * np.linalg.norm(norm)) * theta
         return True
 

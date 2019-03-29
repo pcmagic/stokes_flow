@@ -796,6 +796,8 @@ class JefferyObj:
     def _set_lateral_norm(self, lateral_norm: np.ndarray):
         err_msg = 'lateral_norm=[x, y, z] has 3 components and ||lateral_norm|| > 0. '
         assert lateral_norm.size == 3 and np.linalg.norm(lateral_norm) > 0, err_msg
+        err_msg = 'current norm %s and lateral norm %s is not orthogonality.' % (self.norm, lateral_norm)
+        assert np.isclose(np.dot(lateral_norm, self.norm), 0), err_msg
         self._lateral_norm = lateral_norm / np.linalg.norm(lateral_norm)
         return True
 
@@ -974,22 +976,53 @@ class JefferyObj:
         # tU = np.dot(U[:3], P) / np.dot(P, P)
         # tW = np.dot(U[3:], P) / np.dot(P, P)
         # print('    ref_U projection on norm', np.hstack((tU, tW)))
+        return True
 
 
 class TableObj(JefferyObj):
-    def __init__(self, table_name, name='...', rot_speed=0, **kwargs):
-        self._lateral_norm0 = ...  # type: np.ndarray # ini direction of lateral norm
+    def __init__(self, table_name, name='...', rot_speed=0, ini_psi=0, **kwargs):
+        self._lateral_norm0 = ...  # type: np.ndarray # ini direction of lateral norm !!! after rotate back.
         super().__init__(name=name, rot_speed=rot_speed, **kwargs)
         self._type = 'TableObj'
         self._intp_fun_list = []
         self._intp_psi_list = []
         self.load_table(table_name=table_name)
+        self._lateral_norm = vector_rotation(self._lateral_norm,
+                                             norm=self.norm, theta=ini_psi)
+
+    @property
+    def theta_phi_psi(self):
+        P = np.vstack(self.norm_hist)
+        t_theta_all = np.arccos(P[:, 2] / np.linalg.norm(P, axis=1))
+        t_phi_all = np.arctan2(P[:, 1], P[:, 0])
+        t_phi_all = np.hstack([t1 + 2 * np.pi if t1 < 0 else t1 for t1 in t_phi_all])  # (-pi,pi) -> (0, 2pi)
+
+        t_psi_all = []
+        t_lateral_norm0 = self._lateral_norm0
+        for t_lateral_norm, t_theta, t_phi in zip(self.lateral_norm_hist, t_theta_all, t_phi_all):
+            t_lateral_norm = vector_rotation(t_lateral_norm, norm=np.array((0, 0, 1)), theta=-t_phi)
+            t_lateral_norm = vector_rotation(t_lateral_norm, norm=np.array((0, 1, 0)), theta=- t_theta)
+            sign = np.sign(np.dot(np.array((0, 0, 1)), np.cross(t_lateral_norm0, t_lateral_norm)))
+            t_psi = sign * np.arccos(np.clip(np.dot(t_lateral_norm0, t_lateral_norm)
+                                             / np.linalg.norm(t_lateral_norm) / np.linalg.norm(t_lateral_norm0),
+                                             -1, 1))
+            t_psi = t_psi + 2 * np.pi if t_psi < 0 else t_psi  # (-pi,pi) -> (0, 2pi)
+            t_psi_all.append(t_psi)
+        t_psi_all = np.hstack(t_psi_all)
+        return t_theta_all, t_phi_all, t_psi_all
 
     def _set_lateral_norm(self, lateral_norm: np.ndarray):
         err_msg = 'lateral_norm=[x, y, z] has 3 components and ||lateral_norm|| > 0. '
         assert lateral_norm.size == 3 and np.linalg.norm(lateral_norm) > 0, err_msg
         self._lateral_norm = lateral_norm / np.linalg.norm(lateral_norm)
-        self._lateral_norm0 = lateral_norm / np.linalg.norm(lateral_norm)
+
+        P0 = self._norm  # ini direction of norm
+        theta0 = np.arccos(P0[2] / np.linalg.norm(P0))
+        phi0 = np.arctan2(P0[1], P0[0])
+        phi0 = phi0 + 2 * np.pi if phi0 < 0 else phi0  # (-pi,pi) -> (0, 2pi)
+        tP = vector_rotation(lateral_norm, norm=np.array((0, 0, 1)), theta=-phi0)
+        tP = vector_rotation(tP, norm=np.array((0, 1, 0)), theta=-theta0)
+        self._lateral_norm0 = tP / np.linalg.norm(tP)
         return True
 
     def load_table(self, table_name):
@@ -1002,30 +1035,18 @@ class TableObj(JefferyObj):
         for tpsi, table_psi_data in table_data:
             tintp_fun_list = []
             intp_psi_list.append(tpsi)
-            for tx, ty, tU in table_psi_data:
-                tfun = interpolate.RectBivariateSpline(tx, ty, tU, kx=3, ky=3)
+            for ty, tx, tU in table_psi_data:
+                tfun = interpolate.RectBivariateSpline(ty, tx, tU)
                 # tfun = interpolate.interp2d(tx, ty, tU.T, kind='quintic', copy=False, )
                 tintp_fun_list.append(tfun)
             intp_fun_list.append(tintp_fun_list)
         return True
 
     def intp_U_fun(self, t_theta, t_phi, t_psi):
-        # if 0 <= t_theta < np.pi and 0 <= t_phi < np.pi:  # letf down
-        #     sign_list = [1, 1, 1, 1, 1, 1]
-        # elif 0 <= t_theta < np.pi and np.pi <= t_phi <= 2 * np.pi:  # right down
-        #     t_theta = t_theta
-        #     t_phi = t_phi - np.pi
-        #     sign_list = [1, 1, -1, 1, 1, -1]
-        # elif np.pi <= t_theta <= 2 * np.pi and np.pi <= t_phi <= 2 * np.pi:  # right up
-        #     t_theta = t_theta - np.pi
-        #     t_phi = 2 * np.pi - t_phi
-        #     sign_list = [-1, 1, -1, -1, 1, -1]
-        # elif np.pi <= t_theta <= 2 * np.pi and 0 <= t_phi < np.pi:  # left up
-        #     t_theta = t_theta - np.pi
-        #     t_phi = np.pi - t_phi
-        #     sign_list = [-1, 1, 1, -1, 1, 1]
-        # else:
-        #     raise Exception('norm_theta %f and (or) norm_phi %f out of range (0, 2*pi)' % (t_theta, t_phi))
+        intp_fun_list = self._intp_fun_list
+        intp_psi_list = self._intp_psi_list
+
+        # version 2
         if 0 <= t_theta <= np.pi and 0 <= t_phi < np.pi:  # letf down
             sign_list = [1, 1, 1, 1, 1, 1]
         elif 0 <= t_theta <= np.pi and np.pi <= t_phi <= 2 * np.pi:  # right down
@@ -1033,18 +1054,20 @@ class TableObj(JefferyObj):
             t_phi = t_phi - np.pi
             sign_list = [1, 1, -1, 1, 1, -1]
         else:
-            raise Exception('norm_theta %f and (or) norm_phi %f out of range (0, pi) * (0, 2pi)' % (t_theta, t_phi))
+            err_msg = 'norm_theta %f and (or) norm_phi %f out of range (0, pi) * (0, 2pi)' % (t_theta, t_phi)
+            raise Exception(err_msg)
 
         intp_U = []
-        for tfun in self._intp_fun_list:
+        for tfun in intp_fun_list:
             t_U = []
             for intp_fun, sign in zip(tfun, sign_list):
                 t_U.append(intp_fun(t_theta, t_phi) * sign)
             intp_U.append(np.hstack(t_U).flatten())
         intp_U.append(intp_U[0].copy())
         intp_U = np.vstack(intp_U)
-        intp_psi = np.hstack([self._intp_psi_list, np.pi * 2])
-        intp_fun1d = interpolate.interp1d(intp_psi, intp_U, kind='quadratic', copy=False, axis=0, bounds_error=True)
+        intp_psi = np.hstack([intp_psi_list, np.pi * 2])
+        intp_fun1d = interpolate.interp1d(intp_psi, intp_U, kind='quadratic',
+                                          copy=False, axis=0, bounds_error=True)
         return intp_fun1d(t_psi)
 
     def get_dP_at(self, X, P, P2, rot_v):
@@ -1056,25 +1079,102 @@ class TableObj(JefferyObj):
     def get_velocity_at(self, X, P, P2, trs_v, rot_v=0):
         err_msg = 'current version rot_v==0'
         assert rot_v == 0, err_msg
-
-        Ub = self.father.flow_velocity(X)  # background velocity
+        # values associated with ini direction.
         P20 = self._lateral_norm0  # ini direction of lateral norm
+
         t_theta = np.arccos(P[2] / np.linalg.norm(P))
         t_phi = np.arctan2(P[1], P[0])
-        t_phi = t_phi + 2 * np.pi if t_phi < 0 else t_phi
-        rot_mtx = np.array(((np.cos(-t_phi), np.sin(-t_phi), 0), (np.sin(t_phi), np.cos(-t_phi), 0), (0, 0, 1)))
-        P21 = np.dot(rot_mtx, P2)
-        rot_mtx = np.array(((np.cos(-t_phi), 0, np.sin(-t_phi)), (0, 1, 0), (np.sin(t_phi), 0, np.cos(-t_phi))))
-        P21 = np.dot(rot_mtx, P21)
-        sign = np.sign(np.cross(P20, P21)[2])
-        t_psi = sign * np.arccos(np.clip(np.dot(P20, P21) / np.linalg.norm(P20) / np.linalg.norm(P21), -1, 1))
-        t_psi = 2 * np.pi * (sign < 0) + t_psi  # (-pi,pi) -> (0, 2pi)
-        tU = self.intp_U_fun(t_theta, t_phi, t_psi)
-        dX = tU[:3] + Ub + trs_v * P
-        omega = tU[3:]
+        t_phi = t_phi + 2 * np.pi if t_phi < 0 else t_phi  # (-pi,pi) -> (0, 2pi)
+        # rotate the lateral norm back (the direction that norm=(0, 0, 1),
+        #   and compare with ini lateral norm to calculate psi.
+        tP = vector_rotation(P2, norm=np.array((0, 0, 1)), theta=-t_phi)
+        tP = vector_rotation(tP, norm=np.array((0, 1, 0)), theta=-t_theta)
+        sign = np.sign(np.dot(np.array((0, 0, 1)), np.cross(P20, tP)))
+        t_psi = sign * np.arccos(np.clip(np.dot(tP, P20) / np.linalg.norm(tP) / np.linalg.norm(P20), -1, 1))
+        t_psi = t_psi + 2 * np.pi if t_psi < 0 else t_psi  # (-pi,pi) -> (0, 2pi)
+
+        # # old version, update use dX and dP
+        # Ub = self.father.flow_velocity(X)  # background velocity
+        # tU = self.intp_U_fun(t_theta, t_phi, t_psi)
+        # dX = tU[:3] + Ub + trs_v * P
+        # omega = tU[3:]
+        # dP = np.cross(omega, P)
+        # dP2 = np.cross(omega, P2)
+        # return dX, dP, dP2, omega
+
+        # new version, update use ref_U
+        ref_U = self.intp_U_fun(t_theta, t_phi, t_psi)
+        Ub = self.father.flow_velocity(X)  # background velocity
+        return ref_U + np.hstack((Ub + trs_v * P, np.zeros(3)))
+
+    def node_rotation(self, norm=np.array([0, 0, 1]), theta=np.zeros(1), rotation_origin=None):
+        rotation_origin = self._center if rotation_origin is None else rotation_origin
+        rotation = get_rot_matrix(norm, theta)
+        t_origin = self._center
+        self._center = np.dot(rotation, (self._center - rotation_origin)) + rotation_origin
+        self._norm = np.dot(rotation, (self._norm + t_origin - rotation_origin)) \
+                     + rotation_origin - self._center
+        self._norm = self._norm / np.linalg.norm(self._norm)
+        self._lateral_norm = np.dot(rotation, (self._lateral_norm + t_origin - rotation_origin)) \
+                             + rotation_origin - self._center
+        self._lateral_norm = self._lateral_norm / np.linalg.norm(self._lateral_norm)
+
+        # for subobj, rel_U in zip(self.get_obj_list(), self.get_rel_U_list()):
+        #     subobj.node_rotation(norm=norm, theta=theta, rotation_origin=rotation_origin)
+        #     subobj.set_rigid_velocity(rel_U, t_origin)
+        # rel_U_list = []
+        # for rel_U0 in self.get_rel_U_list():
+        #     tU = np.dot(rotation, (rel_U0[:3] + t_origin - rotation_origin)) \
+        #          + rotation_origin - self._center
+        #     tW = np.dot(rotation, (rel_U0[3:] + t_origin - rotation_origin)) \
+        #          + rotation_origin - self._center
+        #     rel_U_list.append(np.hstack((tU, tW)))
+        # self._rel_U_list = rel_U_list
+        # ref_U0 = self.get_ref_U()
+        # tU = np.dot(rotation, (ref_U0[:3] + t_origin - rotation_origin)) \
+        #      + rotation_origin - self._center
+        # tW = np.dot(rotation, (ref_U0[3:] + t_origin - rotation_origin)) \
+        #      + rotation_origin - self._center
+        # self.set_ref_U(np.hstack((tU, tW)))
+        return True
+
+    def update_location(self, eval_dt, print_handle=''):
+        fct = self._locomotion_fct
+        P = self.norm
+        P2 = self.lateral_norm
+        X = self.center
+        trs_v = self.speed
+        rot_v = self.rot_speed
+        ref_U = self.get_velocity_at(X, P, P2, trs_v, rot_v)
+        omega = ref_U[3:]
         dP = np.cross(omega, P)
         dP2 = np.cross(omega, P2)
-        return dX, dP, dP2, omega
+        self._U_hist.append(ref_U)
+        self._dP_hist.append(dP)
+        self._dP2_hist.append(dP2)
+
+        order = np.min((len(self.U_hist), self.update_order))
+        fct_list = self.U_hist[-1:-(order + 1):-1]
+        dst_fct_list = [fct[:3] for fct in fct_list]
+        rot_fct_list = [fct[3:] for fct in fct_list]
+        distance_true = self._update_fun(order, dst_fct_list, eval_dt)
+        rotation = self._update_fun(order, rot_fct_list, eval_dt)
+        distance = distance_true * fct
+        self.move(distance)
+        self.node_rotation(norm=rotation, theta=np.linalg.norm(rotation))
+        self._center_hist.append(self._center)
+        self._norm_hist.append(self._norm)
+        self._lateral_norm_hist.append(self.lateral_norm)
+        self._displace_hist.append(distance_true)
+        self._rotation_hist.append(rotation)
+
+        # for sub_obj, rel_U in zip(self.get_obj_list(), self.get_rel_U_list()):
+        #     distance = rel_U[:3] * eval_dt
+        #     rotation = rel_U[3:] * eval_dt
+        #     sub_obj.move(distance)
+        #     sub_obj.node_rotation(norm=rotation, theta=np.linalg.norm(rotation))
+        #     sub_obj.update_location(eval_dt)
+        return True
 
 # class JefferyObj3D(JefferyObj):
 #     def __init__(self, name='...', **kwargs):
