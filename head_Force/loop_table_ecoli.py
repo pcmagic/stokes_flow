@@ -192,7 +192,7 @@ def main_fun_noIter(**main_kwargs):
         # 2). loop over parameter space
         for i0, norm_theta in enumerate(np.linspace(0, np.pi, n_norm_theta)):
             ecoli_comp.node_rotation(np.array((0, 1, 0)), norm_theta)
-            for i1, norm_phi in enumerate(np.linspace(0, np.pi, n_norm_phi)):
+            for i1, norm_phi in enumerate(np.linspace(0, 2 * np.pi, n_norm_phi)):
                 t2 = time()
                 idx = i0 * n_norm_phi + i1 + 1
                 ecoli_comp.node_rotation(np.array((0, 0, 1)), norm_phi)
@@ -422,7 +422,7 @@ def main_fun(**main_kwargs):
         for i0, norm_theta in enumerate(np.linspace(0, np.pi, n_norm_theta)):
             ecoli_comp.set_ref_U(ref_U000)
             ecoli_comp.node_rotation(np.array((0, 1, 0)), norm_theta)
-            for i1, norm_phi in enumerate(np.linspace(0, np.pi, n_norm_phi)):
+            for i1, norm_phi in enumerate(np.linspace(0, 2 * np.pi, n_norm_phi)):
                 t2 = time()
                 idx = i0 * n_norm_phi + i1 + 1
                 ecoli_comp.node_rotation(np.array((0, 0, 1)), norm_phi)

@@ -1011,6 +1011,10 @@ class TableObj(JefferyObj):
         t_psi_all = np.hstack(t_psi_all)
         return t_theta_all, t_phi_all, t_psi_all
 
+    @property
+    def intp_psi_list(self):
+        return self._intp_psi_list
+
     def _set_lateral_norm(self, lateral_norm: np.ndarray):
         err_msg = 'lateral_norm=[x, y, z] has 3 components and ||lateral_norm|| > 0. '
         assert lateral_norm.size == 3 and np.linalg.norm(lateral_norm) > 0, err_msg
@@ -1036,8 +1040,8 @@ class TableObj(JefferyObj):
             tintp_fun_list = []
             intp_psi_list.append(tpsi)
             for ty, tx, tU in table_psi_data:
-                tfun = interpolate.RectBivariateSpline(ty, tx, tU)
-                # tfun = interpolate.interp2d(tx, ty, tU.T, kind='quintic', copy=False, )
+                tfun = interpolate.RectBivariateSpline(ty, tx, tU.values, kx=3, ky=3)
+                # tfun = interpolate.interp2d(tx, ty, tU.values.T, kind='quintic', copy=False, )
                 tintp_fun_list.append(tfun)
             intp_fun_list.append(tintp_fun_list)
         return True
@@ -1105,7 +1109,9 @@ class TableObj(JefferyObj):
         # new version, update use ref_U
         ref_U = self.intp_U_fun(t_theta, t_phi, t_psi)
         Ub = self.father.flow_velocity(X)  # background velocity
-        return ref_U + np.hstack((Ub + trs_v * P, np.zeros(3)))
+        ref_U = ref_U + np.hstack((Ub + trs_v * P, np.zeros(3)))
+        # print(ref_U)
+        return ref_U
 
     def node_rotation(self, norm=np.array([0, 0, 1]), theta=np.zeros(1), rotation_origin=None):
         rotation_origin = self._center if rotation_origin is None else rotation_origin
