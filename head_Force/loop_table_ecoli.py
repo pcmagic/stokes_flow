@@ -174,7 +174,6 @@ def main_fun_noIter(**main_kwargs):
         fct = ecoli_velocity / np.linalg.norm(ref_U[:3])
         ecoli_comp.dbg_set_rel_U_list([head_rel_U * fct, tail_rel_U * fct])
         ecoli_comp.set_ref_U(ref_U * fct)
-        t3 = time()
         problem_ff.set_planeShearRate(planeShearRate)
         PETSc.Sys.Print('  true ref_U in free space', ref_U * fct)
         PETSc.Sys.Print('  Now used relative velocity of head and tail are %s and %s' %
@@ -448,7 +447,7 @@ if __name__ == '__main__':
         OptDB.setValue('main_fun', False)
         main_fun_noIter()
 
-    if OptDB.getBool('test_location', False):
+    if OptDB.getBool('test_location_noIter', False):
         OptDB.setValue('main_fun', False)
         norm_theta = OptDB.getReal('norm_theta', 0)
         norm_phi = OptDB.getReal('norm_phi', 0)

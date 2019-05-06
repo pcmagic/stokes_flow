@@ -171,3 +171,21 @@ def shear_sovle_velocity_1step(ecoli_comp: 'sf.ForceFreeComposite',
         PETSc.Sys.Print('    tail_rel_U', tail_rel_U)
     print_single_ecoli_force_result(ecoli_comp, prefix='', part='full', **problem_kwargs)
     return True
+
+
+def shearRate_velocity2Urel_Uref(ecoli_comp: 'sf.ForceFreeComposite',
+                                 problem_ff: 'sf.ShearFlowForceFreeProblem',
+                                 problem: 'sf.ForceFreeIterateProblem',
+                                 v_ecoli_tor=1e-2, iter_tor=1e-3, **problem_kwargs):
+    # let U_b = \tau_x * z, \tau_x is the shear rate.
+    # let V_sw = |V_sw| * P, given velocity at the direction P.
+    # case1: passive ecoli, a*U_pass = a*(U_2^0 + U_b)
+    # case2: active ecoli with a given ini U_rel, and calculate the associated U_ref,
+    #   b*(U_rel + U_ref) = b*(U_2^1 + U_b)
+    # !!!assume the direction P do NOT change!!!
+    # [ a*U_pass + b*U_ref = V_sw + U_pass ]
+    # [ a*U_b + b*U_b = U_b                ]
+    # calculate factors a and b.
+    # then final_U_rel=b*U_rel
+    #      final_U_ref=a*U_pass + b*U_ref
+    pass

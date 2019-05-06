@@ -30,6 +30,10 @@ def get_problem_kwargs(**main_kwargs):
     OptDB.setValue('f', fileHandle)
     problem_kwargs = ec.get_problem_kwargs()
     problem_kwargs['fileHandle'] = fileHandle
+    ini_rot_theta = OptDB.getReal('ini_rot_theta', 0)
+    ini_rot_phi = OptDB.getReal('ini_rot_phi', 0)
+    problem_kwargs['ini_rot_theta'] = ini_rot_theta
+    problem_kwargs['ini_rot_phi'] = ini_rot_phi
 
     ecoli_velocity = OptDB.getReal('ecoli_velocity', 1)
     problem_kwargs['ecoli_velocity'] = ecoli_velocity
@@ -53,6 +57,9 @@ def print_case_info(**problem_kwargs):
     PETSc.Sys.Print('    ecoli_velocity %f' % ecoli_velocity)
     print_update_info(**problem_kwargs)
     print_shearFlow_info(**problem_kwargs)
+    ini_rot_theta = problem_kwargs['ini_rot_theta']
+    ini_rot_phi = problem_kwargs['ini_rot_phi']
+    PETSc.Sys.Print('    ini_rot_theta: %f, ini_rot_phi: %f ' % (ini_rot_theta, ini_rot_phi))
     return True
 
 
@@ -219,34 +226,51 @@ def main_fun_noIter(**main_kwargs):
     max_iter = problem_kwargs['max_iter']
     eval_dt = problem_kwargs['eval_dt']
     ecoli_velocity = problem_kwargs['ecoli_velocity']
+    ini_rot_theta = problem_kwargs['ini_rot_theta']
+    ini_rot_phi = problem_kwargs['ini_rot_phi']
+    iter_tor = 1e-3
 
     if not problem_kwargs['restart']:
         # create ecoli
         ecoli_comp = create_ecoli_2part(**problem_kwargs)
+        ecoli_comp.node_rotation(np.array((0, 1, 0)), theta=ini_rot_theta)
+        ecoli_comp.node_rotation(np.array((0, 0, 1)), theta=ini_rot_phi)
         head_rel_U = ecoli_comp.get_rel_U_list()[0]
         tail_rel_U = ecoli_comp.get_rel_U_list()[1]
         problem_ff = sf.ShearFlowForceFreeProblem(**problem_kwargs)
         problem_ff.add_obj(ecoli_comp)
         problem_ff.print_info()
+        problem = sf.ShearFlowForceFreeIterateProblem(**problem_kwargs)
+        problem.add_obj(ecoli_comp)
+        problem.set_iterate_comp(ecoli_comp)
         planeShearRate = problem_ff.get_planeShearRate()
 
         # calculate torque
         t2 = time()
+        idx = 0
         PETSc.Sys.Print(' ')
         PETSc.Sys.Print('############################ Current loop %05d / %05d ############################' %
-                        (0, max_iter))
+                        (idx, max_iter))
         PETSc.Sys.Print('calculate the motor spin of the ecoli that keeps |ref_U|==ecoli_velocity in free space')
         # 1) ini guess
+        problem_ff.set_planeShearRate(np.zeros(3))
+        problem.set_planeShearRate(np.zeros(3))
         problem_ff.create_matrix()
         problem_ff.solve()
         ref_U = ecoli_comp.get_ref_U()
+        fct = ecoli_velocity / np.linalg.norm(ref_U[:3])
+        PETSc.Sys.Print('  ini ref_U in free space', ref_U * fct)
+        # 2) optimize force and torque free
+        problem.create_matrix()
+        # ref_U = problem.do_iterate3(ini_refU1=ref_U, tolerate=iter_tor)
         # 4) set parameters
         fct = ecoli_velocity / np.linalg.norm(ref_U[:3])
         ecoli_comp.dbg_set_rel_U_list([head_rel_U * fct, tail_rel_U * fct])
         ecoli_comp.set_ref_U(ref_U * fct)
+        problem_ff.set_planeShearRate(planeShearRate)
+        problem.set_planeShearRate(planeShearRate)
         # 5) save and print
         if rank == 0:
-            idx = 0
             ti = idx * eval_dt
             savemat('%s_%05d' % (fileHandle, idx), {
                 'ti':             ti,
@@ -260,9 +284,11 @@ def main_fun_noIter(**main_kwargs):
                 'ecoli_norm':     np.vstack(ecoli_comp.get_norm()),
                 'ecoli_U':        np.vstack(ecoli_comp.get_ref_U()),
                 'tail_rel_U':     np.vstack(ecoli_comp.get_rel_U_list()[1])}, oned_as='column', )
-        PETSc.Sys.Print('  ref_U in free space', ref_U * fct)
-        PETSc.Sys.Print('  |ref_U| in free space', np.linalg.norm(ref_U[:3]) * fct, np.linalg.norm(ref_U[3:]) * fct)
-        PETSc.Sys.Print('  tail_rel_U in free space', tail_rel_U * fct)
+        PETSc.Sys.Print('  true ref_U in free space', ref_U * fct)
+        PETSc.Sys.Print('  true |ref_U| in free space', np.linalg.norm(ref_U[:3]) * fct,
+                        np.linalg.norm(ref_U[3:]) * fct)
+        PETSc.Sys.Print('  Now used relative velocity of head and tail are %s and %s' %
+                        (str(head_rel_U * fct), str(tail_rel_U * fct)))
         print_single_ecoli_force_result(ecoli_comp, prefix='', part='full', **problem_kwargs)
         t3 = time()
         PETSc.Sys.Print('#################### Current loop %05d / %05d uses: %08.3fs ####################' %
@@ -278,7 +304,6 @@ def main_fun_noIter(**main_kwargs):
             # 1) ini guess
             problem_ff.create_matrix()
             problem_ff.solve()
-            ref_U = ecoli_comp.get_ref_U()
             # 4) save and print
             if rank == 0:
                 ti = idx * eval_dt
@@ -287,8 +312,8 @@ def main_fun_noIter(**main_kwargs):
                     'planeShearRate': planeShearRate,
                     'ecoli_center':   np.vstack(ecoli_comp.get_center()),
                     'ecoli_nodes':    np.vstack([tobj.get_u_nodes() for tobj in ecoli_comp.get_obj_list()]),
-                    'ecoli_f':        np.hstack([tobj.get_force() for tobj in ecoli_comp.get_obj_list()]).reshape(-1,
-                                                                                                                  3),
+                    'ecoli_f':        np.hstack([tobj.get_force() for tobj in ecoli_comp.get_obj_list()]
+                                                ).reshape(-1, 3),
                     'ecoli_u':        np.hstack([tobj.get_re_velocity() for tobj in ecoli_comp.get_obj_list()]
                                                 ).reshape(-1, 3),
                     'ecoli_norm':     np.vstack(ecoli_comp.get_norm()),
@@ -324,10 +349,14 @@ def passive_fun_noIter(**main_kwargs):
     fileHandle = problem_kwargs['fileHandle']
     max_iter = problem_kwargs['max_iter']
     eval_dt = problem_kwargs['eval_dt']
+    ini_rot_theta = problem_kwargs['ini_rot_theta']
+    ini_rot_phi = problem_kwargs['ini_rot_phi']
 
     if not problem_kwargs['restart']:
         # create ecoli
         ecoli_comp = create_ecoli_2part(**problem_kwargs)
+        ecoli_comp.node_rotation(np.array((0, 1, 0)), theta=ini_rot_theta)
+        ecoli_comp.node_rotation(np.array((0, 0, 1)), theta=ini_rot_phi)
         ecoli_comp.dbg_set_rel_U_list([np.zeros(6), np.zeros(6)])
         problem_ff = sf.ShearFlowForceFreeProblem(**problem_kwargs)
         problem_ff.add_obj(ecoli_comp)

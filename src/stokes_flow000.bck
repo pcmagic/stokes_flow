@@ -675,7 +675,7 @@ class StokesFlowProblem:
         PETSc.Sys().Print('%s: pick the problem use: %fs' % (str(self), (t1 - t0)))
         return True
 
-    def _unpickmyself_addDM(self, obj1):
+    def _unpick_addDM(self, obj1):
         self._f_pkg.addDM(obj1.get_f_geo().get_dmda())
         self._u_pkg.addDM(obj1.get_u_geo().get_dmda())
         return True
@@ -701,7 +701,7 @@ class StokesFlowProblem:
         self._M_petsc = PETSc.Mat().create(comm=PETSc.COMM_WORLD)  # M matrix
         for obj1 in self._obj_list:
             obj1.unpickmyself()
-            self._unpickmyself_addDM(obj1)
+            self._unpick_addDM(obj1)
         self._f_pkg.setFromOptions()
         self._u_pkg.setFromOptions()
         # Todo: setUp f_pkg and u_pkg at a appropriate time
@@ -2686,14 +2686,14 @@ class ForceFreeProblem(StokesFlowProblem):
             super()._save_M_mat_dict(M_dict, obj)
         return True
 
-    def _unpickmyself_addDM(self, obj1):
+    def _unpick_addDM(self, obj1):
         if isinstance(obj1, forcefreeComposite):
             for sub_obj in obj1.get_obj_list():
-                super()._unpickmyself_addDM(sub_obj)
+                super()._unpick_addDM(sub_obj)
             self._f_pkg.addDM(obj1.get_f_dmda())
             self._u_pkg.addDM(obj1.get_u_dmda())
         else:
-            super()._unpickmyself_addDM(obj1)
+            super()._unpick_addDM(obj1)
         return True
 
 

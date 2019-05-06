@@ -187,7 +187,7 @@ def main_fun(**main_kwargs):
         vsgeo = sphere_geo()  # velocity node geo of sphere
         vsgeo.create_delta(ds, 1)
         PETSc.Sys.Print('vsgeo.get_n_nodes()', vsgeo.get_n_nodes())
-        vsgeo.node_rotation(norm=(0, 1, 0), theta=np.pi/2)
+        vsgeo.node_rotation(norm=(0, 1, 0), theta=np.pi / 2)
         vsgeo.node_zoom(rs)
         # vsgeo.show_nodes()
         U = problem_kwargs['U']
@@ -226,8 +226,6 @@ def main_fun(**main_kwargs):
         PETSc.Sys.Print('---->>>Resultant at z axis is %s' % str(force_sphere[:3] / (6 * np.pi * rs)))
         # save_vtk(problem)
         problem.vtk_obj(fileHandle)
-
-
     else:
         t_headle = '_pick.bin'
         fileHandle = fileHandle if fileHandle[-len(t_headle):] == fileHandle else fileHandle + t_headle

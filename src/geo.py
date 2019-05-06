@@ -257,6 +257,10 @@ class geo():
     def get_geo_norm(self):
         return self._geo_norm
 
+    def set_geo_norm(self, geo_norm):
+        self._geo_norm = geo_norm
+        return True
+
     def get_origin(self):
         return self._origin
 
@@ -305,7 +309,6 @@ class geo():
             origin = geo_list[0].get_origin()
         if geo_norm is None:
             geo_norm = geo_list[0].get_geo_norm()
-
 
         geo1 = geo_list.pop(0)
         self.set_nodes(geo1.get_nodes(), deltalength=deltaLength)
@@ -1393,7 +1396,7 @@ class infgeo_1d(geo):
     def show_nodes(self, linestyle='-'):
         t_nodes = []
         for ni in np.arange(-self.get_max_period(), self.get_max_period()):
-            for thi in np.linspace(0, 2*np.pi, self.get_nSegment(), endpoint=False):
+            for thi in np.linspace(0, 2 * np.pi, self.get_nSegment(), endpoint=False):
                 th = ni * 2 * np.pi + thi
                 t_nodes.append(self.coord_x123(th))
         t_nodes = np.vstack(t_nodes)

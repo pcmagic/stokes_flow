@@ -722,9 +722,31 @@ class StokesFlowProblem:
         PETSc.Sys().Print('%s: pick the problem use: %fs' % (str(self), (t1 - t0)))
         return True
 
-    def _unpickmyself_addDM(self, obj1):
+    def _unpick_addDM(self, obj1):
         self._f_pkg.addDM(obj1.get_f_geo().get_dmda())
         self._u_pkg.addDM(obj1.get_u_geo().get_dmda())
+        return True
+
+    def _unpick_set_force(self):
+        f_numpy = []
+        f_glbIdx = []
+        for obj0 in self.get_obj_list():
+            if isinstance(obj0, ForceFreeComposite):
+                for sub_obj in obj0.get_obj_list():
+                    _, f_glbIdx_all = sub_obj.get_f_geo().get_glbIdx()
+                    f_numpy.append(sub_obj.get_force())
+                    f_glbIdx.append(f_glbIdx_all)
+                _, f_glbIdx_all = obj0.get_f_glbIdx()
+                f_numpy.append(obj0.get_ref_U())
+                f_glbIdx.append(f_glbIdx_all)
+            else:
+                _, f_glbIdx_all = obj0.get_f_geo().get_glbIdx()
+                f_numpy.append(obj0.get_force())
+                f_glbIdx.append(f_glbIdx_all)
+        f_numpy = np.hstack(f_numpy)
+        f_glbIdx = np.hstack(f_glbIdx)
+        self._force_petsc[f_glbIdx] = f_numpy[:]
+        self._force_petsc.assemble()
         return True
 
     def unpick_myself(self):
@@ -746,9 +768,9 @@ class StokesFlowProblem:
         self._f_pkg = PETSc.DMComposite().create(comm=PETSc.COMM_WORLD)
         self._u_pkg = PETSc.DMComposite().create(comm=PETSc.COMM_WORLD)
         self._M_petsc = PETSc.Mat().create(comm=PETSc.COMM_WORLD)  # M matrix
-        for obj1 in self._obj_list:
+        for obj1 in self.get_obj_list():
             obj1.unpick_myself()
-            self._unpickmyself_addDM(obj1)
+            self._unpick_addDM(obj1)
         self._f_pkg.setFromOptions()
         self._u_pkg.setFromOptions()
         # Todo: setUp f_pkg and u_pkg at a appropriate time
@@ -757,8 +779,7 @@ class StokesFlowProblem:
 
         if self._finish_solve:
             self.create_F_U()
-            self._force_petsc[:] = self._force[:]
-            self._force_petsc.assemble()
+            self._unpick_set_force()
             # self._force_petsc.view()
         if self._finish_solve and self._pick_M:
             self.loadM_Binary(filename + '_M')
@@ -2259,7 +2280,7 @@ class ForceFreeComposite:
         self._type = 'ForceFreeComposite'  # object type
         self._name = name  # object name
         self._ref_U = np.zeros(6)  # ux, uy, uz, omega_x, omega_y, omega_z
-        self._sum_force = np.inf * np.ones(6)  # [F, T]==0 to satisfy the force free equations.
+        # self._sum_force = np.inf * np.ones(6)  # [F, T]==0 to satisfy the force free equations.
         self._min_ds = np.inf  # min deltalength of objects in the composite
         self._f_dmda = None
         self._u_dmda = None
@@ -2576,7 +2597,7 @@ class ForceFreeComposite:
                      'f_glbIdx':     f_glbIdx,
                      'f_glbIdx_all': f_glbIdx_all,
                      'force':        np.zeros(6),
-                     're_velocity':  self._sum_force,
+                     # 're_velocity':  self._sum_force,
                      'velocity':     self._ref_U, },
                     oned_as='column')
         PETSc.Sys.Print('%s: save information to %s' % (str(self), filename))
@@ -3305,14 +3326,14 @@ class ForceFreeProblem(StokesFlowProblem):
             super()._save_M_mat_dict(M_dict, obj)
         return True
 
-    def _unpickmyself_addDM(self, obj1):
+    def _unpick_addDM(self, obj1):
         if isinstance(obj1, ForceFreeComposite):
             for sub_obj in obj1.get_obj_list():
-                super()._unpickmyself_addDM(sub_obj)
+                super()._unpick_addDM(sub_obj)
             self._f_pkg.addDM(obj1.get_f_dmda())
             self._u_pkg.addDM(obj1.get_u_dmda())
         else:
-            super()._unpickmyself_addDM(obj1)
+            super()._unpick_addDM(obj1)
         return True
 
     def unpick_myself(self):
