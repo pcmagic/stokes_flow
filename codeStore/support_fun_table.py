@@ -151,7 +151,7 @@ def get_ecoli_table(tnorm, lateral_norm, tcenter, max_iter, eval_dt=0.001, updat
            Table_X, Table_U, Table_P
 
 
-def do_calculate_helix_Petsc(norm, ini_psi, max_t, update_fun='3bs', rtol=1e-6, atol=1e-9, eval_dt=0.001):
+def do_calculate_prepare(norm, ):
     importlib.reload(jm)
     norm = norm / np.linalg.norm(norm)
     planeShearRate = np.array((1, 0, 0))
@@ -162,68 +162,23 @@ def do_calculate_helix_Petsc(norm, ini_psi, max_t, update_fun='3bs', rtol=1e-6, 
     tlateral_norm = tlateral_norm / np.linalg.norm(tlateral_norm)
     P0 = norm / np.linalg.norm(norm)
     P20 = tlateral_norm / np.linalg.norm(tlateral_norm)
-    helix_kwargs = {'name':         'helix',
-                    'center':       tcenter,
-                    'norm':         P0,
-                    'lateral_norm': P20,
-                    'speed':        0,
-                    'lbd':          np.nan,
-                    'ini_psi':      ini_psi,
-                    'table_name':   'hlxB01_tau1a', }
     fileHandle = 'ShearTableProblem'
-    helix_obj = jm.TablePetscObj(**helix_kwargs)
-    helix_obj.set_update_para(fix_x=False, fix_y=False, fix_z=False,
-                              update_fun=update_fun, rtol=rtol, atol=atol)
     problem = jm.ShearTableProblem(name=fileHandle, planeShearRate=planeShearRate)
-    problem.add_obj(helix_obj)
-    Table_t, Table_X, Table_P, Table_P2 = helix_obj.update_self(t1=max_t, eval_dt=eval_dt)
-    Table_theta, Table_phi, Table_psi = helix_obj.theta_phi_psi
+    return P0, P20, tcenter, problem
+
+
+def do_calculate(problem, obj, max_t, update_fun, rtol, atol, eval_dt, save_every):
+    obj.set_update_para(fix_x=False, fix_y=False, fix_z=False,
+                        update_fun=update_fun, rtol=rtol, atol=atol, save_every=save_every)
+    problem.add_obj(obj)
+    Table_t, Table_dt, Table_X, Table_P, Table_P2 = obj.update_self(t1=max_t, eval_dt=eval_dt)
+    Table_theta, Table_phi, Table_psi = obj.theta_phi_psi
     Table_eta = np.arccos(np.sin(Table_theta) * np.sin(Table_phi))
-    return Table_t, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi, Table_eta
+    return Table_t, Table_dt, Table_X, Table_P, Table_P2, \
+           Table_theta, Table_phi, Table_psi, Table_eta
 
 
-def do_calculate_helix_RK(norm, ini_psi, max_t, update_fun=integrate.RK45, rtol=1e-6, atol=1e-9):
-    importlib.reload(jm)
-    norm = norm / np.linalg.norm(norm)
-    planeShearRate = np.array((1, 0, 0))
-    tcenter = np.zeros(3)
-    tlateral_norm = np.random.sample(3)
-    tlateral_norm = tlateral_norm / np.linalg.norm(tlateral_norm)
-    tlateral_norm = tlateral_norm - norm * np.dot(norm, tlateral_norm)
-    tlateral_norm = tlateral_norm / np.linalg.norm(tlateral_norm)
-    P0 = norm / np.linalg.norm(norm)
-    P20 = tlateral_norm / np.linalg.norm(tlateral_norm)
-    helix_kwargs = {'name':         'helix',
-                    'center':       tcenter,
-                    'norm':         P0,
-                    'lateral_norm': P20,
-                    'speed':        0,
-                    'lbd':          np.nan,
-                    'ini_psi':      ini_psi,
-                    'table_name':   'hlxB01_tau1a', }
-    fileHandle = 'ShearTableProblem'
-    helix_obj = jm.TableRtObj(**helix_kwargs)
-    helix_obj.set_update_para(fix_x=False, fix_y=False, fix_z=False,
-                              update_fun=update_fun, rtol=rtol, atol=atol)
-    problem = jm.ShearTableProblem(name=fileHandle, planeShearRate=planeShearRate)
-    problem.add_obj(helix_obj)
-    Table_t, Table_X, Table_P, Table_P2 = helix_obj.update_self(t1=max_t)
-    Table_theta, Table_phi, Table_psi = helix_obj.theta_phi_psi
-    Table_eta = np.arccos(np.sin(Table_theta) * np.sin(Table_phi))
-    return Table_t, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi, Table_eta
-
-
-def do_calculate_ellipse_RK(norm, ini_psi, max_t, update_fun=integrate.RK45, rtol=1e-6, atol=1e-9):
-    importlib.reload(jm)
-    norm = norm / np.linalg.norm(norm)
-    planeShearRate = np.array((1, 0, 0))
-    tcenter = np.zeros(3)
-    tlateral_norm = np.random.sample(3)
-    tlateral_norm = tlateral_norm / np.linalg.norm(tlateral_norm)
-    tlateral_norm = tlateral_norm - norm * np.dot(norm, tlateral_norm)
-    tlateral_norm = tlateral_norm / np.linalg.norm(tlateral_norm)
-    P0 = norm / np.linalg.norm(norm)
-    P20 = tlateral_norm / np.linalg.norm(tlateral_norm)
+def do_ellipse_kwargs(tcenter, P0, P20, ini_psi):
     ellipse_kwargs = {'name':         'ellipse',
                       'center':       tcenter,
                       'norm':         P0,
@@ -232,31 +187,10 @@ def do_calculate_ellipse_RK(norm, ini_psi, max_t, update_fun=integrate.RK45, rto
                       'lbd':          np.nan,
                       'ini_psi':      ini_psi,
                       'table_name':   'ellipse_alpha3', }
-    fileHandle = 'ShearTableProblem'
-    helix_obj = jm.TableRtObj(**ellipse_kwargs)
-    helix_obj.set_update_para(fix_x=False, fix_y=False, fix_z=False,
-                              update_fun=update_fun, rtol=rtol, atol=atol)
-    problem = jm.ShearTableProblem(name=fileHandle, planeShearRate=planeShearRate)
-    problem.add_obj(helix_obj)
-    Table_t, Table_X, Table_P, Table_P2 = helix_obj.update_self(t1=max_t)
-    Table_theta, Table_phi, Table_psi = helix_obj.theta_phi_psi
-    Table_eta = np.arccos(np.sin(Table_theta) * np.sin(Table_phi))
-    return Table_t, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi, Table_eta
+    return ellipse_kwargs
 
 
-def do_calculate_ecoli_Petsc(norm, ini_psi, max_t, update_fun='3bs', rtol=1e-6, atol=1e-9,
-                             omega_tail=193.66659814, table_name='planeShearRatex_1d',
-                             eval_dt=0.001, save_every=1):
-    importlib.reload(jm)
-    norm = norm / np.linalg.norm(norm)
-    planeShearRate = np.array((1, 0, 0))
-    tcenter = np.zeros(3)
-    tlateral_norm = np.random.sample(3)
-    tlateral_norm = tlateral_norm / np.linalg.norm(tlateral_norm)
-    tlateral_norm = tlateral_norm - norm * np.dot(norm, tlateral_norm)
-    tlateral_norm = tlateral_norm / np.linalg.norm(tlateral_norm)
-    P0 = norm / np.linalg.norm(norm)
-    P20 = tlateral_norm / np.linalg.norm(tlateral_norm)
+def do_ecoli_kwargs(tcenter, P0, P20, ini_psi, omega_tail, table_name):
     ecoli_kwargs = {'name':         'ecoli_torque',
                     'center':       tcenter,
                     'norm':         P0,
@@ -266,19 +200,82 @@ def do_calculate_ecoli_Petsc(norm, ini_psi, max_t, update_fun='3bs', rtol=1e-6, 
                     'ini_psi':      ini_psi,
                     'omega_tail':   omega_tail,
                     'table_name':   table_name, }
-    fileHandle = 'ShearTableProblem'
-    helix_obj = jm.TablePetscEcoli(**ecoli_kwargs)
-    helix_obj.set_update_para(fix_x=False, fix_y=False, fix_z=False,
-                              update_fun=update_fun, rtol=rtol, atol=atol, save_every=save_every)
-    problem = jm.ShearTableProblem(name=fileHandle, planeShearRate=planeShearRate)
-    problem.add_obj(helix_obj)
-    Table_t, Table_X, Table_P, Table_P2 = helix_obj.update_self(t1=max_t, eval_dt=eval_dt)
-    Table_theta, Table_phi, Table_psi = helix_obj.theta_phi_psi
-    Table_eta = np.arccos(np.sin(Table_theta) * np.sin(Table_phi))
-    return Table_t, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi, Table_eta
+    return ecoli_kwargs
 
 
-def do_calculate_ecoli_RK(norm, ini_psi, max_t, update_fun=integrate.RK45, rtol=1e-6, atol=1e-9,
+def do_ecoli_passive_kwargs(tcenter, P0, P20, ini_psi):
+    ecoli_passive_kwargs = {'name':         'ecoli_passive',
+                            'center':       tcenter,
+                            'norm':         P0,
+                            'lateral_norm': P20,
+                            'speed':        0,
+                            'lbd':          np.nan,
+                            'ini_psi':      ini_psi,
+                            'table_name':   'planeShearRatex_1d_passive', }
+    return ecoli_passive_kwargs
+
+
+def do_helix_kwargs(tcenter, P0, P20, ini_psi):
+    helix_kwargs = {'name':         'helix',
+                    'center':       tcenter,
+                    'norm':         P0,
+                    'lateral_norm': P20,
+                    'speed':        0,
+                    'lbd':          np.nan,
+                    'ini_psi':      ini_psi,
+                    'table_name':   'hlxB01_tau1a', }
+    return helix_kwargs
+
+
+def do_calculate_helix_RK(norm, ini_psi, max_t, update_fun=integrate.RK45,
+                          rtol=1e-6, atol=1e-9, eval_dt=0.001, save_every=1):
+    P0, P20, tcenter, problem = do_calculate_prepare(norm)
+    helix_kwargs = do_helix_kwargs(tcenter, P0, P20, ini_psi)
+    helix_obj = jm.TableRkObj(**helix_kwargs)
+    return do_calculate(problem, helix_obj, max_t, update_fun, rtol, atol, eval_dt, save_every)
+
+
+def do_calculate_helix_RK4n(norm, ini_psi, max_t, update_fun=integrate.RK45,
+                            rtol=1e-6, atol=1e-9, eval_dt=0.001, save_every=1):
+    P0, P20, tcenter, problem = do_calculate_prepare(norm)
+    helix_kwargs = do_helix_kwargs(tcenter, P0, P20, ini_psi)
+    helix_obj = jm.TableRk4nObj(**helix_kwargs)
+    return do_calculate(problem, helix_obj, max_t, update_fun, rtol, atol, eval_dt, save_every)
+
+
+def do_calculate_helix_Petsc(norm, ini_psi, max_t, update_fun='3bs',
+                             rtol=1e-6, atol=1e-9, eval_dt=0.001, save_every=1):
+    P0, P20, tcenter, problem = do_calculate_prepare(norm)
+    helix_kwargs = do_helix_kwargs(tcenter, P0, P20, ini_psi)
+    helix_obj = jm.TablePetscObj(**helix_kwargs)
+    return do_calculate(problem, helix_obj, max_t, update_fun, rtol, atol, eval_dt, save_every)
+
+
+def do_calculate_ellipse_RK(norm, ini_psi, max_t, update_fun=integrate.RK45,
+                            rtol=1e-6, atol=1e-9, eval_dt=0.001, save_every=1):
+    P0, P20, tcenter, problem = do_calculate_prepare(norm)
+    ellipse_kwargs = do_ellipse_kwargs(tcenter, P0, P20, ini_psi)
+    ellipse_obj = jm.TableRkObj(**ellipse_kwargs)
+    return do_calculate(problem, ellipse_obj, max_t, update_fun, rtol, atol, eval_dt, save_every)
+
+
+def do_calculate_ellipse_RK4n(norm, ini_psi, max_t, update_fun=integrate.RK45,
+                              rtol=1e-6, atol=1e-9, eval_dt=0.001, save_every=1):
+    P0, P20, tcenter, problem = do_calculate_prepare(norm)
+    ellipse_kwargs = do_ellipse_kwargs(tcenter, P0, P20, ini_psi)
+    ellipse_obj = jm.TableRk4nObj(**ellipse_kwargs)
+    return do_calculate(problem, ellipse_obj, max_t, update_fun, rtol, atol, eval_dt, save_every)
+
+
+def do_calculate_ellipse_Petsc4n(norm, ini_psi, max_t, update_fun='3bs',
+                                 rtol=1e-6, atol=1e-9, eval_dt=0.001, save_every=1):
+    P0, P20, tcenter, problem = do_calculate_prepare(norm)
+    ellipse_kwargs = do_ellipse_kwargs(tcenter, P0, P20, ini_psi)
+    ellipse_obj = jm.TablePetsc4nObj(**ellipse_kwargs)
+    return do_calculate(problem, ellipse_obj, max_t, update_fun, rtol, atol, eval_dt, save_every)
+
+
+def do_calculate_ecoli_MY(norm, ini_psi, eval_dt=0.1, max_iter=1000,
                           omega_tail=193.66659814, table_name='planeShearRatex_1d'):
     importlib.reload(jm)
     norm = norm / np.linalg.norm(norm)
@@ -300,38 +297,58 @@ def do_calculate_ecoli_RK(norm, ini_psi, max_t, update_fun=integrate.RK45, rtol=
                     'omega_tail':   omega_tail,
                     'table_name':   table_name, }
     fileHandle = 'ShearTableProblem'
-    helix_obj = jm.TableRtEcoli(**ecoli_kwargs)
-    helix_obj.set_update_para(fix_x=False, fix_y=False, fix_z=False,
-                              update_fun=update_fun, rtol=rtol, atol=atol)
+    helix_obj = jm.TableEcoli(**ecoli_kwargs)
+    helix_obj.set_update_para(fix_x=False, fix_y=False, fix_z=False, update_order=1)
     problem = jm.ShearTableProblem(name=fileHandle, planeShearRate=planeShearRate)
     problem.add_obj(helix_obj)
-    Table_t, Table_X, Table_P, Table_P2 = helix_obj.update_self(t1=max_t)
+    for idx in tqdm_notebook(range(1, max_iter + 1)):
+        problem.update_location(eval_dt, print_handle='%d / %d' % (idx, max_iter))
+    Table_X = np.vstack(helix_obj.center_hist)
+    Table_U = np.vstack(helix_obj.U_hist)
+    Table_P = np.vstack(helix_obj.norm_hist)
+    Table_P2 = np.vstack(helix_obj.lateral_norm_hist)
+    Table_t = np.arange(max_iter) * eval_dt + eval_dt
     Table_theta, Table_phi, Table_psi = helix_obj.theta_phi_psi
     Table_eta = np.arccos(np.sin(Table_theta) * np.sin(Table_phi))
-    return Table_t, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi, Table_eta
+    omega = Table_U[:, 3:]
+    dP = np.vstack([np.cross(t1, t2) for t1, t2 in zip(omega, Table_P)])
+    # Table_dtheta = -dP[:, 2] / np.sin(np.abs(Table_theta))
+    # Table_dphi = (dP[:, 1] * np.cos(Table_phi) - dP[:, 0] * np.sin(Table_phi)) / np.sin(Table_theta)
+    Table_dt = np.hstack((np.diff(Table_t), 0))
+    return Table_t, Table_dt, Table_X, Table_P, Table_P2, \
+           Table_theta, Table_phi, Table_psi, Table_eta
 
 
-def do_calculate_ecoli(norm, ini_psi, eval_dt=0.1, max_iter=1000,
-                       omega_tail=193.66659814, table_name='planeShearRatex_1d'):
-    importlib.reload(jm)
-    norm = norm / np.linalg.norm(norm)
-    planeShearRate = np.array((1, 0, 0))
-    tcenter = np.zeros(3)
-    tlateral_norm = np.random.sample(3)
-    tlateral_norm = tlateral_norm / np.linalg.norm(tlateral_norm)
-    tlateral_norm = tlateral_norm - norm * np.dot(norm, tlateral_norm)
-    tlateral_norm = tlateral_norm / np.linalg.norm(tlateral_norm)
-    P0 = norm / np.linalg.norm(norm)
-    P20 = tlateral_norm / np.linalg.norm(tlateral_norm)
-    ecoli_kwargs = {'name':         'ecoli_torque',
-                    'center':       tcenter,
-                    'norm':         P0,
-                    'lateral_norm': P20,
-                    'speed':        0,
-                    'lbd':          np.nan,
-                    'ini_psi':      ini_psi,
-                    'omega_tail':   omega_tail,
-                    'table_name':   table_name, }
+def do_calculate_ecoli_RK(norm, ini_psi, max_t, update_fun=integrate.RK45,
+                          rtol=1e-6, atol=1e-9, eval_dt=0.001, save_every=1,
+                          omega_tail=193.66659814, table_name='planeShearRatex_1d'):
+    P0, P20, tcenter, problem = do_calculate_prepare(norm)
+    ecoli_kwargs = do_ecoli_kwargs(tcenter, P0, P20, ini_psi, omega_tail, table_name)
+    ecoli_obj = jm.TableRkEcoli(**ecoli_kwargs)
+    return do_calculate(problem, ecoli_obj, max_t, update_fun, rtol, atol, eval_dt, save_every)
+
+
+def do_calculate_ecoli_RK4n(norm, ini_psi, max_t, update_fun=integrate.RK45,
+                            rtol=1e-6, atol=1e-9, eval_dt=0.001, save_every=1,
+                            omega_tail=193.66659814, table_name='planeShearRatex_1d'):
+    P0, P20, tcenter, problem = do_calculate_prepare(norm)
+    ecoli_kwargs = do_ecoli_kwargs(tcenter, P0, P20, ini_psi, omega_tail, table_name)
+    ecoli_obj = jm.TableRk4nEcoli(**ecoli_kwargs)
+    return do_calculate(problem, ecoli_obj, max_t, update_fun, rtol, atol, eval_dt, save_every)
+
+
+def do_calculate_ecoli_Petsc(norm, ini_psi, max_t, update_fun='3bs',
+                             rtol=1e-6, atol=1e-9, eval_dt=0.001, save_every=1,
+                             omega_tail=193.66659814, table_name='planeShearRatex_1d'):
+    P0, P20, tcenter, problem = do_calculate_prepare(norm)
+    ecoli_kwargs = do_ecoli_kwargs(tcenter, P0, P20, ini_psi, omega_tail, table_name)
+    ecoli_obj = jm.TablePetscEcoli(**ecoli_kwargs)
+    return do_calculate(problem, ecoli_obj, max_t, update_fun, rtol, atol, eval_dt, save_every)
+
+
+def do_calculate_ecoli_passive_MY(norm, ini_psi, eval_dt=0.1, max_iter=1000):
+    P0, P20, tcenter, problem = do_calculate_prepare(norm)
+    ecoli_kwargs = do_ecoli_kwargs(tcenter, P0, P20, ini_psi, omega_tail, table_name)
     fileHandle = 'ShearTableProblem'
     helix_obj = jm.TableEcoli(**ecoli_kwargs)
     helix_obj.set_update_para(fix_x=False, fix_y=False, fix_z=False, update_order=1)
@@ -348,127 +365,47 @@ def do_calculate_ecoli(norm, ini_psi, eval_dt=0.1, max_iter=1000,
     Table_eta = np.arccos(np.sin(Table_theta) * np.sin(Table_phi))
     omega = Table_U[:, 3:]
     dP = np.vstack([np.cross(t1, t2) for t1, t2 in zip(omega, Table_P)])
-    Table_dtheta = -dP[:, 2] / np.sin(np.abs(Table_theta))
-    Table_dphi = (dP[:, 1] * np.cos(Table_phi) - dP[:, 0] * np.sin(Table_phi)) / np.sin(Table_theta)
-    return Table_t, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi, Table_eta
+    # Table_dtheta = -dP[:, 2] / np.sin(np.abs(Table_theta))
+    # Table_dphi = (dP[:, 1] * np.cos(Table_phi) - dP[:, 0] * np.sin(Table_phi)) / np.sin(Table_theta)
+    Table_dt = np.hstack((np.diff(Table_t), 0))
+    return Table_t, Table_dt, Table_X, Table_P, Table_P2, \
+           Table_theta, Table_phi, Table_psi, Table_eta
 
 
-def do_calculate_ecoli_passive_Petsc(norm, ini_psi, max_t, update_fun='3bs', rtol=1e-6, atol=1e-9, eval_dt=0.001):
-    importlib.reload(jm)
-    norm = norm / np.linalg.norm(norm)
-    planeShearRate = np.array((1, 0, 0))
-    tcenter = np.zeros(3)
-    tlateral_norm = np.random.sample(3)
-    tlateral_norm = tlateral_norm / np.linalg.norm(tlateral_norm)
-    tlateral_norm = tlateral_norm - norm * np.dot(norm, tlateral_norm)
-    tlateral_norm = tlateral_norm / np.linalg.norm(tlateral_norm)
-    P0 = norm / np.linalg.norm(norm)
-    P20 = tlateral_norm / np.linalg.norm(tlateral_norm)
-    ecoli_kwargs = {'name':         'ecoli_passive',
-                    'center':       tcenter,
-                    'norm':         P0,
-                    'lateral_norm': P20,
-                    'speed':        0,
-                    'lbd':          np.nan,
-                    'ini_psi':      ini_psi,
-                    'table_name':   'planeShearRatex_1d_passive', }
-    fileHandle = 'ShearTableProblem'
-    helix_obj = jm.TablePetscObj(**ecoli_kwargs)
-    helix_obj.set_update_para(fix_x=False, fix_y=False, fix_z=False,
-                              update_fun=update_fun, rtol=rtol, atol=atol)
-    problem = jm.ShearTableProblem(name=fileHandle, planeShearRate=planeShearRate)
-    problem.add_obj(helix_obj)
-    Table_t, Table_X, Table_P, Table_P2 = helix_obj.update_self(t1=max_t, eval_dt=eval_dt)
-    Table_theta, Table_phi, Table_psi = helix_obj.theta_phi_psi
-    Table_eta = np.arccos(np.sin(Table_theta) * np.sin(Table_phi))
-    return Table_t, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi, Table_eta
+def do_calculate_ecoli_passive_RK(norm, ini_psi, max_t, update_fun=integrate.RK45,
+                                  rtol=1e-6, atol=1e-9, eval_dt=0.001, save_every=1):
+    P0, P20, tcenter, problem = do_calculate_prepare(norm)
+    ecoli_passive_kwargs = do_ecoli_passive_kwargs(tcenter, P0, P20, ini_psi)
+    ecoli_passive_obj = jm.TableRkObj(**ecoli_passive_kwargs)
+    return do_calculate(problem, ecoli_passive_obj, max_t, update_fun, rtol, atol, eval_dt, save_every)
 
 
-def do_calculate_ecoli_passive_RK(norm, ini_psi, max_t, update_fun=integrate.RK45, rtol=1e-6, atol=1e-9):
-    importlib.reload(jm)
-    norm = norm / np.linalg.norm(norm)
-    planeShearRate = np.array((1, 0, 0))
-    tcenter = np.zeros(3)
-    tlateral_norm = np.random.sample(3)
-    tlateral_norm = tlateral_norm / np.linalg.norm(tlateral_norm)
-    tlateral_norm = tlateral_norm - norm * np.dot(norm, tlateral_norm)
-    tlateral_norm = tlateral_norm / np.linalg.norm(tlateral_norm)
-    P0 = norm / np.linalg.norm(norm)
-    P20 = tlateral_norm / np.linalg.norm(tlateral_norm)
-    ecoli_kwargs = {'name':         'ecoli_passive',
-                    'center':       tcenter,
-                    'norm':         P0,
-                    'lateral_norm': P20,
-                    'speed':        0,
-                    'lbd':          np.nan,
-                    'ini_psi':      ini_psi,
-                    'table_name':   'planeShearRatex_1d_passive', }
-    fileHandle = 'ShearTableProblem'
-    helix_obj = jm.TableRtObj(**ecoli_kwargs)
-    helix_obj.set_update_para(fix_x=False, fix_y=False, fix_z=False,
-                              update_fun=update_fun, rtol=rtol, atol=atol)
-    problem = jm.ShearTableProblem(name=fileHandle, planeShearRate=planeShearRate)
-    problem.add_obj(helix_obj)
-    Table_t, Table_X, Table_P, Table_P2 = helix_obj.update_self(t1=max_t)
-    Table_theta, Table_phi, Table_psi = helix_obj.theta_phi_psi
-    Table_eta = np.arccos(np.sin(Table_theta) * np.sin(Table_phi))
-    return Table_t, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi, Table_eta
+def do_calculate_ecoli_passive_Petsc(norm, ini_psi, max_t, update_fun='3bs',
+                                     rtol=1e-6, atol=1e-9, eval_dt=0.001, save_every=1):
+    P0, P20, tcenter, problem = do_calculate_prepare(norm)
+    ecoli_passive_kwargs = do_ecoli_passive_kwargs(tcenter, P0, P20, ini_psi)
+    ecoli_passive_obj = jm.TablePetscObj(**ecoli_passive_kwargs)
+    return do_calculate(problem, ecoli_passive_obj, max_t, update_fun, rtol, atol, eval_dt, save_every)
 
 
-def do_calculate_ecoli_passive(norm, ini_psi, eval_dt=0.1, max_iter=1000):
-    importlib.reload(jm)
-    norm = norm / np.linalg.norm(norm)
-    planeShearRate = np.array((1, 0, 0))
-    tcenter = np.zeros(3)
-    tlateral_norm = np.random.sample(3)
-    tlateral_norm = tlateral_norm / np.linalg.norm(tlateral_norm)
-    tlateral_norm = tlateral_norm - norm * np.dot(norm, tlateral_norm)
-    tlateral_norm = tlateral_norm / np.linalg.norm(tlateral_norm)
-    P0 = norm / np.linalg.norm(norm)
-    P20 = tlateral_norm / np.linalg.norm(tlateral_norm)
-    ecoli_kwargs = {'name':         'ecoli_passive',
-                    'center':       tcenter,
-                    'norm':         P0,
-                    'lateral_norm': P20,
-                    'speed':        0,
-                    'lbd':          np.nan,
-                    'ini_psi':      ini_psi,
-                    'omega_tail':   193.66659814,
-                    'table_name':   'planeShearRatex_1d_passive', }
-    fileHandle = 'ShearTableProblem'
-    helix_obj = jm.TableEcoli(**ecoli_kwargs)
-    helix_obj.set_update_para(fix_x=False, fix_y=False, fix_z=False, update_order=1)
-    problem = jm.ShearTableProblem(name=fileHandle, planeShearRate=planeShearRate)
-    problem.add_obj(helix_obj)
-    for idx in tqdm_notebook(range(1, max_iter + 1)):
-        problem.update_location(eval_dt, print_handle='%d / %d' % (idx, max_iter))
-    Table_X = np.vstack(helix_obj.center_hist)
-    Table_U = np.vstack(helix_obj.U_hist)
-    Table_P = np.vstack(helix_obj.norm_hist)
-    Table_P2 = np.vstack(helix_obj.lateral_norm_hist)
-    Table_t = np.arange(max_iter) * eval_dt + eval_dt
-    Table_theta, Table_phi, Table_psi = helix_obj.theta_phi_psi
-    Table_eta = np.arccos(np.sin(Table_theta) * np.sin(Table_phi))
-    omega = Table_U[:, 3:]
-    dP = np.vstack([np.cross(t1, t2) for t1, t2 in zip(omega, Table_P)])
-    Table_dtheta = -dP[:, 2] / np.sin(np.abs(Table_theta))
-    Table_dphi = (dP[:, 1] * np.cos(Table_phi) - dP[:, 0] * np.sin(Table_phi)) / np.sin(Table_theta)
-    return Table_t, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi, Table_eta
-
-
-def core_show_table_result(Table_t, Table_theta, Table_phi, Table_psi, Table_eta, Table_X, save_every=1):
+def core_show_table_result(Table_t, Table_dt, Table_X, Table_P, Table_P2,
+                           Table_theta, Table_phi, Table_psi, Table_eta,
+                           save_every=1):
     # show table results.
     fig = plt.figure(figsize=(20, 15))
     fig.patch.set_facecolor('white')
     ax0 = plt.subplot2grid((7, 6), (0, 0), rowspan=3, colspan=3, polar=True)
-    ax1 = plt.subplot2grid((7, 6), (0, 3), colspan=3)
-    ax2 = plt.subplot2grid((7, 6), (1, 3), colspan=3)
-    ax3 = plt.subplot2grid((7, 6), (2, 3), colspan=3)
     ax4 = plt.subplot2grid((7, 6), (3, 3), colspan=3)
+    ax1 = plt.subplot2grid((7, 6), (0, 3), colspan=3, sharex=ax4)
+    ax2 = plt.subplot2grid((7, 6), (1, 3), colspan=3, sharex=ax4)
+    ax3 = plt.subplot2grid((7, 6), (2, 3), colspan=3, sharex=ax4)
     axt = plt.subplot2grid((7, 6), (3, 0), colspan=3)
-    ax5 = plt.subplot2grid((7, 6), (4, 0), rowspan=3, colspan=2)
-    ax6 = plt.subplot2grid((7, 6), (4, 2), rowspan=3, colspan=2)
-    ax7 = plt.subplot2grid((7, 6), (4, 4), rowspan=3, colspan=2)
+    axP = plt.subplot2grid((7, 6), (6, 0), colspan=2)
+    axP2 = plt.subplot2grid((7, 6), (6, 2), colspan=2)
+    axPdotP2 = plt.subplot2grid((7, 6), (6, 4), colspan=2)
+    ax5 = plt.subplot2grid((7, 6), (4, 0), rowspan=2, colspan=2, sharex=axP)
+    ax6 = plt.subplot2grid((7, 6), (4, 2), rowspan=2, colspan=2, sharex=axP2)
+    ax7 = plt.subplot2grid((7, 6), (4, 4), rowspan=2, colspan=2, sharex=axPdotP2)
     # polar version
     norm = plt.Normalize(Table_t.min(), Table_t.max())
     cmap = plt.get_cmap('jet')
@@ -498,12 +435,15 @@ def core_show_table_result(Table_t, Table_theta, Table_phi, Table_psi, Table_eta
     #     plt.yticks(fontsize=fontsize*0.5)
     tfct = 10 ** np.floor(np.log10(Table_t.max())) / 100
     xticks = np.around(np.linspace(Table_t.min() / tfct, Table_t.max() / tfct, 5)) * tfct
-    for axi, ty, axyi in zip((ax1, ax2, ax3, ax4, ax5, ax6, ax7, axt),
+    for axi, ty, axyi in zip((ax1, ax2, ax3, ax4, ax5, ax6, ax7, axt, axP, axP2, axPdotP2),
                              (Table_theta / np.pi, Table_phi / np.pi, Table_psi / np.pi, Table_eta / np.pi,
-                              Table_X[:, 0], Table_X[:, 1], Table_X[:, 2],
-                              np.hstack((np.diff(Table_t), 0)) / save_every),
+                              Table_X[:, 0], Table_X[:, 1], Table_X[:, 2], Table_dt,
+                              np.linalg.norm(Table_P, axis=1),
+                              np.linalg.norm(Table_P2, axis=1),
+                              np.einsum('ij,ij->i', Table_P, Table_P2)),
                              ('$\\theta / \pi$', '$\\phi / \pi$', '$\\psi / \pi$', '$\\eta / \pi$',
-                              '$center_x$', '$center_y$', '$center_z$', 'dt')):
+                              '$center_x$', '$center_y$', '$center_z$', 'dt',
+                              '$\|P\|$', '$\|P2\|$', '$P \cdot P_2$')):
         plt.sca(axi)
         axi.plot(Table_t, ty, '-*', label='Table')
         #     axi.set_xlabel('t', size=fontsize)
@@ -513,19 +453,29 @@ def core_show_table_result(Table_t, Table_theta, Table_phi, Table_psi, Table_eta
         axi.set_xticklabels(xticks)
         plt.xticks(fontsize=fontsize * 0.5)
         plt.yticks(fontsize=fontsize * 0.5)
-    for axi in (ax4, ax5, ax6, ax7):
+    for axi in (ax4, axt, axP, axP2, axPdotP2):
         axi.set_xlabel('t', size=fontsize * 0.7)
+    for axi in (axP, axP2):
+        axi.set_ylim(0.9, 1.1)
     plt.tight_layout()
     return fig
 
 
-def show_table_result(Table_t, Table_theta, Table_phi, Table_psi, Table_eta, Table_X, save_every=1):
-    core_show_table_result(Table_t, Table_theta, Table_phi, Table_psi, Table_eta, Table_X, save_every)
+def show_table_result(Table_t, Table_dt, Table_X, Table_P, Table_P2,
+                      Table_theta, Table_phi, Table_psi, Table_eta,
+                      save_every=1):
+    core_show_table_result(Table_t, Table_dt, Table_X, Table_P, Table_P2,
+                           Table_theta, Table_phi, Table_psi, Table_eta,
+                           save_every)
     return True
 
 
-def save_table_result(finename, Table_t, Table_theta, Table_phi, Table_psi, Table_eta, Table_X, save_every=1):
-    fig = core_show_table_result(Table_t, Table_theta, Table_phi, Table_psi, Table_eta, Table_X, save_every)
+def save_table_result(finename, Table_t, Table_dt, Table_X, Table_P, Table_P2,
+                      Table_theta, Table_phi, Table_psi, Table_eta,
+                      save_every=1):
+    fig = core_show_table_result(Table_t, Table_dt, Table_X, Table_P, Table_P2,
+                                 Table_theta, Table_phi, Table_psi, Table_eta,
+                                 save_every)
     fig.savefig(finename, dpi=100)
     plt.close()
     return True

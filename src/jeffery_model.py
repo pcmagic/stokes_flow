@@ -31,7 +31,8 @@ import os
 import pickle
 from petsc4py import PETSc
 from tqdm import tqdm, tqdm_notebook
-import time
+# from scipy.spatial.transform import Rotation as spR
+import quaternion
 
 __all__ = ['JefferyObj',
            'ShearJefferyProblem', ]
@@ -992,27 +993,39 @@ class JefferyObj:
 
 class TableObj(JefferyObj):
     def __init__(self, table_name, name='...', rot_v=0, ini_psi=0, **kwargs):
+        super().__init__(name=name, rot_v=rot_v, **kwargs)
         err_msg = 'current version rot_v==0'
         assert rot_v == 0, err_msg
 
-        super().__init__(name=name, rot_v=rot_v, **kwargs)
         self._type = 'TableObj'
         self._intp_fun_list = []
         self._intp_psi_list = []
         self.load_table(table_name=table_name)
 
-        # ini direction of lateral norm !!! after rotate back.
-        P0 = self._norm  # ini direction of norm
+        # !!! after rotate back.
+        P0 = self.norm  # ini direction of norm
         theta0 = np.arccos(P0[2] / np.linalg.norm(P0))
         phi0 = np.arctan2(P0[1], P0[0])
         phi0 = phi0 + 2 * np.pi if phi0 < 0 else phi0  # (-pi,pi) -> (0, 2pi)
         tP = vector_rotation(self.lateral_norm, norm=np.array((0, 0, 1)), theta=-phi0)
         tP = vector_rotation(tP, norm=np.array((0, 1, 0)), theta=-theta0)
-        self._lateral_norm0 = tP / np.linalg.norm(tP)
+        self._ini_lateral_norm2 = tP / np.linalg.norm(tP)
 
         # rotate a ini psi
-        self._lateral_norm = vector_rotation(self._lateral_norm,
+        self._lateral_norm = vector_rotation(self.lateral_norm,
                                              norm=self.norm, theta=ini_psi)
+        # ini information
+        self._ini_center = self.center.copy()
+        self._ini_norm = self.norm.copy()
+        self._ini_lateral_norm = self.lateral_norm.copy()
+
+    @property
+    def ini_norm(self):
+        return self._ini_norm
+
+    @property
+    def ini_lateral_norm(self):
+        return self._ini_lateral_norm
 
     def _theta_phi_psi(self, P, P2):
         t_theta_all = np.arccos(P[:, 2] / np.linalg.norm(P, axis=1))
@@ -1020,13 +1033,13 @@ class TableObj(JefferyObj):
         t_phi_all = np.hstack([t1 + 2 * np.pi if t1 < 0 else t1 for t1 in t_phi_all])  # (-pi,pi) -> (0, 2pi)
 
         t_psi_all = []
-        t_lateral_norm0 = self._lateral_norm0
+        ini_lateral_norm2 = self._ini_lateral_norm2
         for t_lateral_norm, t_theta, t_phi in zip(P2, t_theta_all, t_phi_all):
             t_lateral_norm = vector_rotation(t_lateral_norm, norm=np.array((0, 0, 1)), theta=-t_phi)
             t_lateral_norm = vector_rotation(t_lateral_norm, norm=np.array((0, 1, 0)), theta=- t_theta)
-            sign = np.sign(np.dot(np.array((0, 0, 1)), np.cross(t_lateral_norm0, t_lateral_norm)))
-            t_psi = sign * np.arccos(np.clip(np.dot(t_lateral_norm0, t_lateral_norm)
-                                             / np.linalg.norm(t_lateral_norm) / np.linalg.norm(t_lateral_norm0),
+            sign = np.sign(np.dot(np.array((0, 0, 1)), np.cross(ini_lateral_norm2, t_lateral_norm)))
+            t_psi = sign * np.arccos(np.clip(np.dot(ini_lateral_norm2, t_lateral_norm)
+                                             / np.linalg.norm(t_lateral_norm) / np.linalg.norm(ini_lateral_norm2),
                                              -1, 1))
             tfct = np.zeros_like(t_psi)
             tfct[t_psi < 0] = 2
@@ -1105,7 +1118,7 @@ class TableObj(JefferyObj):
 
     def _get_velocity_at(self, X, P, P2, trs_v, rot_v=0):
         # values associated with ini direction.
-        P20 = self._lateral_norm0  # ini direction of lateral norm
+        P20 = self._ini_lateral_norm2  # ini direction of lateral norm
 
         t_theta = np.arccos(P[2] / np.linalg.norm(P))
         t_phi = np.arctan2(P[1], P[0])
@@ -1197,9 +1210,10 @@ class TableObj(JefferyObj):
         return True
 
 
-class TableRtObj(TableObj):
+class TableRkObj(TableObj):
     def __init__(self, table_name, name='...', rot_v=0, ini_psi=0, **kwargs):
         super().__init__(table_name, name, rot_v, ini_psi, **kwargs)
+        self._save_every = 1
         self._t_hist = []
 
     @property
@@ -1208,7 +1222,7 @@ class TableRtObj(TableObj):
 
     def _get_velocity_at(self, X, P, P2, trs_v, rot_v=0):
         # values associated with ini direction.
-        P20 = self._lateral_norm0  # ini direction of lateral norm
+        P20 = self._ini_lateral_norm2  # ini direction of lateral norm
 
         t_theta = np.arccos(P[2] / np.linalg.norm(P))
         t_phi = np.arctan2(P[1], P[0])
@@ -1245,74 +1259,7 @@ class TableRtObj(TableObj):
         return np.hstack((dX, dP, dP2))
 
     def set_update_para(self, fix_x=False, fix_y=False, fix_z=False,
-                        update_fun=integrate.RK45, rtol=1e-6, atol=1e-9):
-        # for a cutoff infinity symmetric problem,
-        #   each time step set the obj in the center of the cutoff region to improve the accuracy.
-        self._locomotion_fct = np.array((not fix_x, not fix_y, not fix_z), dtype=np.float)
-        self._update_fun = update_fun
-        self._update_order = (rtol, atol)
-        return self._locomotion_fct
-
-    def update_self(self, t1, t0=0):
-        y0 = np.hstack((self.center, self.norm, self.lateral_norm))
-        (rtol, atol) = self._update_order
-        sol = integrate.solve_ivp(self._wrapper_solve_ivp, [t0, t1], y0,
-                                  method=self._update_fun, rtol=rtol, atol=atol, vectorized=False)
-        Table_t = sol.t
-        ty = sol.y
-        Table_X = ty[0:3].T
-        Table_P = ty[3:6].T
-        Table_P2 = ty[6:9].T
-
-        # self._U_hist.append(np.hstack((dX, omega)))
-        # self._dP_hist.append(dP)
-        # self._dP2_hist.append(dP2)
-        # self._displace_hist.append(distance_true)
-        # self._rotation_hist.append(rotation)
-        self._t_hist = Table_t
-        self._center_hist = Table_X
-        self._norm_hist = Table_P
-        self._lateral_norm_hist = Table_P2
-        return Table_t, Table_X, Table_P, Table_P2
-
-
-class TablePetscObj(TableRtObj):
-    def __init__(self, table_name, name='...', rot_v=0, ini_psi=0, **kwargs):
-        super().__init__(table_name, name, rot_v, ini_psi, **kwargs)
-        self._comm = PETSc.COMM_SELF
-        self._save_every = 1
-        self._tqdm = None
-        self._t1 = -1  # simulation time in the range (0, t1)
-        self._max_it = -1  # iteration loop no more than max_it
-        self._percentage = 0  # percentage of time depend solver.
-
-    def _rhsfunction(self, ts, t, Y, F):
-        y = Y.getArray()
-        X = y[0:3]
-        P = y[3:6]
-        P2 = y[6:9]
-        trs_v = self.speed
-        rot_v = self.rot_v
-        dX, dP, dP2, omega = self._get_velocity_at(X, P, P2, trs_v, rot_v)
-
-        # let |P|==|P2|==1 and dot(P, P2)==0
-        tP = P + dP
-        tP = tP / np.linalg.norm(tP)
-        tP2 = P2 + dP2
-        tP2 = tP2 / np.linalg.norm(tP2)
-        tP2 = tP2 - tP * np.dot(tP, tP2)
-        tP2 = tP2 / np.linalg.norm(tP2)
-
-        # set update values
-        dX = dX * self._locomotion_fct
-        dP = tP - P
-        dP2 = tP2 - P2
-        F[:] = np.hstack((dX, dP, dP2))
-        F.assemble()
-        return True
-
-    def set_update_para(self, fix_x=False, fix_y=False, fix_z=False,
-                        update_fun='3bs', rtol=1e-6, atol=1e-9, save_every=1):
+                        update_fun=integrate.RK45, rtol=1e-6, atol=1e-9, save_every=1):
         # for a cutoff infinity symmetric problem,
         #   each time step set the obj in the center of the cutoff region to improve the accuracy.
         self._locomotion_fct = np.array((not fix_x, not fix_y, not fix_z), dtype=np.float)
@@ -1321,8 +1268,146 @@ class TablePetscObj(TableRtObj):
         self._save_every = save_every
         return self._locomotion_fct
 
-    def monitor(self, ts, i, t, Y):
+    def update_self(self, t1, t0=0, eval_dt=0.001):
+        y0 = np.hstack((self.center, self.norm, self.lateral_norm))
+        (rtol, atol) = self._update_order
+        n_t = int(np.floor((t1 - t0) / eval_dt)[0])
+        t_eval = np.linspace(t0, t1, n_t)
+        sol = integrate.solve_ivp(self._wrapper_solve_ivp, [t0, t1], y0,
+                                  method=self._update_fun, rtol=rtol, atol=atol,
+                                  vectorized=False, t_eval=t_eval)
+        Table_t = sol.t
+        ty = sol.y
+        Table_X = ty[0:3].T
+        Table_P = ty[3:6].T
+        Table_P2 = ty[6:9].T
+        Table_dt = np.hstack((np.diff(Table_t), 0))
+
+        self._t_hist = Table_t
+        self._center_hist = Table_X
+        self._norm_hist = Table_P
+        self._lateral_norm_hist = Table_P2
+        return Table_t, Table_dt, Table_X, Table_P, Table_P2
+
+
+class TableRk4nObj(TableRkObj):
+    def __init__(self, table_name, name='...', rot_v=0, ini_psi=0, **kwargs):
+        super().__init__(table_name, name, rot_v, ini_psi, **kwargs)
+        # e = np.identity(3)
+        e0 = np.vstack((np.cross(self.lateral_norm, self.norm), self.lateral_norm, self.norm)).T
+        # tR = rotMatrix_DCM(*e0, *e)
+        self._q = quaternion.from_rotation_matrix(e0)
+
+    @property
+    def q(self):
+        return self._q
+
+    def get_quaternion_E(self, q):
+        W, X, Y, Z = quaternion.as_float_array(q)
+        E = np.array([[-X, W, -Z, Y],
+                      [-Y, Z, W, -X],
+                      [-Z, -Y, X, W]])
+        return E
+
+    def get_quaternion_G(self, q):
+        W, X, Y, Z = quaternion.as_float_array(q)
+        G = np.array([[-X, W, Z, -Y],
+                      [-Y, -Z, W, X],
+                      [-Z, Y, -X, W]])
+        return G
+
+    def _wrapper_solve_ivp(self, t, y):
+        X = y[0:3]  # center (x, y, z)
+        Q = y[3:7]  # quaternion (w, x, y, z), where w=cos(theta/2).
+        tq = quaternion.from_float_array(Q)
+        trs_v = self.speed
+        rot_v = self.rot_v
+        R = quaternion.as_rotation_matrix(tq)
+        P = R[:, 2]
+        P2 = R[:, 1]
+
+        dX, dP, dP2, omega = self._get_velocity_at(X, P, P2, trs_v, rot_v)
+        dX = dX * self._locomotion_fct
+        dQ = 0.5 * omega.dot(self.get_quaternion_E(tq))
+        return np.hstack((dX, dQ))
+
+    def update_self(self, t1, t0=0, eval_dt=0.001):
+        y0 = np.hstack((self.center, quaternion.as_float_array(self.q)))
+        (rtol, atol) = self._update_order
+        n_t = int(np.floor((t1 - t0) / eval_dt))
+        t_eval = np.linspace(t0, t1, n_t)
+        sol = integrate.solve_ivp(self._wrapper_solve_ivp, [t0, t1], y0,
+                                  method=self._update_fun, rtol=rtol, atol=atol,
+                                  vectorized=False, t_eval=t_eval)
+        Table_t = sol.t
+        ty = sol.y
+        Table_X = ty[0:3].T
+        Table_q = ty[3:7].T
+        Table_P = Table_X.copy()
+        Table_P2 = Table_X.copy()
+        for i0, tq in enumerate(Table_q):
+            R = quaternion.as_rotation_matrix(quaternion.from_float_array(tq))
+            tP = R[:, 2]
+            tP2 = R[:, 1]
+            Table_P[i0, :] = tP
+            Table_P2[i0, :] = tP2
+        Table_dt = np.hstack((np.diff(Table_t), 0))
+
+        self._t_hist = Table_t
+        self._center_hist = Table_X
+        self._norm_hist = Table_P
+        self._lateral_norm_hist = Table_P2
+        return Table_t, Table_dt, Table_X, Table_P, Table_P2
+
+
+class TablePetscObj(TableRkObj):
+    def __init__(self, table_name, name='...', rot_v=0, ini_psi=0, **kwargs):
+        super().__init__(table_name, name, rot_v, ini_psi, **kwargs)
+        self._comm = PETSc.COMM_SELF
+        self._tqdm = None
+        self._t1 = -1  # simulation time in the range (0, t1)
+        self._max_it = -1  # iteration loop no more than max_it
+        self._percentage = 0  # percentage of time depend solver.
+        self._dt_hist = []
+
+    @property
+    def dt_hist(self):
+        return self._dt_hist
+
+    def _rhsfunction(self, ts, t, Y, F):
+        y = Y.getArray()
+        X = y[0:3]
+        P = y[3:6]
+        P2 = y[6:9]
+        trs_v = self.speed
+        rot_v = self.rot_v
+        fct = self._locomotion_fct
+        dX, dP, dP2, omega = self._get_velocity_at(X, P, P2, trs_v, rot_v)
+        dX = dX * fct
+        F[:] = np.hstack((dX, dP, dP2))
+        F.assemble()
+        return True
+
+    def _postfunction(self, ts):
+        Y = ts.getSolution()
+        y = Y.getArray()
+        X = y[0:3]
+        P = y[3:6]
+        P2 = y[6:9]
+
+        P = P / np.linalg.norm(P)
+        P2 = P2 / np.linalg.norm(P2)
+        Y[:] = np.hstack((X, P, P2))
+        Y.assemble()
+        return True
+
+    def set_update_para(self, fix_x=False, fix_y=False, fix_z=False,
+                        update_fun='3bs', rtol=1e-6, atol=1e-9, save_every=1):
+        return super().set_update_para(fix_x, fix_y, fix_z, update_fun, rtol, atol, save_every)
+
+    def _monitor(self, ts, i, t, Y):
         save_every = self._save_every
+        # print(ts.getTimeStep())
         if not i % save_every:
             percentage = np.clip(t / self._t1 * 100, 0, 100)
             dp = int(percentage - self._percentage)
@@ -1334,7 +1419,9 @@ class TablePetscObj(TableRtObj):
             X = y[0:3]
             P = y[3:6]
             P2 = y[6:9]
+            dt = ts.getTimeStep()
             self.t_hist.append(t)
+            self.dt_hist.append(dt)
             self.center_hist.append(X)
             self.norm_hist.append(P)
             self.lateral_norm_hist.append(P2)
@@ -1360,7 +1447,8 @@ class TablePetscObj(TableRtObj):
         ts.setMaxTime(t1)
         ts.setMaxSteps(max_it)
         ts.setTimeStep(eval_dt)
-        ts.setMonitor(self.monitor)
+        ts.setMonitor(self._monitor)
+        ts.setPostStep(self._postfunction)
         ts.setExactFinalTime(PETSc.TS.ExactFinalTime.INTERPOLATE)
         ts.setFromOptions()
         ts.setSolution(x)
@@ -1372,10 +1460,99 @@ class TablePetscObj(TableRtObj):
         self._tqdm.close()
 
         Table_t = np.hstack(self.t_hist)
+        Table_dt = np.hstack(self.dt_hist)
         Table_X = np.vstack(self.center_hist)
         Table_P = np.vstack(self.norm_hist)
         Table_P2 = np.vstack(self.lateral_norm_hist)
-        return Table_t, Table_X, Table_P, Table_P2
+        return Table_t, Table_dt, Table_X, Table_P, Table_P2
+
+
+class TablePetsc4nObj(TableRk4nObj, TablePetscObj):
+    def _rhsfunction(self, ts, t, Y, F):
+        y = Y.getArray()
+        X = y[0:3]  # center (x, y, z)
+        Q = y[3:7]  # quaternion (w, x, y, z), where w=cos(theta/2).
+        tq = quaternion.from_float_array(Q)
+        trs_v = self.speed
+        rot_v = self.rot_v
+        R = quaternion.as_rotation_matrix(tq)
+        P = R[:, 2]
+        P2 = R[:, 1]
+
+        dX, dP, dP2, omega = self._get_velocity_at(X, P, P2, trs_v, rot_v)
+        dX = dX * self._locomotion_fct
+        dQ = 0.5 * omega.dot(self.get_quaternion_E(tq))
+        F[:] = np.hstack((dX, dQ))
+        F.assemble()
+        return True
+
+    def _postfunction(self, ts):
+        pass
+        return True
+
+    def _monitor(self, ts, i, t, Y):
+        save_every = self._save_every
+        # print(ts.getTimeStep())
+        if not i % save_every:
+            percentage = np.clip(t / self._t1 * 100, 0, 100)
+            dp = int(percentage - self._percentage)
+            if dp > 1:
+                self._tqdm.update(dp)
+                self._percentage = self._percentage + dp
+
+            y = Y.getArray()
+            X = y[0:3]  # center (x, y, z)
+            Q = y[3:7]  # quaternion (w, x, y, z), where w=cos(theta/2).
+            tq = quaternion.from_float_array(Q)
+            R = quaternion.as_rotation_matrix(tq)
+            P = R[:, 2]
+            P2 = R[:, 1]
+            dt = ts.getTimeStep()
+            self.t_hist.append(t)
+            self.dt_hist.append(dt)
+            self.center_hist.append(X)
+            self.norm_hist.append(P)
+            self.lateral_norm_hist.append(P2)
+        return True
+
+    def update_self(self, t1, t0=0, max_it=10 ** 9, eval_dt=0.001):
+        comm = self._comm
+        (rtol, atol) = self._update_order
+        update_fun = self._update_fun
+        self._tqdm = tqdm_notebook(total=100)
+        self._t1 = t1
+        self._max_it = max_it
+
+        x0 = np.hstack((self.center, quaternion.as_float_array(self.q)))
+        x = PETSc.Vec().createWithArray(x0, comm=comm)
+        f = x.duplicate()
+        ts = PETSc.TS().create(comm=comm)
+        ts.setFromOptions()
+        ts.setProblemType(ts.ProblemType.NONLINEAR)
+        ts.setType(ts.Type.RK)
+        ts.setRKType(update_fun)
+        ts.setRHSFunction(self._rhsfunction, f)
+        ts.setTime(t0)
+        ts.setMaxTime(t1)
+        ts.setMaxSteps(max_it)
+        ts.setTimeStep(eval_dt)
+        ts.setMonitor(self._monitor)
+        # ts.setPostStep(self._postfunction)
+        ts.setExactFinalTime(PETSc.TS.ExactFinalTime.INTERPOLATE)
+        ts.setSolution(x)
+        ts.setTolerances(rtol, atol)
+        ts.setUp()
+        # print(ts.getRKType())
+        ts.solve(x)
+        self._tqdm.update(100 - self._percentage)
+        self._tqdm.close()
+
+        Table_t = np.hstack(self.t_hist)
+        Table_dt = np.hstack(self.dt_hist)
+        Table_X = np.vstack(self.center_hist)
+        Table_P = np.vstack(self.norm_hist)
+        Table_P2 = np.vstack(self.lateral_norm_hist)
+        return Table_t, Table_dt, Table_X, Table_P, Table_P2
 
 
 class TableEcoli(TableObj):
@@ -1407,28 +1584,29 @@ class TableEcoli(TableObj):
         return True
 
 
-class TableRtEcoli(TableEcoli, TableRtObj):
-    def _wrapper_solve_ivp(self, t, y):
-        P = y[3:6]
-        P2 = y[6:9]
-        dy = super()._wrapper_solve_ivp(t, y)
-
+class TableRkEcoli(TableEcoli, TableRkObj):
+    def _get_velocity_at(self, X, P, P2, trs_v, rot_v=0):
+        dX, dP, dP2, omega = super()._get_velocity_at(X, P, P2, trs_v, rot_v)
         omega_tail = P * self.omega_tail / np.linalg.norm(P)
-        dP2_tail = np.cross(omega_tail, P2)
-        dy[6:9] = dy[6:9] + dP2_tail
-        return dy
+        return dX, dP, dP2, omega + omega_tail
+
+
+class TableRk4nEcoli(TableRkEcoli, TableRk4nObj):
+    def nothing(self):
+        pass
 
 
 class TablePetscEcoli(TableEcoli, TablePetscObj):
     def _rhsfunction(self, ts, t, Y, F):
+        super()._rhsfunction(ts, t, Y, F)
         y = Y.getArray()
         P = y[3:6]
         P2 = y[6:9]
+        dP2 = F[6:9]
 
-        super()._rhsfunction(ts, t, Y, F)
         omega_tail = P * self.omega_tail / np.linalg.norm(P)
         dP2_tail = np.cross(omega_tail, P2)
-        F[6:9] = F[6:9] + dP2_tail
+        F[6:9] = dP2 + dP2_tail
         F.assemble()
         return True
 

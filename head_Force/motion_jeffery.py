@@ -74,8 +74,8 @@ def main_fun(**main_kwargs):
     fileHandle = 'SingleStokesletsJefferyProblem'
 
     #     norm = np.random.sample(3)
-    norm = np.array((1, 0, 0))
-    center = np.array((1, 1, 1))
+    norm = np.array((0, 0, 1))
+    center = np.array((0, 0, 0))
     ellipse_kwargs = {'name':     'ellipse0',
                       'center':   center,
                       'norm':     norm / np.linalg.norm(norm),

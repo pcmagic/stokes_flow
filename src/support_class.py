@@ -6,7 +6,8 @@ __all__ = ['uniqueList', 'typeList', 'intList', 'floatList',
            'abs_comp', 'abs_construct_matrix',
            'check_file_extension', 'mpiprint',
            'coordinate_transformation',
-           'tube_flatten', 'get_rot_matrix', 'rot_vec2rot_mtx', 'rotMatrixA2B', 'vector_rotation',
+           'tube_flatten',
+           'get_rot_matrix', 'rot_vec2rot_mtx', 'vector_rotation', 'rotMatrix_DCM',
            'Adams_Moulton_Methods', 'Adams_Bashforth_Methods']
 
 
@@ -242,24 +243,26 @@ def vector_rotation(P2, norm=np.array([0, 0, 1]), theta=0, rotation_origin=np.ze
     return P20
 
 
-def rotMatrixA2B(a, b):
-    def S(n):
-        Sn = np.array([[0, -n[2], n[1]],
-                       [n[2], 0, -n[0]],
-                       [-n[1], n[0], 0]])
-        return Sn
+def rotMatrix_DCM(x0, y0, z0, x, y, z):
+    # Diebel, James. "Representing attitude: Euler angles, unit quaternions, and rotation vectors."
+    #  Matrix 58.15-16 (2006): 1-35.
+    # eq. 17
+    # https://arxiv.org/pdf/1705.06997.pdf
+    # appendix B
+    # Graf, Basile. "Quaternions and dynamics." arXiv preprint arXiv:0811.2889 (2008).
+    #
+    # A rotation matrix may also be referred to as a direction
+    # cosine matrix, because the elements of this matrix are the
+    # cosines of the unsigned angles between the body-¯xed axes
+    # and the world axes. Denoting the world axes by (x; y; z)
+    # and the body-fixed axes by (x0; y0; z0), let \theta_{x';y} be,
+    # for example, the unsigned angle between the x'-axis and the y-axis.
 
-    a = a / np.linalg.norm(a)
-    b = b / np.linalg.norm(b)
-    c = np.dot(a, b)
-    v = np.cross(a, b)
-    if theta > 1e-6:
-        Sn = S(v)
-        R = np.eye(3) + Sn + np.dot(Sn, Sn) / (1 + c)
-    else:
-        Sr = S(v)
-        theta2 = theta ** 2
-        R = np.eye(3) + (1 - theta2 / 6.) * Sr + (.5 - theta2 / 24.) * np.dot(Sr, Sr)
+    # (x0, y0, z0)^T = dot(R, (x, y, z)^T )
+
+    R = np.array(((np.dot(x0, x), np.dot(x0, y), np.dot(x0, z)),
+                  (np.dot(y0, x), np.dot(y0, y), np.dot(y0, z)),
+                  (np.dot(z0, x), np.dot(z0, y), np.dot(z0, z))))
     return R
 
 
