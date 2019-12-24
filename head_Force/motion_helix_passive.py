@@ -85,14 +85,14 @@ def get_theta_phi_psi(nodes0, nodes1, P0, P1, C0, C1):
     r0 = nodes0[0] - C0
     n0 = np.dot(r0, P0) * P0
     P20 = r0 - n0
-    P20 = vector_rotation(P20, norm=np.array((0, 0, 1)), theta=-phi0)  # rotate back
-    P20 = vector_rotation(P20, norm=np.array((0, 1, 0)), theta=-theta0)
+    P20 = vector_rotation_norm(P20, norm=np.array((0, 0, 1)), theta=-phi0)  # rotate back
+    P20 = vector_rotation_norm(P20, norm=np.array((0, 1, 0)), theta=-theta0)
     P20 = P20 / np.linalg.norm(P20)
     r1 = nodes1[0] - C1
     n1 = np.dot(r1, P1) * P1
     P21 = r1 - n1
-    P21 = vector_rotation(P21, norm=np.array((0, 0, 1)), theta=-phi1)  # rotate back
-    P21 = vector_rotation(P21, norm=np.array((0, 1, 0)), theta=-theta1)
+    P21 = vector_rotation_norm(P21, norm=np.array((0, 0, 1)), theta=-phi1)  # rotate back
+    P21 = vector_rotation_norm(P21, norm=np.array((0, 1, 0)), theta=-theta1)
     P21 = P21 / np.linalg.norm(P21)
     sign = np.sign(np.dot(np.array((0, 0, 1)), np.cross(P20, P21)))
     t_psi = sign * np.arccos(np.clip(np.dot(P20, P21), -1, 1))
@@ -154,7 +154,7 @@ def main_fun(**main_kwargs):
             # 4) save and print
             if rank == 0:
                 ti = idx * eval_dt
-                savemat('%s_%05d' % (fileHandle, idx), {
+                savemat('%s_%05d.mat' % (fileHandle, idx), {
                     'ti':             ti,
                     'planeShearRate': planeShearRate,
                     'ecoli_center':   np.vstack(helix_comp.get_center()),
@@ -182,7 +182,7 @@ def main_fun(**main_kwargs):
         problem_ff.destroy()
         problem.destroy()
         if rank == 0:
-            savemat(fileHandle,
+            savemat('%s.mat' % fileHandle,
                     {'ecoli_center': np.vstack(helix_comp.get_center_hist()),
                      'ecoli_norm':   np.vstack(helix_comp.get_norm_hist()),
                      'ecoli_U':      np.vstack(helix_comp.get_ref_U_hist()),
@@ -220,7 +220,7 @@ def eval_loop_noIter(problem_ff, **problem_kwargs):
         # 4) save and print
         if rank == 0:
             ti = idx * eval_dt
-            savemat('%s_%05d' % (fileHandle, idx), {
+            savemat('%s_%05d.mat' % (fileHandle, idx), {
                 'ti':             ti,
                 'planeShearRate': planeShearRate,
                 'ecoli_center':   np.vstack(helix_comp.get_center()),
@@ -243,7 +243,7 @@ def eval_loop_noIter(problem_ff, **problem_kwargs):
     PETSc.Sys.Print('%s: run %d loops using %f' % (fileHandle, max_iter, (t1 - t0)))
 
     if rank == 0:
-        savemat(fileHandle,
+        savemat('%s.mat' % fileHandle,
                 {'ecoli_center': np.vstack(helix_comp.get_center_hist()),
                  'ecoli_norm':   np.vstack(helix_comp.get_norm_hist()),
                  'ecoli_U':      np.vstack(helix_comp.get_ref_U_hist()),

@@ -146,7 +146,7 @@ def main_fun(**main_kwargs):
     #     helix_obj = helix_composite.get_obj_list()[0]
     #     helixForce = helix_obj.get_force().reshape((-1, 3))
     #     T, N, B = helix_obj.get_f_geo().Frenetframe(0)
-    #     helixForce = coordinate_transformation.vector_rotation(helixForce, np.vstack((N, B, T)).T)
+    #     helixForce = coordinate_transformation.vector_rotation_norm(helixForce, np.vstack((N, B, T)).T)
     #     helixTheta = helix_obj.get_f_geo().get_phi()
     #     fig = plt.figure(figsize=(16, 12))
     #     ax = fig.subplots(nrows=1, ncols=1)

@@ -95,7 +95,7 @@ def main_fun(**main_kwargs):
             t3 = time()
             PETSc.Sys.Print('----> Current loop %d / %d uses: %fs' % (idx, max_iter, (t3 - t2)))
             if rank == 0:
-                savemat('%s_%05d' % (fileHandle, idx), {
+                savemat('%s_%05d.mat' % (fileHandle, idx), {
                     'ecoli_center': np.vstack(ecoli_comp.get_center()),
                     'ecoli_nodes':  np.vstack([tobj.get_u_nodes() for tobj in ecoli_comp.get_obj_list()]),
                     'ecoli_f':      np.hstack([tobj.get_force() for tobj in ecoli_comp.get_obj_list()]).reshape(-1, 3),
@@ -110,7 +110,7 @@ def main_fun(**main_kwargs):
         problem.destroy()
         problem_forcefree.destroy()
         if rank == 0:
-            savemat(fileHandle,
+            savemat('%s.mat' % fileHandle,
                     {'ecoli_center': np.vstack(ecoli_comp.get_center_hist()),
                      'ecoli_norm':   np.vstack(ecoli_comp.get_norm_hist()),
                      'ecoli_U':      np.vstack(ecoli_comp.get_ref_U_hist()),

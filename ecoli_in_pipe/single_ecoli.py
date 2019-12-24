@@ -59,5 +59,58 @@ def main_fun(**main_kwargs):
     return head_U, tail_U, ecoli_U
 
 
+def main_fun_Iter(**main_kwargs):
+    OptDB = PETSc.Options()
+    fileHandle = OptDB.getString('f', 'singleEcoliPro')
+    OptDB.setValue('f', fileHandle)
+    main_kwargs['fileHandle'] = fileHandle
+    problem_kwargs = get_problem_kwargs(**main_kwargs)
+    iter_tor = 1e-3
+
+    if not problem_kwargs['restart']:
+        print_case_info(**problem_kwargs)
+        ecoliHeadType = OptDB.getString('ecoliHeadType', 'tunnel')
+        if 'ellipse' in ecoliHeadType:
+            ecoli_comp = createEcoliComp_ellipse(name='ecoli_0', **problem_kwargs)
+        elif 'tunnel' in ecoliHeadType:
+            ecoli_comp = createEcoliComp_tunnel(name='ecoli_0', **problem_kwargs)
+        else:
+            err_msg = 'wrong ecoliHeadType'
+            raise ValueError(err_msg)
+
+
+        problem_ff = sf.ForceFreeProblem(**problem_kwargs)
+        problem_ff.add_obj(ecoli_comp)
+        problem_ff.print_info()
+        problem_ff.create_matrix()
+        problem_ff.solve()
+        int_ref_U = ecoli_comp.get_ref_U()
+        with np.printoptions(formatter={'float': '{:.16e}'.format}):
+            PETSc.Sys.Print('  ini ref_U in free space', int_ref_U)
+
+        problem = sf.ForceFreeIterateProblem(**problem_kwargs)
+        problem.add_obj(ecoli_comp)
+        problem.set_iterate_comp(ecoli_comp)
+        problem.create_matrix()
+        ref_U = problem.do_iterate3(ini_refU1=int_ref_U, tolerate=iter_tor)
+        ecoli_comp.set_ref_U(ref_U)
+        with np.printoptions(formatter={'float': '{:.16e}'.format}):
+            PETSc.Sys.Print('  true ref_U in free space', ref_U)
+
+        # post process
+        head_U, tail_U = print_single_ecoli_forcefree_result(ecoli_comp, **problem_kwargs)
+        ecoli_U = ecoli_comp.get_ref_U()
+        save_singleEcoli_vtk(problem, createHandle=createEcoliComp_tunnel)
+    else:
+        head_U, tail_U, ecoli_U = ecoli_restart(**main_kwargs)
+    return head_U, tail_U, ecoli_U
+
+
 if __name__ == '__main__':
+    OptDB = PETSc.Options()
+if OptDB.getBool('main_fun_Iter', False):
+    OptDB.setValue('main_fun', False)
+    main_fun_Iter()
+
+if OptDB.getBool('main_fun', True):
     main_fun()

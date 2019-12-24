@@ -138,7 +138,7 @@ def main_fun(**main_kwargs):
         if rank == 0:
             idx = 0
             ti = idx * eval_dt
-            savemat('%s_%05d' % (fileHandle, idx), {
+            savemat('%s_%05d.mat' % (fileHandle, idx), {
                 'ti':             ti,
                 'planeShearRate': planeShearRate,
                 'ecoli_center':   np.vstack(ecoli_comp.get_center()),
@@ -182,7 +182,7 @@ def main_fun(**main_kwargs):
             # 4) save and print
             if rank == 0:
                 ti = idx * eval_dt
-                savemat('%s_%05d' % (fileHandle, idx), {
+                savemat('%s_%05d.mat' % (fileHandle, idx), {
                     'ti':             ti,
                     'planeShearRate': planeShearRate,
                     'ecoli_center':   np.vstack(ecoli_comp.get_center()),
@@ -206,7 +206,7 @@ def main_fun(**main_kwargs):
 
         problem.destroy()
         if rank == 0:
-            savemat(fileHandle,
+            savemat('%s.mat' % fileHandle,
                     {'ecoli_center': np.vstack(ecoli_comp.get_center_hist()),
                      'ecoli_norm':   np.vstack(ecoli_comp.get_norm_hist()),
                      'ecoli_U':      np.vstack(ecoli_comp.get_ref_U_hist()),
@@ -272,7 +272,7 @@ def main_fun_noIter(**main_kwargs):
         # 5) save and print
         if rank == 0:
             ti = idx * eval_dt
-            savemat('%s_%05d' % (fileHandle, idx), {
+            savemat('%s_%05d.mat' % (fileHandle, idx), {
                 'ti':             ti,
                 'planeShearRate': planeShearRate,
                 'ecoli_center':   np.vstack(ecoli_comp.get_center()),
@@ -307,7 +307,7 @@ def main_fun_noIter(**main_kwargs):
             # 4) save and print
             if rank == 0:
                 ti = idx * eval_dt
-                savemat('%s_%05d' % (fileHandle, idx), {
+                savemat('%s_%05d.mat' % (fileHandle, idx), {
                     'ti':             ti,
                     'planeShearRate': planeShearRate,
                     'ecoli_center':   np.vstack(ecoli_comp.get_center()),
@@ -330,7 +330,7 @@ def main_fun_noIter(**main_kwargs):
         PETSc.Sys.Print('%s: run %d loops using %f' % (fileHandle, max_iter, (t1 - t0)))
 
         if rank == 0:
-            savemat(fileHandle,
+            savemat('%s.mat' % fileHandle,
                     {'ecoli_center': np.vstack(ecoli_comp.get_center_hist()),
                      'ecoli_norm':   np.vstack(ecoli_comp.get_norm_hist()),
                      'ecoli_U':      np.vstack(ecoli_comp.get_ref_U_hist()),
@@ -377,7 +377,7 @@ def passive_fun_noIter(**main_kwargs):
             # 4) save and print
             if rank == 0:
                 ti = idx * eval_dt
-                savemat('%s_%05d' % (fileHandle, idx), {
+                savemat('%s_%05d.mat' % (fileHandle, idx), {
                     'ti':             ti,
                     'planeShearRate': planeShearRate,
                     'ecoli_center':   np.vstack(ecoli_comp.get_center()),
@@ -400,7 +400,7 @@ def passive_fun_noIter(**main_kwargs):
         PETSc.Sys.Print('%s: run %d loops using %f' % (fileHandle, max_iter, (t1 - t0)))
 
         if rank == 0:
-            savemat(fileHandle,
+            savemat('%s.mat' % fileHandle,
                     {'ecoli_center': np.vstack(ecoli_comp.get_center_hist()),
                      'ecoli_norm':   np.vstack(ecoli_comp.get_norm_hist()),
                      'ecoli_U':      np.vstack(ecoli_comp.get_ref_U_hist()),

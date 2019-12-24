@@ -147,7 +147,7 @@ def main_fun(**main_kwargs):
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
         if rank == 0:
-            savemat(fileHandle,
+            savemat('%s.mat' % fileHandle,
                     {'ecoli_center': np.vstack(ecoli_comp.get_center_hist()),
                      'ecoli_norm':   np.vstack(ecoli_comp.get_norm_hist()),
                      'ecoli_U':      np.vstack(ecoli_comp.get_ref_U_hist()),
@@ -214,7 +214,7 @@ def main_fun(**main_kwargs):
 #         comm = PETSc.COMM_WORLD.tompi4py()
 #         rank = comm.Get_rank()
 #         if rank == 0:
-#             savemat(fileHandle,
+#             savemat('%s.mat' % fileHandle,
 #                     {'ecoli_center': np.vstack(ecoli_comp.get_center_hist()),
 #                      'ecoli_norm':   np.vstack(ecoli_comp.get_norm_hist()),
 #                      'ecoli_U':      np.vstack(ecoli_comp.get_ref_U_hist()),

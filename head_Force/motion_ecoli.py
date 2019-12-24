@@ -96,7 +96,7 @@ def main_fun(**main_kwargs):
             problem.solve()
             # print_single_ecoli_force_result(ecoli_comp, prefix='', part='full', **problem_kwargs)
             # if rank == 0:
-            #     savemat('%s_%05d' % (fileHandle, idx), {
+            #     savemat('%s_%05d.mat' % (fileHandle, idx), {
             #         'ecoli_center': np.vstack(ecoli_comp.get_center()),
             #         'ecoli_nodes':  np.vstack([tobj.get_u_nodes() for tobj in
             #                                    ecoli_comp.get_obj_list()]),
@@ -123,7 +123,7 @@ def main_fun(**main_kwargs):
         #
         # problem.destroy()
         # if rank == 0:
-        #     savemat(fileHandle,
+        #     savemat('%s.mat' % fileHandle,
         #             {'ecoli_center': np.vstack(ecoli_comp.get_center_hist()),
         #              'ecoli_norm':   np.vstack(ecoli_comp.get_norm_hist()),
         #              'ecoli_U':      np.vstack(ecoli_comp.get_ref_U_hist())},

@@ -34,6 +34,13 @@ tube+sphere/
 *.mp4
 *.jpg
 *.pickle
+pkgs/*
+bck/*
+head_Force/loop_table/*/
+head_Force/do_calculate_table/*/
+try_code/persistence*
+ecoli_in_pipe/free_space_varinghead/*/
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

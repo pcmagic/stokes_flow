@@ -98,7 +98,7 @@ def create_ellipse_obj(**problem_kwargs):
     ellipse_geo0.node_rotation(rot_norm, rot_theta)
     ellipse_geo0.move(ellipse_center)
     ellipse_geo0.set_rigid_velocity(np.zeros(6))
-    ellipse_obj = sf.PointForceObj()
+    ellipse_obj = sf.FundSoltObj()
     ellipse_obj.set_data(ellipse_geo0, ellipse_geo0, name='head_ellipse')
     F_ellipse = -1 * ellipse_geo0.get_geo_norm() * ecoli_tail_strength
     location = ellipse_F_dist * ellipse_geo0.get_geo_norm() + ellipse_geo0.get_center()
@@ -119,7 +119,7 @@ def main_fun(**main_kwargs):
     if not problem_kwargs['restart']:
         # create obj
         ellipse_obj = create_ellipse_obj(**problem_kwargs)
-        ellipse_geo0 = ellipse_obj.get_re_velocity()
+        ellipse_geo0 = ellipse_obj.get_u_geo()
         pipe_obj = create_pipe_obj(**problem_kwargs)
         F_ellipse = ellipse_obj.get_point_force_list()[0][1]
         givenF = np.hstack((F_ellipse, np.zeros(3)))
@@ -164,7 +164,7 @@ def main_fun(**main_kwargs):
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
         if rank == 0:
-            savemat(fileHandle,
+            savemat('%s.mat' % fileHandle,
                     {'ecoli_center': np.vstack(ecoli_comp.get_center_hist()),
                      'ecoli_norm':   np.vstack(ellipse_obj.get_obj_norm_hist()),
                      'ecoli_Floc':   np.vstack(ellipse_obj.get_force_norm_hist()[0]),

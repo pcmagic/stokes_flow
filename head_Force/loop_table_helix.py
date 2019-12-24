@@ -18,6 +18,7 @@ from src.objComposite import *
 # from src.myvtk import save_singleEcoli_vtk
 import ecoli_in_pipe.ecoli_common as ec
 import os
+import pickle
 
 
 # import import_my_lib
@@ -41,6 +42,10 @@ def get_problem_kwargs(**main_kwargs):
     for t_kwargs in kwargs_list:
         for key in t_kwargs:
             problem_kwargs[key] = t_kwargs[key]
+    pickle_name = '%s_kwargs.pickle' % fileHandle
+    with open(pickle_name, 'wb') as handle:
+        pickle.dump(problem_kwargs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    PETSc.Sys.Print('---->save kwargs to %s' % pickle_name)
     return problem_kwargs
 
 
@@ -60,7 +65,8 @@ def print_case_info(**problem_kwargs):
 def do_solve_once(problem_ff: sf.ShearFlowForceFreeProblem,
                   problem: sf.ShearFlowForceFreeIterateProblem,
                   ecoli_comp: sf.ForceFreeComposite,
-                  fileHandle, norm_theta, norm_phi, norm_psi, planeShearRate, rank, idx, N, iter_tor):
+                  fileHandle, norm_theta, norm_phi, norm_psi, planeShearRate, rank, idx, N,
+                  iter_tor):
     PETSc.Sys.Print()
     PETSc.Sys.Print('%s %05d / %05d theta=%f, phi=%f, psi=%f %s' %
                     ('#' * 25, idx, N, norm_theta, norm_phi, norm_psi, '#' * 25,))
@@ -82,7 +88,7 @@ def do_solve_once(problem_ff: sf.ShearFlowForceFreeProblem,
     terr = (ref_U1 - ref_U) / [tU, tU, tU, tW, tW, tW]
     PETSc.Sys.Print('  error of direct method', terr)
     if rank == 0:
-        mat_name = '%s_th%f_phi%f_psi_%f' % (fileHandle, norm_theta, norm_phi, norm_psi)
+        mat_name = '%s_th%f_phi%f_psi_%f.mat' % (fileHandle, norm_theta, norm_phi, norm_psi)
         savemat(mat_name, {
             'norm_theta':     norm_theta,
             'norm_phi':       norm_phi,
@@ -101,7 +107,8 @@ def do_solve_once(problem_ff: sf.ShearFlowForceFreeProblem,
 
 def do_solve_once_noIter(problem_ff: sf.ShearFlowForceFreeProblem,
                          ecoli_comp: sf.ForceFreeComposite,
-                         fileHandle, norm_theta, norm_phi, norm_psi, planeShearRate, rank, idx, N, iter_tor):
+                         fileHandle, norm_theta, norm_phi, norm_psi, planeShearRate, rank, idx, N,
+                         iter_tor):
     PETSc.Sys.Print()
     PETSc.Sys.Print('%s %05d / %05d theta=%f, phi=%f, psi=%f %s' %
                     ('#' * 25, idx, N, norm_theta, norm_phi, norm_psi, '#' * 25,))
@@ -110,7 +117,7 @@ def do_solve_once_noIter(problem_ff: sf.ShearFlowForceFreeProblem,
     ref_U = ecoli_comp.get_ref_U()
     PETSc.Sys.Print('  ref_U in shear flow', ref_U)
     if rank == 0:
-        mat_name = '%s_th%f_phi%f_psi_%f' % (fileHandle, norm_theta, norm_phi, norm_psi)
+        mat_name = '%s_th%f_phi%f_psi_%f.mat' % (fileHandle, norm_theta, norm_phi, norm_psi)
         savemat(mat_name, {
             'norm_theta':     norm_theta,
             'norm_phi':       norm_phi,
@@ -176,7 +183,8 @@ def main_fun(**main_kwargs):
                 t2 = time()
                 idx = i0 * n_norm_phi + i1 + 1
                 helix_comp.node_rotation(np.array((0, 0, 1)), norm_phi)
-                do_solve_once(problem_ff, problem, helix_comp, fileHandle, norm_theta, norm_phi, norm_psi,
+                do_solve_once(problem_ff, problem, helix_comp, fileHandle, norm_theta, norm_phi,
+                              norm_psi,
                               planeShearRate, rank, idx, N, iter_tor)
                 helix_comp.node_rotation(np.array((0, 0, 1)), -norm_phi)  # rotate back
                 t3 = time()
@@ -224,7 +232,8 @@ def main_fun_noIter(**main_kwargs):
                 t2 = time()
                 idx = i0 * n_norm_phi + i1 + 1
                 helix_comp.node_rotation(np.array((0, 0, 1)), norm_phi)
-                do_solve_once_noIter(problem_ff, helix_comp, fileHandle, norm_theta, norm_phi, norm_psi,
+                do_solve_once_noIter(problem_ff, helix_comp, fileHandle, norm_theta, norm_phi,
+                                     norm_psi,
                                      planeShearRate, rank, idx, N, iter_tor)
                 helix_comp.node_rotation(np.array((0, 0, 1)), -norm_phi)  # rotate back
                 t3 = time()
@@ -272,9 +281,11 @@ def test_location(**main_kwargs):
         do_solve_once(problem_ff, problem, helix_comp, fileHandle, norm_theta, norm_phi, norm_psi,
                       planeShearRate, rank, 0, 0, iter_tor)
         ref_U = helix_comp.get_ref_U()
-        PETSc.Sys.Print('-->norm_theta=%f, norm_phi=%f, norm_psi=%f' % (norm_theta, norm_phi, norm_psi))
+        PETSc.Sys.Print(
+            '-->norm_theta=%f, norm_phi=%f, norm_psi=%f' % (norm_theta, norm_phi, norm_psi))
         PETSc.Sys.Print('-->  ref_U=%s' %
-                        np.array2string(ref_U, separator=', ', formatter={'float': lambda x: "%f" % x}))
+                        np.array2string(ref_U, separator=', ',
+                                        formatter={'float': lambda x: "%f" % x}))
     else:
         pass
     return True
@@ -314,9 +325,11 @@ def test_location_noIter(**main_kwargs):
         do_solve_once_noIter(problem_ff, helix_comp, fileHandle, norm_theta, norm_phi, norm_psi,
                              planeShearRate, rank, 0, 0, iter_tor)
         ref_U = helix_comp.get_ref_U()
-        PETSc.Sys.Print('-->norm_theta=%f, norm_phi=%f, norm_psi=%f' % (norm_theta, norm_phi, norm_psi))
+        PETSc.Sys.Print(
+            '-->norm_theta=%f, norm_phi=%f, norm_psi=%f' % (norm_theta, norm_phi, norm_psi))
         PETSc.Sys.Print('-->  ref_U=%s' %
-                        np.array2string(ref_U, separator=', ', formatter={'float': lambda x: "%f" % x}))
+                        np.array2string(ref_U, separator=', ',
+                                        formatter={'float': lambda x: "%f" % x}))
     else:
         pass
     return True

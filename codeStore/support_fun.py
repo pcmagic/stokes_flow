@@ -15,10 +15,10 @@ fontsize = 40
 import os
 import glob
 import numpy as np
-import pandas as pd
 import matplotlib
 import re
 from scanf import scanf
+from scipy import interpolate, integrate
 
 # from scipy.optimize import curve_fit
 
@@ -43,6 +43,25 @@ def read_array(text_headle, FILE_DATA, array_length=6):
         temp1[:] = np.nan
     return temp1
 
+class fullprint:
+    'context manager for printing full numpy arrays'
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault('threshold', np.inf)
+        self.opt = kwargs
+
+    def __enter__(self):
+        self._opt = np.get_printoptions()
+        np.set_printoptions(**self.opt)
+
+    def __exit__(self, type, value, traceback):
+        np.set_printoptions(**self._opt)
+
+
+def func_line(x, a0, a1):
+    y = a0 + a1 * x
+    return y
+
 
 def fit_line(ax, x, y, x0, x1, ifprint=1, linestyle='-.', linewidth=1, extendline=False,
              color='k', alpha=0.7):
@@ -59,13 +78,15 @@ def fit_line(ax, x, y, x0, x1, ifprint=1, linestyle='-.', linewidth=1, extendlin
         ax.plot(fit_x, pol_y(fit_x), linestyle, linewidth=linewidth,
                 color=color, alpha=alpha)
     if ifprint:
-        print('y = %f + %f * x' % (fit_para[1], fit_para[0]), 'in range', (x[idx].min(), x[idx].max()))
+        print('y = %f + %f * x' % (fit_para[1], fit_para[0]), 'in range',
+              (x[idx].min(), x[idx].max()))
     return fit_para
 
 
 def fit_power_law(ax, x, y, x0, x1, ifprint=1, linestyle='-.', linewidth=1, extendline=False,
                   color='k', alpha=0.7):
-    idx = np.array(x >= x0) & np.array(x <= x1) & np.isfinite((np.log10(x))) & np.isfinite((np.log10(y)))
+    idx = np.array(x >= x0) & np.array(x <= x1) & np.isfinite((np.log10(x))) & np.isfinite(
+            (np.log10(y)))
     tx = np.log10(x[idx])
     ty = np.log10(y[idx])
     fit_para = np.polyfit(tx, ty, 1)
@@ -79,7 +100,8 @@ def fit_power_law(ax, x, y, x0, x1, ifprint=1, linestyle='-.', linewidth=1, exte
         ax.loglog(10 ** fit_x, 10 ** pol_y(fit_x), linestyle, linewidth=linewidth,
                   color=color, alpha=alpha)
     if ifprint:
-        print('log(y) = %f + %f * log(x)' % (fit_para[1], fit_para[0]), 'in range', (10 ** tx.min(), 10 ** tx.max()))
+        print('log(y) = %f + %f * log(x)' % (fit_para[1], fit_para[0]), 'in range',
+              (10 ** tx.min(), 10 ** tx.max()))
         print('ln(y) = %f + %f * ln(x)' % (fit_para[1] * np.log(10), fit_para[0]), 'in range',
               (10 ** tx.min(), 10 ** tx.max()))
     return fit_para
@@ -107,12 +129,13 @@ def fit_semilogy(ax, x, y, x0, x1, ifprint=1, linestyle='-.', linewidth=1, exten
 
 
 def get_simulate_data(eq_dir):
-    txt_names = glob.glob(eq_dir + '/*.txt')
+    import pandas as pd
 
     absU = []  # abosultely velocity
     absF = []  # force of head
     zf = []  # zoom factor
     wm = []  # motor spin
+    txt_names = glob.glob(eq_dir + '/*.txt')
     for txt_name in txt_names:
         with open(txt_name, 'r') as myinput:
             FILE_DATA = myinput.read()
@@ -147,10 +170,10 @@ def get_simulate_data(eq_dir):
     return uz, wm, wh, Th
 
 
-def write_pbs_head(fpbs, job_name):
+def write_pbs_head(fpbs, job_name, nodes=1):
     fpbs.write('#! /bin/bash\n')
     fpbs.write('#PBS -M zhangji@csrc.ac.cn\n')
-    fpbs.write('#PBS -l nodes=1:ppn=24\n')
+    fpbs.write('#PBS -l nodes=%d:ppn=24\n' % nodes)
     fpbs.write('#PBS -l walltime=72:00:00\n')
     fpbs.write('#PBS -q common\n')
     fpbs.write('#PBS -N %s\n' % job_name)
@@ -159,10 +182,10 @@ def write_pbs_head(fpbs, job_name):
     fpbs.write('\n')
 
 
-def write_pbs_head_q03(fpbs, job_name):
+def write_pbs_head_q03(fpbs, job_name, nodes=1):
     fpbs.write('#! /bin/bash\n')
     fpbs.write('#PBS -M zhangji@csrc.ac.cn\n')
-    fpbs.write('#PBS -l nodes=1:ppn=24\n')
+    fpbs.write('#PBS -l nodes=%d:ppn=24\n' % nodes)
     fpbs.write('#PBS -l walltime=72:00:00\n')
     fpbs.write('#PBS -q q03\n')
     fpbs.write('#PBS -N %s\n' % job_name)
@@ -171,15 +194,41 @@ def write_pbs_head_q03(fpbs, job_name):
     fpbs.write('\n')
 
 
-def write_pbs_head_newturb(fpbs, job_name):
+def write_pbs_head_newturb(fpbs, job_name, nodes=1):
     fpbs.write('#!/bin/sh\n')
     fpbs.write('#PBS -M zhangji@csrc.ac.cn\n')
-    fpbs.write('#PBS -l nodes=1:ppn=24,walltime=24:00:00\n')
+    fpbs.write('#PBS -l nodes=%d:ppn=24\n' % nodes)
+    fpbs.write('#PBS -l walltime=24:00:00\n')
     fpbs.write('#PBS -N %s\n' % job_name)
     fpbs.write('\n')
     fpbs.write('cd $PBS_O_WORKDIR\n')
     fpbs.write('source /storage/zhang/.bashrc\n')
     fpbs.write('\n')
+
+
+def write_main_run(write_pbs_head, job_dir, ncase):
+    tname = os.path.join(job_dir, 'main_run.pbs')
+    print('ncase =', ncase)
+    print('write parallel pbs file to %s' % tname)
+    with open(tname, 'w') as fpbs:
+        write_pbs_head(fpbs, job_dir, nodes=ncase)
+        fpbs.write('seq 0 %d | parallel -j 1 -u --sshloginfile $PBS_NODEFILE \\\n' % (ncase - 1))
+        fpbs.write('\"cd $PWD;echo $PWD;bash myscript.csh {}\"')
+    return True
+
+
+def write_myscript(job_name_list, job_dir):
+    t1 = ' '.join(['\"%s\"' % job_name for job_name in job_name_list])
+    tname = os.path.join(job_dir, 'myscript.csh')
+    print('write myscript csh file to %s' % tname)
+    with open(tname, 'w') as fcsh:
+        fcsh.write('#!/bin/sh -fe\n')
+        fcsh.write('job_name_list=(%s)\n' % t1)
+        fcsh.write('\n')
+        fcsh.write('echo ${job_name_list[$1]}\n')
+        fcsh.write('cd ${job_name_list[$1]}\n')
+        fcsh.write('bash ${job_name_list[$1]}.sh\n')
+    return True
 
 
 def set_axes_equal(ax):
@@ -277,60 +326,15 @@ def colorline(x, y, z=None, cmap=plt.get_cmap('copper'), ax=None, norm=plt.Norma
     return lc
 
 
-def read_data_lookup_table(psi_dir, tcenter):
-    ecoli_U_list = []
-    ecoli_norm_list = []
-    ecoli_center_list = []
-    ecoli_nodes_list = []
-    ecoli_u_list = []
-    ecoli_f_list = []
-    ecoli_lateral_norm_list = []
-    norm_phi_list = []
-    norm_psi_list = []
-    norm_theta_list = []
-    planeShearRate = None
-    file_handle = os.path.basename(psi_dir)
-    mat_names = natsort.natsorted(glob.glob('%s/%s_*.mat' % (psi_dir, file_handle)))
-    for mati in mat_names:
-        mat_contents = loadmat(mati)
-        ecoli_U = mat_contents['ecoli_U'].flatten()
-        ecoli_norm = mat_contents['ecoli_norm'].flatten()
-        ecoli_center = mat_contents['ecoli_center'].flatten()
-        ecoli_nodes = mat_contents['ecoli_nodes']
-        ecoli_u = mat_contents['ecoli_u']
-        ecoli_f = mat_contents['ecoli_f']
-        planeShearRate = mat_contents['planeShearRate'].flatten()
-        norm_phi = mat_contents['norm_phi'].flatten()
-        norm_psi = mat_contents['norm_psi'].flatten()
-        norm_theta = mat_contents['norm_theta'].flatten()
-        ecoli_U_list.append(ecoli_U)
-        ecoli_norm_list.append(ecoli_norm)
-        ecoli_center_list.append(ecoli_center)
-        norm_phi_list.append(norm_phi)
-        norm_psi_list.append(norm_psi)
-        norm_theta_list.append(norm_theta)
-        r0 = ecoli_nodes[-1] - ecoli_center
-        n0 = np.dot(r0, ecoli_norm) * ecoli_norm / np.dot(ecoli_norm, ecoli_norm)
-        t0 = r0 - n0
-        ecoli_lateral_norm_list.append(t0 / np.linalg.norm(t0))
-
-    ecoli_U = np.vstack(ecoli_U_list)
-    ecoli_norm = np.vstack(ecoli_norm_list)
-    ecoli_center = np.vstack(ecoli_center_list)
-    ecoli_lateral_norm = np.vstack(ecoli_lateral_norm_list)
-    norm_phi = np.hstack(norm_phi_list)
-    norm_psi = np.hstack(norm_psi_list)
-    norm_theta = np.hstack(norm_theta_list)
-    norm_tpp = np.vstack((norm_theta, norm_phi, norm_psi)).T
-
-    # calculate velocity u000(t,x,y,z) that the location initially at (0, 0, 0): u000(0, 0, 0, 0)
-    n_u000 = -np.linalg.norm(ecoli_center[0] - tcenter) * ecoli_norm
-    ecoli_u000 = ecoli_U[:, :3] + np.cross(ecoli_U[:, 3:], n_u000)
-    # calculate center center000(t,x,y,z) that at initially at (0, 0, 0): center000(0, 0, 0, 0)
-    ecoli_center000 = ecoli_center + n_u000
-    using_U = ecoli_U
-    omega_norm = np.array([np.dot(t1, t2) * t2 / np.dot(t2, t2) for t1, t2 in zip(using_U[:, 3:], ecoli_norm)])
-    omega_tang = using_U[:, 3:] - omega_norm
-
-    return ecoli_U, ecoli_norm, ecoli_center, ecoli_lateral_norm, norm_tpp, \
-           ecoli_u000, ecoli_center000, omega_norm, omega_tang, planeShearRate, file_handle
+def add_inset(ax0, rect, *args, **kwargs):
+    box = ax0.get_position()
+    xlim = ax0.get_xlim()
+    ylim = ax0.get_ylim()
+    inptx = interpolate.interp1d(xlim, (0, box.x1 - box.x0))
+    inpty = interpolate.interp1d(ylim, (0, box.y1 - box.y0))
+    left = inptx(rect[0]) + box.x0
+    bottom = inpty(rect[1]) + box.y0
+    width = inptx(rect[2] + rect[0]) - inptx(rect[0])
+    height = inpty(rect[3] + rect[1]) - inpty(rect[1])
+    new_rect = np.hstack((left, bottom, width, height))
+    return ax0.figure.add_axes(new_rect, *args, **kwargs)

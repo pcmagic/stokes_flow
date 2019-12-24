@@ -9,9 +9,10 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from src.support_class import *
 import abc
+from scipy.special import hyp2f1
 
 __all__ = ['geo', 'sphere_geo', 'ellipse_geo', 'geoComposit',
-           'tunnel_geo', 'pipe_cover_geo', 'supHelix',
+           'tunnel_geo', 'pipe_cover_geo', 'supHelix', 'FatHelix',
            'infgeo_1d', 'infHelix', 'infPipe',
            'region', 'set_axes_equal']
 
@@ -340,13 +341,16 @@ class geo():
             ax.set_aspect('equal')
             # Be carefull. the axis using in matplotlib is a left-handed coordinate system
             if show_nodes:
-                ax.plot(self.get_nodes_x(), self.get_nodes_y(), self.get_nodes_z(), linestyle='None', c='b',
+                ax.plot(self.get_nodes_x(), self.get_nodes_y(), self.get_nodes_z(),
+                        linestyle='None', c='b',
                         marker='o')
             INDEX = np.zeros_like(self.get_nodes_z(), dtype=bool)
             INDEX[:] = True
             length = 1 / np.mean(self._deltaLength) * length_factor
-            ax.quiver(self.get_nodes_x()[INDEX], self.get_nodes_y()[INDEX], self.get_nodes_z()[INDEX],
-                      self.get_velocity_x()[INDEX], self.get_velocity_y()[INDEX], self.get_velocity_z()[INDEX],
+            ax.quiver(self.get_nodes_x()[INDEX], self.get_nodes_y()[INDEX],
+                      self.get_nodes_z()[INDEX],
+                      self.get_velocity_x()[INDEX], self.get_velocity_y()[INDEX],
+                      self.get_velocity_z()[INDEX],
                       color='r', length=length)
             # ax.quiver(self.get_nodes_x(), self.get_nodes_y(), self.get_nodes_z(),
             #           0, 0, self.get_nodes_z(), length=self._deltaLength * 2)
@@ -354,7 +358,8 @@ class geo():
             X = np.hstack((self.get_nodes_x()))
             Y = np.hstack((self.get_nodes_y()))
             Z = np.hstack((self.get_nodes_z()))
-            max_range = np.array([X.max() - X.min(), Y.max() - Y.min(), Z.max() - Z.min()]).max() / 2.0
+            max_range = np.array(
+                    [X.max() - X.min(), Y.max() - Y.min(), Z.max() - Z.min()]).max() / 2.0
             mid_x = (X.max() + X.min()) * 0.5
             mid_y = (Y.max() + Y.min()) * 0.5
             mid_z = (Z.max() + Z.min()) * 0.5
@@ -415,7 +420,7 @@ class geo():
         self.core_show_nodes(linestyle=linestyle)
         if rank == 0:
             plt.grid()
-            plt.get_current_fig_manager().window.showMaximized()
+            # plt.get_current_fig_manager().window.showMaximized()
             plt.show()
         return True
 
@@ -496,7 +501,7 @@ class geoComposit(uniqueList):
     def __init__(self, geo_list=[]):
         acceptType = geo
         super().__init__(acceptType)
-        geo_list = tube_flatten((geo_list,))
+        geo_list = list(tube_flatten((geo_list,)))
         for geoi in geo_list:
             self.append(geoi)
 
@@ -555,7 +560,7 @@ class geoComposit(uniqueList):
         self.core_show_nodes(linestyle=linestyle)
         if rank == 0:
             plt.grid()
-            plt.get_current_fig_manager().window.showMaximized()
+            # plt.get_current_fig_manager().window.showMaximized()
             plt.show()
         return True
 
@@ -575,7 +580,8 @@ class _ThickLine_geo(geo):
         self._dth = 0  # anglar between nodes in a cycle.
         self._angleCycle = np.array([])
         self._frenetFrame = (
-            np.array([]).reshape((-1, 3)), np.array([]).reshape((-1, 3)), np.array([]).reshape((-1, 3)))
+            np.array([]).reshape((-1, 3)), np.array([]).reshape((-1, 3)),
+            np.array([]).reshape((-1, 3)))
         self._iscover = np.array([]).reshape((-1, 3))  # start: -1, body: 0, end: 1
         self._factor = 1e-5
         self._left_hand = False
@@ -656,12 +662,15 @@ class _ThickLine_geo(geo):
                 t_cover = np.ones_like(ai, dtype=bool)
                 t_cover[:] = -1
                 iscover.append(t_cover)
-                nodes_cycle = np.vstack((np.cos(ai) * ri[i0], np.sin(ai) * ri[i0], np.zeros_like(ai))).T
+                nodes_cycle = np.vstack(
+                        (np.cos(ai) * ri[i0], np.sin(ai) * ri[i0], np.zeros_like(ai))).T
                 t_nodes = axisNodes[0] + np.dot(nodes_cycle,
-                                                np.vstack((N_frame[0], B_frame[0], np.zeros_like(T_frame[0]))))
+                                                np.vstack((N_frame[0], B_frame[0],
+                                                           np.zeros_like(T_frame[0]))))
                 vgeo_nodes.append(t_nodes)
                 tf_nodes = fgeo_axisNodes[0] + np.dot(nodes_cycle * epsilon,
-                                                      np.vstack((N_frame[0], B_frame[0], np.zeros_like(T_frame[0]))))
+                                                      np.vstack((N_frame[0], B_frame[0],
+                                                                 np.zeros_like(T_frame[0]))))
                 fgeo_nodes.append(tf_nodes)
                 self._strat_pretreatment(t_nodes)
         elif with_cover == 2:
@@ -688,12 +697,14 @@ class _ThickLine_geo(geo):
             ai = angleCycle + (-1) ** ai_para * dth / 4
             nodes_cycle = np.vstack((np.cos(ai) * radius, np.sin(ai) * radius, np.zeros_like(ai))).T
             t_nodes = nodei_line + np.dot(nodes_cycle,
-                                          np.vstack((N_frame[i0], B_frame[i0], np.zeros_like(T_frame[i0]))))
+                                          np.vstack((N_frame[i0], B_frame[i0],
+                                                     np.zeros_like(T_frame[i0]))))
             vgeo_nodes.append(t_nodes)
             t_cover = np.ones_like(ai, dtype=bool)
             t_cover[:] = 0
             iscover.append(t_cover)
-            nodes_cycle = np.vstack((np.cos(ai) * radius, np.sin(ai) * radius, np.zeros_like(ai))).T * epsilon
+            nodes_cycle = np.vstack(
+                    (np.cos(ai) * radius, np.sin(ai) * radius, np.zeros_like(ai))).T * epsilon
             tf_nodes = fgeo_axisNodes[i0] + np.dot(nodes_cycle, np.vstack(
                     (fgeo_N_frame[i0], fgeo_B_frame[i0], np.zeros_like(fgeo_T_frame[i0]))))
             fgeo_nodes.append(tf_nodes)
@@ -711,9 +722,11 @@ class _ThickLine_geo(geo):
                 t_cover = np.ones_like(ai, dtype=bool)
                 t_cover[:] = 1
                 iscover.append(t_cover)
-                nodes_cycle = np.vstack((np.cos(ai) * ri[i0], np.sin(ai) * ri[i0], np.zeros_like(ai))).T
+                nodes_cycle = np.vstack(
+                        (np.cos(ai) * ri[i0], np.sin(ai) * ri[i0], np.zeros_like(ai))).T
                 t_nodes = axisNodes[-1] + np.dot(nodes_cycle,
-                                                 np.vstack((N_frame[-1], B_frame[-1], np.zeros_like(T_frame[-1]))))
+                                                 np.vstack((N_frame[-1], B_frame[-1],
+                                                            np.zeros_like(T_frame[-1]))))
                 vgeo_nodes.append(t_nodes)
                 tf_nodes = fgeo_axisNodes[-1] + np.dot(nodes_cycle * epsilon, np.vstack(
                         (fgeo_N_frame[-1], fgeo_B_frame[-1], np.zeros_like(fgeo_T_frame[-1]))))
@@ -730,7 +743,8 @@ class _ThickLine_geo(geo):
             fhsgeo = vhsgeo.copy()
             fhsgeo.node_zoom(epsilon)
             tf_nodes = fgeo_axisNodes[-1] + np.dot(fhsgeo.get_nodes(),
-                                                   np.vstack((T_frame[-1], N_frame[-1], B_frame[-1])))
+                                                   np.vstack(
+                                                           (T_frame[-1], N_frame[-1], B_frame[-1])))
             fgeo_nodes.append(np.flipud(tf_nodes))
             self._end_pretreatment(t_nodes)
             iscover.append(np.ones(vhsgeo.get_n_nodes(), dtype=bool))
@@ -742,7 +756,8 @@ class _ThickLine_geo(geo):
         self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
         fgeo = geo()
         fgeo.set_dof(self.get_dof())
-        fgeo.set_nodes(np.asfortranarray(np.vstack(fgeo_nodes)), deltalength=deltalength * epsilon, resetVelocity=True)
+        fgeo.set_nodes(np.asfortranarray(np.vstack(fgeo_nodes)), deltalength=deltalength * epsilon,
+                       resetVelocity=True)
         return fgeo
 
     def get_iscover(self):
@@ -943,8 +958,9 @@ class sphere_geo(ellipse_geo):
         self._normal = np.zeros((self._nodes.shape[0],
                                  2))  # {Sin[a] Sin[b], -Cos[a] Sin[b], Cos[b]} = {n1, n2, n3} is the normal vector
         normal_vector = self._nodes / np.sqrt(
-                self._nodes[:, 0] ** 2 + self._nodes[:, 1] ** 2 + self._nodes[:, 2] ** 2).reshape(self._nodes.shape[0],
-                                                                                                  1)
+                self._nodes[:, 0] ** 2 + self._nodes[:, 1] ** 2 + self._nodes[:, 2] ** 2).reshape(
+                self._nodes.shape[0],
+                1)
         self._normal[:, 1] = np.arccos(normal_vector[:, 2])  # b
         self._normal[:, 0] = np.arcsin(normal_vector[:, 0] / np.sin(self._normal[:, 1]))  # a
         return True
@@ -1075,7 +1091,8 @@ class tunnel_geo(_ThickLine_geo):
     def normal(self):
         self._normal = np.zeros((self._nodes.shape[0],
                                  2))  # {Sin[a] Sin[b], -Cos[a] Sin[b], Cos[b]} = {n1, n2, n3} is the normal vector
-        normal_vector = -1 * self._nodes / np.sqrt(self._nodes[:, 1] ** 2 + self._nodes[:, 2] ** 2).reshape(
+        normal_vector = -1 * self._nodes / np.sqrt(
+                self._nodes[:, 1] ** 2 + self._nodes[:, 2] ** 2).reshape(
                 self._nodes.shape[0], 1)  # -1 means swap direction
         self._normal[:, 1] = np.arccos(normal_vector[:, 2])  # b
         self._normal[:, 0] = 0  # a
@@ -1145,7 +1162,8 @@ class pipe_cover_geo(tunnel_geo):
                 1 / (1 + np.exp(-a_factor)) - 1 / (1 + np.exp(a_factor))) * 2 * np.pi
         nz = np.ceil(length / deltaLength).astype(int)
         nodes_z = np.linspace(1, -1, nz)
-        nodes_z = np.sign(nodes_z) * (np.exp(np.abs(nodes_z) * z_factor) - 1) / (np.exp(z_factor) - 1) * length / 2
+        nodes_z = np.sign(nodes_z) * (np.exp(np.abs(nodes_z) * z_factor) - 1) / (
+                np.exp(z_factor) - 1) * length / 2
         a, nodes_z = np.meshgrid(a, nodes_z)
         a = a.flatten()
         nodes_z = nodes_z.flatten()
@@ -1195,25 +1213,26 @@ class pipe_cover_geo(tunnel_geo):
 
 
 class supHelix(_ThickLine_geo):
-    _helix = lambda self, R, B, s: np.vstack((R * np.cos((B ** 2 + R ** 2) ** (-1 / 2) * s),
-                                              R * np.sin((B ** 2 + R ** 2) ** (-1 / 2) * s),
-                                              B * (B ** 2 + R ** 2) ** (-1 / 2) * s)).T
-    _helix_left_hand = lambda self, R, B, s: np.vstack((R * np.sin((B ** 2 + R ** 2) ** (-1 / 2) * s),
-                                                        R * np.cos((B ** 2 + R ** 2) ** (-1 / 2) * s),
-                                                        B * (B ** 2 + R ** 2) ** (-1 / 2) * s)).T
-    _T_frame = lambda self, R, B, s: np.vstack(
+    _helix_right_hand = lambda self, R, B, s: np.vstack(
+            (R * np.cos((B ** 2 + R ** 2) ** (-1 / 2) * s),
+             R * np.sin((B ** 2 + R ** 2) ** (-1 / 2) * s),
+             B * (B ** 2 + R ** 2) ** (-1 / 2) * s)).T
+    _helix_left_hand = lambda self, R, B, s: np.vstack(
+            (R * np.sin((B ** 2 + R ** 2) ** (-1 / 2) * s),
+             R * np.cos((B ** 2 + R ** 2) ** (-1 / 2) * s),
+             B * (B ** 2 + R ** 2) ** (-1 / 2) * s)).T
+    _T_frame_right_hand = lambda self, R, B, s: np.vstack(
             ((-1) * R * (B ** 2 + R ** 2) ** (-1 / 2) * np.sin((B ** 2 + R ** 2) ** (-1 / 2) * s),
              R * (B ** 2 + R ** 2) ** (-1 / 2) * np.cos((B ** 2 + R ** 2) ** (-1 / 2) * s),
              B * (B ** 2 + R ** 2) ** (-1 / 2) * np.ones_like(s))).T
-    _N_frame = lambda self, R, B, s: np.vstack(
+    _N_frame_right_hand = lambda self, R, B, s: np.vstack(
             ((-1) * np.cos((B ** 2 + R ** 2) ** (-1 / 2) * s),
              (-1) * np.sin((B ** 2 + R ** 2) ** (-1 / 2) * s),
              np.zeros_like(s))).T
-    _B_frame = lambda self, R, B, s: np.vstack(
+    _B_frame_right_hand = lambda self, R, B, s: np.vstack(
             (B * (B ** 2 + R ** 2) ** (-1 / 2) * np.sin((B ** 2 + R ** 2) ** (-1 / 2) * s),
              (-1) * B * (B ** 2 + R ** 2) ** (-1 / 2) * np.cos((B ** 2 + R ** 2) ** (-1 / 2) * s),
              R * (B ** 2 + R ** 2) ** (-1 / 2) * np.ones_like(s))).T
-
     _T_frame_left_hand = lambda self, R, B, s: np.vstack(
             (R * (B ** 2 + R ** 2) ** (-1 / 2) * np.cos((B ** 2 + R ** 2) ** (-1 / 2) * s),
              (-1) * R * (B ** 2 + R ** 2) ** (-1 / 2) * np.sin((B ** 2 + R ** 2) ** (-1 / 2) * s),
@@ -1226,6 +1245,20 @@ class supHelix(_ThickLine_geo):
             (B * (B ** 2 + R ** 2) ** (-1 / 2) * np.cos((B ** 2 + R ** 2) ** (-1 / 2) * s),
              (-1) * B * (B ** 2 + R ** 2) ** (-1 / 2) * np.sin((B ** 2 + R ** 2) ** (-1 / 2) * s),
              (-1) * R * (B ** 2 + R ** 2) ** (-1 / 2) * np.ones_like(s))).T
+
+    def dbg_frame(self, R, B, s):
+        print(self._helix_right_hand(R, B, s))
+        print(self._T_frame_right_hand(R, B, s))
+        print(self._N_frame_right_hand(R, B, s))
+        print(self._B_frame_right_hand(R, B, s))
+        # print(self._helix(R, B, s).shape)
+        # print(self._T_frame(R, B, s).shape)
+        # print(self._N_frame(R, B, s).shape)
+        # print(self._B_frame(R, B, s).shape)
+        print('N[r[%f,%f,%f]]' % (R, B, s))
+        print('N[T0[%f,%f,%f]]' % (R, B, s))
+        print('N[N0[%f,%f,%f]]' % (R, B, s))
+        print('N[B0[%f,%f,%f]]' % (R, B, s))
 
     def __init__(self):
         super().__init__()
@@ -1252,33 +1285,41 @@ class supHelix(_ThickLine_geo):
     def create_n(self, R, B, r, n_node, n_c=1, eh=1):
         assert 1 == 2, 'The method DO NOT finished!!!'
         sH1 = lambda s: (R ** 2 + B ** 2) ** (-1 / 2) * (
-                (R ** 2 + B ** 2) ** (1 / 2) * (R + (-1) * r * cos((r ** 2 + b ** 2) ** (-1 / 2) * s)) * cos(
+                (R ** 2 + B ** 2) ** (1 / 2) * (
+                R + (-1) * r * cos((r ** 2 + b ** 2) ** (-1 / 2) * s)) * cos(
                 b * ((r ** 2 + b ** 2) * (R ** 2 + B ** 2)) ** (-1 / 2) * s) + r * B * sin(
                 (r ** 2 + b ** 2) ** (-1 / 2) * s) * sin(
                 b * ((r ** 2 + b ** 2) * (R ** 2 + B ** 2)) ** (-1 / 2) * s))
         sH2 = lambda s: (R ** 2 + B ** 2) ** (-1 / 2) * (
-                (-1) * r * B * cos(b * ((r ** 2 + b ** 2) * (R ** 2 + B ** 2)) ** (-1 / 2) * s) * sin(
+                (-1) * r * B * cos(
+                b * ((r ** 2 + b ** 2) * (R ** 2 + B ** 2)) ** (-1 / 2) * s) * sin(
                 (r ** 2 + b ** 2) ** (-1 / 2) * s) + (R ** 2 + B ** 2) ** (1 / 2) * (
                         R + (-1) * r * cos((r ** 2 + b ** 2) ** (-1 / 2) * s)) * sin(
                 b * ((r ** 2 + b ** 2) * (R ** 2 + B ** 2)) ** (-1 / 2) * s))
         sH3 = lambda s: ((r ** 2 + b ** 2) * (R ** 2 + B ** 2)) ** (-1 / 2) * (
-                b * B * s + r * R * (r ** 2 + b ** 2) ** (1 / 2) * sin((r ** 2 + b ** 2) ** (-1 / 2) * s))
+                b * B * s + r * R * (r ** 2 + b ** 2) ** (1 / 2) * sin(
+                (r ** 2 + b ** 2) ** (-1 / 2) * s))
         sHf1 = lambda s: (R ** 2 + B ** 2) ** (-1 / 2) * (
-                (R ** 2 + B ** 2) ** (1 / 2) * (R + (-1) * af * cos((r ** 2 + b ** 2) ** (-1 / 2) * s)) * cos(
+                (R ** 2 + B ** 2) ** (1 / 2) * (
+                R + (-1) * af * cos((r ** 2 + b ** 2) ** (-1 / 2) * s)) * cos(
                 b * ((r ** 2 + b ** 2) * (R ** 2 + B ** 2)) ** (-1 / 2) * s) + af * B * sin(
                 (r ** 2 + b ** 2) ** (-1 / 2) * s) * sin(
                 b * ((r ** 2 + b ** 2) * (R ** 2 + B ** 2)) ** (-1 / 2) * s))
         sHf2 = lambda s: (R ** 2 + B ** 2) ** (-1 / 2) * (
-                (-1) * af * B * cos(b * ((r ** 2 + b ** 2) * (R ** 2 + B ** 2)) ** (-1 / 2) * s) * sin(
+                (-1) * af * B * cos(
+                b * ((r ** 2 + b ** 2) * (R ** 2 + B ** 2)) ** (-1 / 2) * s) * sin(
                 (r ** 2 + b ** 2) ** (-1 / 2) * s) + (R ** 2 + B ** 2) ** (1 / 2) * (
                         R + (-1) * af * cos((r ** 2 + b ** 2) ** (-1 / 2) * s)) * sin(
                 b * ((r ** 2 + b ** 2) * (R ** 2 + B ** 2)) ** (-1 / 2) * s))
         sHf3 = lambda s: ((r ** 2 + b ** 2) * (R ** 2 + B ** 2)) ** (-1 / 2) * (
-                b * B * s + R * af * (r ** 2 + b ** 2) ** (1 / 2) * sin((r ** 2 + b ** 2) ** (-1 / 2) * s))
+                b * B * s + R * af * (r ** 2 + b ** 2) ** (1 / 2) * sin(
+                (r ** 2 + b ** 2) ** (-1 / 2) * s))
 
         from scipy import optimize as sop
-        b = 2 ** (-1 / 2) * (n_node ** (-2) * n_c * (B ** 2 * n_c + n_c * R ** 2 + (B ** 2 + R ** 2) ** (1 / 2) * (
-                B ** 2 * n_c ** 2 + 4 * n_node ** 2 * r ** 2 + n_c ** 2 * R ** 2) ** (1 / 2))) ** (
+        b = 2 ** (-1 / 2) * (n_node ** (-2) * n_c * (
+                B ** 2 * n_c + n_c * R ** 2 + (B ** 2 + R ** 2) ** (1 / 2) * (
+                B ** 2 * n_c ** 2 + 4 * n_node ** 2 * r ** 2 + n_c ** 2 * R ** 2) ** (
+                        1 / 2))) ** (
                     1 / 2)
         si = np.arange(n_node) * b * 2 * np.pi
         nodes = np.vstack((sH1(si), sH2(si), sH3(si) - B * 2 * np.pi * n_c / 2)).T
@@ -1323,12 +1364,15 @@ class supHelix(_ThickLine_geo):
         nl = np.ceil(length / ds).astype(int)
         s = self._factor_fun(nl, factor) * length - length / 2
         if left_hand:
-            self._frenetFrame = (
-                self._T_frame_left_hand(R, B, s), self._N_frame_left_hand(R, B, s), self._B_frame_left_hand(R, B, s))
+            self._frenetFrame = (self._T_frame_left_hand(R, B, s),
+                                 self._N_frame_left_hand(R, B, s),
+                                 self._B_frame_left_hand(R, B, s))
             self._axisNodes = self._helix_left_hand(R, B, s)
         else:
-            self._frenetFrame = (self._T_frame(R, B, s), self._N_frame(R, B, s), self._B_frame(R, B, s))
-            self._axisNodes = self._helix(R, B, s)
+            self._frenetFrame = (self._T_frame_right_hand(R, B, s),
+                                 self._N_frame_right_hand(R, B, s),
+                                 self._B_frame_right_hand(R, B, s))
+            self._axisNodes = self._helix_right_hand(R, B, s)
         return self._axisNodes, self._frenetFrame[0], self._frenetFrame[1], self._frenetFrame[2]
 
     def _get_fgeo_axis(self, epsilon):
@@ -1339,15 +1383,197 @@ class supHelix(_ThickLine_geo):
         left_hand = self._left_hand
         length = np.sqrt(R ** 2 + B ** 2) * 2 * np.pi * n_c
         nl = self._axisNodes.shape[0]
-        ds = -self.get_deltaLength() * epsilon / 1
+        ds = -self.get_deltaLength() * epsilon
         s = self._factor_fun(nl, factor) * (length - ds / 2) + ds / 4 - length / 2
         if left_hand:
-            frenetFrame = (
-                self._T_frame_left_hand(R, B, s), self._N_frame_left_hand(R, B, s), self._B_frame_left_hand(R, B, s))
+            frenetFrame = (self._T_frame_left_hand(R, B, s),
+                           self._N_frame_left_hand(R, B, s),
+                           self._B_frame_left_hand(R, B, s))
             axisNodes = self._helix_left_hand(R, B, s)
         else:
-            frenetFrame = (self._T_frame(R, B, s), self._N_frame(R, B, s), self._B_frame(R, B, s))
-            axisNodes = self._helix(R, B, s)
+            frenetFrame = (self._T_frame_right_hand(R, B, s),
+                           self._N_frame_right_hand(R, B, s),
+                           self._B_frame_right_hand(R, B, s))
+            axisNodes = self._helix_right_hand(R, B, s)
+        return axisNodes, frenetFrame[0], frenetFrame[1], frenetFrame[2]
+
+
+class FatHelix(_ThickLine_geo):
+    # here, s is a angle.
+    _helix_right_hand = lambda self, R1, R2, B, s: np.vstack((R1 * np.cos(s),
+                                                              R2 * np.sin(s),
+                                                              B * s)).T
+    _T_frame_right_hand = lambda self, R1, R2, B, s: np.vstack(
+            (-((R1 * np.sin(s)) / np.sqrt(
+                    B ** 2 + np.abs(R2 * np.cos(s)) ** 2 + np.abs(R1 * np.sin(s)) ** 2)),
+             (R2 * np.cos(s)) / np.sqrt(
+                     B ** 2 + np.abs(R2 * np.cos(s)) ** 2 + np.abs(R1 * np.sin(s)) ** 2),
+             B / np.sqrt(B ** 2 + np.abs(R2 * np.cos(s)) ** 2 + np.abs(R1 * np.sin(s)) ** 2))).T
+    _N_frame_right_hand = lambda self, R1, R2, B, s: np.vstack(
+            (-((np.sqrt(2) * R1 * (B ** 2 + R2 ** 2) * np.cos(s)) / np.sqrt(
+                    (2 * R1 ** 2 * R2 ** 2 + B ** 2 * (
+                            R1 ** 2 + R2 ** 2) + B ** 2 * (R1 - R2) * (R1 + R2) * np.cos(2 * s)) * (
+                            B ** 2 + R2 ** 2 * np.cos(
+                            s) ** 2 + R1 ** 2 * np.sin(s) ** 2))),
+             -((np.sqrt(2) * (B ** 2 + R1 ** 2) * R2 * np.sin(s)) / np.sqrt(
+                     (2 * R1 ** 2 * R2 ** 2 + B ** 2 * (
+                             R1 ** 2 + R2 ** 2) + B ** 2 * (R1 - R2) * (R1 + R2) * np.cos(
+                             2 * s)) * (
+                             B ** 2 + R2 ** 2 * np.cos(
+                             s) ** 2 + R1 ** 2 * np.sin(s) ** 2))),
+             (B * (-R1 ** 2 + R2 ** 2) * np.sin(2 * s)) / (np.sqrt(2) * np.sqrt(
+                     (2 * R1 ** 2 * R2 ** 2 + B ** 2 * (R1 ** 2 + R2 ** 2) + B ** 2 * (R1 - R2) * (
+                             R1 + R2) * np.cos(
+                             2 * s)) * (
+                             B ** 2 + R2 ** 2 * np.cos(s) ** 2 + R1 ** 2 * np.sin(s) ** 2))))).T
+    _B_frame_right_hand = lambda self, R1, R2, B, s: np.vstack(
+            ((np.sqrt(2) * B * R2 * np.sin(s)) / np.sqrt(
+                    2 * R1 ** 2 * R2 ** 2 + B ** 2 * (R1 ** 2 + R2 ** 2) + B ** 2 * (R1 - R2) * (
+                            R1 + R2) * np.cos(
+                            2 * s)),
+             -((np.sqrt(2) * B * R1 * np.cos(s)) / np.sqrt(
+                     2 * R1 ** 2 * R2 ** 2 + B ** 2 * (R1 ** 2 + R2 ** 2) + B ** 2 * (R1 - R2) * (
+                             R1 + R2) * np.cos(2 * s))),
+             (np.sqrt(2) * R1 * R2) / np.sqrt(
+                     2 * R1 ** 2 * R2 ** 2 + B ** 2 * (R1 ** 2 + R2 ** 2) + B ** 2 * (R1 - R2) * (
+                             R1 + R2) * np.cos(
+                             2 * s)))).T
+    _helix_left_hand = lambda self, R1, R2, B, s: np.vstack((R1 * np.cos(s),
+                                                             R2 * -np.sin(s),
+                                                             B * s)).T
+    _T_frame_left_hand = lambda self, R1, R2, B, s: np.vstack(
+            (-((R1 * np.sin(s)) / np.sqrt(
+                    B ** 2 + np.abs(R2 * np.cos(s)) ** 2 + np.abs(R1 * np.sin(s)) ** 2)),
+             -((R2 * np.cos(s)) / np.sqrt(
+                     B ** 2 + np.abs(R2 * np.cos(s)) ** 2 + np.abs(R1 * np.sin(s)) ** 2)),
+             B / np.sqrt(B ** 2 + np.abs(R2 * np.cos(s)) ** 2 + np.abs(R1 * np.sin(s)) ** 2))).T
+    _N_frame_left_hand = lambda self, R1, R2, B, s: np.vstack(
+            (-((np.sqrt(2) * R1 * (B ** 2 + R2 ** 2) * np.cos(s)) /
+               np.sqrt((2 * R1 ** 2 * R2 ** 2 + B ** 2 * (R1 ** 2 + R2 ** 2) + B ** 2 * (
+                       R1 - R2) * (R1 + R2) * np.cos(2 * s)) *
+                       (B ** 2 + R2 ** 2 * np.cos(s) ** 2 + R1 ** 2 * np.sin(s) ** 2))),
+             (np.sqrt(2) * (B ** 2 + R1 ** 2) * R2 * np.sin(s)) /
+             np.sqrt((2 * R1 ** 2 * R2 ** 2 + B ** 2 * (R1 ** 2 + R2 ** 2) + B ** 2 * (R1 - R2) * (
+                     R1 + R2) * np.cos(2 * s)) *
+                     (B ** 2 + R2 ** 2 * np.cos(s) ** 2 + R1 ** 2 * np.sin(s) ** 2)),
+             (B * (-R1 ** 2 + R2 ** 2) * np.sin(2 * s)) /
+             (np.sqrt(2) * np.sqrt((2 * R1 ** 2 * R2 ** 2 + B ** 2 * (R1 ** 2 + R2 ** 2) +
+                                    B ** 2 * (R1 - R2) * (R1 + R2) * np.cos(2 * s)) * (
+                                           B ** 2 + R2 ** 2 * np.cos(s) ** 2 + R1 ** 2 * np.sin(
+                                           s) ** 2))))).T
+    _B_frame_left_hand = lambda self, R1, R2, B, s: np.vstack(
+            (-((np.sqrt(2) * B * R2 * np.sin(s)) /
+               np.sqrt(2 * R1 ** 2 * R2 ** 2 + B ** 2 * (R1 ** 2 + R2 ** 2) + B ** 2 * (R1 - R2) * (
+                       R1 + R2) * np.cos(2 * s))),
+             -((np.sqrt(2) * B * R1 * np.cos(s)) /
+               np.sqrt(2 * R1 ** 2 * R2 ** 2 + B ** 2 * (R1 ** 2 + R2 ** 2) + B ** 2 * (R1 - R2) * (
+                       R1 + R2) * np.cos(2 * s))),
+             -((np.sqrt(2) * R1 * R2) /
+               np.sqrt(2 * R1 ** 2 * R2 ** 2 + B ** 2 * (R1 ** 2 + R2 ** 2) + B ** 2 * (R1 - R2) * (
+                       R1 + R2) * np.cos(2 * s))))).T
+
+    def dbg_frame_right_hand(self, R1, R2, B, s):
+        print(self._helix_right_hand(R1, R2, B, s))
+        print(self._T_frame_right_hand(R1, R2, B, s))
+        print(self._N_frame_right_hand(R1, R2, B, s))
+        print(self._B_frame_right_hand(R1, R2, B, s))
+        # print(self._helix(R1, R2, B, s).shape)
+        # print(self._T_frame(R1, R2, B, s).shape)
+        # print(self._N_frame(R1, R2, B, s).shape)
+        # print(self._B_frame(R1, R2, B, s).shape)
+        print('N[r[%f,%f,%f,%f]]' % (R1, R2, B, s))
+        print('N[T0[%f,%f,%f,%f]]' % (R1, R2, B, s))
+        print('N[N0[%f,%f,%f,%f]]' % (R1, R2, B, s))
+        print('N[B0[%f,%f,%f,%f]]' % (R1, R2, B, s))
+
+    def dbg_frame_left_hand(self, R1, R2, B, s):
+        print(self._helix_left_hand(R1, R2, B, s))
+        print(self._T_frame_left_hand(R1, R2, B, s))
+        print(self._N_frame_left_hand(R1, R2, B, s))
+        print(self._B_frame_left_hand(R1, R2, B, s))
+        print('N[r[%f,%f,%f,%f]]' % (R1, R2, B, s))
+        print('N[T0[%f,%f,%f,%f]]' % (R1, R2, B, s))
+        print('N[N0[%f,%f,%f,%f]]' % (R1, R2, B, s))
+        print('N[B0[%f,%f,%f,%f]]' % (R1, R2, B, s))
+
+    def __init__(self):
+        super().__init__()
+        self._R1 = 0  # 1th major radius of helix
+        self._R2 = 0  # 2th major radius of helix
+        self._rho = 0  # minor radius of helix
+        self._B = 0  # B = pitch / (2 * np.pi)
+        self._n_c = 0  # number of period
+        self._type = 'FatHelix'  # geo type
+
+    def create_deltatheta(self, dth: float, radius: float, R1, R2, B, n_c,
+                          epsilon=0, with_cover=False, factor=1, left_hand=False):
+        # definition of parameters see self.__init__()
+        # err_msg = 'current version only have right hand helix. '
+        # assert not left_hand, err_msg
+        err_msg = 'R1 must >= R2'
+        assert R1 >= R2, err_msg
+
+        self._R1 = R1
+        self._R2 = R2
+        self._rho = radius
+        self._B = B
+        self._n_c = n_c
+        self._factor = factor
+        self._left_hand = left_hand
+        return self._create_deltatheta(dth, radius, epsilon, with_cover)
+
+    def _get_axis(self):
+        R1 = self._R1
+        R2 = self._R2
+        B = self._B
+        n_c = self._n_c
+        factor = self._factor
+        ds = self.get_deltaLength()
+        left_hand = self._left_hand
+        # length of center axis
+        t = ((R1 - R2) / (R1 + R2)) ** 2
+        ellipse_length = np.pi * (R1 + R2) * (1 + 3 * t / (10 + np.sqrt(4 - 3 * t)))
+        length = np.sqrt(ellipse_length ** 2 + (B * 2 * np.pi) ** 2) * n_c
+        nl = np.ceil(length / ds).astype(int)
+        max_theta = 2 * np.pi * n_c
+        s = self._factor_fun(nl, factor) * max_theta - max_theta / 2
+        if left_hand:
+            self._frenetFrame = (self._T_frame_left_hand(R1, R2, B, s),
+                                 self._N_frame_left_hand(R1, R2, B, s),
+                                 self._B_frame_left_hand(R1, R2, B, s))
+            self._axisNodes = self._helix_left_hand(R1, R2, B, s)
+        else:
+            self._frenetFrame = (self._T_frame_right_hand(R1, R2, B, s),
+                                 self._N_frame_right_hand(R1, R2, B, s),
+                                 self._B_frame_right_hand(R1, R2, B, s))
+            self._axisNodes = self._helix_right_hand(R1, R2, B, s)
+        return self._axisNodes, self._frenetFrame[0], self._frenetFrame[1], self._frenetFrame[2]
+
+    def _get_fgeo_axis(self, epsilon):
+        R1 = self._R1
+        R2 = self._R2
+        B = self._B
+        n_c = self._n_c
+        factor = self._factor
+        left_hand = self._left_hand
+        # length of center axis
+        t = ((R1 - R2) / (R1 + R2)) ** 2
+        ellipse_length = np.pi * (R1 + R2) * (1 + 3 * t / (10 + np.sqrt(4 - 3 * t)))
+        length = np.sqrt(ellipse_length ** 2 + (B * 2 * np.pi) ** 2) * n_c
+        nl = self._axisNodes.shape[0]
+        ds = -self.get_deltaLength() * epsilon
+        max_theta = 2 * np.pi * n_c * (length - ds / 2) / length
+        s = self._factor_fun(nl, factor) * max_theta - max_theta / 2
+        if left_hand:
+            frenetFrame = (self._T_frame_left_hand(R1, R2, B, s),
+                           self._N_frame_left_hand(R1, R2, B, s),
+                           self._B_frame_left_hand(R1, R2, B, s))
+            axisNodes = self._helix_left_hand(R1, R2, B, s)
+        else:
+            frenetFrame = (self._T_frame_right_hand(R1, R2, B, s),
+                           self._N_frame_right_hand(R1, R2, B, s),
+                           self._B_frame_right_hand(R1, R2, B, s))
+            axisNodes = self._helix_right_hand(R1, R2, B, s)
         return axisNodes, frenetFrame[0], frenetFrame[1], frenetFrame[2]
 
 
@@ -1428,11 +1654,13 @@ class infHelix(infgeo_1d):
 
         # definition of parameters see __init__()
         # x1, x2, x3, coordinates of helix nodes
-        x1 = lambda theta: np.cos(theta) * (R - rho * np.sin(phi)) + (ph * rho * np.cos(phi) * np.sin(
+        x1 = lambda theta: np.cos(theta) * (R - rho * np.sin(phi)) + (
+                ph * rho * np.cos(phi) * np.sin(
                 theta)) / np.sqrt(ph ** 2 + 4 * np.pi ** 2 * R ** 2)
         x2 = lambda theta: - (ph * rho * np.cos(phi) * np.cos(theta)) / np.sqrt(
                 ph ** 2 + 4 * np.pi ** 2 * R ** 2) + (R - rho * np.sin(phi)) * np.sin(theta)
-        x3 = lambda theta: (ph * theta) / (2. * np.pi) + (2 * np.pi * R * rho * np.cos(phi)) / np.sqrt(
+        x3 = lambda theta: (ph * theta) / (2. * np.pi) + (
+                2 * np.pi * R * rho * np.cos(phi)) / np.sqrt(
                 ph ** 2 + 4 * np.pi ** 2 * R ** 2)
         return np.vstack((x1(th1), x2(th1), x3(th))).T
 
@@ -1547,7 +1775,8 @@ class region:
         full_region_y = np.linspace(min_range[1], max_range[1], n_grid[1])
         # noinspection PyUnresolvedReferences
         full_region_z = np.linspace(min_range[2], max_range[2], n_grid[2])
-        [full_region_x, full_region_y, full_region_z] = np.meshgrid(full_region_x, full_region_y, full_region_z,
+        [full_region_x, full_region_y, full_region_z] = np.meshgrid(full_region_x, full_region_y,
+                                                                    full_region_z,
                                                                     indexing='ij')
 
         return full_region_x, full_region_y, full_region_z
@@ -1573,7 +1802,8 @@ class region:
         full_region_r = np.linspace(min_range[1], max_range[1], n_grid[1])
         # noinspection PyUnresolvedReferences
         full_region_theta = np.linspace(min_range[2], max_range[2], n_grid[2])
-        [full_region_x, temp_r, temp_theta] = np.meshgrid(full_region_x, full_region_r, full_region_theta,
+        [full_region_x, temp_r, temp_theta] = np.meshgrid(full_region_x, full_region_r,
+                                                          full_region_theta,
                                                           indexing='ij')
         full_region_y = temp_r * np.cos(temp_theta)
         full_region_z = temp_r * np.sin(temp_theta)

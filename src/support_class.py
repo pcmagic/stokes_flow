@@ -4,11 +4,13 @@ import numpy as np
 
 __all__ = ['uniqueList', 'typeList', 'intList', 'floatList',
            'abs_comp', 'abs_construct_matrix',
-           'check_file_extension', 'mpiprint',
+           'check_file_extension', 'mpiprint', 'fullprint',
            'coordinate_transformation',
            'tube_flatten',
-           'get_rot_matrix', 'rot_vec2rot_mtx', 'vector_rotation', 'rotMatrix_DCM',
-           'Adams_Moulton_Methods', 'Adams_Bashforth_Methods']
+           'get_rot_matrix', 'rot_vec2rot_mtx', 'vector_rotation_norm', 'vector_rotation',
+           'rotMatrix_DCM',
+           'Adams_Moulton_Methods', 'Adams_Bashforth_Methods',
+           'Quaternion']
 
 
 class uniqueList(UserList):
@@ -81,9 +83,11 @@ class abs_comp:
 
     def myself_info(self):
         if self._create_finished:
-            str = ('%s: %d, %s, create sucessed' % (self.__class__.__name__, self._index, self._name))
+            str = ('%s: %d, %s, create sucessed' % (
+                self.__class__.__name__, self._index, self._name))
         else:
-            str = ('%s: %d, %s, create not finished' % (self.__class__.__name__, self._index, self._name))
+            str = ('%s: %d, %s, create not finished' % (
+                self.__class__.__name__, self._index, self._name))
         return str
 
     def printmyself(self):
@@ -236,10 +240,16 @@ def get_rot_matrix(norm=np.array([0, 0, 1]), theta=0):
     return rotation
 
 
-def vector_rotation(P2, norm=np.array([0, 0, 1]), theta=0, rotation_origin=np.zeros(3)):
+def vector_rotation_norm(P2, norm=np.array([0, 0, 1]), theta=0, rotation_origin=np.zeros(3)):
     rotation = get_rot_matrix(norm, theta)
     P20 = np.dot(rotation, (P2 - rotation_origin)) + rotation_origin
     P20 = P20 / np.linalg.norm(P20)
+    return P20
+
+
+def vector_rotation(P2, norm=np.array([0, 0, 1]), theta=0, rotation_origin=np.zeros(3)):
+    rotation = get_rot_matrix(norm, theta)
+    P20 = np.dot(rotation, (P2 - rotation_origin)) + rotation_origin
     return P20
 
 
@@ -256,8 +266,7 @@ def rotMatrix_DCM(x0, y0, z0, x, y, z):
     # cosines of the unsigned angles between the body-¯xed axes
     # and the world axes. Denoting the world axes by (x; y; z)
     # and the body-fixed axes by (x0; y0; z0), let \theta_{x';y} be,
-    # for example, the unsigned angle between the x'-axis and the y-axis.
-
+    # for example, the unsigned angle between the x'-axis and the y-axis
     # (x0, y0, z0)^T = dot(R, (x, y, z)^T )
 
     R = np.array(((np.dot(x0, x), np.dot(x0, y), np.dot(x0, z)),
@@ -276,6 +285,20 @@ class coordinate_transformation:
         return np.dstack((fx1, fy1, fz1))[0]
 
 
+class fullprint:
+    'context manager for printing full numpy arrays'
+    def __init__(self, **kwargs):
+        kwargs.setdefault('threshold', np.inf)
+        self.opt = kwargs
+
+    def __enter__(self):
+        self._opt = np.get_printoptions()
+        np.set_printoptions(**self.opt)
+
+    def __exit__(self, type, value, traceback):
+        np.set_printoptions(**self._opt)
+
+
 def Adams_Bashforth_Methods(order, f_list, eval_dt):
     def o1(f_list, eval_dt):
         delta = eval_dt * f_list[-1]
@@ -290,12 +313,15 @@ def Adams_Bashforth_Methods(order, f_list, eval_dt):
         return delta
 
     def o4(f_list, eval_dt):
-        delta = eval_dt * (55 / 24 * f_list[-1] - 59 / 24 * f_list[-2] + 37 / 24 * f_list[-3] - 9 / 24 * f_list[-4])
+        delta = eval_dt * (
+                55 / 24 * f_list[-1] - 59 / 24 * f_list[-2] + 37 / 24 * f_list[-3] - 9 / 24 *
+                f_list[-4])
         return delta
 
     def o5(f_list, eval_dt):
-        delta = eval_dt * (1901 / 720 * f_list[-1] - 2774 / 720 * f_list[-2] + 2616 / 720 * f_list[-3]
-                           - 1274 / 720 * f_list[-4] + 251 / 720 * f_list[-5])
+        delta = eval_dt * (
+                1901 / 720 * f_list[-1] - 2774 / 720 * f_list[-2] + 2616 / 720 * f_list[-3]
+                - 1274 / 720 * f_list[-4] + 251 / 720 * f_list[-5])
         return delta
 
     def get_order(order):
@@ -323,7 +349,9 @@ def Adams_Moulton_Methods(order, f_list, eval_dt):
         return delta
 
     def o4(f_list, eval_dt):
-        delta = eval_dt * (9 / 24 * f_list[-1] + 19 / 24 * f_list[-2] - 5 / 24 * f_list[-3] + 1 / 24 * f_list[-4])
+        delta = eval_dt * (
+                9 / 24 * f_list[-1] + 19 / 24 * f_list[-2] - 5 / 24 * f_list[-3] + 1 / 24 *
+                f_list[-4])
         return delta
 
     def o5(f_list, eval_dt):
@@ -347,3 +375,81 @@ def mpiprint(*args, **kwargs):
     comm = MPI.COMM_WORLD
     if comm.rank == 0:
         print(*args, **kwargs)
+
+
+class Quaternion:
+    """docstring for Quaternion"""
+
+    def __init__(self, axis=np.array([0, 0, 1.0]), angle=0):
+        axis = np.array(axis)
+
+        xyz = np.sin(.5 * angle) * axis / np.linalg.norm(axis)
+        self.q = np.array([
+            np.cos(.5 * angle),
+            xyz[0],
+            xyz[1],
+            xyz[2]
+        ])
+
+    def __add__(self, other):
+        Q = Quaternion()
+        Q.q = self.q + other
+        return Q
+
+    def mul(self, other):
+        assert (type(other) is Quaternion)
+
+        W = self.q[0]
+        X = self.q[1]
+        Y = self.q[2]
+        Z = self.q[3]
+
+        w = other.q[0]
+        x = other.q[1]
+        y = other.q[2]
+        z = other.q[3]
+
+        Q = Quaternion()
+        Q.q = np.array([
+            w * W - x * X - y * Y - z * Z,
+            W * x + w * X + Y * z - y * Z,
+            W * y + w * Y - X * z + x * Z,
+            X * y - x * Y + W * z + w * Z
+        ])
+        return Q
+
+    def set_wxyz(self, w, x, y, z):
+        self.q = np.array([w, x, y, z])
+
+    def __str__(self):
+        return str(self.q)
+
+    def normalize(self):
+        self.q = self.q / np.linalg.norm(self.q)
+
+    def get_E(self):
+        W = self.q[0]
+        X = self.q[1]
+        Y = self.q[2]
+        Z = self.q[3]
+
+        return np.array([
+            [-X, W, -Z, Y],
+            [-Y, Z, W, -X],
+            [-Z, -Y, X, W]
+        ])
+
+    def get_G(self):
+        W = self.q[0]
+        X = self.q[1]
+        Y = self.q[2]
+        Z = self.q[3]
+
+        return np.array([
+            [-X, W, Z, -Y],
+            [-Y, -Z, W, X],
+            [-Z, Y, -X, W]
+        ])
+
+    def get_R(self):
+        return np.matmul(self.get_E(), self.get_G().T)

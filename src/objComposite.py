@@ -3,10 +3,14 @@ from petsc4py import PETSc
 from src.geo import *
 from src import stokes_flow as sf
 from src.support_class import *
+from src.StokesFlowMethod import *
 
-__all__ = ['createEcoli_ellipse', 'createEcoliComp_ellipse',
-           'createEcoliComp_tunnel', 'createEcoli_tunnel',
-           'create_ecoli_2part', 'create_ecoli_tail',
+__all__ = ['createEcoli_ellipse', 'createEcoliComp_ellipse', 'createEcoli_2tails',
+           'createEcoliComp_tunnel', 'createEcoli_tunnel', 'create_ecoli_dualTail',
+           'create_ecoli_2part', 'create_ecoli_tail', 'create_ecoli_tail_at',
+           'create_rotlets_tail_2part',
+           'create_ecoli_2part_at', 'create_ecoli_dualTail_at',
+           'get_tail_nodes_split_at', 'get_ecoli_nodes_split_at',
            'create_capsule',
            'create_rod',
            'create_infHelix',
@@ -45,7 +49,8 @@ def create_ecoli_tail(moveh, **kwargs):
     hfct = kwargs['hfct']
     eh = kwargs['eh']
     ch = kwargs['ch']
-    rh1 = kwargs['rh1']
+    rh11 = kwargs['rh11']
+    rh12 = kwargs['rh12']
     rh2 = kwargs['rh2']
     ph = kwargs['ph']
     n_tail = kwargs['n_tail']
@@ -61,20 +66,21 @@ def create_ecoli_tail(moveh, **kwargs):
     vhobj0 = obj_type()
     node_dof = vhobj0.get_n_unknown()
     B = ph / (2 * np.pi)
-    vhgeo0 = supHelix()  # velocity node geo of helix
+    vhgeo0 = FatHelix()  # velocity node geo of helix
     if 'dualPotential' in matrix_method:
         vhgeo0.set_check_epsilon(False)
     vhgeo0.set_dof(node_dof)
     dth = 2 * np.pi / nth
-    fhgeo0 = vhgeo0.create_deltatheta(dth=dth, radius=rh2, R=rh1, B=B, n_c=ch, epsilon=eh,
-                                      with_cover=with_cover, factor=hfct, left_hand=left_hand)
+    fhgeo0 = vhgeo0.create_deltatheta(dth=dth, radius=rh2, R1=rh11, R2=rh12, B=B, n_c=ch,
+                                      epsilon=eh, with_cover=with_cover, factor=hfct,
+                                      left_hand=left_hand)
     vhobj0.set_data(fhgeo0, vhgeo0, name='helix_0')
     vhobj0.zoom(zoom_factor)
     # dbg
     OptDB = PETSc.Options()
     factor = OptDB.getReal('dbg_theta_factor', 1.5)
     PETSc.Sys.Print('--------------------> DBG: dbg_theta_factor = %f' % factor)
-    theta = np.pi * ch + (rT2 + rh2 * factor) / (rh1 + rh2)
+    theta = np.pi * ch + (rT2 + rh2 * factor) / (rh11 + rh2)
     vhobj0.node_rotation(norm=np.array((0, 0, 1)), theta=theta)
     vhobj0.move(moveh * zoom_factor)
 
@@ -87,6 +93,35 @@ def create_ecoli_tail(moveh, **kwargs):
         tail_list.append(vhobj1)
 
     return tail_list
+
+
+def create_ecoli_tail_at(theta, phi, psi_tail, now_center=np.zeros(3), **problem_kwargs):
+    tail_list = create_ecoli_tail(np.zeros(3), **problem_kwargs)
+    tail_obj = sf.StokesFlowObj()
+    tail_obj.set_name('tail_obj')
+    tail_obj.combine(tail_list)
+    tail_obj.node_rotation(np.array((0, 1, 0)), theta)
+    tail_obj.node_rotation(np.array((0, 0, 1)), phi)
+    tail_obj.node_rotation(tail_obj.get_u_geo().get_geo_norm(), psi_tail)
+    tail_obj.move(now_center)
+    return tail_obj
+
+
+def get_tail_nodes_split_at(theta, phi, psi_tail, now_center=np.zeros(3), **problem_kwargs):
+    tail_list = create_ecoli_tail(np.zeros(3), **problem_kwargs)
+    tail_obj = sf.StokesFlowObj()
+    tail_obj.set_name('tail_obj')
+    tail_obj.combine(tail_list)
+    tail_obj.node_rotation(np.array((0, 1, 0)), theta)
+    tail_obj.node_rotation(np.array((0, 0, 1)), phi)
+    tail_obj.node_rotation(tail_obj.get_u_geo().get_geo_norm(), psi_tail)
+    tail_obj.move(now_center)
+
+    n_tail = problem_kwargs['n_tail']
+    t0 = np.split(tail_obj.get_u_nodes(), 2 * n_tail)
+    t1 = np.vstack(t0[1::2])
+    t2 = np.vstack(t0[0::2])
+    return t1, t2
 
 
 def createEcoli_ellipse(name='...', **kwargs):
@@ -124,6 +159,41 @@ def createEcoli_ellipse(name='...', **kwargs):
     return vsobj, tail_list
 
 
+def createEcoli_2tails(name='...', **kwargs):
+    ch = kwargs['ch']
+    ph = kwargs['ph']
+    ds = kwargs['ds']
+    rs1 = kwargs['rs1']
+    rs2 = kwargs['rs2']
+    es = kwargs['es']
+    # sphere_rotation = kwargs['sphere_rotation'] if 'sphere_rotation' in kwargs.keys() else 0
+    zoom_factor = kwargs['zoom_factor'] if 'zoom_factor' in kwargs.keys() else 1
+    dist_hs = kwargs['dist_hs']
+    center = kwargs['center']
+    matrix_method = kwargs['matrix_method']
+    lh = ph * ch  # length of helix
+    objtype = sf.obj_dic[matrix_method]
+
+    # create tail
+    movez = np.array((0, 0, rs1 + dist_hs + lh / 2))
+    tkwargs = kwargs.copy()
+    tkwargs['left_hand'] = False
+    tail_list1 = create_ecoli_tail(-movez, **tkwargs)
+    tkwargs['left_hand'] = True
+    tail_list2 = create_ecoli_tail(movez, **tkwargs)
+
+    # create head
+    vsgeo = ellipse_geo()  # velocity node geo of sphere
+    vsgeo.create_delta(ds, rs1, rs2)
+    vsgeo.node_rotation(norm=np.array((0, 1, 0)), theta=-np.pi / 2)
+    fsgeo = vsgeo.copy()  # force node geo of sphere
+    fsgeo.node_zoom(1 + ds / (0.5 * (rs1 + rs2)) * es)
+    vsobj = objtype()
+    vsobj.set_data(fsgeo, vsgeo, name='sphere_0')
+    vsobj.zoom(zoom_factor)
+    return vsobj, tail_list1, tail_list2
+
+
 def createEcoliComp_ellipse(name='...', **kwargs):
     vsobj, tail_list = createEcoli_ellipse(name=name, **kwargs)
     vsgeo = vsobj.get_u_geo()
@@ -131,7 +201,8 @@ def createEcoliComp_ellipse(name='...', **kwargs):
     rel_Us = kwargs['rel_Us']
     rel_Uh = kwargs['rel_Uh']
 
-    ecoli_comp = sf.ForceFreeComposite(center=center.copy(), norm=vsgeo.get_geo_norm().copy(), name=name)
+    ecoli_comp = sf.ForceFreeComposite(center=center.copy(), norm=vsgeo.get_geo_norm().copy(),
+                                       name=name)
     ecoli_comp.add_obj(vsobj, rel_U=rel_Us)
     for ti in tail_list:
         ecoli_comp.add_obj(ti, rel_U=rel_Uh)
@@ -200,7 +271,8 @@ def createEcoli_tunnel(**kwargs):
     if 'dualPotential' in matrix_method:
         vTgeo.set_check_epsilon(False)
     vTgeo.set_dof(node_dof)
-    fTgeo = vTgeo.create_deltatheta(dth=dtT, radius=rT2, factor=Tfct, length=lT, epsilon=eT, with_cover=1)
+    fTgeo = vTgeo.create_deltatheta(dth=dtT, radius=rT2, factor=Tfct, length=lT, epsilon=eT,
+                                    with_cover=1)
     vTobj.set_data(fTgeo, vTgeo, name='T_shape_0')
     theta = -np.pi / 2
     vTobj.node_rotation(norm=np.array((0, 1, 0)), theta=theta)
@@ -224,7 +296,7 @@ def createEcoliComp_tunnel(name='...', **kwargs):
     if not with_T_geo:
         kwargs['rT1'] = kwargs['rh1']
     vsobj, tail_list, vTobj = createEcoli_tunnel(**kwargs)
-    ecoli_comp = sf.ForceFreeComposite(center, name)
+    ecoli_comp = sf.ForceFreeComposite(center, norm=vsobj.get_u_geo().get_geo_norm(), name=name)
     ecoli_comp.add_obj(vsobj, rel_U=rel_Us)
     for ti in tail_list:
         c = ecoli_comp.add_obj(ti, rel_U=rel_Uh)
@@ -238,7 +310,8 @@ def create_ecoli_2part(**problem_kwargs):
     rel_Us = problem_kwargs['rel_Us']
     rel_Uh = problem_kwargs['rel_Uh']
     update_order = problem_kwargs['update_order'] if 'update_order' in problem_kwargs.keys() else 1
-    update_fun = problem_kwargs['update_fun'] if 'update_fun' in problem_kwargs.keys() else Adams_Bashforth_Methods
+    update_fun = problem_kwargs[
+        'update_fun'] if 'update_fun' in problem_kwargs.keys() else Adams_Bashforth_Methods
     with_T_geo = problem_kwargs['with_T_geo']
     err_msg = 'currently, do not support with_T_geo for this kind of ecoli. '
     assert not with_T_geo, err_msg
@@ -250,11 +323,118 @@ def create_ecoli_2part(**problem_kwargs):
     tail_obj.combine(tail_obj_list)
     head_geo = head_obj.get_u_geo()
     # ecoli_comp = sf.ForceFreeComposite(center=head_geo.get_center(), norm=head_geo.get_geo_norm(), name='ecoli_0')
-    ecoli_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=head_geo.get_geo_norm(), name='ecoli_0')
+    ecoli_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=head_geo.get_geo_norm(),
+                                       name='ecoli_0')
     ecoli_comp.add_obj(obj=head_obj, rel_U=rel_Us)
     ecoli_comp.add_obj(obj=tail_obj, rel_U=rel_Uh)
     ecoli_comp.set_update_para(fix_x=False, fix_y=False, fix_z=False,
                                update_fun=update_fun, update_order=update_order)
+    return ecoli_comp
+
+
+def create_rotlets_tail_2part(rotlet_strength=0, **problem_kwargs):
+    # create a swimmer with a infinite small head (the limit is a rotlet) and tail(s).
+    ch = problem_kwargs['ch']
+    ph = problem_kwargs['ph']
+    dist_hs = problem_kwargs['dist_hs']
+    lh = ph * ch  # length of helix
+    with_T_geo = problem_kwargs['with_T_geo']
+    err_msg = 'currently, do not support with_T_geo for this kind of ecoli. '
+    assert not with_T_geo, err_msg
+
+    tail_list = create_ecoli_tail(np.zeros(3), **problem_kwargs)
+    tail_obj0 = sf.StokesFlowObj()
+    tail_obj0.combine(tail_list)
+    tail_obj = sf.FundSoltObj()
+    tail_obj.set_data(tail_obj0.get_u_geo(), tail_obj0.get_f_geo(), name='rotlets_tail_obj')
+    location = np.array((0, 0, lh / 2 + dist_hs))
+    tnorm = tail_obj0.get_u_geo().get_geo_norm()
+    torque = tnorm * rotlet_strength
+    tail_obj.add_point_force(location=location, force=torque,
+                             StokesletsHandle=light_rotlets_matrix_3d)
+    givenT = np.hstack((np.zeros(3), -1 * torque))
+
+    ecoli_comp = sf.GivenForceComposite(center=np.zeros(3), norm=tnorm,
+                                        name='rotlets_tail_comp', givenF=givenT)
+    ecoli_comp.add_obj(obj=tail_obj, rel_U=np.zeros(6))
+    update_order = problem_kwargs['update_order'] \
+        if 'update_order' in problem_kwargs.keys() \
+        else 1
+    update_fun = problem_kwargs['update_fun'] \
+        if 'update_fun' in problem_kwargs.keys() \
+        else Adams_Bashforth_Methods
+    ecoli_comp.set_update_para(fix_x=False, fix_y=False, fix_z=False,
+                               update_fun=update_fun, update_order=update_order)
+    return ecoli_comp
+
+
+def create_ecoli_2part_at(theta, phi, psi_tail, now_center=np.zeros(3), **problem_kwargs):
+    ecoli_comp = create_ecoli_2part(**problem_kwargs)
+    ecoli_comp.node_rotation(np.array((0, 1, 0)), theta)
+    ecoli_comp.node_rotation(np.array((0, 0, 1)), phi)
+    tail_obj = ecoli_comp.get_obj_list()[1]
+    tail_obj.node_rotation(tail_obj.get_u_geo().get_geo_norm(), psi_tail)
+    ecoli_comp.move(now_center)
+    return ecoli_comp
+
+
+def get_ecoli_nodes_split_at(theta, phi, psi_tail, now_center=np.zeros(3), **problem_kwargs):
+    ecoli_comp = create_ecoli_2part(**problem_kwargs)
+    ecoli_comp.node_rotation(np.array((0, 1, 0)), theta)
+    ecoli_comp.node_rotation(np.array((0, 0, 1)), phi)
+    tail_obj = ecoli_comp.get_obj_list()[1]
+    tail_obj.node_rotation(tail_obj.get_u_geo().get_geo_norm(), psi_tail)
+    ecoli_comp.move(now_center)
+
+    n_tail = problem_kwargs['n_tail']
+    t0 = np.split(tail_obj.get_u_nodes(), 2 * n_tail)
+    t1 = np.vstack(t0[1::2])
+    t1 = np.vstack((ecoli_comp.get_obj_list()[0].get_u_nodes(), t1))
+    t2 = np.vstack(t0[0::2])
+    return t1, t2
+
+
+def create_ecoli_dualTail(**problem_kwargs):
+    # create a swimmer with two tails in the ends. one is left hand and one is right hand.
+    #   the swimmer contain three parts, i.e. head, upper tail and down tail.
+    rel_Us = problem_kwargs['rel_Us']
+    rel_Uh = problem_kwargs['rel_Uh']
+    update_order = problem_kwargs['update_order'] if 'update_order' in problem_kwargs.keys() else 1
+    update_fun = problem_kwargs['update_fun'] if 'update_fun' in problem_kwargs.keys() \
+        else Adams_Bashforth_Methods
+    with_T_geo = problem_kwargs['with_T_geo']
+    err_msg = 'currently, do not support with_T_geo for this kind of ecoli. '
+    assert not with_T_geo, err_msg
+
+    head_obj, tail_obj_l1, tail_obj_l2 = createEcoli_2tails(name='ecoli0', **problem_kwargs)
+    head_obj.set_name('head_obj')
+    tail_obj1 = sf.StokesFlowObj()
+    tail_obj1.set_name('tail_obj1')
+    tail_obj1.combine(tail_obj_l1)
+    tail_obj2 = sf.StokesFlowObj()
+    tail_obj2.set_name('tail_obj2')
+    tail_obj2.combine(tail_obj_l2)
+    head_geo = head_obj.get_u_geo()
+    tnorm = head_geo.get_geo_norm()
+    ecoli_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=tnorm, name='ecoli_0')
+    ecoli_comp.add_obj(obj=head_obj, rel_U=rel_Us)
+    ecoli_comp.add_obj(obj=tail_obj1, rel_U=rel_Uh)
+    ecoli_comp.add_obj(obj=tail_obj2, rel_U=-rel_Uh)
+    ecoli_comp.set_update_para(fix_x=False, fix_y=False, fix_z=False,
+                               update_fun=update_fun, update_order=update_order)
+    return ecoli_comp
+
+
+def create_ecoli_dualTail_at(theta, phi, psi_tail1, psi_tail2, center=np.zeros(3),
+                             **problem_kwargs):
+    assert 1 == 2
+    ecoli_comp = create_ecoli_dualTail(**problem_kwargs)
+    # ecoli_comp.node_rotation(np.array((0, 1, 0)), theta)
+    # ecoli_comp.node_rotation(np.array((0, 0, 1)), phi)
+    # tail_obj1 = ecoli_comp.get_obj_list()[1]
+    # tail_obj1.node_rotation(tail_obj1.get_u_geo().get_geo_norm(), psi_tail1)
+    # tail_obj2 = ecoli_comp.get_obj_list()[2]
+    # tail_obj2.node_rotation(tail_obj2.get_u_geo().get_geo_norm(), psi_tail2)
     return ecoli_comp
 
 
@@ -380,6 +560,7 @@ def create_infHelix(namehandle='infhelix', normalize=False, **problem_kwargs):
         infhelix_ugeo.create_n(rh1, rh2, ph, ch, nth, theta0=theta0)
         infhelix_fgeo = infhelix_ugeo.create_fgeo(epsilon=eh)
         infhelix_obj = sf.StokesFlowObj()
-        infhelix_obj.set_data(f_geo=infhelix_fgeo, u_geo=infhelix_ugeo, name=namehandle + '%02d' % i0)
+        infhelix_obj.set_data(f_geo=infhelix_fgeo, u_geo=infhelix_ugeo,
+                              name=namehandle + '%02d' % i0)
         helix_list.append(infhelix_obj)
     return helix_list

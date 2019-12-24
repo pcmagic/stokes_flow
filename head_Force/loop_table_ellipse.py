@@ -18,6 +18,7 @@ from src.objComposite import *
 # from src.myvtk import save_singleEcoli_vtk
 import ecoli_in_pipe.ecoli_common as ec
 import os
+import pickle
 
 
 # import import_my_lib
@@ -39,6 +40,10 @@ def get_problem_kwargs(**main_kwargs):
     for t_kwargs in kwargs_list:
         for key in t_kwargs:
             problem_kwargs[key] = t_kwargs[key]
+    pickle_name = '%s_kwargs.pickle' % fileHandle
+    with open(pickle_name, 'wb') as handle:
+        pickle.dump(problem_kwargs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    PETSc.Sys.Print('---->save kwargs to %s' % pickle_name)
     return problem_kwargs
 
 
@@ -79,7 +84,7 @@ def do_solve_once(problem_ff: sf.ShearFlowForceFreeProblem,
     terr = (ref_U1 - ref_U) / [tU, tU, tU, tW, tW, tW]
     PETSc.Sys.Print('  error of direct method', terr)
     if rank == 0:
-        mat_name = '%s_th%f_phi%f' % (fileHandle, norm_theta, norm_phi)
+        mat_name = '%s_th%f_phi%f.mat' % (fileHandle, norm_theta, norm_phi)
         savemat(mat_name, {
             'norm_theta':     norm_theta,
             'norm_phi':       norm_phi,
@@ -106,7 +111,7 @@ def do_solve_once_noIter(problem_ff: sf.ShearFlowForceFreeProblem,
     ref_U = ecoli_comp.get_ref_U()
     PETSc.Sys.Print('  ref_U in shear flow', ref_U)
     if rank == 0:
-        mat_name = '%s_th%f_phi%f' % (fileHandle, norm_theta, norm_phi)
+        mat_name = '%s_th%f_phi%f.mat' % (fileHandle, norm_theta, norm_phi)
         savemat(mat_name, {
             'norm_theta':     norm_theta,
             'norm_phi':       norm_phi,

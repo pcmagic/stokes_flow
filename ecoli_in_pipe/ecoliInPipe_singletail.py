@@ -29,7 +29,7 @@ from ecoli_in_pipe.ecoli_common import *
 # def get_problem_kwargs(**main_kwargs):
 #     problem_kwargs = get_solver_kwargs()
 #     OptDB = PETSc.Options()
-#     fileHandle = OptDB.getString('f', 'ecoliInPipe')
+#     fileHandle = OptDB.``('f', 'ecoliInPipe')
 #     OptDB.setValue('f', fileHandle)
 #     problem_kwargs['fileHandle'] = fileHandle
 #

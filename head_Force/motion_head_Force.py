@@ -39,7 +39,8 @@ def get_problem_kwargs(**main_kwargs):
     ellipse_centerx = OptDB.getReal('ellipse_centerx', 0)
     ellipse_centery = OptDB.getReal('ellipse_centery', 0)
     ellipse_centerz = OptDB.getReal('ellipse_centerz', 0)
-    ellipse_center = np.array((ellipse_centerx, ellipse_centery, ellipse_centerz))  # center of ecoli
+    ellipse_center = np.array(
+            (ellipse_centerx, ellipse_centery, ellipse_centerz))  # center of ecoli
     ecoli_tail_strength = OptDB.getReal('ecoli_tail_strength', 1)
     problem_kwargs['ellipse_center'] = ellipse_center
     problem_kwargs['ecoli_tail_strength'] = ecoli_tail_strength
@@ -85,7 +86,7 @@ def create_ellipse_obj(**problem_kwargs):
     ellipse_geo0.node_rotation(rot_norm, rot_theta)
     ellipse_geo0.move(ellipse_center)
     ellipse_geo0.set_rigid_velocity(np.zeros(6))
-    ellipse_obj = sf.PointForceObj()
+    ellipse_obj = sf.FundSoltObj()
     ellipse_obj.set_data(ellipse_geo0, ellipse_geo0, name='head_ellipse')
     F_ellipse = -1 * ellipse_geo0.get_geo_norm() * ecoli_tail_strength
     location = ellipse_F_dist * ellipse_geo0.get_geo_norm() + ellipse_geo0.get_center()
@@ -120,7 +121,8 @@ def main_fun(**main_kwargs):
         ellipse_geo0 = ellipse_obj.get_u_geo()
         F_ellipse = ellipse_obj.get_point_force_list()[0][1]
         givenF = np.hstack((F_ellipse, np.zeros(3)))
-        ecoli_comp = sf.GivenForceComposite(center=ellipse_geo0.get_center(), norm=ellipse_geo0.get_geo_norm(),
+        ecoli_comp = sf.GivenForceComposite(center=ellipse_geo0.get_center(),
+                                            norm=ellipse_geo0.get_geo_norm(),
                                             name='ecoli_0', givenF=givenF)
         ecoli_comp.add_obj(obj=ellipse_obj, rel_U=np.zeros(6))
         ecoli_comp.set_update_para(fix_x=False, fix_y=False, fix_z=False,
@@ -156,7 +158,7 @@ def main_fun(**main_kwargs):
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
         if rank == 0:
-            savemat(fileHandle,
+            savemat('%s.mat' % fileHandle,
                     {'ecoli_center': np.vstack(ecoli_comp.get_center_hist()),
                      'ecoli_norm':   np.vstack(ecoli_comp.get_norm_hist()),
                      'ecoli_U':      np.vstack(ecoli_comp.get_ref_U_hist()),

@@ -8,7 +8,8 @@ from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.support_class import *
 
-__all__ = ['get_solver_kwargs', 'get_forcefree_kwargs', 'get_givenForce_kwargs', 'get_vtk_tetra_kwargs',
+__all__ = ['get_solver_kwargs', 'get_forcefree_kwargs', 'get_givenForce_kwargs',
+           'get_vtk_tetra_kwargs',
            'print_solver_info', 'print_forcefree_info', 'print_givenForce_info',
            'get_update_kwargs', 'print_update_info',
            'get_shearFlow_kwargs', 'print_shearFlow_info',
@@ -24,7 +25,8 @@ __all__ = ['get_solver_kwargs', 'get_forcefree_kwargs', 'get_givenForce_kwargs',
            'get_pipe_kwargs', 'print_pipe_info', ]
 
 
-def print_single_ecoli_force_result(ecoli_comp: sf.ForceFreeComposite, prefix='', part='full', **kwargs):
+def print_single_ecoli_force_result(ecoli_comp: sf.ForceFreeComposite, prefix='', part='full',
+                                    **kwargs):
     def print_full():
         head_obj = ecoli_comp.get_obj_list()[0]
         tail_obj = ecoli_comp.get_obj_list()[1:]
@@ -128,6 +130,8 @@ def print_ecoli_U_info(ecoName, **problem_kwargs):
 def get_ecoli_kwargs():
     OptDB = PETSc.Options()
     rh1 = OptDB.getReal('rh1', 0.2)  # radius of helix
+    rh11 = OptDB.getReal('rh11', rh1)  # 1th radius of fat helix
+    rh12 = OptDB.getReal('rh12', rh1)  # 2th radius of fat helix
     rh2 = OptDB.getReal('rh2', 0.05)  # radius of helix
     nth = OptDB.getInt('nth', 3)  # amount of nodes on each cycle of helix
     eh = OptDB.getReal('eh', -0.1)  # epsilon of helix
@@ -135,7 +139,7 @@ def get_ecoli_kwargs():
     ph = OptDB.getReal('ph', 3)  # helix pitch
     hfct = OptDB.getReal('hfct', 1)  # helix axis line factor, put more nodes near both tops
     n_tail = OptDB.getInt('n_tail', 2)  # total of tails
-    with_cover = OptDB.getInt('with_cover', 2)
+    with_cover = OptDB.getInt('with_cover', 2)  # cover type of helix ends
     left_hand = OptDB.getBool('left_hand', False)
     rs = OptDB.getReal('rs', 0.5)  # radius of head
     rs1 = OptDB.getReal('rs1', rs * 2)  # radius of head
@@ -148,7 +152,7 @@ def get_ecoli_kwargs():
     ntT = OptDB.getReal('ntT', nth)  # amount of nodes on each cycle of Tgeo
     eT = OptDB.getReal('eT', eh)  # epsilon of Tgeo
     Tfct = OptDB.getReal('Tfct', 1)  # Tgeo axis line factor, put more nodes near both tops
-    with_T_geo = OptDB.getBool('with_T_geo', True)
+    with_T_geo = OptDB.getBool('with_T_geo', True)  # if includes the horizontal bar of 'T' geo
 
     # rotate the ecoli
     rot_theta = OptDB.getReal('rot_theta', 0)
@@ -182,6 +186,8 @@ def get_ecoli_kwargs():
 
     ecoli_kwargs = {
         'rh1':         rh1,
+        'rh11':        rh11,
+        'rh12':        rh12,
         'rh2':         rh2,
         'nth':         nth,
         'eh':          eh,
@@ -266,6 +272,8 @@ def print_ecoli_info(ecoName, **problem_kwargs):
     eh = problem_kwargs['eh']
     ch = problem_kwargs['ch']
     rh1 = problem_kwargs['rh1']
+    rh11 = problem_kwargs['rh11']
+    rh12 = problem_kwargs['rh12']
     rh2 = problem_kwargs['rh2']
     ph = problem_kwargs['ph']
     ds = problem_kwargs['ds']
@@ -294,13 +302,19 @@ def print_ecoli_info(ecoName, **problem_kwargs):
         rot_theta = np.nan
 
     PETSc.Sys.Print(ecoName, 'geo information: ')
-    PETSc.Sys.Print('  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
-    PETSc.Sys.Print('    nth, n_tail, hfct and epsilon of helix are %d, %d, %f and %f, ' % (nth, n_tail, hfct, eh))
-    PETSc.Sys.Print('  head radius: %f and %f, length: %f, delta length: %f, epsilon: %f' % (rs1, rs2, ls, ds, es))
+    PETSc.Sys.Print(
+            '  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
+    PETSc.Sys.Print('    nth, n_tail, hfct and epsilon of helix are %d, %d, %f and %f, ' % (
+        nth, n_tail, hfct, eh))
+    if not np.isclose(rh11, rh12):
+        PETSc.Sys.Print('    fat helix case, rh11: %f, rh12: %f' % (rh11, rh12))
+    PETSc.Sys.Print('  head radius: %f and %f, length: %f, delta length: %f, epsilon: %f' % (
+        rs1, rs2, ls, ds, es))
     PETSc.Sys.Print('  Tgeo radius: %f and %f' % (rT1, rT2))
     PETSc.Sys.Print('    ntT, eT and Tfct of Tgeo are: %d, %f and %f' % (ntT, eT, Tfct))
     PETSc.Sys.Print('  ecoli center: %s, distance from head to tail is %f' % (str(center), dist_hs))
-    PETSc.Sys.Print('  relative velocity of head and tail are %s and %s' % (str(rel_Us), str(rel_Uh)))
+    PETSc.Sys.Print(
+            '  relative velocity of head and tail are %s and %s' % (str(rel_Us), str(rel_Uh)))
     PETSc.Sys.Print('  rot_norm is %s, rot_theta is %f*pi' % (str(rot_norm), rot_theta))
     PETSc.Sys.Print('  geometry zoom factor is %f' % zoom_factor)
     return True
@@ -330,8 +344,10 @@ def print_helix_info(helixName, **problem_kwargs):
         rot_theta = np.nan
 
     PETSc.Sys.Print(helixName, 'geo information: ')
-    PETSc.Sys.Print('  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
-    PETSc.Sys.Print('    nth, n_tail, hfct and epsilon of helix are %d, %d, %f and %f, ' % (nth, n_tail, hfct, eh))
+    PETSc.Sys.Print(
+            '  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
+    PETSc.Sys.Print('    nth, n_tail, hfct and epsilon of helix are %d, %d, %f and %f, ' % (
+        nth, n_tail, hfct, eh))
     PETSc.Sys.Print('  relative velocity of helix is %s' % (str(rel_Uh)))
     PETSc.Sys.Print('  rot_norm is %s, rot_theta is %f*pi' % (str(rot_norm), rot_theta))
     PETSc.Sys.Print('  geometry zoom factor is %f' % zoom_factor)
@@ -407,7 +423,8 @@ def print_solver_info(**problem_kwargs):
     err_msg = "Only 'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane', 'pf_dualPotential'" \
               ", 'rs', 'lg_rs', and 'rs_plane' methods are accept for this main code. "
     acceptType = ('rs', 'rs_plane', 'lg_rs',
-                  'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane', 'pf_dualPotential', 'pf_infhelix',)
+                  'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane', 'pf_dualPotential',
+                  'pf_infhelix',)
     assert matrix_method in acceptType, err_msg
     PETSc.Sys.Print('  output file handle: ' + fileHandle)
     PETSc.Sys.Print('  create matrix method: %s, ' % matrix_method)
@@ -573,7 +590,8 @@ def get_rod_kwargs():
     rel_wRodx = OptDB.getReal('rel_wRodx', 0)
     rel_wRody = OptDB.getReal('rel_wRody', 0)
     rel_wRodz = OptDB.getReal('rel_wRodz', 0)
-    rel_URod = np.array((rel_uRodx, rel_uRody, rel_uRodz, rel_wRodx, rel_wRody, rel_wRodz))  # relative velocity of Rod
+    rel_URod = np.array((rel_uRodx, rel_uRody, rel_uRodz, rel_wRodx, rel_wRody,
+                         rel_wRodz))  # relative velocity of Rod
     RodCenterx = OptDB.getReal('RodCenterx', 0)
     RodCentery = OptDB.getReal('RodCentery', 0)
     RodCenterz = OptDB.getReal('RodCenterz', 2)
@@ -676,7 +694,9 @@ def print_sphere_info(sphereName, **problem_kwargs):
     sphere_coord = problem_kwargs['sphere_coord']
 
     PETSc.Sys.Print(sphereName, 'geo information: ')
-    PETSc.Sys.Print('  radius deltalength and epsilon of sphere: {rs}, {ds}, {es}'.format(rs=rs, ds=ds, es=es))
+    PETSc.Sys.Print(
+            '  radius deltalength and epsilon of sphere: {rs}, {ds}, {es}'.format(rs=rs, ds=ds,
+                                                                                  es=es))
     PETSc.Sys.Print('  center coordinates and rigid body velocity are:')
     for t_coord, t_velocity in zip(sphere_coord, sphere_velocity):
         PETSc.Sys.Print(' ', t_coord, '&', t_velocity)
@@ -766,5 +786,7 @@ def print_pipe_info(**problem_kwargs):
     finite_pipe_epsilon = problem_kwargs['finite_pipe_epsilon']
     finite_pipe_ntheta = problem_kwargs['finite_pipe_ntheta']
     PETSc.Sys.Print('  finite pipe have length %f, cover type %d, epsilon %f, ntheta %d' %
-                    (finite_pipe_length, finite_pipe_cover, finite_pipe_epsilon, finite_pipe_ntheta))
+                    (
+                        finite_pipe_length, finite_pipe_cover, finite_pipe_epsilon,
+                        finite_pipe_ntheta))
     return True

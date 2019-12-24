@@ -58,8 +58,8 @@ def standard_method():
     n_grid = np.array([n_obj_x, n_obj_y, 1]) * 20
     problem_arguments = {
         'matrix_method': matrix_method,
-                         'delta':         deltaLength * epsilon,
-                         'solve_method':  solve_method
+        'delta':         deltaLength * epsilon,
+        'solve_method':  solve_method
     }
 
     # create problem
@@ -82,11 +82,12 @@ def standard_method():
     rank = comm.Get_rank()
     size = comm.Get_size()
     PETSc.Sys.Print('n_obj_x: %d, n_obj_y, %d'
-          % (n_obj_x, n_obj_x))
+                    % (n_obj_x, n_obj_x))
     PETSc.Sys.Print('move_x: %f, move_y: %f'
-          % (distance_x, distance_y))
+                    % (distance_x, distance_y))
     PETSc.Sys.Print('delta: %f, number of nodes: %d' % (deltaLength * epsilon, n_nodes))
-    PETSc.Sys.Print('solve method: %s, precondition method: %s' % (solve_method, precondition_method))
+    PETSc.Sys.Print(
+        'solve method: %s, precondition method: %s' % (solve_method, precondition_method))
     PETSc.Sys.Print('output path: ' + filename)
     PETSc.Sys.Print('MPI size: %d' % size)
     t1 = time()
@@ -105,7 +106,8 @@ def standard_method():
 
     if not debug_mode:
         t0 = time()
-        problem.vtk_velocity('%sVelocity_%2d_%2d' % (filename, n_obj_x, n_obj_y), field_range, n_grid, region_type='rectangle')
+        problem.vtk_velocity('%sVelocity_%2d_%2d' % (filename, n_obj_x, n_obj_y), field_range,
+                             n_grid, region_type='rectangle')
         t1 = time()
         PETSc.Sys.Print('write velocity file use: %fs' % (t1 - t0))
 

@@ -96,7 +96,7 @@ def main_fun(**main_kwargs):
         problem.create_matrix()
         dbg_u2 = problem.dbg_get_U()
         if rank == 0:
-            savemat('dbg',
+            savemat('dbg.mat',
                     {'headU1': ecoli_comp1.get_obj_list()[0].get_u_geo().get_velocity(),
                      'headU2': ecoli_comp.get_obj_list()[0].get_u_geo().get_velocity(),
                      'dbg_u2': dbg_u2,

@@ -42,7 +42,8 @@ def get_problem_kwargs(**main_kwargs):
     ellipse_centerx = OptDB.getReal('ellipse_centerx', 0)
     ellipse_centery = OptDB.getReal('ellipse_centery', 0)
     ellipse_centerz = OptDB.getReal('ellipse_centerz', 0)
-    ellipse_center = np.array((ellipse_centerx, ellipse_centery, ellipse_centerz))  # center of ecoli
+    ellipse_center = np.array(
+            (ellipse_centerx, ellipse_centery, ellipse_centerz))  # center of ecoli
     ecoli_tail_strength = OptDB.getReal('ecoli_tail_strength', 1)
     problem_kwargs['vtk_matname'] = vtk_matname
     problem_kwargs['ellipse_center'] = ellipse_center
@@ -55,7 +56,8 @@ def print_case_info(**problem_kwargs):
     ec.print_case_info(caseIntro, **problem_kwargs)
     ellipse_center = problem_kwargs['ellipse_center']
     ecoli_tail_strength = problem_kwargs['ecoli_tail_strength']
-    PETSc.Sys.Print('    ellipse_center %s, ecoli_tail_strength %f' % (str(ellipse_center), ecoli_tail_strength))
+    PETSc.Sys.Print('    ellipse_center %s, ecoli_tail_strength %f' % (
+    str(ellipse_center), ecoli_tail_strength))
 
     print_pipe_info(**problem_kwargs)
     print_PoiseuilleFlow_info(**problem_kwargs)
@@ -92,7 +94,7 @@ def create_ellipse_obj(**problem_kwargs):
     ellipse_ugeo.node_rotation(rot_norm, rot_theta)
     ellipse_ugeo.move(ellipse_center)
     ellipse_ugeo.set_rigid_velocity(np.zeros(6))
-    ellipse_obj = sf.PointForceObj()
+    ellipse_obj = sf.FundSoltObj()
     ellipse_obj.set_data(ellipse_ugeo, ellipse_ugeo, name='head_ellipse')
     F_ellipse = -1 * ellipse_ugeo.get_geo_norm() * ecoli_tail_strength
     ellipse_obj.add_point_force(location=np.array((0, 0, 1)), force=F_ellipse,
@@ -156,7 +158,8 @@ def main_fun(**main_kwargs):
         ellipse_ugeo = ellipse_obj.get_u_geo()
         F_ellipse = ellipse_obj.get_point_force_list()[0][1]
         givenF = np.hstack((F_ellipse, np.zeros(3)))
-        ecoli_comp = sf.GivenForceComposite(center=ellipse_ugeo.get_center(), name='ecoli_0', givenF=givenF)
+        ecoli_comp = sf.GivenForceComposite(center=ellipse_ugeo.get_center(), name='ecoli_0',
+                                            givenF=givenF)
         ecoli_comp.add_obj(obj=ellipse_obj, rel_U=np.zeros(6))
         problem = sf.GivenForcePoiseuilleFlowProblem(**problem_kwargs)
         problem.add_given_flow_obj(pipe_obj)
