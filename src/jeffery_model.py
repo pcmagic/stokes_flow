@@ -1378,7 +1378,7 @@ class TableEcoli(TableObj):
 
     def _set_omega_tail(self, omega_tail):
         omega_tail = np.array(omega_tail)
-        print('dbg', omega_tail)
+        # print('dbg', omega_tail)
         err_msg = 'omega_tail is a scale define the norm of the rotational velocity of tail. '
         assert omega_tail.shape == (1,), err_msg
         self._omega_tail = omega_tail
@@ -1447,6 +1447,8 @@ class TableRkObj(TableObj):
         t_psi = t_psi + tfct * np.pi  # (-pi,pi) -> (0, 2pi)
 
         Ub = self.father.flow_velocity(X)  # background velocity
+        # print('dbg t_theta, t_phi, t_psi')
+        # print(t_theta, t_phi, t_psi)
         tU = self.intp_U_fun(t_theta, t_phi, t_psi)
         dX = tU[:3] + Ub + trs_v * P
         omega = tU[3:]
@@ -1562,13 +1564,9 @@ class TableRk4nObj(TableRkObj):
 
 class TableRkEcoli(TableEcoli, TableRkObj):
     def _get_velocity_at(self, X, P, P2, trs_v, rot_v=0):
-        # print('dbg', P, P2)
         dX, dP, dP2, omega = super()._get_velocity_at(X, P, P2, trs_v, rot_v)
         omega_tail = P * self.omega_tail / np.linalg.norm(P)
         omega = omega + omega_tail
-        # print('dbg')
-        # print(X, P, P2)
-        # print(dX, omega)
         return dX, dP, dP2, omega
 
 
@@ -1735,6 +1733,7 @@ class TablePetsc4nObj(TablePetscObj, TableRk4nObj):
         return y0
 
     def _rhsfunction(self, ts, t, Y, F):
+        # print('###################################################################')
         y = Y.getArray()
         X = y[0:3]  # center (x, y, z)
         Q = y[3:7]  # quaternion (w, x, y, z), where w=cos(theta/2).
@@ -1747,6 +1746,8 @@ class TablePetsc4nObj(TablePetscObj, TableRk4nObj):
         trs_v = self.speed
         rot_v = self.rot_v
         dX, _, _, omega = self._get_velocity_at(X, P, P2, trs_v, rot_v)
+        # print('dbg, dX', dX)
+        # print('dbg, omega', omega)
         dX = dX * self._locomotion_fct
         dQ = 0.5 * omega.dot(tq.get_E())
         F[:] = np.hstack((dX, dQ))
@@ -1759,6 +1760,7 @@ class TablePetsc4nObj(TablePetscObj, TableRk4nObj):
         X = y[0:3]  # center (x, y, z)
         Q = y[3:7]  # quaternion (w, x, y, z), where w=cos(theta/2).
 
+        # print('dbg Q', Q)
         Q = Q / np.linalg.norm(Q)
         Y[:] = np.hstack((X, Q))
         Y.assemble()
@@ -1796,7 +1798,8 @@ class TablePetsc4nPsiEcoli(TablePetsc4nEcoli):
     def psi_hist(self):
         return self._psi_hist
 
-    def _theta_phi_psi2(self, P, P2, psi):
+    def _theta_phi_psi2(self, P, P2):
+        # angles of head
         t_theta = np.arccos(P[2] / np.linalg.norm(P))
         t_phi = np.arctan2(P[1], P[0])
         tfct = 2 if t_phi < 0 else 0
@@ -1811,28 +1814,26 @@ class TablePetsc4nPsiEcoli(TablePetsc4nEcoli):
                                          / np.linalg.norm(P20), -1, 1))
         tfct = 2 if t_psi < 0 else 0
         t_psi = t_psi + tfct * np.pi  # (-pi,pi) -> (0, 2pi)
-        t_psi = (t_psi + psi - self._ini_psi) % (2 * np.pi)
         return t_theta, t_phi, t_psi
 
     def _get_velocity_at2(self, X, P, P2, psi):
         # print('dbg', P, P2)
-        t_theta, t_phi, t_psi = self._theta_phi_psi2(P, P2, psi)
+        t_theta, t_phi, t_psi = self._theta_phi_psi2(P, P2)
+        t_psi = (t_psi + psi - self._ini_psi) % (2 * np.pi)
         Ub = self.father.flow_velocity(X)  # background velocity
+        # print('dbg t_theta, t_phi, t_psi')
+        # print(t_theta, t_phi, t_psi)
         tU = self.intp_U_fun(t_theta, t_phi, t_psi)
         dX = tU[:3] + Ub
         omega = tU[3:]
-        # print('dbg')
-        # print(X, P, P2, psi)
-        # omega_tail = P * self.omega_tail / np.linalg.norm(P)
-        # omega = tU[3:] + omega_tail
-        # print(dX, omega)
         return dX, omega
 
     def _rhsfunction(self, ts, t, Y, F):
+        # print('###################################################################')
         y = Y.getArray()
         X = y[0:3]  # center (x, y, z)
         Q = y[3:7]  # quaternion (w, x, y, z), where w=cos(theta/2).
-        psi = y[7]
+        psi = y[7]  # relative tail spin about head
         tq = self.q
         tq.set_wxyz(*Q)
         R = tq.get_R()
@@ -1840,13 +1841,11 @@ class TablePetsc4nPsiEcoli(TablePetsc4nEcoli):
         P2 = R[:, 1]
 
         dX, omega = self._get_velocity_at2(X, P, P2, psi)
+        # print('dbg, dX', dX)
+        # print('dbg, omega', omega)
         dX = dX * self._locomotion_fct
         dQ = 0.5 * omega.dot(tq.get_E())
         F[:] = np.hstack((dX, dQ, self.omega_tail))
-
-        # print('dbg')
-        # omega_P = np.dot(omega, P) / np.linalg.norm(P)
-        # F[:] = np.hstack((dX, dQ, omega_P + self.omega_tail))
         F.assemble()
         return True
 
@@ -1860,7 +1859,8 @@ class TablePetsc4nPsiEcoli(TablePetsc4nEcoli):
         R = tq.get_R()
         P = R[:, 2]
         P2 = R[:, 1]
-        _, _, t_psi = self._theta_phi_psi2(P, P2, psi)
+        _, _, t_psi = self._theta_phi_psi2(P, P2)
+        t_psi = (t_psi + psi - self._ini_psi) % (2 * np.pi)
 
         dt = ts.getTimeStep()
         self.t_hist.append(t)
@@ -1891,6 +1891,7 @@ class TablePetsc4nPsiEcoli(TablePetsc4nEcoli):
         Q = y[3:7]  # quaternion (w, x, y, z), where w=cos(theta/2).
         psi = y[7]
 
+        # print('dbg Q', Q)
         Q = Q / np.linalg.norm(Q)
         Y[:] = np.hstack((X, Q, psi))
         Y.assemble()
