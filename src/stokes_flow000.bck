@@ -2727,7 +2727,7 @@ class givenForceProblem(ForceFreeProblem):
         return True
 
 
-class stokesletsInPipeforcefreeProblem(stokesletsInPipeProblem, ForceFreeProblem):
+class StokesletsInPipeforcefreeProblem(stokesletsInPipeProblem, ForceFreeProblem):
     # def add_obj(self, obj):
     #     b_list = self.get_b_list()
     #     b1 = np.max(b_list)

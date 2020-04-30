@@ -21,7 +21,7 @@ def main_fun():
     belemsHeadle = 'belems'
     fileHandle = 'tryVTK'
 
-    bgeo = geo()
+    bgeo = base_geo()
     bgeo.mat_nodes(filename=matname, mat_handle=bnodesHeadle)
     bgeo.mat_elmes(filename=matname, mat_handle=belemsHeadle, elemtype='tetra')
 

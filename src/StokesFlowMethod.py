@@ -5,6 +5,9 @@ from petsc4py import PETSc
 from src import stokes_flow as sf
 from src import geo
 from tqdm import tqdm
+from scipy import interpolate, integrate, optimize, sparse
+from time import time
+from src.support_class import *
 
 
 # from multiprocessing import cpu_count, Pool
@@ -183,29 +186,29 @@ def stokeslets_matrix_3d_mij(u_node, f_nodes, i1):
     return t_m, i1
 
 
-def stokeslets_matrix_3d_mij2(myinput):
-    u_node, f_nodes, i1 = myinput
-    t_m = np.ones((3, f_nodes.size))
-    mypi = np.pi
-    dxi = (u_node - f_nodes).T
-    dx0 = dxi[0]
-    dx1 = dxi[1]
-    dx2 = dxi[2]
-    dr2 = np.sum(dxi ** 2, axis=0)
-    dr1 = np.sqrt(dr2)
-    dr3 = dr1 * dr2
-    temp1 = 1 / (dr1 * (8 * mypi))  # 1/r^1
-    temp2 = 1 / (dr3 * (8 * mypi))  # 1/r^3
-    t_m[0, 0::3] = temp2 * dx0 * dx0 + temp1
-    t_m[0, 1::3] = temp2 * dx0 * dx1
-    t_m[0, 2::3] = temp2 * dx0 * dx2
-    t_m[1, 0::3] = temp2 * dx1 * dx0
-    t_m[1, 1::3] = temp2 * dx1 * dx1 + temp1
-    t_m[1, 2::3] = temp2 * dx1 * dx2
-    t_m[2, 0::3] = temp2 * dx2 * dx0
-    t_m[2, 1::3] = temp2 * dx2 * dx1
-    t_m[2, 2::3] = temp2 * dx2 * dx2 + temp1
-    return t_m, i1
+# def stokeslets_matrix_3d_mij2(myinput):
+#     u_node, f_nodes, i1 = myinput
+#     t_m = np.ones((3, f_nodes.size))
+#     mypi = np.pi
+#     dxi = (u_node - f_nodes).T
+#     dx0 = dxi[0]
+#     dx1 = dxi[1]
+#     dx2 = dxi[2]
+#     dr2 = np.sum(dxi ** 2, axis=0)
+#     dr1 = np.sqrt(dr2)
+#     dr3 = dr1 * dr2
+#     temp1 = 1 / (dr1 * (8 * mypi))  # 1/r^1
+#     temp2 = 1 / (dr3 * (8 * mypi))  # 1/r^3
+#     t_m[0, 0::3] = temp2 * dx0 * dx0 + temp1
+#     t_m[0, 1::3] = temp2 * dx0 * dx1
+#     t_m[0, 2::3] = temp2 * dx0 * dx2
+#     t_m[1, 0::3] = temp2 * dx1 * dx0
+#     t_m[1, 1::3] = temp2 * dx1 * dx1 + temp1
+#     t_m[1, 2::3] = temp2 * dx1 * dx2
+#     t_m[2, 0::3] = temp2 * dx2 * dx0
+#     t_m[2, 1::3] = temp2 * dx2 * dx1
+#     t_m[2, 2::3] = temp2 * dx2 * dx2 + temp1
+#     return t_m, i1
 
 
 def stokeslets_matrix_3d_set(m, t_m, i1):
@@ -319,11 +322,11 @@ def stokeslets_matrix_3d(obj1: 'sf.StokesFlowObj',  # object contain velocity in
 
 
 def light_stokeslets_matrix_3d_petsc(u_nodes: np.ndarray, f_nodes: np.ndarray):
-    from src.geo import geo
+    from src.geo import base_geo
 
-    temp_geo1 = geo()  # velocity nodes
+    temp_geo1 = base_geo()  # velocity nodes
     temp_geo1.set_nodes(u_nodes, deltalength=0)
-    temp_geo2 = geo()  # force nodes
+    temp_geo2 = base_geo()  # force nodes
     temp_geo2.set_nodes(f_nodes, deltalength=0)
     temp_obj1 = sf.StokesFlowObj()
     temp_obj1.set_data(temp_geo2, temp_geo1)
@@ -405,7 +408,9 @@ def regularized_stokeslets_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',
     # Solve m matrix using regularized Stokeslets method
     # U = M * F.
     # Cortez R. The method of regularized Stokeslets [J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
-    delta_2 = kwargs['delta'] ** 2  # correction factor
+    epsilon = kwargs['epsilon']
+    delta = epsilon * obj2.get_f_geo().get_deltaLength()
+    delta_2 = delta ** 2  # correction factor
     u_nodes = obj1.get_u_nodes()
     f_nodes = obj2.get_f_nodes()
     _, u_glbIdx_all = obj1.get_u_geo().get_glbIdx()
@@ -433,8 +438,8 @@ def regularized_stokeslets_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',
 
 
 def check_regularized_stokeslets_matrix_3d(**kwargs):
-    err_msg = 'the reguralized Stokeslets  method needs parameter, delta. '
-    assert 'delta' in kwargs, err_msg
+    err_msg = 'the reguralized Stokeslets  method needs parameter, epsilon. '
+    assert 'epsilon' in kwargs, err_msg
 
 
 def regularized_stokeslets_plane_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # velocity node
@@ -465,15 +470,15 @@ def regularized_stokeslets_plane_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # ve
     dH2k = -3 * rk / (rke ** 5)
     dH1k = -rk / (rke ** 3) + e2 * dH2k
     m00 = H1sk + dx ** 2 * H2sk - H1k - dx ** 2 * H2k - zwall * zwall * (
-                -1 * D1k - dx ** 2 * D2k) - 2 * zwall * (
+            -1 * D1k - dx ** 2 * D2k) - 2 * zwall * (
                   dH1k / rk + H2k) * zwall - 2 * zwall * (
-                      -dz * H2k - dz * dx ** 2 * dH2k / rk)  # Mxx
+                  -dz * H2k - dz * dx ** 2 * dH2k / rk)  # Mxx
     m20 = dx * dzs * H2sk - dx * dz * H2k - zwall * zwall * (-dz * dx * D2k) - 2 * zwall * (
             dH1k / rk + H2k) * dx - 2 * zwall * (-dx * dH1k / rk - dx * dz ** 2 * dH2k / rk)  # Mzx
     m02 = dx * dzs * H2sk - dx * dz * H2k - zwall * zwall * (dx * dz * D2k) - 2 * zwall * (
             dx * H2k + dz ** 2 * dx * dH2k / rk)  # Mxz
     m22 = H1sk + dzs ** 2 * H2sk - H1k - dz ** 2 * H2k - zwall * zwall * (
-                1 * D1k + dz ** 2 * D2k) - 2 * zwall * (
+            1 * D1k + dz ** 2 * D2k) - 2 * zwall * (
                   dz * H2k + dz * H2k + dz * dH1k / rk + dz ** 3 * dH2k / rk)  # Mzz
     m01 = dx * dy * H2sk - dx * dy * H2k - zwall * zwall * (-dx * dy * D2k) - 2 * zwall * (
             -dz * dx * dy * dH2k / rk)  # Mxy
@@ -484,9 +489,9 @@ def regularized_stokeslets_plane_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # ve
     m12 = dzs * dy * H2sk - dz * dy * H2k - zwall * zwall * (dy * dz * D2k) - 2 * zwall * (
             dy * H2k + dy * dz * dz * dH2k / rk)  # Myz
     m11 = H1sk + dy * dy * H2sk - H1k - dy * dy * H2k - zwall * zwall * (
-                -D1k - dy ** 2 * D2k) - 2 * zwall * (
+            -D1k - dy ** 2 * D2k) - 2 * zwall * (
                   dH1k / rk + H2k) * zwall - 2 * zwall * (
-                      -dz * H2k - dy ** 2 * dz * dH2k / rk)  # Myy
+                  -dz * H2k - dy ** 2 * dz * dH2k / rk)  # Myy
     # # PETSc.Sys.Print('DBG version')
     # m11 = H1sk + dy * dy * H2sk - H1k - dy * dy * H2k - zwall * zwall * (-D1k - dy ** 2 * D2k) - 2 * zwall * (
     #     dH1k / rk + H2k) * zwall + 2 * zwall * (-dz * H2k - dy ** 2 * dz * dH2k / rk)  # Myy
@@ -708,7 +713,7 @@ def legendre_regularized_stokeslets_matrix_3d_mij(t_u_node: np.ndarray,  # veloc
         'm=3,k=2': lambda r, e: (1 / 8) * e ** (-11) * np.pi ** (-1) * (
                 132 * e ** 8 + r ** 3 * ((-9702) * e ** 5 + r * (
                 39600 * e ** 4 + r * (
-                    (-68607) * e ** 3 + r * (61600 * e ** 2 + r * ((-28314) * e + 5292 * r)))))),
+                (-68607) * e ** 3 + r * (61600 * e ** 2 + r * ((-28314) * e + 5292 * r)))))),
         'm=3,k=3': lambda r, e: (1 / 40) * e ** (-13) * np.pi ** (-1) * (
                 572 * e ** 10 + (-171600) * e ** 6 * r ** 4 + 891891 * e ** 5 * r ** 5 + (
             -2002000) * e ** 4 * r ** 6 + 2453880 * e ** 3 * r ** 7 + (
@@ -861,18 +866,18 @@ def two_para_regularized_stokeslets_matrix_3d(obj1: 'sf.StokesFlowObj',
     h1 = {
         '0':  lambda r, e: (1 / 8) * np.pi ** (-1) * r ** (-3) * (e ** 2 + r ** 2) ** (-1 / 2) *
                            ((-1) * e ** 2 * r + r ** 3 + e ** 2 * (e ** 2 + r ** 2) ** (
-                                       1 / 2) * np.log(
+                                   1 / 2) * np.log(
                                    r + (e ** 2 + r ** 2) ** (1 / 2))),
         '1':  lambda r, e: (1 / 8) * np.pi ** (-1) * (e ** 2 + r ** 2) ** (-3 / 2) * (
-                    2 * e ** 2 + r ** 2),
+                2 * e ** 2 + r ** 2),
         '2':  lambda r, e: (1 / 32) * np.pi ** (-1) * (e ** 2 + r ** 2) ** (-5 / 2) * (
                 10 * e ** 4 + 11 * e ** 2 * r ** 2 + 4 * r ** 4),
         '10': lambda r, e: (1 / 5242880) * np.pi ** (-1) * (e ** 2 + r ** 2) ** (-21 / 2) *
                            (
-                                       3233230 * e ** 20 + 19076057 * e ** 18 * r ** 2 + 64849356 * e ** 16 * r ** 4 +
-                                       143370656 * e ** 14 * r ** 6 + 218213632 * e ** 12 * r ** 8 + 234420480 * e ** 10 * r ** 10 +
-                                       178275328 * e ** 8 * r ** 12 + 94244864 * e ** 6 * r ** 14 + 33030144 * e ** 4 * r ** 16 +
-                                       6914048 * e ** 2 * r ** 18 + 655360 * r ** 20),
+                                   3233230 * e ** 20 + 19076057 * e ** 18 * r ** 2 + 64849356 * e ** 16 * r ** 4 +
+                                   143370656 * e ** 14 * r ** 6 + 218213632 * e ** 12 * r ** 8 + 234420480 * e ** 10 * r ** 10 +
+                                   178275328 * e ** 8 * r ** 12 + 94244864 * e ** 6 * r ** 14 + 33030144 * e ** 4 * r ** 16 +
+                                   6914048 * e ** 2 * r ** 18 + 655360 * r ** 20),
         '20': lambda r, e: (1 / 5497558138880) * np.pi ** (-1) * (e ** 2 + r ** 2) ** (-41 / 2) * (
                 4709756401350 * e ** 40 + 56046101176065 * e ** 38 * r ** 2 + 403962534767220 * e ** 36 * r ** 4 + 2014699224028920 * e ** 34 * r ** 6 +
                 7460058409602240 * e ** 32 * r ** 8 + 21397820731584000 * e ** 30 * r ** 10 + 48864841525217280 * e ** 28 * r ** 12 +
@@ -885,16 +890,16 @@ def two_para_regularized_stokeslets_matrix_3d(obj1: 'sf.StokesFlowObj',
     h2 = {
         '0':  lambda r, e: (1 / 8) * np.pi ** (-1) * r ** (-5) * (e ** 2 + r ** 2) ** (-1 / 2) *
                            (3 * e ** 2 * r + r ** 3 + (-3) * e ** 2 * (e ** 2 + r ** 2) ** (
-                                       1 / 2) * np.log(
+                                   1 / 2) * np.log(
                                    r + (e ** 2 + r ** 2) ** (1 / 2))),
         '1':  lambda r, e: (1 / 8) * np.pi ** (-1) * (e ** 2 + r ** 2) ** (-3 / 2),
         '2':  lambda r, e: (1 / 32) * np.pi ** (-1) * (e ** 2 + r ** 2) ** (-5 / 2) * (
-                    7 * e ** 2 + 4 * r ** 2),
+                7 * e ** 2 + 4 * r ** 2),
         '10': lambda r, e: (1 / 5242880) * np.pi ** (-1) * (e ** 2 + r ** 2) ** (-21 / 2) *
                            (
-                                       7436429 * e ** 18 + 38244492 * e ** 16 * r ** 2 + 101985312 * e ** 14 * r ** 4 +
-                                       173065984 * e ** 12 * r ** 6 + 199691520 * e ** 10 * r ** 8 + 159753216 * e ** 8 * r ** 10 +
-                                       87707648 * e ** 6 * r ** 12 + 31653888 * e ** 4 * r ** 14 + 6782976 * e ** 2 * r ** 16 + 655360 * r ** 18),
+                                   7436429 * e ** 18 + 38244492 * e ** 16 * r ** 2 + 101985312 * e ** 14 * r ** 4 +
+                                   173065984 * e ** 12 * r ** 6 + 199691520 * e ** 10 * r ** 8 + 159753216 * e ** 8 * r ** 10 +
+                                   87707648 * e ** 6 * r ** 12 + 31653888 * e ** 4 * r ** 14 + 6782976 * e ** 2 * r ** 16 + 655360 * r ** 18),
         '20': lambda r, e: (1 / 5497558138880) * np.pi ** (-1) * (e ** 2 + r ** 2) ** (-41 / 2) * (
                 20251952525805 * e ** 38 + 219878341708740 * e ** 36 * r ** 2 + 1319270050252440 * e ** 34 * r ** 4 +
                 5436991722252480 * e ** 32 * r ** 6 + 16729205299238400 * e ** 30 * r ** 8 + 40150092718172160 * e ** 28 * r ** 10 +
@@ -927,7 +932,7 @@ def two_para_regularized_stokeslets_matrix_3d(obj1: 'sf.StokesFlowObj',
         for j in range(3):
             m[i0, j::n_unknown] = delta(i, j) * h1[n](delta_r, e) + delta_xi[:, i] * delta_xi[:,
                                                                                      j] * h2[n](
-                delta_r, e)
+                    delta_r, e)
     m.assemble()
 
     return m  # ' regularized Stokeslets  matrix, U = M * F '
@@ -970,46 +975,46 @@ def surf_force_matrix_3d_debug(obj1: 'sf.surf_forceObj',  # object contain veloc
         temp2 = (delta_r2 + delta_2) / delta_r3  # temp2 = (r^2+2*e^2)/(r^2+e^2)^1.5
         if i0 % 3 == 0:  # x axis
             m[i0, 0::n_unknown] = (temp2 + np.square(delta_xi[:, 0]) / delta_r3) / (
-                        8 * np.pi)  # Mxx
+                    8 * np.pi)  # Mxx
             m[i0, 1::n_unknown] = delta_xi[:, 0] * delta_xi[:, 1] / delta_r3 / (8 * np.pi)  # Mxy
             m[i0, 2::n_unknown] = delta_xi[:, 0] * delta_xi[:, 2] / delta_r3 / (8 * np.pi)  # Mxz
         elif i0 % 3 == 1:  # y axis
             m[i0, 0::n_unknown] = delta_xi[:, 0] * delta_xi[:, 1] / delta_r3 / (8 * np.pi)  # Mxy
             m[i0, 1::n_unknown] = (temp2 + np.square(delta_xi[:, 1]) / delta_r3) / (
-                        8 * np.pi)  # Myy
+                    8 * np.pi)  # Myy
             m[i0, 2::n_unknown] = delta_xi[:, 1] * delta_xi[:, 2] / delta_r3 / (8 * np.pi)  # Myz
         else:  # z axis
             m[i0, 0::n_unknown] = delta_xi[:, 0] * delta_xi[:, 2] / delta_r3 / (8 * np.pi)  # Mxz
             m[i0, 1::n_unknown] = delta_xi[:, 1] * delta_xi[:, 2] / delta_r3 / (8 * np.pi)  # Myz
             m[i0, 2::n_unknown] = (temp2 + np.square(delta_xi[:, 2]) / delta_r3) / (
-                        8 * np.pi)  # Mzz
+                    8 * np.pi)  # Mzz
     if obj1 is obj2:  # self-interaction
         for i0 in range(m_start, m_end):
             norm = obj1.get_norm()[i0 // 3, :]
             if i0 % 3 == 0:  # x axis
                 m[i0, i0 + 0] = (
                                         3 * np.cos(norm[0]) ** 2 + 1 / 2 * (
-                                            5 + np.cos(2 * norm[1])) * np.sin(
+                                        5 + np.cos(2 * norm[1])) * np.sin(
                                         norm[0]) ** 2) / (
                                         8 * np.pi * d_radia)  # Mxx
                 m[i0, i0 + 1] = (np.cos(norm[0]) * np.sin(norm[0]) * np.sin(norm[1]) ** 2) / (
                         8 * np.pi * d_radia)  # Mxy
                 m[i0, i0 + 2] = (-np.cos(norm[1]) * np.sin(norm[0]) * np.sin(norm[1])) / (
-                            8 * np.pi * d_radia)  # Mxz
+                        8 * np.pi * d_radia)  # Mxz
             elif i0 % 3 == 1:  # y axis
                 m[i0, i0 - 1] = (np.cos(norm[0]) * np.sin(norm[0]) * np.sin(norm[1]) ** 2) / (
                         8 * np.pi * d_radia)  # Mxy
                 m[i0, i0 + 0] = (1 / 8 * (22 - 2 * np.cos(2 * norm[0]) + np.cos(
-                    2 * (norm[0] - norm[1])) + 2 * np.cos(
+                        2 * (norm[0] - norm[1])) + 2 * np.cos(
                         2 * norm[1]) + np.cos(2 * (norm[0] + norm[1])))) / (
-                                            8 * np.pi * d_radia)  # Myy
+                                        8 * np.pi * d_radia)  # Myy
                 m[i0, i0 + 1] = (np.cos(norm[0]) * np.cos(norm[1]) * np.sin(norm[1])) / (
-                            8 * np.pi * d_radia)  # Myz
+                        8 * np.pi * d_radia)  # Myz
             else:  # z axis
                 m[i0, i0 - 2] = (-np.cos(norm[1]) * np.sin(norm[0]) * np.sin(norm[1])) / (
-                            8 * np.pi * d_radia)  # Mxz
+                        8 * np.pi * d_radia)  # Mxz
                 m[i0, i0 - 1] = (np.cos(norm[0]) * np.cos(norm[1]) * np.sin(norm[1])) / (
-                            8 * np.pi * d_radia)  # Myz
+                        8 * np.pi * d_radia)  # Myz
                 m[i0, i0 + 0] = (1 / 2 * (5 - np.cos(2 * norm[1]))) / (8 * np.pi * d_radia)  # Mzz
     m.assemble()
     return m  # ' regularized Stokeslets  matrix, U = M * F '
@@ -1047,26 +1052,26 @@ def surf_force_matrix_3d(obj1: 'sf.surf_forceObj',  # object contain velocity in
         temp2 = 1 / delta_r1  # 1/r
         if i0 % 3 == 0:  # x axis
             m[i0, 0::n_unknown] = (temp2 + delta_xi[:, 0] * delta_xi[:, 0] / delta_r3) / (
-                        8 * np.pi)  # Mxx
+                    8 * np.pi)  # Mxx
             m[i0, 1::n_unknown] = (delta_xi[:, 0] * delta_xi[:, 1] / delta_r3) / (8 * np.pi)  # Mxy
             m[i0, 2::n_unknown] = (delta_xi[:, 0] * delta_xi[:, 2] / delta_r3) / (8 * np.pi)  # Mxz
         elif i0 % 3 == 1:  # y axis
             m[i0, 0::n_unknown] = (delta_xi[:, 0] * delta_xi[:, 1] / delta_r3) / (8 * np.pi)  # Mxy
             m[i0, 1::n_unknown] = (temp2 + delta_xi[:, 1] * delta_xi[:, 1] / delta_r3) / (
-                        8 * np.pi)  # Myy
+                    8 * np.pi)  # Myy
             m[i0, 2::n_unknown] = (delta_xi[:, 1] * delta_xi[:, 2] / delta_r3) / (8 * np.pi)  # Myz
         else:  # z axis
             m[i0, 0::n_unknown] = (delta_xi[:, 0] * delta_xi[:, 2] / delta_r3) / (8 * np.pi)  # Mxz
             m[i0, 1::n_unknown] = (delta_xi[:, 1] * delta_xi[:, 2] / delta_r3) / (8 * np.pi)  # Myz
             m[i0, 2::n_unknown] = (temp2 + delta_xi[:, 2] * delta_xi[:, 2] / delta_r3) / (
-                        8 * np.pi)  # Mzz
+                    8 * np.pi)  # Mzz
     if obj1 is obj2:  # self-interaction
         for i0 in range(m_start, m_end):
             norm = obj1.get_norm()[i0 // 3, :]
             if i0 % 3 == 0:  # x axis
                 m[i0, i0 + 0] = (
                                         3 * np.cos(norm[0]) ** 2 + 1 / 2 * (
-                                            5 + np.cos(2 * norm[1])) * np.sin(
+                                        5 + np.cos(2 * norm[1])) * np.sin(
                                         norm[0]) ** 2) / (
                                         8 * np.pi * d_radia)  # Mxx
                 m[i0, i0 + 1] = (np.cos(norm[0]) * np.sin(norm[0]) * np.sin(norm[1]) ** 2) / (
@@ -1132,21 +1137,21 @@ def point_source_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain vel
         temp2 = 1 / delta_r1  # 1/r
         if i0 % 3 == 0:  # velocity x axis
             m[i0, 0::n_unknown] = (temp2 + delta_xi[:, 0] * delta_xi[:, 0] / delta_r3) / (
-                        8 * np.pi)  # Mxx
+                    8 * np.pi)  # Mxx
             m[i0, 1::n_unknown] = (delta_xi[:, 0] * delta_xi[:, 1] / delta_r3) / (8 * np.pi)  # Mxy
             m[i0, 2::n_unknown] = (delta_xi[:, 0] * delta_xi[:, 2] / delta_r3) / (8 * np.pi)  # Mxz
             m[i0, 3::n_unknown] = delta_xi[:, 0] / delta_r3 / (4 * np.pi)  # Mx_source
         elif i0 % 3 == 1:  # velocity y axis
             m[i0, 0::n_unknown] = (delta_xi[:, 0] * delta_xi[:, 1] / delta_r3) / (8 * np.pi)  # Mxy
             m[i0, 1::n_unknown] = (temp2 + delta_xi[:, 1] * delta_xi[:, 1] / delta_r3) / (
-                        8 * np.pi)  # Myy
+                    8 * np.pi)  # Myy
             m[i0, 2::n_unknown] = (delta_xi[:, 1] * delta_xi[:, 2] / delta_r3) / (8 * np.pi)  # Myz
             m[i0, 3::n_unknown] = delta_xi[:, 1] / delta_r3 / (4 * np.pi)  # My_source
         elif i0 % 3 == 2:  # velocity z axis
             m[i0, 0::n_unknown] = (delta_xi[:, 0] * delta_xi[:, 2] / delta_r3) / (8 * np.pi)  # Mxz
             m[i0, 1::n_unknown] = (delta_xi[:, 1] * delta_xi[:, 2] / delta_r3) / (8 * np.pi)  # Myz
             m[i0, 2::n_unknown] = (temp2 + delta_xi[:, 2] * delta_xi[:, 2] / delta_r3) / (
-                        8 * np.pi)  # Mzz
+                    8 * np.pi)  # Mzz
             m[i0, 3::n_unknown] = delta_xi[:, 2] / delta_r3 / (4 * np.pi)  # Mz_source
     m.assemble()
 
@@ -1204,11 +1209,11 @@ def check_point_source_dipole_matrix_3d_petsc(**kwargs):
     pass
 
 
-def point_force_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # velocity node
+def point_force_matrix_3d_petsc_mij(u_nodes: np.ndarray,  # velocity node
                                     f_nodes: np.ndarray,  # force nodes
                                     i0, **kwargs):
     mypi = np.pi
-    dxi = (t_u_node - f_nodes).T
+    dxi = (u_nodes - f_nodes).T
     dx0 = dxi[0]
     dx1 = dxi[1]
     dx2 = dxi[2]
@@ -1491,3 +1496,329 @@ def pf_infhelix_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity in
 
 def check_pf_infhelix_3d_petsc(**kwargs):
     pass
+
+
+# rotational symmetric stokeslets matrix in bulk fluid.
+#   assert the geometric symmetric along z axis, and the slice of nodes are at XY plate.
+def point_force_ring_3d_petsc_int(obj1: 'sf.StokesFlowObj',  # contain velocity information
+                                  obj2: 'sf.StokesFlowObj',  # contain force information
+                                  m, int_epsabs=1e-20, int_epsrel=1e-05,
+                                  int_limit=1000, **kwargs):
+    def sij1(ru, zu, rf, zf, theta):
+        _sij = lambda ru, zu, rf, zf, theta: np.array(
+                (((3 * rf ** 2 + 4 * ru ** 2 + 2 * (
+                        zf - zu) ** 2 - 8 * rf * ru * np.cos(theta) + rf ** 2 * np.cos(
+                        2 * theta)) / (
+                          16. * np.pi * (rf ** 2 + ru ** 2 + (
+                          zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                          theta)) ** 1.5), (rf * (
+                        -ru + rf * np.cos(theta)) * np.sin(theta)) / (8. * np.pi * (
+                        rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(theta)) ** 1.5),
+                  -((zf - zu) * (ru - rf * np.cos(theta))) / (
+                          8. * np.pi * (rf ** 2 + ru ** 2 + (
+                          zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                          theta)) ** 1.5)),
+                 ((rf * (
+                         -ru + rf * np.cos(theta)) * np.sin(theta)) / (8. * np.pi * (
+                         rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(theta)) ** 1.5),
+                  (
+                          3 * rf ** 2 + 2 * (
+                          ru ** 2 + (
+                          zf - zu) ** 2) - rf * (
+                                  4 * ru * np.cos(
+                                  theta) + rf * np.cos(
+                                  2 * theta))) / (
+                          16. * np.pi * (
+                          rf ** 2 + ru ** 2 + (
+                          zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                          theta)) ** 1.5),
+                  (rf * (
+                          zf - zu) * np.sin(
+                          theta)) / (
+                          8. * np.pi * (
+                          rf ** 2 + ru ** 2 + (
+                          zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                          theta)) ** 1.5)),
+                 (-((zf - zu) * (ru - rf * np.cos(theta))) / (
+                         8. * np.pi * (rf ** 2 + ru ** 2 + (
+                         zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                         theta)) ** 1.5),
+                  (rf * (zf - zu) * np.sin(theta)) / (
+                          8. * np.pi * (rf ** 2 + ru ** 2 + (
+                          zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                          theta)) ** 1.5), (
+                          rf ** 2 + ru ** 2 + 2 * (
+                          zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                          theta)) / (8. * np.pi * (
+                         rf ** 2 + ru ** 2 + (
+                         zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                         theta)) ** 1.5))))
+        tsij = _sij(ru, zu, rf, zf, theta)
+        # noinspection PyTypeChecker
+        return np.hstack(np.transpose(tsij, (2, 0, 1)))
+
+    def sij2(ru, zu, rf, zf, theta):
+        _sij = lambda ru, zu, rf, zf, theta: np.array(
+                (((3 * rf ** 2 + 4 * ru ** 2 + 2 * (zf - zu) ** 2 - 8 * rf * ru * np.cos(
+                        theta) + rf ** 2 * np.cos(2 * theta)) / (16. * np.pi * (
+                        rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                        theta)) ** 1.5), (rf * (-ru + rf * np.cos(theta)) * np.sin(theta)) / (
+                          8. * np.pi * (
+                          rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                          theta)) ** 1.5), -((zf - zu) * (ru - rf * np.cos(theta))) / (
+                          8. * np.pi * (
+                          rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                          theta)) ** 1.5)),
+                 ((rf * (-ru + rf * np.cos(theta)) * np.sin(theta)) / (8. * np.pi * (
+                         rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                         theta)) ** 1.5), (3 * rf ** 2 + 2 * (ru ** 2 + (zf - zu) ** 2) - rf * (
+                         4 * ru * np.cos(theta) + rf * np.cos(2 * theta))) / (16. * np.pi * (
+                         rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                         theta)) ** 1.5), (rf * (zf - zu) * np.sin(theta)) / (8. * np.pi * (
+                         rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                         theta)) ** 1.5)),
+                 (-((zf - zu) * (ru - rf * np.cos(theta))) / (
+                         8. * np.pi * (rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                         theta)) ** 1.5), (rf * (zf - zu) * np.sin(theta)) / (8. * np.pi * (
+                         rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                         theta)) ** 1.5), (rf ** 2 + ru ** 2 + 2 * (
+                         zf - zu) ** 2 - 2 * rf * ru * np.cos(theta)) / (8. * np.pi * (
+                         rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                         theta)) ** 1.5))))
+        tsij = _sij(ru, zu, rf, zf, theta)
+        # noinspection PyTypeChecker
+        return np.hstack(np.transpose(tsij, (2, 0, 1)))
+
+    def sij3(ru, zu, rf, zf, theta):
+        _sij = lambda ru, zu, rf, zf, theta: np.array(
+                ((((3 * rf ** 2 + 4 * ru ** 2 + 2 * (zf - zu) ** 2) * np.cos(theta) + rf * (
+                        -3 * ru - 5 * ru * np.cos(2 * theta) + rf * np.cos(3 * theta))) / (
+                          16. * np.pi * (
+                          rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                          theta)) ** 1.5), ((2 * rf ** 2 + 2 * ru ** 2 + (
+                        zf - zu) ** 2 - 5 * rf * ru * np.cos(theta) + rf ** 2 * np.cos(
+                        2 * theta)) * np.sin(theta)) / (8. * np.pi * (
+                        rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                        theta)) ** 1.5), -((zf - zu) * (ru - rf * np.cos(theta))) / (8. * np.pi * (
+                        rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                        theta)) ** 1.5)),
+                 (((-rf ** 2 - ru ** 2 - (zf - zu) ** 2 + rf * ru * np.cos(
+                         theta) + rf ** 2 * np.cos(2 * theta)) * np.sin(theta)) / (8. * np.pi * (
+                         rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                         theta)) ** 1.5), ((3 * rf ** 2 + 2 * (ru ** 2 + (zf - zu) ** 2)) * np.cos(
+                         theta) - rf * (ru * (3 + np.cos(2 * theta)) + rf * np.cos(3 * theta))) / (
+                          16. * np.pi * (rf ** 2 + ru ** 2 + (
+                          zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                          theta)) ** 1.5),
+                  (rf * (zf - zu) * np.sin(theta)) / (8. * np.pi * (
+                          rf ** 2 + ru ** 2 + (
+                          zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                          theta)) ** 1.5)),
+                 (((zf - zu) * (-(ru * np.cos(theta)) + rf * np.cos(2 * theta))) / (8. * np.pi * (
+                         rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                         theta)) ** 1.5),
+                  ((zf - zu) * (-ru + 2 * rf * np.cos(theta)) * np.sin(theta)) / (8. * np.pi * (
+                          rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                          theta)) ** 1.5),
+                  (rf ** 2 + ru ** 2 + 2 * (zf - zu) ** 2 - 2 * rf * ru * np.cos(theta)) / (
+                          8. * np.pi * (
+                          rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                          theta)) ** 1.5))))
+        tsij = _sij(ru, zu, rf, zf, theta)
+        # noinspection PyTypeChecker
+        return np.hstack(np.transpose(tsij, (2, 0, 1)))
+
+    def sij4(ru, zu, rf, zf, theta):
+        _sij = lambda ru, zu, rf, zf, theta: np.array(
+                (((2 * (2 * rf ** 2 + 2 * ru ** 2 + (zf - zu) ** 2) * np.cos(theta) - rf * ru * (
+                        5 + 3 * np.cos(2 * theta))) / (16. * np.pi * (
+                        rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                        theta)) ** 1.5), -((rf ** 2 + 2 * ru ** 2 + (
+                        zf - zu) ** 2 - 3 * rf * ru * np.cos(theta)) * np.sin(theta)) / (
+                          8. * np.pi * (
+                          rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                          theta)) ** 1.5), -((zf - zu) * (ru - rf * np.cos(theta))) / (
+                          8. * np.pi * (
+                          rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                          theta)) ** 1.5)),
+                 (((2 * rf ** 2 + ru ** 2 + (
+                         zf - zu) ** 2 - 3 * rf * ru * np.cos(theta)) * np.sin(theta)) / (
+                          8. * np.pi * (rf ** 2 + ru ** 2 + (
+                          zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                          theta)) ** 1.5), (2 * (
+                         rf ** 2 + ru ** 2 + (zf - zu) ** 2) * np.cos(theta) - rf * ru * (
+                                                    1 + 3 * np.cos(
+                                                    2 * theta))) / (
+                          16. * np.pi * (rf ** 2 + ru ** 2 + (
+                          zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                          theta)) ** 1.5),
+                  (rf * (zf - zu) * np.sin(theta)) / (8. * np.pi * (
+                          rf ** 2 + ru ** 2 + (
+                          zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                          theta)) ** 1.5)),
+                 (((zf - zu) * (rf - ru * np.cos(theta))) / (8. * np.pi * (
+                         rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                         theta)) ** 1.5), (ru * (zf - zu) * np.sin(theta)) / (8. * np.pi * (
+                         rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                         theta)) ** 1.5),
+                  (rf ** 2 + ru ** 2 + 2 * (zf - zu) ** 2 - 2 * rf * ru * np.cos(theta)) / (
+                          8. * np.pi * (
+                          rf ** 2 + ru ** 2 + (zf - zu) ** 2 - 2 * rf * ru * np.cos(
+                          theta)) ** 1.5))))
+        tsij = _sij(ru, zu, rf, zf, theta)
+        # noinspection PyTypeChecker
+        return np.hstack(np.transpose(tsij, (2, 0, 1)))
+
+    u_nodes = obj1.get_u_nodes()
+    f_nodes = obj2.get_f_nodes()
+    err_msg = '#The geometric symmetric along z axis, and the slice of nodes are at XY plate. '
+    assert np.allclose(u_nodes[:, 1], 0), err_msg
+    assert np.allclose(f_nodes[:, 1], 0), err_msg
+    ru = u_nodes[:, 0]
+    zu = u_nodes[:, 2]
+    _, u_glbIdx_all = obj1.get_u_geo().get_glbIdx()
+    _, f_glbIdx_all = obj2.get_f_geo().get_glbIdx()
+    # u_geo = obj1.get_u_geo()
+    f_geo = obj2.get_f_geo()
+    f_dmda = f_geo.get_dmda()
+
+    warpper_sij = lambda theta: sij4(ru, zu, rf, zf, theta)
+    for i0 in range(f_dmda.getRanges()[0][0], f_dmda.getRanges()[0][1]):
+        rf = f_nodes[i0, 0]
+        zf = f_nodes[i0, 2]
+        tsij = integrate.quad_vec(warpper_sij, 0, 2 * np.pi, epsabs=int_epsabs, epsrel=int_epsrel,
+                                  limit=int_limit, )[0]
+        # print(rf)
+        f_glb = f_glbIdx_all[i0 * 3]
+        m.setValues(u_glbIdx_all, f_glb + 0, tsij[0] * rf, addv=False)
+        m.setValues(u_glbIdx_all, f_glb + 1, tsij[1] * rf, addv=False)
+        m.setValues(u_glbIdx_all, f_glb + 2, tsij[2] * rf, addv=False)
+    m.assemble()
+    return m
+
+
+def point_force_ring_3d_petsc_sum(obj1: 'sf.StokesFlowObj',  # contain velocity information
+                                  obj2: 'sf.StokesFlowObj',  # contain force information
+                                  m, **kwargs):
+    # Solve m matrix using point force Stokeslets method
+    # U = M * F.
+    n_c = kwargs['n_c']
+    u_nodes = obj1.get_u_nodes()
+    f_nodes = obj2.get_f_nodes()
+    rf = f_nodes[:, 0]
+    zf = f_nodes[:, 2]
+    _, u_glbIdx_all = obj1.get_u_geo().get_glbIdx()
+    _, f_glbIdx_all = obj2.get_f_geo().get_glbIdx()
+    u_dmda = obj1.get_u_geo().get_dmda()
+
+    for i0 in range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1]):
+        mij = [[0, 0, 0], [0, 0, 0], [0, 0, 0], ]
+        for thetai in np.linspace(0, 2 * np.pi, n_c, endpoint=False):
+            use_nodes = np.vstack((rf * np.cos(thetai), rf * np.sin(thetai), zf)).T
+            tmij = point_force_matrix_3d_petsc_mij(u_nodes[i0], use_nodes, i0)
+            mij[0][0] = mij[0][0] + tmij[0] * np.cos(thetai) - tmij[1] * np.sin(-thetai)
+            mij[0][1] = mij[0][1] + tmij[0] * np.sin(-thetai) + tmij[1] * np.cos(thetai)
+            mij[0][2] = mij[0][2] + tmij[2]
+            mij[1][0] = mij[1][0] + tmij[3] * np.cos(thetai) - tmij[4] * np.sin(-thetai)
+            mij[1][1] = mij[1][1] + tmij[3] * np.sin(-thetai) + tmij[4] * np.cos(thetai)
+            mij[1][2] = mij[1][2] + tmij[5]
+            mij[2][0] = mij[2][0] + tmij[6] * np.cos(thetai) - tmij[7] * np.sin(-thetai)
+            mij[2][1] = mij[2][1] + tmij[6] * np.sin(-thetai) + tmij[7] * np.cos(thetai)
+            mij[2][2] = mij[2][2] + tmij[8]
+        u_glb = u_glbIdx_all[i0 * 3]
+        m.setValues(u_glb + 0, f_glbIdx_all[0::3], mij[0][0], addv=False)
+        m.setValues(u_glb + 0, f_glbIdx_all[1::3], mij[0][1], addv=False)
+        m.setValues(u_glb + 0, f_glbIdx_all[2::3], mij[0][2], addv=False)
+        m.setValues(u_glb + 1, f_glbIdx_all[0::3], mij[1][0], addv=False)
+        m.setValues(u_glb + 1, f_glbIdx_all[1::3], mij[1][1], addv=False)
+        m.setValues(u_glb + 1, f_glbIdx_all[2::3], mij[1][2], addv=False)
+        m.setValues(u_glb + 2, f_glbIdx_all[0::3], mij[2][0], addv=False)
+        m.setValues(u_glb + 2, f_glbIdx_all[1::3], mij[2][1], addv=False)
+        m.setValues(u_glb + 2, f_glbIdx_all[2::3], mij[2][2], addv=False)
+    m.assemble()
+    return True  # ' point_force_matrix, U = M * F '
+
+
+def point_force_ring_3d_petsc(obj1: 'sf.StokesFlowObj',  # contain velocity information
+                              obj2: 'sf.StokesFlowObj',  # contain force information
+                              m, int_epsabs=1e-20, int_epsrel=1e-05,
+                              int_limit=1000, **kwargs):
+    return point_force_ring_3d_petsc_int(obj1, obj2, m, int_epsabs, int_epsrel, int_limit, **kwargs)
+    # return point_force_ring_3d_petsc_sum(obj1, obj2, m, **kwargs)
+
+
+def self_repeat_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity information
+                         obj2: 'sf.StokesFlowObj',  # object contain force information
+                         m, **kwargs):
+    # Solve m matrix using point force Stokeslets method
+    # U = M * F.
+    f_geo = obj2.get_f_geo()
+    if isinstance(f_geo, geo.SelfRepeat_body_geo):
+        u_nodes = obj1.get_u_nodes()
+        _, u_glbIdx_all = obj1.get_u_geo().get_glbIdx()
+        _, f_glbIdx_all = obj2.get_f_geo().get_glbIdx()
+        u_dmda = obj1.get_u_geo().get_dmda()
+        repeat_n = f_geo.repeat_n
+        for repeat_i in range(repeat_n):
+            f_nodes = f_geo.get_bodyi_nodes(repeat_i)
+            for i0 in range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1]):
+                m00, m01, m02, m10, m11, m12, m20, m21, m22, i1 = \
+                    point_force_matrix_3d_petsc_mij(u_nodes[i0], f_nodes, i0)
+                u_glb = u_glbIdx_all[i1 * 3]
+                m.setValues(u_glb + 0, f_glbIdx_all[0::3], m00, addv=True)
+                m.setValues(u_glb + 0, f_glbIdx_all[1::3], m01, addv=True)
+                m.setValues(u_glb + 0, f_glbIdx_all[2::3], m02, addv=True)
+                m.setValues(u_glb + 1, f_glbIdx_all[0::3], m10, addv=True)
+                m.setValues(u_glb + 1, f_glbIdx_all[1::3], m11, addv=True)
+                m.setValues(u_glb + 1, f_glbIdx_all[2::3], m12, addv=True)
+                m.setValues(u_glb + 2, f_glbIdx_all[0::3], m20, addv=True)
+                m.setValues(u_glb + 2, f_glbIdx_all[1::3], m21, addv=True)
+                m.setValues(u_glb + 2, f_glbIdx_all[2::3], m22, addv=True)
+        m.assemble()
+    else:
+        point_force_matrix_3d_petsc(obj1, obj2, m, **kwargs)
+    return True  # ' point_force_matrix, U = M * F '
+
+
+def self_rotate_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity information
+                         obj2: 'sf.StokesFlowObj',  # object contain force information
+                         m, **kwargs):
+    n_tail = kwargs['n_tail']
+
+    u_nodes = obj1.get_u_nodes()
+    f_geo = obj2.get_f_geo()
+    _, u_glbIdx_all = obj1.get_u_geo().get_glbIdx()
+    _, f_glbIdx_all = obj2.get_f_geo().get_glbIdx()
+    u_dmda = obj1.get_u_geo().get_dmda()
+    delta_rot = 2 * np.pi / n_tail
+    tf_geo = f_geo.copy()
+    tf_geo.node_rotation(tf_geo.get_geo_norm(), -1 * delta_rot)
+
+    for i0 in range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1]):
+        u_glb = u_glbIdx_all[i0 * 3]
+        for thetai in np.linspace(0, 2 * np.pi, n_tail, endpoint=False):
+            rot_M = get_rot_matrix(f_geo.get_geo_norm(), thetai)
+            tf_geo.node_rotation(tf_geo.get_geo_norm(), delta_rot)
+            f_nodes = tf_geo.get_nodes()
+            m00, m01, m02, m10, m11, m12, m20, m21, m22, i1 = \
+                point_force_matrix_3d_petsc_mij(u_nodes[i0], f_nodes, i0)
+            t1 = m00 * rot_M[0][0] + m01 * rot_M[1][0] + m02 * rot_M[2][0]
+            m.setValues(u_glb + 0, f_glbIdx_all[0::3], t1, addv=True)
+            t1 = m00 * rot_M[0][1] + m01 * rot_M[1][1] + m02 * rot_M[2][1]
+            m.setValues(u_glb + 0, f_glbIdx_all[1::3], t1, addv=True)
+            t1 = m00 * rot_M[0][2] + m01 * rot_M[1][2] + m02 * rot_M[2][2]
+            m.setValues(u_glb + 0, f_glbIdx_all[2::3], t1, addv=True)
+            t1 = m10 * rot_M[0][0] + m11 * rot_M[1][0] + m12 * rot_M[2][0]
+            m.setValues(u_glb + 1, f_glbIdx_all[0::3], t1, addv=True)
+            t1 = m10 * rot_M[0][1] + m11 * rot_M[1][1] + m12 * rot_M[2][1]
+            m.setValues(u_glb + 1, f_glbIdx_all[1::3], t1, addv=True)
+            t1 = m10 * rot_M[0][2] + m11 * rot_M[1][2] + m12 * rot_M[2][2]
+            m.setValues(u_glb + 1, f_glbIdx_all[2::3], t1, addv=True)
+            t1 = m20 * rot_M[0][0] + m21 * rot_M[1][0] + m22 * rot_M[2][0]
+            m.setValues(u_glb + 2, f_glbIdx_all[0::3], t1, addv=True)
+            t1 = m20 * rot_M[0][1] + m21 * rot_M[1][1] + m22 * rot_M[2][1]
+            m.setValues(u_glb + 2, f_glbIdx_all[1::3], t1, addv=True)
+            t1 = m20 * rot_M[0][2] + m21 * rot_M[1][2] + m22 * rot_M[2][2]
+            m.setValues(u_glb + 2, f_glbIdx_all[2::3], t1, addv=True)
+    m.assemble()
+    return True

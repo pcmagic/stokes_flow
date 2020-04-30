@@ -3,9 +3,10 @@ import numpy as np
 from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.objComposite import *
-from src.stokes_flow import obj_dic
-from src.ref_solution import *
-from src.geo import *
+
+# from src.stokes_flow import obj_dic
+# from src.ref_solution import *
+# from src.geo import *
 
 __all__ = ['save_singleEcoli_vtk', 'save_singleEcoli_U_vtk', 'save_singleEcoli_U_4part_vtk',
            'save_grid_sphere_vtk',
@@ -38,7 +39,8 @@ def save_singleEcoli_vtk(problem: sf.StokesFlowProblem, createHandle=createEcoli
 
     # create check obj
     check_kwargs = problem_kwargs.copy()
-    check_kwargs['nth'] = problem_kwargs['nth'] - 2 if problem_kwargs['nth'] >= 10 else problem_kwargs['nth'] + 1
+    check_kwargs['nth'] = problem_kwargs['nth'] - 2 if problem_kwargs['nth'] >= 10 else \
+    problem_kwargs['nth'] + 1
     check_kwargs['ds'] = problem_kwargs['ds'] * 1.2
     check_kwargs['hfct'] = 1
     check_kwargs['Tfct'] = 1
@@ -63,10 +65,10 @@ def save_singleEcoli_vtk(problem: sf.StokesFlowProblem, createHandle=createEcoli
 
 
 # given velocity case
-def save_singleEcoli_U_vtk(problem: sf.StokesFlowProblem,
-                           createHandle=createEcoliComp_tunnel, part='full'):
+def save_singleEcoli_U_vtk(problem: sf.StokesFlowProblem, createHandle=createEcoliComp_tunnel,
+                           part='full', prefix=''):
     def save_head():
-        vsobj = createHandle(**check_kwargs).get_obj_list()[0]
+        vsobj = createHandle(**check_kwargs)[0]
         vsobj.set_rigid_velocity(rel_Us + ecoli_U, center=center)
         velocity_err_sphere = next(problem.vtk_check(fileHandle, vsobj))
         PETSc.Sys.Print('velocity error of sphere (total, x, y, z): ', velocity_err_sphere)
@@ -84,6 +86,7 @@ def save_singleEcoli_U_vtk(problem: sf.StokesFlowProblem,
         tail_obj_list = createHandle(**check_kwargs)[1]
         tail_obj_all = sf.StokesFlowObj()
         tail_obj_all.combine(tail_obj_list, set_re_u=True, set_force=True)
+        tail_obj_all.set_name('tail')
         tidx = np.arange(tail_obj_all.get_n_u_node())
         np.random.shuffle(tidx)
         tidx = tidx[:np.min((tidx.size, 3000))]
@@ -108,7 +111,7 @@ def save_singleEcoli_U_vtk(problem: sf.StokesFlowProblem,
 
     t0 = time()
     problem_kwargs = problem.get_kwargs()
-    fileHandle = problem_kwargs['fileHandle']
+    fileHandle = problem_kwargs['fileHandle'] + prefix
     ecoli_U = problem_kwargs['ecoli_U']
     rel_Us = problem_kwargs['rel_Us']
     rel_Uh = problem_kwargs['rel_Uh']
@@ -144,7 +147,8 @@ def save_singleEcoli_U_vtk(problem: sf.StokesFlowProblem,
     return True
 
 
-def save_singleEcoli_U_4part_vtk(problem: sf.StokesFlowProblem, U_list, createHandle=createEcoliComp_tunnel):
+def save_singleEcoli_U_4part_vtk(problem: sf.StokesFlowProblem, U_list,
+                                 createHandle=createEcoliComp_tunnel):
     # given velocity case,
     #  consider the ecoli constituted by four separate part: head, helix0, helix1, and Tgeo.
     #  each part have its own velocity U=[ux, uy, uz, wx, wy ,wz]
@@ -172,7 +176,8 @@ def save_singleEcoli_U_4part_vtk(problem: sf.StokesFlowProblem, U_list, createHa
 
     # create check obj
     check_kwargs = problem_kwargs.copy()
-    check_kwargs['nth'] = problem_kwargs['nth'] - 2 if problem_kwargs['nth'] >= 6 else problem_kwargs['nth'] + 1
+    check_kwargs['nth'] = problem_kwargs['nth'] - 2 if problem_kwargs['nth'] >= 6 else \
+    problem_kwargs['nth'] + 1
     check_kwargs['ds'] = problem_kwargs['ds'] * 1.2
     check_kwargs['hfct'] = 1
     check_kwargs['Tfct'] = 1

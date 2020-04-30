@@ -231,7 +231,7 @@ def main_fun(**main_kwargs):
         problem = problem_dic[matrix_method](**problem_kwargs)
         if pickProblem:
             problem.pickmyself(fileHandle,
-                               check=True)  # not save anything really, just check if the path is correct, to avoid this error after long time calculation.
+                               ifcheck=True)  # not save anything really, just check if the path is correct, to avoid this error after long time calculation.
         obj_sphere = obj_dic[matrix_method]()
         obj_sphere_kwargs = {'name': 'sphereObj_0_0'}
         sphere_geo1 = sphere_geo0.copy()

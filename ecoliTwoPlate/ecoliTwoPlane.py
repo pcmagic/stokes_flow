@@ -55,7 +55,7 @@ def main_fun(**main_kwargs):
         print_case_info(**problem_kwargs)
         ecoli_comp = createEcoliComp_ellipse(name='ecoli_0', **problem_kwargs)
         problem = sf.ForceFreeProblem(**problem_kwargs)
-        problem.do_solve_process((ecoli_comp,), pick_M=True)
+        problem.do_solve_process((ecoli_comp,), pick_M=False)
         head_U, tail_U = print_single_ecoli_forcefree_result(ecoli_comp, **problem_kwargs)
         save_singleEcoli_vtk(problem, createHandle=createEcoliComp_ellipse)
     else:

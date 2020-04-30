@@ -15,10 +15,9 @@ import numpy as np
 from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.myio import *
-from src.support_class import *
 from src.objComposite import createEcoliComp_tunnel
 from src.myvtk import save_singleEcoli_vtk
-from ecoli_in_pipe.ecoli_common import *
+from codeStore.ecoli_common import *
 
 
 # @profile
@@ -37,7 +36,7 @@ def main_fun(**main_kwargs):
         ecoli_length = (problem_kwargs['ls'] + problem_kwargs['dist_hs'] +
                         problem_kwargs['ph'] * problem_kwargs['ch']) * problem_kwargs['zoom_factor']
         ecoli_comp1.move(np.array((0, 0, 1 * ecoli_length)))
-        problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
+        problem = sf.StokesletsInPipeforcefreeProblem(**problem_kwargs)
         problem.set_prepare(forcepipe)
         problem.add_obj(ecoli_comp0)
         problem.add_obj(ecoli_comp1)

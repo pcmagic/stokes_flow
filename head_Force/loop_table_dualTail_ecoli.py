@@ -9,15 +9,12 @@ import numpy as np
 from time import time
 from scipy.io import savemat
 # from src.stokes_flow import problem_dic, obj_dic
-from src.geo import *
 from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.myio import *
-from src.support_class import *
 from src.objComposite import *
 # from src.myvtk import save_singleEcoli_vtk
-import ecoli_in_pipe.ecoli_common as ec
-import os
+import codeStore.ecoli_common as ec
 import pickle
 
 
@@ -126,7 +123,7 @@ def main_fun_noIter(**main_kwargs):
         rel_U_list = [np.zeros(6),
                       np.array((0, 0, 0, 0, 0, rel_tail1)),
                       np.array((0, 0, 0, 0, 0, rel_tail2))]
-        ecoli_comp.dbg_set_rel_U_list(rel_U_list)
+        ecoli_comp.set_rel_U_list(rel_U_list)
         tail_obj1 = ecoli_comp.get_obj_list()[1]
         tail_obj1.node_rotation(tail_obj1.get_u_geo().get_geo_norm(), norm_psi1)
         tail_obj2 = ecoli_comp.get_obj_list()[2]

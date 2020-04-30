@@ -5,7 +5,6 @@ import petsc4py
 petsc4py.init(sys.argv)
 
 import numpy as np
-import pickle
 # from time import time
 # from scipy.io import loadmat
 # from src.stokes_flow import problem_dic, obj_dic
@@ -16,7 +15,7 @@ from src.myio import *
 # from src.support_class import *
 from src.objComposite import *
 from src.myvtk import save_singleEcoli_vtk
-from ecoli_in_pipe.ecoli_common import *
+from codeStore.ecoli_common import *
 
 
 # @profile
@@ -44,7 +43,7 @@ def main_fun(**main_kwargs):
         #     obj.get_u_geo().save_nodes(filename + '_U')
         #     obj.get_f_geo().save_nodes(filename + '_f')
         problem = sf.ForceFreeProblem(**problem_kwargs)
-        problem.do_solve_process(ecoli_comp, pick_M=True)
+        problem.do_solve_process(ecoli_comp, pick_M=False)
         # # debug
         # problem.saveM_ASCII('%s_M.txt' % fileHandle)
         # problem.saveF_ASCII('%s_F.txt' % fileHandle)
@@ -92,7 +91,7 @@ def main_fun_Iter(**main_kwargs):
         problem.add_obj(ecoli_comp)
         problem.set_iterate_comp(ecoli_comp)
         problem.create_matrix()
-        ref_U = problem.do_iterate3(ini_refU1=int_ref_U, tolerate=iter_tor)
+        ref_U = problem.do_iterate3(ini_refU1=int_ref_U, rtol=iter_tor)
         ecoli_comp.set_ref_U(ref_U)
         with np.printoptions(formatter={'float': '{:.16e}'.format}):
             PETSc.Sys.Print('  true ref_U in free space', ref_U)

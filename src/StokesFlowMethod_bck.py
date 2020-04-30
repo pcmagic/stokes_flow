@@ -296,11 +296,11 @@ def stokeslets_matrix_3d(obj1: 'sf.StokesFlowObj',  # object contain velocity in
 
 
 def light_stokeslets_matrix_3d_petsc(u_nodes: np.ndarray, f_nodes: np.ndarray):
-    from src.geo import geo
+    from src.geo import base_geo
 
-    temp_geo1 = geo()  # velocity nodes
+    temp_geo1 = base_geo()  # velocity nodes
     temp_geo1.set_nodes(u_nodes, deltalength=0)
-    temp_geo2 = geo()  # force nodes
+    temp_geo2 = base_geo()  # force nodes
     temp_geo2.set_nodes(f_nodes, deltalength=0)
     temp_obj1 = sf.StokesFlowObj()
     temp_obj1.set_data(temp_geo2, temp_geo1)

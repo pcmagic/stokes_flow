@@ -7,7 +7,8 @@ from ecoli_in_pipe import head_tail
 # import numpy as np
 # from scipy.interpolate import interp1d
 # from petsc4py import PETSc
-# from ecoli_in_pipe import single_ecoli, ecoliInPipe, head_tail, ecoli_U, ecoli_common
+# from ecoli_in_pipe import single_ecoli, ecoliInPipe, head_tail, ecoli_U
+# from codeStore import ecoli_common
 #
 #
 # def call_head_tial(uz_factor=1., wz_factor=1.):

@@ -4,7 +4,7 @@ import numpy as np
 class Quaternion(object):
     """docstring for Quaternion"""
     def __init__(self, axis = None, angle = 0):
-        super(Quaternion, self).__init__()
+        super().__init__()
 
         if axis is None:
             axis = np.array([0,0,1.0])

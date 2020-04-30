@@ -34,7 +34,7 @@
 # from sympy.solvers import solve
 
 # from IPython.display import display, HTML
-# from tqdm import tqdm_notebook as tqdm
+# from tqdm.notebook import tqdm as tqdm_notebook
 # import pandas as pd
 # import re
 # from scanf import scanf

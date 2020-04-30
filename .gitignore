@@ -6,6 +6,7 @@
 *.csv
 *.vtu
 *.vtk
+*.vts
 *.dll
 *.tar.gz
 *.m~
@@ -27,6 +28,7 @@ tube+sphere/
 *.exe
 *(copy).py
 *~
+*.swp
 *.pbs
 *.sh
 *.e*
@@ -38,6 +40,10 @@ pkgs/*
 bck/*
 head_Force/loop_table/*/
 head_Force/do_calculate_table/*/
+head_Force/fplanck*
+sphereInPipe/test_L_ds/*
+head_Force/skew_symmetry_2/*
+infhelix/tail2/*
 try_code/persistence*
 ecoli_in_pipe/free_space_varinghead/*/
 

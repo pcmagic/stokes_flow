@@ -305,7 +305,7 @@ def construct(**main_kwargs):
     th = problem_kwargs['th']
     stokesletsInPipe_pipeFactor = problem_kwargs['stokesletsInPipe_pipeFactor']
     problem = problem_dic[matrix_method](**problem_kwargs)
-    # problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
+    # problem = sf.StokesletsInPipeforcefreeProblem(**problem_kwargs)
 
     problem.set_prepare(fileHandle)
     problem.pickmyself(fileHandle)
@@ -327,7 +327,7 @@ def construct(**main_kwargs):
 def debug_stokeslets_b(b, node, threshold=10):
     problem_kwargs = get_problem_kwargs()
     fileHandle = problem_kwargs['fileHandle']
-    problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
+    problem = sf.StokesletsInPipeforcefreeProblem(**problem_kwargs)
     # fileHandle = 'construct07'
     problem.set_prepare(fileHandle)
 
@@ -370,7 +370,7 @@ def debug_uana_b(b, node, threshold=10, ifprint=True):
     # calculate u33 for given b and given nodes.
     # problem_kwargs = get_problem_kwargs()
     # fileHandle = problem_kwargs['fileHandle']
-    # problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
+    # problem = sf.StokesletsInPipeforcefreeProblem(**problem_kwargs)
     # problem.set_prepare(fileHandle)
     # node = np.array(node).reshape((-1, 3))
     # num_ans1, num_ans2, num_ans3 = problem.debug_solve_stokeslets_b(b=b, node=node)
@@ -481,7 +481,7 @@ def debug_solve_stokeslets_fnode(fnode):
     from src.geo import tunnel_geo
     problem_kwargs = get_problem_kwargs()
     fileHandle = problem_kwargs['fileHandle']
-    problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
+    problem = sf.StokesletsInPipeforcefreeProblem(**problem_kwargs)
     problem.set_prepare(fileHandle)
     fnode = np.array(fnode).reshape((1, 3))
 
@@ -518,7 +518,7 @@ def m2_err_z():
     # velocity (stokeslets) in pipe
     problem_kwargs = get_problem_kwargs()
     fileHandle = problem_kwargs['fileHandle']
-    problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
+    problem = sf.StokesletsInPipeforcefreeProblem(**problem_kwargs)
     problem.set_prepare(fileHandle)
     _, _, num_ans3 = problem.debug_solve_stokeslets_b(b=b, node=nodes)
     num_uz = num_ans3.getArray().reshape((-1, 3))[:, 2]

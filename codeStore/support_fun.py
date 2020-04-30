@@ -9,8 +9,8 @@ Created on Tue Sep 19 11:05:23 2017
 
 from matplotlib import pyplot as plt
 
-plt.rcParams['figure.figsize'] = (18.5, 10.5)
-fontsize = 40
+# plt.rcParams['figure.figsize'] = (18.5, 10.5)
+# fontsize = 40
 
 import os
 import glob
@@ -19,17 +19,21 @@ import matplotlib
 import re
 from scanf import scanf
 from scipy import interpolate, integrate
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from mpl_toolkits.mplot3d.art3d import Line3DCollection
 
 # from scipy.optimize import curve_fit
 
-PWD = os.getcwd()
-font = {'size': 20}
-matplotlib.rc('font', **font)
-np.set_printoptions(linewidth=90, precision=5)
+# font = {'size': 20}
+# matplotlib.rc('font', **font)
+# np.set_printoptions(linewidth=90, precision=5)
 
 markerstyle_list = ['^', 'v', 'o', 's', 'p', 'd', 'H',
                     '1', '2', '3', '4', '8', 'P', '*',
                     'h', '+', 'x', 'X', 'D', '|', '_', ]
+
+color_list = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2',
+              '#7f7f7f', '#bcbd22', '#17becf']
 
 
 def read_array(text_headle, FILE_DATA, array_length=6):
@@ -42,6 +46,7 @@ def read_array(text_headle, FILE_DATA, array_length=6):
         temp1 = np.ones(array_length)
         temp1[:] = np.nan
     return temp1
+
 
 class fullprint:
     'context manager for printing full numpy arrays'
@@ -71,9 +76,9 @@ def fit_line(ax, x, y, x0, x1, ifprint=1, linestyle='-.', linewidth=1, extendlin
     fit_para = np.polyfit(tx, ty, 1)
     pol_y = np.poly1d(fit_para)
     if extendline:
-        fit_x = np.linspace(x.min(), x.max(), 30)
+        fit_x = np.linspace(x.min(), x.max(), 100)
     else:
-        fit_x = np.linspace(max(x.min(), x0), min(x.max(), x1), 30)
+        fit_x = np.linspace(max(x.min(), x0), min(x.max(), x1), 100)
     if ax is not None:
         ax.plot(fit_x, pol_y(fit_x), linestyle, linewidth=linewidth,
                 color=color, alpha=alpha)
@@ -128,46 +133,37 @@ def fit_semilogy(ax, x, y, x0, x1, ifprint=1, linestyle='-.', linewidth=1, exten
     return fit_para
 
 
-def get_simulate_data(eq_dir):
-    import pandas as pd
+def norm_self(v):
+    return v / np.linalg.norm(v)
 
-    absU = []  # abosultely velocity
-    absF = []  # force of head
-    zf = []  # zoom factor
-    wm = []  # motor spin
-    txt_names = glob.glob(eq_dir + '/*.txt')
-    for txt_name in txt_names:
-        with open(txt_name, 'r') as myinput:
-            FILE_DATA = myinput.read()
 
-        text_headle = 'absolute ref U \['
-        absU.append(read_array(text_headle, FILE_DATA, array_length=6))
-        text_headle = '\] and \['
-        wm.append(read_array(text_headle, FILE_DATA, array_length=6))
-        text_headle = 'head resultant is \['
-        absF.append(read_array(text_headle, FILE_DATA, array_length=6))
-        text_headle = ' geometry zoom factor is'
-        temp1 = read_array(text_headle, FILE_DATA, array_length=1)
-        zf.append(0 if np.isclose(temp1, 1) else temp1)
-    absU = np.vstack(absU)
-    wm = np.vstack(wm)
-    absF = np.vstack(absF)
-    zf = np.hstack(zf)
-    tzf = zf.copy()
-    tzf[zf == 0] = 1
+def angle_2vectors(v1, v2, vct_direct=None):
+    v1 = norm_self(np.array(v1).ravel())
+    v2 = norm_self(np.array(v2).ravel())
+    err_msg = 'inputs are not 3 dimensional vectors. '
+    assert v1.size == 3, err_msg
+    assert v2.size == 3, err_msg
+    t1 = np.dot(v1, v2)
+    if vct_direct is None:
+        sign = 1
+    else:
+        vct_direct = norm_self(np.array(vct_direct).ravel())
+        assert vct_direct.size == 3, err_msg
+        sign = np.sign(np.dot(vct_direct, np.cross(v1, v2)))
+    theta = sign * np.arccos(t1)
+    return theta
 
-    data = pd.DataFrame({'uz': absU[:, 2] / tzf,
-                         'wh': absU[:, 5],
-                         'wm': wm[:, 5],
-                         'fh': absF[:, 2] / tzf,
-                         'Th': absF[:, 5] / (tzf ** 3) * (1 - 0.1 * zf),
-                         'zf': zf}).dropna(how='all').pivot_table(index='zf')
-    Th = data.Th
-    uz = data.uz
-    uz[uz < 0] = 0
-    wm = data.wm
-    wh = data.wh
-    return uz, wm, wh, Th
+
+def mycot(x):
+    return 1 / np.tan(x)
+
+
+def mycsc(x):
+    return 1 / np.sin(x)
+
+
+def mysec(x):
+    return 1 / np.cos(x)
 
 
 def write_pbs_head(fpbs, job_name, nodes=1):
@@ -180,6 +176,7 @@ def write_pbs_head(fpbs, job_name, nodes=1):
     fpbs.write('\n')
     fpbs.write('cd $PBS_O_WORKDIR\n')
     fpbs.write('\n')
+    return True
 
 
 def write_pbs_head_q03(fpbs, job_name, nodes=1):
@@ -192,6 +189,7 @@ def write_pbs_head_q03(fpbs, job_name, nodes=1):
     fpbs.write('\n')
     fpbs.write('cd $PBS_O_WORKDIR\n')
     fpbs.write('\n')
+    return True
 
 
 def write_pbs_head_newturb(fpbs, job_name, nodes=1):
@@ -204,6 +202,20 @@ def write_pbs_head_newturb(fpbs, job_name, nodes=1):
     fpbs.write('cd $PBS_O_WORKDIR\n')
     fpbs.write('source /storage/zhang/.bashrc\n')
     fpbs.write('\n')
+    return True
+
+
+def _write_main_run_top(frun, main_hostname='ln0'):
+    frun.write('t_dir=$PWD \n\n')
+
+    # check if the script run on the main node.
+    frun.write('if [ $(hostname) == \'%s\' ]; then\n' % main_hostname)
+    frun.write('    echo \'this node is %s. \' \n' % main_hostname)
+    frun.write('else \n')
+    frun.write('    echo \'please run in the node %s. \' \n' % main_hostname)
+    frun.write('    exit \n')
+    frun.write('fi \n\n')
+    return True
 
 
 def write_main_run(write_pbs_head, job_dir, ncase):
@@ -214,6 +226,110 @@ def write_main_run(write_pbs_head, job_dir, ncase):
         write_pbs_head(fpbs, job_dir, nodes=ncase)
         fpbs.write('seq 0 %d | parallel -j 1 -u --sshloginfile $PBS_NODEFILE \\\n' % (ncase - 1))
         fpbs.write('\"cd $PWD;echo $PWD;bash myscript.csh {}\"')
+    return True
+
+
+def write_main_run_comm_list(comm_list, txt_list, use_node, njob_node, job_dir,
+                             write_pbs_head000=write_pbs_head, n_job_pbs=None,
+                             random_order=False, ):
+    def _parallel_pbs_ln0(n_use_comm, njob_node, csh_name):
+        t2 = 'seq 0 %d | parallel -j %d -u ' % (n_use_comm - 1, njob_node)
+        t2 = t2 + ' --sshloginfile $PBS_NODEFILE --sshdelay 0.1 '
+        t2 = t2 + ' "cd $PWD; echo $PWD; echo; bash %s {} true " \n\n ' % csh_name
+        return t2
+
+    def _parallel_pbs_newturb(n_use_comm, njob_node, csh_name):
+        t2 = 'seq 0 %d | parallel -j %d -u ' % (n_use_comm - 1, njob_node)
+        t2 = t2 + ' --sshdelay 0.1 '
+        t2 = t2 + ' "cd $PWD; echo $PWD; echo; bash %s {} true " \n\n ' % csh_name
+        return t2
+
+    PWD = os.getcwd()
+    comm_list = np.array(comm_list)
+    txt_list = np.array(txt_list)
+    t_path = os.path.join(PWD, job_dir)
+    if not os.path.exists(t_path):
+        os.makedirs(t_path)
+        print('make folder %s' % t_path)
+    else:
+        print('exist folder %s' % t_path)
+    n_case = len(comm_list)
+    if n_job_pbs is None:
+        n_job_pbs = use_node * njob_node
+    n_pbs = (n_case // n_job_pbs) + np.sign(n_case % n_job_pbs)
+    if random_order:
+        tidx = np.arange(n_case)
+        np.random.shuffle(tidx)
+        comm_list = comm_list[tidx]
+        txt_list = txt_list[tidx]
+
+    # generate comm_list.sh
+    t_name0 = os.path.join(t_path, 'comm_list.sh')
+    with open(t_name0, 'w') as fcomm:
+        for ts, f in zip(comm_list, txt_list):
+            fcomm.write('%s > %s.txt 2> %s.err' % (ts, f, f))
+            fcomm.write('\n\n')
+
+    assert callable(write_pbs_head000)
+    if write_pbs_head000 is write_pbs_head:
+        main_hostname = 'ln0'
+        _parallel_pbs_use = _parallel_pbs_ln0
+    elif write_pbs_head000 is write_pbs_head_q03:
+        main_hostname = 'ln0'
+        _parallel_pbs_use = _parallel_pbs_ln0
+    elif write_pbs_head000 is write_pbs_head_newturb:
+        main_hostname = 'newturb'
+        _parallel_pbs_use = _parallel_pbs_newturb
+        assert np.isclose(use_node, 1)
+    else:
+        raise ValueError('wrong write_pbs_head000')
+    # generate .pbs file and .csh file
+    t_name0 = os.path.join(t_path, 'main_run.sh')
+    with open(t_name0, 'w') as frun:
+        _write_main_run_top(frun, main_hostname=main_hostname)
+        # noinspection PyTypeChecker
+        for t1 in np.arange(n_pbs, dtype='int'):
+            use_comm = comm_list[t1 * n_job_pbs: np.min(((t1 + 1) * n_job_pbs, n_case))]
+            use_txt = txt_list[t1 * n_job_pbs: np.min(((t1 + 1) * n_job_pbs, n_case))]
+            n_use_comm = len(use_comm)
+            tnode = np.min((use_node, np.ceil(n_use_comm / njob_node)))
+            pbs_name = 'run%03d.pbs' % t1
+            csh_name = 'run%03d.csh' % t1
+            # generate .pbs file
+            t_name = os.path.join(t_path, pbs_name)
+            with open(t_name, 'w') as fpbs:
+                # pbs_head = '%s_%s' % (job_dir, pbs_name)
+                pbs_head = '%s_%d' % (job_dir, t1)
+                write_pbs_head000(fpbs, pbs_head, nodes=tnode)
+                fpbs.write(_parallel_pbs_use(n_use_comm, njob_node, csh_name))
+            # generate .csh file for submit
+            t_name = os.path.join(t_path, csh_name)
+            with open(t_name, 'w') as fcsh:
+                fcsh.write('#!/bin/csh -fe \n\n')
+                t2 = 'comm_list=('
+                for t3 in use_comm:
+                    t2 = t2 + '"%s" ' % t3
+                t2 = t2 + ') \n\n'
+                fcsh.write(t2)
+                t2 = 'txt_list=('
+                for t3 in use_txt:
+                    t2 = t2 + '"%s" ' % t3
+                t2 = t2 + ') \n\n'
+                fcsh.write(t2)
+                fcsh.write('echo ${comm_list[$1]} \'>\' ${txt_list[$1]}.txt'
+                           ' \'2>\' ${txt_list[$1]}.err \n')
+                fcsh.write('echo \n')
+                fcsh.write('if [ ${2:-false} = true ]; then \n')
+                fcsh.write('    ${comm_list[$1]} > ${txt_list[$1]}.txt 2> ${txt_list[$1]}.err \n')
+                fcsh.write('fi \n\n')
+            frun.write('qsub %s\n\n' % pbs_name)
+        frun.write('\n')
+    print('input %d cases.' % n_case)
+    print('generate %d pbs files in total.' % n_pbs)
+    if random_order:
+        print(' --->>random order mode is ON. ')
+    print('Command of first case is:')
+    print(comm_list[0])
     return True
 
 
@@ -307,7 +423,7 @@ def colorline(x, y, z=None, cmap=plt.get_cmap('copper'), ax=None, norm=plt.Norma
 
     # Default colors equally spaced on [0,1]:
     if z is None:
-        z = np.linspace(0.0, 1.0, len(x))
+        z = np.linspace(0.0, 1.0, x.size)
     # Special case if a single number:
     if not hasattr(z, "__iter__"):  # to check for numerical input -- this is a hack
         z = np.array([z])
@@ -318,12 +434,57 @@ def colorline(x, y, z=None, cmap=plt.get_cmap('copper'), ax=None, norm=plt.Norma
         fig.patch.set_facecolor('white')
     else:
         plt.sca(ax)
-        fig = plt.gcf()
+        # fig = plt.gcf()
 
     segments = make_segments(x, y)
     lc = LineCollection(segments, array=z, cmap=cmap, norm=norm, linewidth=linewidth, alpha=alpha)
     ax.add_collection(lc)
     return lc
+
+
+def colorline3d(tnodes, tcl, quiver_length_fct=None, clb_title='', show_project=False, tu=None,
+                nu_show=50, return_fig=False):
+    fig = plt.figure(figsize=(8, 8), dpi=100)
+    fig.patch.set_facecolor('white')
+    ax0 = fig.add_subplot(1, 1, 1, projection='3d')
+    ax0.plot(tnodes[:, 0], tnodes[:, 1], tnodes[:, 2]).pop(0).remove()
+    cax1 = inset_axes(ax0, width="100%", height="5%", bbox_to_anchor=(0, 0.1, 1, 1),
+                      loc=1, bbox_transform=ax0.transAxes, borderpad=0, )
+    norm = plt.Normalize(tcl.min(), tcl.max())
+    cmap = plt.get_cmap('jet')
+    # Create the 3D-line collection object
+    points = tnodes.reshape(-1, 1, 3)
+    segments = np.concatenate([points[:-1], points[1:]], axis=1)
+    lc = Line3DCollection(segments, cmap=cmap, norm=norm)
+    lc.set_array(tcl)
+    ax0.add_collection3d(lc, zs=points[:, :, 2].flatten(), zdir='z')
+    clb = fig.colorbar(lc, cax=cax1, orientation="horizontal")
+    clb.ax.set_title(clb_title)
+    set_axes_equal(ax0)
+    if show_project:
+        ax0.plot(np.ones_like(tnodes[:, 0]) * ax0.get_xlim()[0], tnodes[:, 1], tnodes[:, 2], '--k')
+        ax0.plot(tnodes[:, 0], np.ones_like(tnodes[:, 1]) * ax0.get_ylim()[1], tnodes[:, 2], '--k')
+        ax0.plot(tnodes[:, 0], tnodes[:, 1], np.ones_like(tnodes[:, 0]) * ax0.get_zlim()[0], '--k')
+    if not tu is None:
+        assert not quiver_length_fct is None
+        t_stp = np.max((1, tu.shape[0] // nu_show))
+        color_len = tnodes[::t_stp, 0].size
+        quiver_length = np.max(tnodes.max(axis=0) - tnodes.min(axis=0)) * quiver_length_fct
+        colors = [cmap(1.0 * i / color_len) for i in range(color_len)]
+        ax0.quiver(tnodes[::t_stp, 0], tnodes[::t_stp, 1], tnodes[::t_stp, 2],
+                   tu[::t_stp, 0], tu[::t_stp, 1], tu[::t_stp, 2],
+                   length=quiver_length, arrow_length_ratio=0.2, pivot='tail', normalize=False,
+                   colors='k')
+    plt.sca(ax0)
+    ax0.set_xlabel('X')
+    ax0.set_ylabel('Y')
+    ax0.set_zlabel('Z')
+    # for spine in ax0.spines.values():
+    #     spine.set_visible(False)
+    # plt.tight_layout()
+
+    t1 = fig if return_fig else True
+    return t1
 
 
 def add_inset(ax0, rect, *args, **kwargs):
@@ -338,3 +499,91 @@ def add_inset(ax0, rect, *args, **kwargs):
     height = inpty(rect[3] + rect[1]) - inpty(rect[1])
     new_rect = np.hstack((left, bottom, width, height))
     return ax0.figure.add_axes(new_rect, *args, **kwargs)
+
+
+from matplotlib.colors import Normalize
+
+
+# user define color norm
+class midPowerNorm(Normalize):
+    def __init__(self, gamma=10, midpoint=1, vmin=None, vmax=None, clip=False):
+        Normalize.__init__(self, vmin, vmax, clip)
+        assert gamma > 1
+        self.gamma = gamma
+        self.midpoint = midpoint
+
+    def __call__(self, value, clip=None):
+        if clip is None:
+            clip = self.clip
+
+        result, is_scalar = self.process_value(value)
+
+        self.autoscale_None(result)
+        gamma = self.gamma
+        midpoint = self.midpoint
+        logmid = np.log(midpoint) / np.log(gamma)
+        vmin, vmax = self.vmin, self.vmax
+        if vmin > vmax:
+            raise ValueError("minvalue must be less than or equal to maxvalue")
+        elif vmin == vmax:
+            result.fill(0)
+        else:
+            if clip:
+                mask = np.ma.getmask(result)
+                result = np.ma.array(np.clip(result.filled(vmax), vmin, vmax),
+                                     mask=mask)
+            resdat = result.data
+            tidx1 = resdat < midpoint
+            resdat1 = np.log(resdat[tidx1]) / np.log(gamma)
+            v1 = np.log(vmin) / np.log(gamma)
+            tx, ty = [v1, logmid], [0, 0.5]
+            #             print(resdat1, tx, ty)
+            tuse1 = np.interp(resdat1, tx, ty)
+            resdat2 = np.log(resdat[np.logical_not(tidx1)]) / np.log(gamma)
+            v2 = np.log(vmax) / np.log(gamma)
+            tx, ty = [logmid, v2], [0.5, 1]
+            tuse2 = np.interp(resdat2, tx, ty)
+            result = np.ma.array(np.hstack((tuse1, tuse2)), mask=result.mask, copy=False)
+        return result
+
+
+# user define color norm
+class midLinearNorm(Normalize):
+    def __init__(self, midpoint=1, vmin=None, vmax=None, clip=False):
+        Normalize.__init__(self, vmin, vmax, clip)
+        self.midpoint = midpoint
+
+    def __call__(self, value, clip=None):
+        if clip is None:
+            clip = self.clip
+
+        result, is_scalar = self.process_value(value)
+
+        self.autoscale_None(result)
+        midpoint = self.midpoint
+        vmin, vmax = self.vmin, self.vmax
+        if vmin > vmax:
+            raise ValueError("minvalue must be less than or equal to maxvalue")
+        elif vmin == vmax:
+            result.fill(0)
+        else:
+            if clip:
+                mask = np.ma.getmask(result)
+                result = np.ma.array(np.clip(result.filled(vmax), vmin, vmax),
+                                     mask=mask)
+            resdat = result.data
+            tidx1 = resdat < midpoint
+            resdat1 = resdat[tidx1]
+            if vmin < midpoint:
+                tx, ty = [vmin, midpoint], [0, 0.5]
+                tuse1 = np.interp(resdat1, tx, ty)
+            else:
+                tuse1 = np.zeros_like(resdat1)
+            resdat2 = resdat[np.logical_not(tidx1)]
+            if vmax > midpoint:
+                tx, ty = [midpoint, vmax], [0.5, 1]
+                tuse2 = np.interp(resdat2, tx, ty)
+            else:
+                tuse2 = np.zeros_like(resdat2)
+            result = np.ma.array(np.hstack((tuse1, tuse2)), mask=result.mask, copy=False)
+        return result

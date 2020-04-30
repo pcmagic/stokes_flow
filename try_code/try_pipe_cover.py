@@ -213,7 +213,7 @@ def main_fun(**main_kwargs):
         problem.solve_prepare(**problem_kwargs)
         if problem_kwargs['pickProblem']:
             # do NOT save anything really, just check if the path is correct, to avoid this error after long time calculation.
-            problem.pickmyself(fileHandle, check=True)
+            problem.pickmyself(fileHandle, ifcheck=True)
 
         problem.create_matrix()
         Tolerances = {'max_it': 3000}

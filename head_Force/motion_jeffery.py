@@ -17,7 +17,7 @@ from scipy.io import savemat
 from src.support_class import *
 # from src.objComposite import createEcoliComp_ellipse
 # from src.myvtk import save_singleEcoli_vtk
-# import ecoli_in_pipe.ecoli_common as ec
+# import codeStore.ecoli_common as ec
 # import os
 from src.jeffery_model import *
 from src import jeffery_model as jm

@@ -21,10 +21,10 @@ class slt():
         self._problem = problem
         self._kwargs = kwargs
 
-    def get_solution(self, node_geo: geo):
+    def get_solution(self, node_geo: 'base_geo'):
         pass
 
-    def get_errNorm(self, node_geo: geo, num_u):
+    def get_errNorm(self, node_geo: base_geo, num_u):
         u = self.get_solution(node_geo)
         err = sqrt(np.sum((u - num_u) ** 2) / np.sum(u ** 2))
         return err
@@ -37,9 +37,9 @@ class sphere_slt(slt):
         self._radius = problem_kwargs['radius']
         self._u = problem_kwargs['u']
 
-    def get_solution(self, node_geo: geo):
+    def get_solution(self, node_geo: base_geo):
         err_msg = 'input a geo objects interesting nodes, not an array of nodes directy. '
-        assert isinstance(node_geo, geo), err_msg
+        assert isinstance(node_geo, base_geo), err_msg
 
         a = self._radius
         u0 = -self._u

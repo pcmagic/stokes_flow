@@ -6,8 +6,6 @@ import petsc4py
 
 petsc4py.init(sys.argv)
 
-import numpy as np
-import pickle
 # from time import time
 # from scipy.io import loadmat
 # from src.stokes_flow import problem_dic, obj_dic
@@ -15,10 +13,9 @@ import pickle
 from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.myio import *
-from src.support_class import *
 from src.objComposite import createEcoliComp_tunnel
 from src.myvtk import save_singleEcoli_vtk
-from ecoli_in_pipe.ecoli_common import *
+from codeStore.ecoli_common import *
 
 
 # def get_problem_kwargs(**main_kwargs):
@@ -56,9 +53,9 @@ def main_fun(**main_kwargs):
         forcepipe = problem_kwargs['forcepipe']
         print_case_info(**problem_kwargs)
         ecoli_comp = createEcoliComp_tunnel(name='ecoli_0', **problem_kwargs)
-        problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
+        problem = sf.StokesletsInPipeforcefreeProblem(**problem_kwargs)
         problem.set_prepare(forcepipe)
-        problem.do_solve_process((ecoli_comp,), pick_M=True)
+        problem.do_solve_process((ecoli_comp,), pick_M=False)
         # post process
         head_U, tail_U = print_single_ecoli_forcefree_result(ecoli_comp, **problem_kwargs)
         ecoli_U = ecoli_comp.get_ref_U()

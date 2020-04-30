@@ -15,9 +15,7 @@ from src import stokes_flow as sf
 from src.myio import *
 from src.StokesFlowMethod import light_stokeslets_matrix_3d
 # from src.support_class import *
-from src.objComposite import createEcoliComp_tunnel
-from src.myvtk import save_singleEcoli_vtk
-import ecoli_in_pipe.ecoli_common as ec
+import codeStore.ecoli_common as ec
 import os
 
 
@@ -89,7 +87,7 @@ def create_ellipse_obj(**problem_kwargs):
     # matrix_method = problem_kwargs['matrix_method']
     ecoli_tail_strength = problem_kwargs['ecoli_tail_strength']
 
-    ellipse_ugeo = ellipse_geo()
+    ellipse_ugeo = ellipse_base_geo()
     ellipse_ugeo.create_delta(ds, rs1, rs2)
     ellipse_ugeo.node_rotation(rot_norm, rot_theta)
     ellipse_ugeo.move(ellipse_center)
@@ -173,7 +171,7 @@ def main_fun(**main_kwargs):
         PETSc.Sys.Print('re_err_F', (re_ecoli_F - givenF) / givenF)
 
         vtk_matname = problem_kwargs['vtk_matname']
-        vtk_geo = geo()
+        vtk_geo = base_geo()
         vtk_geo.mat_nodes(filename=vtk_matname, mat_handle='vtk_nodes')
         vtk_geo.mat_elmes(filename=vtk_matname, mat_handle='vtk_elems', elemtype='tetra')
         problem.vtk_obj(fileHandle)

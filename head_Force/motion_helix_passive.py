@@ -7,9 +7,8 @@ petsc4py.init(sys.argv)
 
 import numpy as np
 from time import time
-from scipy.io import loadmat, savemat
+from scipy.io import savemat
 # from src.stokes_flow import problem_dic, obj_dic
-from src.geo import *
 from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.myio import *
@@ -17,7 +16,7 @@ from src.myio import *
 from src.support_class import *
 from src.objComposite import *
 # from src.myvtk import save_singleEcoli_vtk
-import ecoli_in_pipe.ecoli_common as ec
+import codeStore.ecoli_common as ec
 # import os
 from scanf import scanf
 import pickle
@@ -149,7 +148,7 @@ def main_fun(**main_kwargs):
             PETSc.Sys.Print('  ini ref_U1 in shear flow %s' % str(ref_U1))
             # 2) optimize force and torque free
             problem.create_matrix()
-            ref_U = problem.do_iterate3(ini_refU0=ref_U0, ini_refU1=ref_U1, tolerate=iter_tor)
+            ref_U = problem.do_iterate3(ini_refU0=ref_U0, ini_refU1=ref_U1, rtol=iter_tor)
             helix_comp.set_ref_U(ref_U)
             # 4) save and print
             if rank == 0:
@@ -235,7 +234,7 @@ def eval_loop_noIter(problem_ff, **problem_kwargs):
         problem_ff.update_location(eval_dt, print_handle='%d / %d' % (idx, max_iter))
         t5 = time()
         if t5 - t4 > 3600 and pickProblem:  # pick the problem every 3600s
-            problem_ff.pickmyself('%s_%05d' % (fileHandle, idx), check=False, pick_M=False, unpick=True)
+            problem_ff.pickmyself('%s_%05d' % (fileHandle, idx), ifcheck=False, pick_M=False, unpick=True)
         t3 = time()
         PETSc.Sys.Print('#################### Current loop %05d / %05d uses: %08.3fs ####################' %
                         (idx, max_iter, (t3 - t2)))

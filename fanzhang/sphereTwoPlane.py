@@ -102,7 +102,7 @@ def create_M(**main_kwargs):
     problem.pickmyself(fileHandle, check=True)
     problem.create_matrix()
     problem.solve()
-    problem.pickmyself(fileHandle, pick_M=True)
+    problem.pickmyself(fileHandle, pick_M=False)
     return True
 
 

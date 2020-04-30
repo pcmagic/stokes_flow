@@ -11,11 +11,9 @@ import numpy as np
 # from src.geo import *
 from petsc4py import PETSc
 from src import stokes_flow as sf
-from src.myio import *
 # from src.support_class import *
 from src.objComposite import *
-from src.myvtk import save_singleEcoli_vtk
-from ecoli_in_pipe.ecoli_common import *
+from codeStore.ecoli_common import *
 
 
 # @profile

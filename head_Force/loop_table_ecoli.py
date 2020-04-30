@@ -9,15 +9,12 @@ import numpy as np
 from time import time
 from scipy.io import savemat
 # from src.stokes_flow import problem_dic, obj_dic
-from src.geo import *
 from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.myio import *
-from src.support_class import *
 from src.objComposite import *
 # from src.myvtk import save_singleEcoli_vtk
-import ecoli_in_pipe.ecoli_common as ec
-import os
+import codeStore.ecoli_common as ec
 import pickle
 
 
@@ -149,7 +146,7 @@ def do_solve_once(problem_ff: sf.ShearFlowForceFreeProblem,
     PETSc.Sys.Print('  ini ref_U1 in shear flow %s' % str(ref_U1))
     # 2) optimize force and torque free
     problem.create_matrix()
-    ref_U = problem.do_iterate3(ini_refU0=ref_U0, ini_refU1=ref_U1, tolerate=iter_tor)
+    ref_U = problem.do_iterate3(ini_refU0=ref_U0, ini_refU1=ref_U1, rtol=iter_tor)
     ecoli_comp.set_ref_U(ref_U)
     PETSc.Sys.Print('  true ref_U in shear flow', ref_U)
     tU = np.linalg.norm(ref_U[:3])
@@ -213,7 +210,7 @@ def main_fun_noIter(**main_kwargs):
         ref_U = ecoli_comp.get_ref_U()
         # 4) set parameters
         fct = ecoli_velocity / np.linalg.norm(ref_U[:3])
-        ecoli_comp.dbg_set_rel_U_list([head_rel_U * fct, tail_rel_U * fct])
+        ecoli_comp.set_rel_U_list([head_rel_U * fct, tail_rel_U * fct])
         ecoli_comp.set_ref_U(ref_U * fct)
         problem_ff.set_planeShearRate(planeShearRate)
         PETSc.Sys.Print('  ini ref_U in free space', ref_U)
@@ -231,15 +228,14 @@ def main_fun_noIter(**main_kwargs):
         t3 = time()
         PETSc.Sys.Print('    Current process uses: %07.3fs' % (t3 - t2))
         # 2). loop over parameter space
-        for i0, norm_theta in enumerate(np.linspace(0, np.pi, n_norm_theta)):
+        for i0, norm_theta in enumerate(np.linspace(0, np.pi, n_norm_theta, endpoint=False)):
             ecoli_comp.node_rotation(np.array((0, 1, 0)), norm_theta)
-            for i1, norm_phi in enumerate(np.linspace(0, 2 * np.pi, n_norm_phi)):
+            for i1, norm_phi in enumerate(np.linspace(0, 2 * np.pi, n_norm_phi, endpoint=False)):
                 t2 = time()
                 idx = i0 * n_norm_phi + i1 + 1
                 ecoli_comp.node_rotation(np.array((0, 0, 1)), norm_phi)
                 do_solve_once_noIter(problem_ff, ecoli_comp, fileHandle, norm_theta, norm_phi,
-                                     norm_psi,
-                                     planeShearRate, rank, idx, N)
+                                     norm_psi, planeShearRate, rank, idx, N)
                 ecoli_comp.node_rotation(np.array((0, 0, 1)), -norm_phi)  # rotate back
                 t3 = time()
                 PETSc.Sys.Print('    Current process uses: %07.3fs' % (t3 - t2))
@@ -289,11 +285,11 @@ def test_location_Iter(**main_kwargs):
         ref_U = ecoli_comp.get_ref_U()
         # 2) optimize force and torque free
         problem.create_matrix()
-        ref_U = problem.do_iterate3(ini_refU1=ref_U, tolerate=iter_tor)
+        ref_U = problem.do_iterate3(ini_refU1=ref_U, rtol=iter_tor)
         PETSc.Sys.Print('  ini ref_U in free space', ref_U)
         # 4) set parameters
         fct = ecoli_velocity / np.linalg.norm(ref_U[:3])
-        ecoli_comp.dbg_set_rel_U_list([head_rel_U * fct, tail_rel_U * fct])
+        ecoli_comp.set_rel_U_list([head_rel_U * fct, tail_rel_U * fct])
         ecoli_comp.set_ref_U(ref_U * fct)
         problem_ff.set_planeShearRate(planeShearRate)
         problem.set_planeShearRate(planeShearRate)
@@ -356,7 +352,7 @@ def test_location_noIter(**main_kwargs):
         PETSc.Sys.Print('  ini ref_U in free space', ref_U)
         # 4) set parameters
         fct = ecoli_velocity / np.linalg.norm(ref_U[:3])
-        ecoli_comp.dbg_set_rel_U_list([head_rel_U * fct, tail_rel_U * fct])
+        ecoli_comp.set_rel_U_list([head_rel_U * fct, tail_rel_U * fct])
         ecoli_comp.set_ref_U(ref_U * fct)
         problem_ff.set_planeShearRate(planeShearRate)
         PETSc.Sys.Print('  true ref_U in free space', ref_U * fct)
@@ -422,15 +418,14 @@ def test_location_noIter_wm(**main_kwargs):
         PETSc.Sys.Print(' ')
         PETSc.Sys.Print('calculate the velocity of passive ecoli in shear space ')
         t_rel_list = ecoli_comp.get_rel_U_list()
-        ecoli_comp.dbg_set_rel_U_list([np.zeros_like(ta) for ta in t_rel_list])
+        ecoli_comp.set_rel_U_list([np.zeros_like(ta) for ta in t_rel_list])
         problem_ff.create_matrix()
         problem_ff.solve()
         ref_U = ecoli_comp.get_ref_U()
         PETSc.Sys.Print('  ini ref_U in free space', ref_U)
-        ecoli_comp.dbg_set_rel_U_list(t_rel_list)
+        ecoli_comp.set_rel_U_list(t_rel_list)
         t3 = time()
         PETSc.Sys.Print('    Current process uses: %07.3fs' % (t3 - t2))
-
 
         # with shear, with wm
         t2 = time()
@@ -484,10 +479,10 @@ def main_fun_random(**main_kwargs):
         PETSc.Sys.Print('  ini ref_U in free space', ref_U * fct)
         # 2) optimize force and torque free
         problem.create_matrix()
-        ref_U = problem.do_iterate3(ini_refU1=ref_U, tolerate=iter_tor)
+        ref_U = problem.do_iterate3(ini_refU1=ref_U, rtol=iter_tor)
         # 4) set parameters
         fct = ecoli_velocity / np.linalg.norm(ref_U[:3])
-        ecoli_comp.dbg_set_rel_U_list([head_rel_U * fct, tail_rel_U * fct])
+        ecoli_comp.set_rel_U_list([head_rel_U * fct, tail_rel_U * fct])
         ecoli_comp.set_ref_U(ref_U * fct)
         problem_ff.set_planeShearRate(planeShearRate)
         problem.set_planeShearRate(planeShearRate)
@@ -567,10 +562,10 @@ def main_fun(**main_kwargs):
         PETSc.Sys.Print('  ini ref_U in free space', ref_U * fct)
         # 2) optimize force and torque free
         problem.create_matrix()
-        ref_U = problem.do_iterate3(ini_refU1=ref_U, tolerate=iter_tor)
+        ref_U = problem.do_iterate3(ini_refU1=ref_U, rtol=iter_tor)
         # 4) set parameters
         fct = ecoli_velocity / np.linalg.norm(ref_U[:3])
-        ecoli_comp.dbg_set_rel_U_list([head_rel_U * fct, tail_rel_U * fct])
+        ecoli_comp.set_rel_U_list([head_rel_U * fct, tail_rel_U * fct])
         ecoli_comp.set_ref_U(ref_U * fct)
         problem_ff.set_planeShearRate(planeShearRate)
         problem.set_planeShearRate(planeShearRate)
@@ -590,10 +585,10 @@ def main_fun(**main_kwargs):
         t3 = time()
         PETSc.Sys.Print('    Current process uses: %07.3fs' % (t3 - t2))
         # 2). loop over parameter space
-        for i0, norm_theta in enumerate(np.linspace(0, np.pi, n_norm_theta)):
+        for i0, norm_theta in enumerate(np.linspace(0, np.pi, n_norm_theta, endpoint=False)):
             ecoli_comp.set_ref_U(ref_U000)
             ecoli_comp.node_rotation(np.array((0, 1, 0)), norm_theta)
-            for i1, norm_phi in enumerate(np.linspace(0, 2 * np.pi, n_norm_phi)):
+            for i1, norm_phi in enumerate(np.linspace(0, 2 * np.pi, n_norm_phi, endpoint=False)):
                 t2 = time()
                 idx = i0 * n_norm_phi + i1 + 1
                 ecoli_comp.node_rotation(np.array((0, 0, 1)), norm_phi)
@@ -668,9 +663,9 @@ def main_fun_rotlets(**main_kwargs):
         t3 = time()
         PETSc.Sys.Print('    Current process uses: %07.3fs' % (t3 - t2))
         # 2). loop over parameter space
-        for i0, norm_theta in enumerate(np.linspace(0, np.pi, n_norm_theta)):
+        for i0, norm_theta in enumerate(np.linspace(0, np.pi, n_norm_theta, endpoint=False)):
             ecoli_comp.node_rotation(np.array((0, 1, 0)), norm_theta)
-            for i1, norm_phi in enumerate(np.linspace(0, 2 * np.pi, n_norm_phi)):
+            for i1, norm_phi in enumerate(np.linspace(0, 2 * np.pi, n_norm_phi, endpoint=False)):
                 t2 = time()
                 idx = i0 * n_norm_phi + i1 + 1
                 ecoli_comp.node_rotation(np.array((0, 0, 1)), norm_phi)
@@ -748,9 +743,9 @@ def main_fun_GivenT(**main_kwargs):
         t3 = time()
         PETSc.Sys.Print('    Current process uses: %07.3fs' % (t3 - t2))
         # 2). loop over parameter space
-        for i0, norm_theta in enumerate(np.linspace(0, np.pi, n_norm_theta)):
+        for i0, norm_theta in enumerate(np.linspace(0, np.pi, n_norm_theta, endpoint=False)):
             ecoli_comp.node_rotation(np.array((0, 1, 0)), norm_theta)
-            for i1, norm_phi in enumerate(np.linspace(0, 2 * np.pi, n_norm_phi)):
+            for i1, norm_phi in enumerate(np.linspace(0, 2 * np.pi, n_norm_phi, endpoint=False)):
                 t2 = time()
                 idx = i0 * n_norm_phi + i1 + 1
                 ecoli_comp.node_rotation(np.array((0, 0, 1)), norm_phi)

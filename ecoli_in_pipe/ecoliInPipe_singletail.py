@@ -11,8 +11,6 @@ import petsc4py
 
 petsc4py.init(sys.argv)
 
-import numpy as np
-import pickle
 # from time import time
 # from scipy.io import loadmat
 # from src.stokes_flow import problem_dic, obj_dic
@@ -20,10 +18,9 @@ import pickle
 from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.myio import *
-from src.support_class import *
 from src.objComposite import *
 from src.myvtk import save_singleEcoli_vtk
-from ecoli_in_pipe.ecoli_common import *
+from codeStore.ecoli_common import *
 
 
 # def get_problem_kwargs(**main_kwargs):
@@ -73,11 +70,11 @@ def main_fun(**main_kwargs):
         ecoli_comp.add_obj(ecoli_comp0.get_obj_list()[1], rel_U=ecoli_comp0.get_rel_U_list()[1])
 
         iterateTolerate = OptDB.getReal('iterateTolerate', 1e-4)
-        problem = sf.stokesletsInPipeforcefreeIterateProblem(**problem_kwargs)
+        problem = sf.StokesletsInPipeforcefreeIterateProblem(**problem_kwargs)
         problem.set_prepare(forcepipe)
         problem.add_obj(ecoli_comp)
         if problem_kwargs['pickProblem']:
-            problem.pickmyself(fileHandle, check=True)
+            problem.pickmyself(fileHandle, ifcheck=True)
         problem.set_iterate_comp(ecoli_comp)
         problem.print_info()
         problem.create_matrix()

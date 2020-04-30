@@ -84,7 +84,6 @@ def main_fun(**main_kwargs):
     center = problem_kwargs['center']
     ecoli_part = problem_kwargs['ecoli_part']
     matrix_method = problem_kwargs['matrix_method']
-    with_T_geo = problem_kwargs['with_T_geo']
     pickProblem = problem_kwargs['pickProblem']
     fileHandle = problem_kwargs['fileHandle']
 
@@ -105,7 +104,7 @@ def main_fun(**main_kwargs):
         for obj in tube_flatten(obj_list):
             problem.add_obj(obj)
         if pickProblem:
-            problem.pickmyself(fileHandle, check=True)
+            problem.pickmyself(fileHandle, ifcheck=True)
         problem.print_info()
 
         # # dbg
@@ -120,7 +119,8 @@ def main_fun(**main_kwargs):
         problem.create_F_U()
         problem.solve()
         print_single_ecoli_force_result(problem, part=ecoli_part, prefix='tran', **problem_kwargs)
-        save_singleEcoli_U_vtk(problem, createHandle=createEcoli_tunnel, part=ecoli_part)
+        save_singleEcoli_U_vtk(problem, createHandle=createEcoli_tunnel, part=ecoli_part,
+                               prefix='_tran')
 
         # 2. rotation
         set_part_velocity(weight=(0, 0, 0, 1, 1, 1))
@@ -128,7 +128,8 @@ def main_fun(**main_kwargs):
         problem.create_F_U()
         problem.solve()
         print_single_ecoli_force_result(problem, part=ecoli_part, prefix='rota', **problem_kwargs)
-        save_singleEcoli_U_vtk(problem, createHandle=createEcoli_tunnel, part=ecoli_part)
+        save_singleEcoli_U_vtk(problem, createHandle=createEcoli_tunnel, part=ecoli_part,
+                               prefix='_rota')
 
         # 3. move
         set_part_velocity(weight=(1, 1, 1, 1, 1, 1))
@@ -137,10 +138,11 @@ def main_fun(**main_kwargs):
         problem.create_F_U()
         problem.solve()
         print_single_ecoli_force_result(problem, part=ecoli_part, prefix='move', **problem_kwargs)
-        save_singleEcoli_U_vtk(problem, createHandle=createEcoli_tunnel, part=ecoli_part)
+        save_singleEcoli_U_vtk(problem, createHandle=createEcoli_tunnel, part=ecoli_part,
+                               prefix='_move')
 
         if pickProblem:
-            problem.pickmyself(fileHandle, pick_M=True, unpick=False)
+            problem.pickmyself(fileHandle, pick_M=False, unpick=False)
     else:
         pass
 

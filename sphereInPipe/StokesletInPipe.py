@@ -190,14 +190,14 @@ def main_fun(**main_kwargs):
         problem = problem_dic[matrix_method](**problem_kwargs)
         if problem_kwargs['pickProblem']:
             # do NOT save anything really, just check if the path is correct, to avoid this error after long time calculation.
-            problem.pickmyself(fileHandle, check=True)
+            problem.pickmyself(fileHandle, ifcheck=True)
 
         # The tunnel is divided into n objects having a similar length.
         tunnel_geo_u = stokeslets_tunnel_geo()
         part_length = length / n_tunnel_parts - (1 - 1 / n_tunnel_parts) * deltaLength
         err_msg = 'length of each part of object >= deltaLength.'
         assert part_length > deltaLength, err_msg
-        tunnel_geo_u.create_deltalength(deltaLength, part_length, tunnel_radius)
+        tunnel_geo_u.create_deltaz(deltaLength, part_length, tunnel_radius)
         tunnel_geo.node_rotation(norm=np.array((0, 1, 0)), theta=np.pi/2)
         move_dist = np.array([-(length - part_length) / 2, 0, 0])
         tunnel_geo_u.move(move_dist)

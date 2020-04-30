@@ -1,0 +1,10 @@
+#! /bin/bash
+#PBS -M zhangji@csrc.ac.cn
+#PBS -l nodes=16:ppn=24
+#PBS -l walltime=72:00:00
+#PBS -q common
+#PBS -N ecoC01B05_baseFlow
+
+cd $PBS_O_WORKDIR
+
+mpirun -n 24 python ../ecoli_strain_rate.py -rh11 0.300000  -rh12 0.100000  -rh2 0.030000  -ch 3.000000  -nth 20  -eh -1.000000  -ph 0.666667  -hfct 1.000000  -n_tail 1  -with_cover 2  -left_hand 0  -rs1 0.500000  -rs2 0.166667  -ds 0.023333  -es -1.000000  -with_T_geo 0  -dist_hs 0.500000  -ksp_max_it 300  -plot_geo 0 -ffweight 2.000000  -sm pf  -zoom_factor 1.000000 -f ecoC01B05_baseFlow -main_fun_iter 1 > ecoC01B05_baseFlow.txt

@@ -7,18 +7,14 @@ petsc4py.init(sys.argv)
 
 import numpy as np
 from time import time
-from scipy.io import savemat
 # from src.stokes_flow import problem_dic, obj_dic
-from src.geo import *
 from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.myio import *
-from src.StokesFlowMethod import light_stokeslets_matrix_3d
 from src.support_class import *
 from src.objComposite import createEcoliComp_ellipse
 # from src.myvtk import save_singleEcoli_vtk
-import ecoli_in_pipe.ecoli_common as ec
-import os
+import codeStore.ecoli_common as ec
 
 
 # import import_my_lib

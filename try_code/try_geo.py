@@ -5,10 +5,7 @@ import petsc4py
 petsc4py.init(sys.argv)
 from petsc4py import PETSc
 from src.objComposite import *
-import ecoli_in_pipe.ecoli_common as ec
-from src.geo import *
-import numpy as np
-from src import stokes_flow as sf
+import codeStore.ecoli_common as ec
 
 # OptDB = PETSc.Options()
 # R1 = OptDB.getReal('R1', 1)

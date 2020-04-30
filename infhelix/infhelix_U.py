@@ -2,6 +2,8 @@ import sys
 import petsc4py
 
 petsc4py.init(sys.argv)
+err_msg = 'Abandoned keyword "n_helix", use "n_tail" instead. '
+assert '-n_helix' not in sys.argv, err_msg
 
 import numpy as np
 from petsc4py import PETSc
@@ -18,9 +20,9 @@ def get_problem_kwargs(**main_kwargs):
     fileHandle = OptDB.getString('f', 'infhelixPro')
     OptDB.setValue('f', fileHandle)
     problem_kwargs['fileHandle'] = fileHandle
-    n_tail = OptDB.getReal('n_tail', 2)
-    OptDB.setValue('n_tail', n_tail)
-    problem_kwargs['n_tail'] = n_tail
+    # n_tail = OptDB.getInt('n_tail', 2)
+    # OptDB.setValue('n_tail', n_tail)
+    # problem_kwargs['n_tail'] = n_tail
 
     kwargs_list = (main_kwargs, get_helix_kwargs(), get_givenForce_kwargs())
     for t_kwargs in kwargs_list:

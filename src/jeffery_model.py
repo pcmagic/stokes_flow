@@ -11,7 +11,8 @@ from scipy import interpolate, integrate
 import os
 import pickle
 from petsc4py import PETSc
-from tqdm import tqdm, tqdm_notebook
+from tqdm import tqdm
+from tqdm.notebook import tqdm as tqdm_notebook
 from scipy.spatial.transform import Rotation as spR
 
 # import quaternion
@@ -1149,6 +1150,24 @@ class TableObj(JefferyObj):
         tP = vector_rotation_norm(tP, norm=np.array((0, 1, 0)), theta=-theta0)
         self._ini_lateral_norm2 = tP / np.linalg.norm(tP)
 
+        # # dbg
+        # ini_lateral_norm = self.ini_lateral_norm
+        # t1 = -1 * ini_lateral_norm[2] / np.sin(theta0)
+        # t2 = -1 * (ini_lateral_norm[0] - np.cos(phi0) * np.cos(theta0) * t1) / np.sin(phi0)
+        # psi0 = np.arctan2(t2, t1)
+        # psi00 = psi0 + 2 * np.pi if psi0 < 0 else psi0  # (-pi,pi) -> (0, 2pi)
+        # self._lateral_norm = vector_rotation_norm(self.lateral_norm,
+        #                                           norm=self.norm, theta=ini_psi)
+        # ini_lateral_norm = self.ini_lateral_norm
+        # t1 = -1 * ini_lateral_norm[2] / np.sin(theta0)
+        # t2 = -1 * (ini_lateral_norm[0] - np.cos(phi0) * np.cos(theta0) * t1) / np.sin(phi0)
+        # psi0 = np.arctan2(t2, t1)
+        # psi01 = psi0 + 2 * np.pi if psi0 < 0 else psi0  # (-pi,pi) -> (0, 2pi)
+        # t1 = psi01 - psi00
+        # t1 = t1 if t1 > 0 else (2 * np.pi + t1)
+        # print(theta0, phi0, psi00, psi01, t1)
+        # assert 1 == 2
+
         # rotate a ini psi
         self._lateral_norm = vector_rotation_norm(self.lateral_norm,
                                                   norm=self.norm, theta=ini_psi)
@@ -1169,11 +1188,11 @@ class TableObj(JefferyObj):
     def ini_lateral_norm(self):
         return self._ini_lateral_norm
 
-    def _theta_phi_psi(self, P, P2):
+    def _theta_phi_psi_v1(self, P, P2):
         t_theta_all = np.arccos(P[:, 2] / np.linalg.norm(P, axis=1))
         t_phi_all = np.arctan2(P[:, 1], P[:, 0])
-        t_phi_all = np.hstack(
-                [t1 + 2 * np.pi if t1 < 0 else t1 for t1 in t_phi_all])  # (-pi,pi) -> (0, 2pi)
+        t_phi_all = np.hstack([t1 + 2 * np.pi if t1 < 0 else t1
+                               for t1 in t_phi_all])  # (-pi,pi) -> (0, 2pi)
 
         t_psi_all = []
         ini_lateral_norm2 = self._ini_lateral_norm2
@@ -1193,6 +1212,38 @@ class TableObj(JefferyObj):
             t_psi_all.append(t_psi)
         t_psi_all = np.hstack(t_psi_all)
         return t_theta_all, t_phi_all, t_psi_all
+
+    def _P2_psi(self, t_theta, t_phi, tP2):
+        if np.isclose(t_theta, np.pi / 2):
+            cos_psi = -1 * tP2[2] / np.sin(t_theta)
+            if np.isclose(t_phi, np.pi / 2):
+                sin_psi = -1 * (tP2[0] - np.cos(t_phi) * np.cos(t_theta) * cos_psi) / np.sin(t_phi)
+            else:
+                sin_psi = +1 * (tP2[1] - np.sin(t_phi) * np.cos(t_theta) * cos_psi) / np.cos(t_phi)
+        else:
+            tA = np.array(((-1 * np.sin(t_phi), np.cos(t_theta) * np.cos(t_phi)),
+                           (+1 * np.cos(t_phi), np.cos(t_theta) * np.sin(t_phi))))
+            tb = np.array((tP2[0], tP2[1]))
+            sin_psi, cos_psi = np.linalg.solve(tA, tb)
+        t_psi = np.arctan2(sin_psi, cos_psi)
+        t_psi = t_psi + 2 * np.pi if t_psi < 0 else t_psi  # (-pi,pi) -> (0, 2pi)
+        return t_psi
+
+    def _theta_phi_psi_v2(self, P1, P2):
+        t_theta_all = np.arccos(P1[:, 2] / np.linalg.norm(P1, axis=1))
+        t_phi_all = np.arctan2(P1[:, 1], P1[:, 0])
+        t_phi_all = np.hstack([t1 + 2 * np.pi if t1 < 0 else t1
+                               for t1 in t_phi_all])  # (-pi,pi) -> (0, 2pi)
+
+        t_psi_all = []
+        for t_theta, t_phi, tP2 in zip(t_theta_all, t_phi_all, P2):
+            t_psi = self._P2_psi(t_theta, t_phi, tP2)
+            t_psi_all.append(t_psi)
+        t_psi_all = np.hstack(t_psi_all)
+        return t_theta_all, t_phi_all, t_psi_all
+
+    def _theta_phi_psi(self, P1, P2):
+        return self._theta_phi_psi_v2(P1, P2)
 
     @property
     def theta_phi_psi(self):
@@ -1703,6 +1754,7 @@ class TablePetscObj(TableRkObj):
         ts.setSolution(y)
         ts.setTolerances(rtol, atol)
         ts.setUp()
+        self._do_store_data(ts, 0, 0, y)
         ts.solve(y)
 
         # finish simulation
@@ -1776,7 +1828,7 @@ class TablePetsc4nPsiEcoli(TablePetsc4nEcoli):
     def __init__(self, table_name, omega_tail, name='...', ini_psi=0, **kwargs):
         super().__init__(table_name, omega_tail, name, rot_v=0, ini_psi=ini_psi, **kwargs)
         self._type = 'TablePetsc4nPsiEcoli'
-        self._psi = ini_psi
+        self._psi = np.hstack((ini_psi,))
         self._ini_psi = self.psi.copy()[0]
         # the following properties store the location history of the composite.
         # self._q_hist = []
@@ -1798,10 +1850,10 @@ class TablePetsc4nPsiEcoli(TablePetsc4nEcoli):
     def psi_hist(self):
         return self._psi_hist
 
-    def _theta_phi_psi2(self, P, P2):
+    def _theta_phi_psi2_v1(self, P1, P2):
         # angles of head
-        t_theta = np.arccos(P[2] / np.linalg.norm(P))
-        t_phi = np.arctan2(P[1], P[0])
+        t_theta = np.arccos(P1[2] / np.linalg.norm(P1))
+        t_phi = np.arctan2(P1[1], P1[0])
         tfct = 2 if t_phi < 0 else 0
         t_phi = t_phi + tfct * np.pi  # (-pi,pi) -> (0, 2pi)
         # rotate the lateral norm back (the direction that norm=(0, 0, 1),
@@ -1815,6 +1867,18 @@ class TablePetsc4nPsiEcoli(TablePetsc4nEcoli):
         tfct = 2 if t_psi < 0 else 0
         t_psi = t_psi + tfct * np.pi  # (-pi,pi) -> (0, 2pi)
         return t_theta, t_phi, t_psi
+
+    def _theta_phi_psi2_v2(self, P1, P2):
+        # angles of head
+        t_theta = np.arccos(P1[2] / np.linalg.norm(P1))
+        t_phi = np.arctan2(P1[1], P1[0])
+        tfct = 2 if t_phi < 0 else 0
+        t_phi = t_phi + tfct * np.pi  # (-pi,pi) -> (0, 2pi)
+        t_psi = self._P2_psi(t_theta, t_phi, P2)
+        return t_theta, t_phi, t_psi
+
+    def _theta_phi_psi2(self, P, P2):
+        return self._theta_phi_psi2_v2(P, P2)
 
     def _get_velocity_at2(self, X, P, P2, psi):
         # print('dbg', P, P2)
@@ -1906,6 +1970,151 @@ class TableAvrPetsc4nObj(TableAvrObj, TablePetsc4nObj):
 class TableAvrPetsc4nEcoli(TableAvrObj, TablePetsc4nEcoli):
     def _nothing(self):
         pass
+
+
+class _GivenFlowPetsc4nPsiObj(TablePetsc4nPsiEcoli):
+    def __init__(self, table_name, flow_strength, omega_tail, name='...', ini_psi=0, **kwargs):
+        self._uEbase_list = []
+        self._uSbase_list = []
+        self._wEbase_list = []
+        self._wSbase_list = []
+        self._U_a_loc = np.zeros(6)  # active part of translational and rotational velocity
+        super().__init__(table_name, omega_tail, name, ini_psi=ini_psi, **kwargs)
+        self._flow_strength = flow_strength
+
+    def Rloc2glb(self, theta, phi, psi):
+        Rloc2glb = np.array(
+                ((np.cos(phi) * np.cos(psi) * np.cos(theta) - np.sin(phi) * np.sin(psi),
+                  -(np.cos(psi) * np.sin(phi)) - np.cos(phi) * np.cos(theta) * np.sin(psi),
+                  np.cos(phi) * np.sin(theta)),
+                 (np.cos(psi) * np.cos(theta) * np.sin(phi) + np.cos(phi) * np.sin(psi),
+                  np.cos(phi) * np.cos(psi) - np.cos(theta) * np.sin(phi) * np.sin(psi),
+                  np.sin(phi) * np.sin(theta)),
+                 (-(np.cos(psi) * np.sin(theta)),
+                  np.sin(psi) * np.sin(theta),
+                  np.cos(theta))))
+        return Rloc2glb
+
+    @abc.abstractmethod
+    def Eij_loc(self, theta, phi, psi):
+        return
+
+    @abc.abstractmethod
+    def Sij_loc(self, theta, phi, psi):
+        return
+
+    def load_table(self, table_name):
+        table_name = check_file_extension(table_name, extension='.pickle')
+        t_path = os.path.dirname(os.path.abspath(__file__))
+        full_path = os.path.normpath(t_path + '/' + table_name)
+        with open(full_path, 'rb') as handle:
+            pickle_dict = pickle.load(handle)
+        uEbase_list = np.vstack(pickle_dict['uw_Base_list'])[1:6, 0:3]
+        wEbase_list = np.vstack(pickle_dict['uw_Base_list'])[1:6, 3:6]
+        # uSbase_list = np.vstack(pickle_dict['uw_Base_list'])[6:9, 0:3]
+        # wSbase_list = np.vstack(pickle_dict['uw_Base_list'])[6:9, 3:6]
+        uSbase_list = np.zeros((3, 3))
+        wSbase_list = np.array(((1, 0, 0), (0, 1, 0), (0, 0, 1)))
+        self._uEbase_list = uEbase_list
+        self._uSbase_list = uSbase_list
+        self._wEbase_list = wEbase_list
+        self._wSbase_list = wSbase_list
+        self._U_a_loc = pickle_dict['uw_Base_list'][9]
+        return True
+
+    @property
+    def uEbase_list(self):
+        return self._uEbase_list
+
+    @property
+    def uSbase_list(self):
+        return self._uSbase_list
+
+    @property
+    def wEbase_list(self):
+        return self._wEbase_list
+
+    @property
+    def wSbase_list(self):
+        return self._wSbase_list
+
+    @property
+    def U_a_loc(self):
+        return self._U_a_loc
+
+    @property
+    def flow_strength(self):
+        return self._flow_strength
+
+    # back flow induced passive velocity of the microswimmer
+    def calc_Up_fun(self, t_theta, t_phi, t_psi):
+        uEbase_list = self.uEbase_list
+        uSbase_list = self.uSbase_list
+        wEbase_list = self.wEbase_list
+        wSbase_list = self.wSbase_list
+        flow_strength = self.flow_strength
+        U_a_loc = self._U_a_loc
+        omega_tail = self.omega_tail
+
+        Eij_loc = self.Eij_loc(t_theta, t_phi, t_psi)
+        Sij_loc = self.Sij_loc(t_theta, t_phi, t_psi)
+        Rlog2glb = self.Rloc2glb(t_theta, t_phi, t_psi)
+        Ebase_fct = np.array([Eij_loc[0, 0], Eij_loc[2, 2], Eij_loc[0, 1],
+                              Eij_loc[0, 2], Eij_loc[1, 2]])
+        Sbase_fct = np.array([Sij_loc[2, 1], Sij_loc[0, 2], Sij_loc[1, 0]])
+
+        uE_loc = np.sum([a * b for a, b in zip(Ebase_fct, uEbase_list)], axis=0)
+        uS_loc = np.sum([a * b for a, b in zip(Sbase_fct, uSbase_list)], axis=0)
+        dX = np.dot(Rlog2glb, flow_strength * (uE_loc + uS_loc) + omega_tail * U_a_loc[:3])
+        wE_loc = np.sum([a * b for a, b in zip(Ebase_fct, wEbase_list)], axis=0)
+        wS_loc = np.sum([a * b for a, b in zip(Sbase_fct, wSbase_list)], axis=0)
+        omega = np.dot(Rlog2glb, flow_strength * (wE_loc + wS_loc) + omega_tail * U_a_loc[3:])
+        return np.hstack((dX, omega))
+
+    def _get_velocity_at2(self, X, P, P2, psi):
+        t_theta, t_phi, t_psi = self._theta_phi_psi2(P, P2)
+        t_psi = (t_psi + psi - self._ini_psi) % (2 * np.pi)
+        U = self.calc_Up_fun(t_theta, t_phi, t_psi)
+        Ub = self.father.flow_velocity(X)  # background velocity
+        dX = U[:3] + Ub
+        omega = U[3:]
+        return dX, omega
+
+
+class ShearFlowPetsc4nPsiObj(_GivenFlowPetsc4nPsiObj):
+    def Eij_loc(self, theta, phi, psi):
+        Eij_loc = np.array(
+                ((np.cos(psi) * (-(np.cos(phi) * np.cos(psi) * np.cos(theta)) +
+                                 np.sin(phi) * np.sin(psi)) * np.sin(theta),
+                  (2 * np.cos(2 * psi) * np.sin(phi) * np.sin(theta) +
+                   np.cos(phi) * np.sin(2 * psi) * np.sin(2 * theta)) / 4.,
+                  (np.cos(phi) * np.cos(psi) * np.cos(2 * theta) -
+                   np.cos(theta) * np.sin(phi) * np.sin(psi)) / 2.),
+                 ((2 * np.cos(2 * psi) * np.sin(phi) * np.sin(theta) +
+                   np.cos(phi) * np.sin(2 * psi) * np.sin(2 * theta)) / 4.,
+                  -(np.sin(psi) * (np.cos(psi) * np.sin(phi) +
+                                   np.cos(phi) * np.cos(theta) * np.sin(psi)) * np.sin(theta)),
+                  (-(np.cos(psi) * np.cos(theta) * np.sin(phi)) -
+                   np.cos(phi) * np.cos(2 * theta) * np.sin(psi)) / 2.),
+                 ((np.cos(phi) * np.cos(psi) * np.cos(2 * theta) -
+                   np.cos(theta) * np.sin(phi) * np.sin(psi)) / 2.,
+                  (-(np.cos(psi) * np.cos(theta) * np.sin(phi)) -
+                   np.cos(phi) * np.cos(2 * theta) * np.sin(psi)) / 2.,
+                  np.cos(phi) * np.cos(theta) * np.sin(theta))))
+        return Eij_loc
+
+    def Sij_loc(self, theta, phi, psi):
+        Sij_loc = np.array(
+                ((0,
+                  -(np.sin(phi) * np.sin(theta)) / 2.,
+                  (np.cos(phi) * np.cos(psi) - np.cos(theta) * np.sin(phi) * np.sin(psi)) / 2.),
+                 ((np.sin(phi) * np.sin(theta)) / 2.,
+                  0,
+                  (-(np.cos(psi) * np.cos(theta) * np.sin(phi)) - np.cos(phi) * np.sin(psi)) / 2.),
+                 ((-(np.cos(phi) * np.cos(psi)) + np.cos(theta) * np.sin(phi) * np.sin(psi)) / 2.,
+                  (np.cos(psi) * np.cos(theta) * np.sin(phi) + np.cos(phi) * np.sin(psi)) / 2.,
+                  0)))
+        return Sij_loc
 
 # class JefferyObj3D(JefferyObj):
 #     def __init__(self, name='...', **kwargs):

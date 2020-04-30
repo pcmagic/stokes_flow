@@ -22,9 +22,9 @@ from memory_profiler import profile
 
 
 def print_case_info(**problem_kwargs):
-    comm = PETSc.COMM_WORLD.tompi4py( )
-    rank = comm.Get_rank( )
-    size = comm.Get_size( )
+    comm = PETSc.COMM_WORLD.tompi4py()
+    rank = comm.Get_rank()
+    size = comm.Get_size()
 
     fileHandle = problem_kwargs['fileHandle']
     radius = problem_kwargs['radius']
@@ -36,13 +36,15 @@ def print_case_info(**problem_kwargs):
 
     err_msg = "Only 'pf', 'rs', 'tp_rs', and 'lg_rs' methods are accept for this main code. "
     assert matrix_method in (
-        'rs', 'tp_rs', 'lg_rs', 'rs_precondition', 'tp_rs_precondition', 'lg_rs_precondition', 'pf'), err_msg
+        'rs', 'tp_rs', 'lg_rs', 'rs_precondition', 'tp_rs_precondition', 'lg_rs_precondition',
+        'pf'), err_msg
     epsilon = problem_kwargs['epsilon']
     if matrix_method in ('rs', 'rs_precondition', 'pf'):
         PETSc.Sys.Print('create matrix method: %s, epsilon: %f' % (matrix_method, epsilon))
     elif matrix_method in ('tp_rs', 'tp_rs_precondition'):
         twoPara_n = problem_kwargs['twoPara_n']
-        PETSc.Sys.Print('create matrix method: %s, epsilon: %f, order: %d' % (matrix_method, epsilon, twoPara_n))
+        PETSc.Sys.Print('create matrix method: %s, epsilon: %f, order: %d' % (
+            matrix_method, epsilon, twoPara_n))
     elif matrix_method in ('lg_rs', 'lg_rs_precondition'):
         legendre_m = problem_kwargs['legendre_m']
         legendre_k = problem_kwargs['legendre_k']
@@ -51,13 +53,14 @@ def print_case_info(**problem_kwargs):
 
     solve_method = problem_kwargs['solve_method']
     precondition_method = problem_kwargs['precondition_method']
-    PETSc.Sys.Print('solve method: %s, precondition method: %s' % (solve_method, precondition_method))
+    PETSc.Sys.Print(
+            'solve method: %s, precondition method: %s' % (solve_method, precondition_method))
     PETSc.Sys.Print('output file headle: ' + fileHandle)
     PETSc.Sys.Print('MPI size: %d' % size)
 
 
 def get_problem_kwargs(**main_kwargs):
-    OptDB = PETSc.Options( )
+    OptDB = PETSc.Options()
     radius = OptDB.getReal('r', 1)
     deltaLength = OptDB.getReal('d', 0.3)
     epsilon = OptDB.getReal('e', -0.3)
@@ -115,7 +118,8 @@ def get_problem_kwargs(**main_kwargs):
                       'n_sphere_check':        n_sphere_check,
                       'n_node_threshold':      n_node_threshold,
                       'getConvergenceHistory': getConvergenceHistory,
-                      'pickProblem':           pickProblem}
+                      'pickProblem':           pickProblem,
+                      'plot_geo':              False, }
 
     for key in main_kwargs:
         problem_kwargs[key] = main_kwargs[key]
@@ -141,7 +145,7 @@ def main_fun(**main_kwargs):
     method_dict = ('pf', 'rs')
 
     n = int(16 * radius * radius / deltaLength / deltaLength)
-    sphere_geo0 = sphere_geo( )  # force geo
+    sphere_geo0 = sphere_geo()  # force geo
     sphere_geo0.create_n(n, radius)
     sphere_velocity = np.array((u, 0, 0, 0, 0, 0))
     if random_velocity:
@@ -150,24 +154,24 @@ def main_fun(**main_kwargs):
         sphere_geo0.set_rigid_velocity(sphere_velocity)
 
     problem = problem_dic[matrix_method](**problem_kwargs)
-    obj_sphere = obj_dic[matrix_method]( )
-    sphere_geo1 = sphere_geo0.copy( )
+    obj_sphere = obj_dic[matrix_method]()
+    sphere_geo1 = sphere_geo0.copy()
     if matrix_method in ('pf',):
         sphere_geo1.create_n(n, radius + deltaLength * epsilon)
     obj_sphere_kwargs = {'matrix_method': matrix_method,
                          'epsilon':       epsilon,
                          'delta':         delta, }
-    obj_sphere.set_data(sphere_geo1, sphere_geo0, obj_sphere_kwargs, name='sphereObj_0_0')
+    obj_sphere.set_data(sphere_geo1, sphere_geo0, name='sphereObj_0_0', **obj_sphere_kwargs)
     for i in range(n_obj_x * n_obj_y):
         ix = i // n_obj_x
         iy = i % n_obj_x
         move_dist = np.array([ix, iy, 0]) * move_delta
-        obj2 = obj_sphere.copy( )
+        obj2 = obj_sphere.copy()
         move_dist = np.array([ix, iy, 0]) * move_delta
         obj2.move(move_dist)
         if random_velocity:
             sphere_velocity = np.random.sample(6) * u
-        obj2.get_u_geo( ).set_rigid_velocity(sphere_velocity)
+        obj2.get_u_geo().set_rigid_velocity(sphere_velocity)
         obj2.set_name('sphereObj_%d_%d' % (ix, iy))
         obj2_matrix_method = method_dict[i % len(method_dict)]
         obj2_kwargs = {'matrix_method': obj2_matrix_method,
@@ -176,25 +180,26 @@ def main_fun(**main_kwargs):
         obj2.set_matrix_method(**obj2_kwargs)
         problem.add_obj(obj2)
 
-    problem.show_f_nodes()
-    problem.print_info( )
-    problem.create_matrix( )
-    residualNorm = problem.solve( )
+    # problem.show_f_nodes()
+    problem.print_info()
+    problem.create_matrix()
+    residualNorm = problem.solve()
 
-    geo_check = sphere_geo( )  # force geo
+    geo_check = sphere_geo()  # force geo
     geo_check.create_n(n * 3, radius)
     geo_check.set_rigid_velocity(sphere_velocity)
-    obj_check = obj_dic[matrix_method]( )
-    obj_check.set_data(geo_check, geo_check, obj_sphere_kwargs)
+    obj_check = obj_dic[matrix_method]()
+    obj_check.set_data(geo_check, geo_check, name='checkObj', **obj_sphere_kwargs)
     problem.vtk_check(fileHandle + '_check', obj_check)
 
     problem.vtk_self(fileHandle)
     obj2.vtk(fileHandle)
-    force_sphere = obj2.get_force_x( )
-    PETSc.Sys.Print('---->>>%s: Resultant at x axis is %f' % (str(problem), force_sphere.sum( ) / (6 * np.pi * radius)))
+    force_sphere = obj2.get_force_x()
+    PETSc.Sys.Print('---->>>%s: Resultant at x axis is %f' % (
+        str(problem), force_sphere.sum() / (6 * np.pi * radius)))
 
     return True
 
 
 if __name__ == '__main__':
-    main_fun( )
+    main_fun()

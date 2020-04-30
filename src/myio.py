@@ -20,13 +20,15 @@ __all__ = ['get_solver_kwargs', 'get_forcefree_kwargs', 'get_givenForce_kwargs',
            'print_single_ecoli_forcefree_result', 'print_single_ecoli_force_result',
            'get_rod_kwargs', 'print_Rod_info',
            'get_one_ellipse_kwargs', 'print_one_ellipse_info',
+           'get_integrate_kwargs', 'print_integrate_kwargs',
+           'get_helicoid_kwargs', 'print_helicoid_info',
            # 'print_infhelix_info',
            'get_sphere_kwargs', 'print_sphere_info',
            'get_pipe_kwargs', 'print_pipe_info', ]
 
 
 def print_single_ecoli_force_result(ecoli_comp: sf.ForceFreeComposite, prefix='', part='full',
-                                    **kwargs):
+                                    self_rotate_fct=1, **kwargs):
     def print_full():
         head_obj = ecoli_comp.get_obj_list()[0]
         tail_obj = ecoli_comp.get_obj_list()[1:]
@@ -66,11 +68,10 @@ def print_single_ecoli_force_result(ecoli_comp: sf.ForceFreeComposite, prefix=''
         tail_obj = ecoli_comp.get_obj_list()[0:]
         tail_force = np.sum([t_obj.get_total_force() for t_obj in tail_obj], axis=0)
         helix0_force = tail_obj[0].get_total_force()
-        if len(tail_obj) > 1:
-            helix1_force = tail_obj[1].get_total_force()
-        PETSc.Sys.Print('%s tail resultant is' % prefix, tail_force)
+        PETSc.Sys.Print('%s tail resultant is' % prefix, tail_force * self_rotate_fct)
         PETSc.Sys.Print('%s helix0 resultant is' % prefix, helix0_force)
         if len(tail_obj) > 1:
+            helix1_force = tail_obj[1].get_total_force()
             PETSc.Sys.Print('%s helix1 resultant is' % prefix, helix1_force)
         if len(tail_obj) == 3:
             PETSc.Sys.Print('%s Tgeo resultant is' % prefix, tail_obj[2].get_total_force())
@@ -136,6 +137,7 @@ def get_ecoli_kwargs():
     nth = OptDB.getInt('nth', 3)  # amount of nodes on each cycle of helix
     eh = OptDB.getReal('eh', -0.1)  # epsilon of helix
     ch = OptDB.getReal('ch', 0.1)  # cycles of helix
+    repeat_n = OptDB.getInt('repeat_n', 1)  # for long helix, repeat the middle part.
     ph = OptDB.getReal('ph', 3)  # helix pitch
     hfct = OptDB.getReal('hfct', 1)  # helix axis line factor, put more nodes near both tops
     n_tail = OptDB.getInt('n_tail', 2)  # total of tails
@@ -192,6 +194,7 @@ def get_ecoli_kwargs():
         'nth':         nth,
         'eh':          eh,
         'ch':          ch,
+        'repeat_n':    repeat_n,
         'ph':          ph,
         'hfct':        hfct,
         'n_tail':      n_tail,
@@ -222,19 +225,22 @@ def get_ecoli_kwargs():
 def get_helix_kwargs():
     OptDB = PETSc.Options()
     rh1 = OptDB.getReal('rh1', 0.2)  # radius of helix
+    rh11 = OptDB.getReal('rh11', rh1)  # 1th radius of fat helix
+    rh12 = OptDB.getReal('rh12', rh1)  # 2th radius of fat helix
     rh2 = OptDB.getReal('rh2', 0.05)  # radius of helix
     nth = OptDB.getInt('nth', 3)  # amount of nodes on each cycle of helix
     eh = OptDB.getReal('eh', -0.1)  # epsilon of helix
     ch = OptDB.getReal('ch', 0.1)  # cycles of helix
+    repeat_n = OptDB.getInt('repeat_n', 1)  # for long helix, repeat the middle part.
     ph = OptDB.getReal('ph', 3)  # helix pitch
     hfct = OptDB.getReal('hfct', 1)  # helix axis line factor, put more nodes near both tops
+    n_tail = OptDB.getInt('n_tail', 2)  # total of tails
     with_cover = OptDB.getInt('with_cover', 2)
     left_hand = OptDB.getBool('left_hand', False)
 
     # rotate the helix
     rot_theta = OptDB.getReal('rot_theta', 0)
     rot_norm = np.array((1, 0, 0))  # currently is x axis.
-
     rel_uhx = OptDB.getReal('rel_uhx', 0)
     rel_uhy = OptDB.getReal('rel_uhy', 0)
     rel_uhz = OptDB.getReal('rel_uhz', 0)
@@ -245,16 +251,26 @@ def get_helix_kwargs():
     # relative velocity of helix
     rel_Uh = np.array((0, rel_uhz * np.sin(t_theta), rel_uhz * np.cos(t_theta),
                        0, rel_whz * np.sin(t_theta), rel_whz * np.cos(t_theta)))
+    centerx = OptDB.getReal('centerx', 0)
+    centery = OptDB.getReal('centery', 0)
+    centerz = OptDB.getReal('centerz', 0)
+    center = np.array((centerx, centery, centerz))  # center of tail
     zoom_factor = OptDB.getReal('zoom_factor', 1)
 
     helix_kwargs = {
         'rh1':         rh1,
+        'rh11':        rh11,
+        'rh12':        rh12,
         'rh2':         rh2,
         'nth':         nth,
         'eh':          eh,
         'ch':          ch,
+        'rT2':         rh2,
+        'center':      center,
+        'repeat_n':    repeat_n,
         'ph':          ph,
         'hfct':        hfct,
+        'n_tail':      n_tail,
         'with_cover':  with_cover,
         'left_hand':   left_hand,
         'rel_Uh':      rel_Uh,
@@ -271,6 +287,7 @@ def print_ecoli_info(ecoName, **problem_kwargs):
     hfct = problem_kwargs['hfct']
     eh = problem_kwargs['eh']
     ch = problem_kwargs['ch']
+    repeat_n = problem_kwargs['repeat_n']
     rh1 = problem_kwargs['rh1']
     rh11 = problem_kwargs['rh11']
     rh12 = problem_kwargs['rh12']
@@ -306,7 +323,9 @@ def print_ecoli_info(ecoName, **problem_kwargs):
             '  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
     PETSc.Sys.Print('    nth, n_tail, hfct and epsilon of helix are %d, %d, %f and %f, ' % (
         nth, n_tail, hfct, eh))
-    if not np.isclose(rh11, rh12):
+    if repeat_n > 1:
+        PETSc.Sys.Print('    self repeat helix, repeat %d times' % repeat_n)
+    if not (np.isclose(rh1, rh11) and np.isclose(rh1, rh12)):
         PETSc.Sys.Print('    fat helix case, rh11: %f, rh12: %f' % (rh11, rh12))
     PETSc.Sys.Print('  head radius: %f and %f, length: %f, delta length: %f, epsilon: %f' % (
         rs1, rs2, ls, ds, es))
@@ -322,10 +341,13 @@ def print_ecoli_info(ecoName, **problem_kwargs):
 
 def print_helix_info(helixName, **problem_kwargs):
     rh1 = problem_kwargs['rh1']
+    rh11 = problem_kwargs['rh11']
+    rh12 = problem_kwargs['rh12']
     rh2 = problem_kwargs['rh2']
     nth = problem_kwargs['nth']
     eh = problem_kwargs['eh']
     ch = problem_kwargs['ch']
+    repeat_n = problem_kwargs['repeat_n']
     ph = problem_kwargs['ph']
     hfct = problem_kwargs['hfct']
     n_tail = problem_kwargs['n_tail']
@@ -348,6 +370,10 @@ def print_helix_info(helixName, **problem_kwargs):
             '  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
     PETSc.Sys.Print('    nth, n_tail, hfct and epsilon of helix are %d, %d, %f and %f, ' % (
         nth, n_tail, hfct, eh))
+    if repeat_n > 1:
+        PETSc.Sys.Print('    self repeat helix, repeat %d times' % repeat_n)
+    if not (np.isclose(rh1, rh11) and np.isclose(rh1, rh12)):
+        PETSc.Sys.Print('    fat helix case, rh11: %f, rh12: %f' % (rh11, rh12))
     PETSc.Sys.Print('  relative velocity of helix is %s' % (str(rel_Uh)))
     PETSc.Sys.Print('  rot_norm is %s, rot_theta is %f*pi' % (str(rot_norm), rot_theta))
     PETSc.Sys.Print('  geometry zoom factor is %f' % zoom_factor)
@@ -359,12 +385,35 @@ def get_vtk_tetra_kwargs():
     matname = OptDB.getString('bmat', 'body1')
     bnodeshandle = OptDB.getString('bnodes', 'bnodes')  # body nodes, for vtu output
     belemshandle = OptDB.getString('belems', 'belems')  # body tetrahedron mesh, for vtu output
+    save_vtk = OptDB.getBool('save_vtk', False)
     vtk_tetra_kwargs = {
         'matname':      matname,
         'bnodeshandle': bnodeshandle,
         'belemshandle': belemshandle,
+        'save_vtk':     save_vtk,
     }
     return vtk_tetra_kwargs
+
+
+def get_integrate_kwargs():
+    OptDB = PETSc.Options()
+    int_epsabs = OptDB.getReal('int_epsabs', 1e-200)
+    int_epsrel = OptDB.getReal('int_epsrel', 1e-10)
+    int_limit = OptDB.getInt('int_limit', 1000)
+    integrate_kwargs = {
+        'int_epsabs': int_epsabs,
+        'int_epsrel': int_epsrel,
+        'int_limit':  int_limit,
+    }
+    return integrate_kwargs
+
+
+def print_integrate_kwargs(**problem_kwargs):
+    int_epsabs = problem_kwargs['int_epsabs']
+    int_epsrel = problem_kwargs['int_epsrel']
+    int_limit = problem_kwargs['int_limit']
+    PETSc.Sys.Print('  Integrate of M matrix, int_epsabs=%e, int_epsrel=%e, int_limit=%d' %
+                    (int_epsabs, int_epsrel, int_limit))
 
 
 def get_solver_kwargs():
@@ -373,7 +422,7 @@ def get_solver_kwargs():
     precondition_method = OptDB.getString('g', 'none')
     matrix_method = OptDB.getString('sm', 'pf')
     restart = OptDB.getBool('restart', False)
-    n_node_threshold = OptDB.getInt('n_threshold', 10000)
+    n_node_threshold = OptDB.getInt('n_threshold', 5000)
     getConvergenceHistory = OptDB.getBool('getConvergenceHistory', False)
     pickProblem = OptDB.getBool('pickProblem', False)
     plot_geo = OptDB.getBool('plot_geo', False)
@@ -400,6 +449,9 @@ def get_solver_kwargs():
     elif matrix_method in ('pf_stokesletsTwoPlane',):
         twoPlateHeight = OptDB.getReal('twoPlateHeight', 1)  # twoPlateHeight
         problem_kwargs['twoPlateHeight'] = twoPlateHeight
+    elif matrix_method == 'rs':
+        epsilon = OptDB.getReal('epsilon', 0.3)
+        problem_kwargs['epsilon'] = epsilon
     elif matrix_method in ('lg_rs',):
         legendre_m = OptDB.getInt('legendre_m', 3)
         legendre_k = OptDB.getInt('legendre_k', 2)
@@ -407,7 +459,12 @@ def get_solver_kwargs():
         problem_kwargs['legendre_m'] = legendre_m
         problem_kwargs['legendre_k'] = legendre_k
         problem_kwargs['epsilon'] = epsilon
-
+    elif matrix_method in ('pf_stokesletsRingInPipe', 'pf_stokesletsRingInPipeSymz',
+                           'pf_stokesletsRingInPipeProblemSymz',):
+        stokeslets_threshold = OptDB.getInt('stokeslets_threshold', 10)
+        problem_kwargs['stokeslets_threshold'] = stokeslets_threshold
+        use_tqdm_notebook = OptDB.getBool('use_tqdm_notebook', False)
+        problem_kwargs['use_tqdm_notebook'] = use_tqdm_notebook
     return problem_kwargs
 
 
@@ -424,26 +481,36 @@ def print_solver_info(**problem_kwargs):
               ", 'rs', 'lg_rs', and 'rs_plane' methods are accept for this main code. "
     acceptType = ('rs', 'rs_plane', 'lg_rs',
                   'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane', 'pf_dualPotential',
-                  'pf_infhelix',)
+                  'pf_infhelix', 'pf_stokesletsRingInPipe', 'pf_stokesletsRing',
+                  'pf_stokesletsRingInPipeProblemSymz', 'pf_stokesletsRingInPipeSymz',
+                  'pf_selfRepeat', 'pf_selfRotate',
+                  'lightill_slb', 'KRJ_slb',)
     assert matrix_method in acceptType, err_msg
     PETSc.Sys.Print('  output file handle: ' + fileHandle)
     PETSc.Sys.Print('  create matrix method: %s, ' % matrix_method)
-    if matrix_method in ('rs', 'pf', 'rs_plane', 'pf_dualPotential', 'pf_infhelix'):
+    if matrix_method in ('rs', 'pf', 'rs_plane', 'pf_dualPotential', 'pf_infhelix',
+                         'pf_stokesletsRing', 'pf_selfRepeat', 'pf_selfRotate',):
         pass
     elif matrix_method in ('pf_stokesletsInPipe',):
         forcepipe = problem_kwargs['forcepipe']
         PETSc.Sys.Print('  read force of pipe from: ' + forcepipe)
     elif matrix_method in ('pf_stokesletsTwoPlane',):
         twoPlateHeight = problem_kwargs['twoPlateHeight']
-        PETSc.Sys.Print('Height of upper plane is %f ' % twoPlateHeight)
+        PETSc.Sys.Print('  Height of upper plane is %f ' % twoPlateHeight)
     elif matrix_method in ('lg_rs',):
         legendre_m = problem_kwargs['legendre_m']
         legendre_k = problem_kwargs['legendre_k']
         epsilon = problem_kwargs['epsilon']
-        PETSc.Sys.Print('    epsilon: %f, m: %d, k: %d, p: %d'
+        PETSc.Sys.Print('  epsilon: %f, m: %d, k: %d, p: %d'
                         % (epsilon, legendre_m, legendre_k, (legendre_m + 2 * legendre_k + 1)))
+    elif matrix_method in ('pf_stokesletsRingInPipe',
+                           'pf_stokesletsRingInPipeProblemSymz', 'pf_stokesletsRingInPipeSymz'):
+        stokeslets_threshold = problem_kwargs['stokeslets_threshold']
+        PETSc.Sys.Print('  cut of threshold of the summation is %d' % stokeslets_threshold)
+    elif matrix_method in ('lightill_slb', 'KRJ_slb'):
+        pass
     else:
-        raise Exception('set how to print matrix method please. ')
+        raise Exception('  set how to print matrix method please. ')
 
     PETSc.Sys.Print('  solve method: %s, precondition method: %s'
                     % (solve_method, precondition_method))
@@ -486,15 +553,31 @@ def get_shearFlow_kwargs():
     OptDB = PETSc.Options()
     planeShearRatex = OptDB.getReal('planeShearRatex', 0)  #
     planeShearRatey = OptDB.getReal('planeShearRatey', 0)  #
-    # planeShearRatez = OptDB.getReal('planeShearRatez', 0)  #
-    planeShearRate = np.array((planeShearRatex, planeShearRatey, 0)).reshape((1, 3))
-    problem_kwargs = {'planeShearRate': planeShearRate}
+    planeShearRatez = OptDB.getReal('planeShearRatez', 0)  #
+    planeShearRate = np.array((planeShearRatex, planeShearRatey, planeShearRatez)).reshape((1, 3))
+
+    planeShearNorm = OptDB.getString('planeShearNorm', 'z')
+    err_msg = 'the planeShearNorm is one of "x", "y", "z". '
+    assert planeShearNorm in ('x', 'y', 'z'), err_msg
+    if planeShearNorm in 'x':
+        planeShearNorm = np.array((1, 0, 0))
+    elif planeShearNorm in 'y':
+        planeShearNorm = np.array((0, 1, 0))
+    elif planeShearNorm in 'z':
+        planeShearNorm = np.array((0, 0, 1))
+    err_msg = 'restriction: dot(planeShearRate, planeShearNorm)==0. '
+    assert np.isclose(np.dot(planeShearRate, planeShearNorm), 0), err_msg
+
+    problem_kwargs = {'planeShearRate': planeShearRate,
+                      'planeShearNorm': planeShearNorm}
     return problem_kwargs
 
 
 def print_shearFlow_info(**problem_kwargs):
     planeShearRate = problem_kwargs['planeShearRate']
-    PETSc.Sys.Print('Given background flow: shear flow, rate: %s ' % str(planeShearRate.flatten()))
+    planeShearNorm = problem_kwargs['planeShearNorm']
+    PETSc.Sys.Print('Given background flow: shear flow, norm: %s, rate: %s ' %
+                    (str(planeShearNorm), str(planeShearRate.flatten())))
     return True
 
 
@@ -533,12 +616,10 @@ def get_forcefree_kwargs():
     ffweighty = OptDB.getReal('ffweighty', ffweight)  # weight of sum(Fy) = 0
     ffweightz = OptDB.getReal('ffweightz', ffweight)  # weight of sum(Fz) = 0
     ffweightT = OptDB.getReal('ffweightT', ffweight)  # weight of sum(Tx) = sum(Ty) = sum(Tz) = 0
-    problem_kwargs = {
-        'ffweightx': ffweightx,
-        'ffweighty': ffweighty,
-        'ffweightz': ffweightz,
-        'ffweightT': ffweightT,
-    }
+    problem_kwargs = {'ffweightx': ffweightx,
+                      'ffweighty': ffweighty,
+                      'ffweightz': ffweightz,
+                      'ffweightT': ffweightT, }
     return problem_kwargs
 
 
@@ -549,6 +630,35 @@ def print_forcefree_info(**problem_kwargs):
     ffweightT = problem_kwargs['ffweightT']
     PETSc.Sys.Print('  force free weight of Fx, Fy, Fz, and (Tx, Ty, Tz) are %f, %f, %f, %f' %
                     (ffweightx, ffweighty, ffweightz, ffweightT))
+    return True
+
+
+def get_helicoid_kwargs():
+    OptDB = PETSc.Options()
+
+    helicoid_r1 = OptDB.getReal('helicoid_r1', 1)
+    helicoid_r2 = OptDB.getReal('helicoid_r2', np.sqrt(0.1))
+    helicoid_ds = OptDB.getReal('helicoid_ds', 0.1)
+    helicoid_th_loc = OptDB.getReal('helicoid_th_loc', np.pi / 4)
+    helicoid_ndsk_each = OptDB.getInt('helicoid_ndsk_each', 4)
+    problem_kwargs = {'helicoid_r1':        helicoid_r1,
+                      'helicoid_r2':        helicoid_r2,
+                      'helicoid_ds':        helicoid_ds,
+                      'helicoid_th_loc':    helicoid_th_loc,
+                      'helicoid_ndsk_each': helicoid_ndsk_each, }
+    return problem_kwargs
+
+
+def print_helicoid_info(**problem_kwargs):
+    helicoid_r1 = problem_kwargs['helicoid_r1']
+    helicoid_r2 = problem_kwargs['helicoid_r2']
+    helicoid_ds = problem_kwargs['helicoid_ds']
+    helicoid_th_loc = problem_kwargs['helicoid_th_loc']
+    helicoid_ndsk_each = problem_kwargs['helicoid_ndsk_each']
+    PETSc.Sys.Print('  helicoid: r1, r2, ds are %f, %f, %f' %
+                    (helicoid_r1, helicoid_r2, helicoid_ds))
+    PETSc.Sys.Print('  helicoid_th_loc %f, helicoid_ndsk_each %f. ' %
+                    (helicoid_th_loc, helicoid_ndsk_each))
     return True
 
 

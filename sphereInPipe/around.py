@@ -31,7 +31,7 @@ def save_vtk(problem: sf.StokesFlowProblem):
     fileHandle = problem_kwargs['fileHandle']
     matname = problem_kwargs['matname']
     obj_check = sf.StokesFlowObj()
-    geo_check = geo()
+    geo_check = base_geo()
 
     problem.vtk_obj(fileHandle)
 
@@ -63,7 +63,7 @@ def save_vtk(problem: sf.StokesFlowProblem):
     # obj_check.set_data(geo_check, geo_check)
     # err_cf3 = problem.vtk_check(fileHandle + '_cf3nodes', obj_check)[0]
 
-    bgeo = geo()
+    bgeo = base_geo()
     bnodesHeadle = problem_kwargs['bnodesHeadle']
     bgeo.mat_nodes(filename=matname, mat_handle=bnodesHeadle)
     belemsHeadle = problem_kwargs['belemsHeadle']
@@ -240,14 +240,14 @@ def main_fun(**main_kwargs):
         problem = problem_dic[matrix_method](**problem_kwargs)
         if problem_kwargs['pickProblem']:
             # do NOT save anything really, just check if the path is correct, to avoid this error after long time calculation.
-            problem.pickmyself(fileHandle, check=True)
+            problem.pickmyself(fileHandle, ifcheck=True)
 
         # create problem
         matname = problem_kwargs['matname']
-        fgeo = geo()
+        fgeo = base_geo()
         fnodesHeadle = problem_kwargs['fnodesHeadle']
         fgeo.mat_nodes(filename=matname, mat_handle=fnodesHeadle)
-        vgeo = geo()
+        vgeo = base_geo()
         vnodesHeadle = problem_kwargs['vnodesHeadle']
         vgeo.mat_nodes(filename=matname, mat_handle=vnodesHeadle)
         uHeadle = problem_kwargs['uHeadle']

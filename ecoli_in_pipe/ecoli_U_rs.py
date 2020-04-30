@@ -105,7 +105,7 @@ def main_fun(**main_kwargs):
         for obj in tube_flatten(obj_list):
             problem.add_obj(obj)
         if pickProblem:
-            problem.pickmyself(fileHandle, check=True)
+            problem.pickmyself(fileHandle, ifcheck=True)
         problem.print_info()
 
         # # dbg
@@ -140,7 +140,7 @@ def main_fun(**main_kwargs):
         # save_singleEcoli_U_vtk(problem, createHandle=createEcoli_tunnel, part=ecoli_part)
 
         if pickProblem:
-            problem.pickmyself(fileHandle, pick_M=True, unpick=False)
+            problem.pickmyself(fileHandle, pick_M=False, unpick=False)
     else:
         pass
 

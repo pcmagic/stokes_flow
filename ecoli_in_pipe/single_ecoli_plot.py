@@ -4,11 +4,8 @@ import petsc4py
 petsc4py.init(sys.argv)
 
 from petsc4py import PETSc
-from src import stokes_flow as sf
-from src.myio import *
 from src.objComposite import createEcoliComp_tunnel
-from src.myvtk import save_singleEcoli_vtk
-from ecoli_in_pipe.ecoli_common import *
+from codeStore.ecoli_common import *
 
 
 # @profile

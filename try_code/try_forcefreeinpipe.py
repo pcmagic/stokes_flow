@@ -160,7 +160,7 @@ def main_fun(**main_kwargs):
     obj_composite = sf.ForceFreeComposite(center, name)
     obj_composite.add_obj(obj_sphere, rel_U=rel_U)
 
-    problem = sf.stokesletsInPipeforcefreeProblem(**problem_kwargs)
+    problem = sf.StokesletsInPipeforcefreeProblem(**problem_kwargs)
     problem.add_obj(obj_composite)
     problem.create_matrix()
 

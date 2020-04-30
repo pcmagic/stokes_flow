@@ -5,20 +5,13 @@ import petsc4py
 
 petsc4py.init(sys.argv)
 
-import numpy as np
-from time import time
-from scipy.io import savemat
 # from src.stokes_flow import problem_dic, obj_dic
-from src.geo import *
 from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.myio import *
-from src.StokesFlowMethod import light_stokeslets_matrix_3d
-from src.support_class import *
 from src.objComposite import *
 # from src.myvtk import save_singleEcoli_vtk
-import ecoli_in_pipe.ecoli_common as ec
-import os
+import codeStore.ecoli_common as ec
 
 
 # import import_my_lib
@@ -138,7 +131,7 @@ def main_fun(**main_kwargs):
         #     err_ref_u = np.abs((norm_ref_u - ecoli_velocity) / ecoli_velocity)
         #     tmp_rel_U = tmp_rel_U * ecoli_velocity / norm_ref_u
         #     tmp_rel_U_list = [rel_Us, tmp_rel_U]
-        #     ecoli_comp.dbg_set_rel_U_list(tmp_rel_U_list)
+        #     ecoli_comp.set_rel_U_list(tmp_rel_U_list)
         #     PETSc.Sys.Print('############################################################################')
         #     PETSc.Sys.Print('ref_U', ref_U)
         #     PETSc.Sys.Print('norm_ref_U', norm_ref_u)

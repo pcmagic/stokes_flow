@@ -14,9 +14,7 @@ from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.myio import *
 # from src.support_class import *
-from src.objComposite import createEcoliComp_tunnel
-from src.myvtk import save_singleEcoli_vtk
-import ecoli_in_pipe.ecoli_common as ec
+import codeStore.ecoli_common as ec
 
 
 def get_problem_kwargs(**main_kwargs):
@@ -60,7 +58,7 @@ def create_ellipse_obj(**problem_kwargs):
     rot_theta = problem_kwargs['rot_theta']
     matrix_method = problem_kwargs['matrix_method']
 
-    ellipse_ugeo = ellipse_geo()
+    ellipse_ugeo = ellipse_base_geo()
     ellipse_ugeo.create_delta(ds, rs1, rs2)
     ellipse_ugeo.node_rotation(rot_norm, rot_theta)
     ellipse_ugeo.set_rigid_velocity(np.zeros(6))

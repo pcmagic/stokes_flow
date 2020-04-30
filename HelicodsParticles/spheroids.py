@@ -223,7 +223,6 @@ def main_fun(**main_kwargs):
     PETSc.Sys.Print('  spheroid_comp_F %s' % str(spheroid_comp_F))
     PETSc.Sys.Print('  spheroid0_F %s' % str(spheroid0_F))
     PETSc.Sys.Print('  non dimensional (F, T) err %s' % str(spheroid_comp_F / spheroid0_F))
-
     return True
 
 

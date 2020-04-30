@@ -70,7 +70,7 @@ def main_fun(**main_kwargs):
         # PETSc.Sys.Print(ecoli_comp.get_total_force())
 
         if problem_kwargs['pickProblem']:
-            problem.pickmyself(fileHandle, pick_M=True)
+            problem.pickmyself(fileHandle, pick_M=False)
         # save_singleEcoli_vtk(problem)
 
         t_force = 0

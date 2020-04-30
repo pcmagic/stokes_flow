@@ -9,16 +9,12 @@ import numpy as np
 from time import time
 from scipy.io import savemat
 # from src.stokes_flow import problem_dic, obj_dic
-from src.geo import *
 from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.myio import *
-from src.StokesFlowMethod import light_stokeslets_matrix_3d
-from src.support_class import *
 from src.objComposite import *
 # from src.myvtk import save_singleEcoli_vtk
-import ecoli_in_pipe.ecoli_common as ec
-import os
+import codeStore.ecoli_common as ec
 
 
 # import import_my_lib
@@ -121,16 +117,16 @@ def main_fun(**main_kwargs):
         problem.create_matrix()
         ref_U, _, _ = problem.do_iterate2(ini_refU1=ref_U, tolerate=iter_tor)
         # 3) check accurate of force.
-        ecoli_comp_check.dbg_set_rel_U_list([head_rel_U, tail_rel_U])
+        ecoli_comp_check.set_rel_U_list([head_rel_U, tail_rel_U])
         ecoli_comp_check.set_ref_U(ref_U)
         velocity_err_list = problem.vtk_check(fileHandle, ecoli_comp_check)
         PETSc.Sys.Print('velocity error of head (total, x, y, z): ', next(velocity_err_list))
         PETSc.Sys.Print('velocity error of tail (total, x, y, z): ', next(velocity_err_list))
         # 4) set parameters
         fct = ecoli_velocity / np.linalg.norm(ref_U[:3])
-        ecoli_comp.dbg_set_rel_U_list([head_rel_U * fct, tail_rel_U * fct])
+        ecoli_comp.set_rel_U_list([head_rel_U * fct, tail_rel_U * fct])
         ecoli_comp.set_ref_U(ref_U * fct)
-        ecoli_comp_check.dbg_set_rel_U_list([head_rel_U * fct, tail_rel_U * fct])
+        ecoli_comp_check.set_rel_U_list([head_rel_U * fct, tail_rel_U * fct])
         ecoli_comp_check.set_ref_U(ref_U * fct)
         problem.set_planeShearRate(planeShearRate)
         problem_ff.set_planeShearRate(planeShearRate)
@@ -265,7 +261,7 @@ def main_fun_noIter(**main_kwargs):
         # ref_U = problem.do_iterate3(ini_refU1=ref_U, tolerate=iter_tor)
         # 4) set parameters
         fct = ecoli_velocity / np.linalg.norm(ref_U[:3])
-        ecoli_comp.dbg_set_rel_U_list([head_rel_U * fct, tail_rel_U * fct])
+        ecoli_comp.set_rel_U_list([head_rel_U * fct, tail_rel_U * fct])
         ecoli_comp.set_ref_U(ref_U * fct)
         problem_ff.set_planeShearRate(planeShearRate)
         problem.set_planeShearRate(planeShearRate)
@@ -357,7 +353,7 @@ def passive_fun_noIter(**main_kwargs):
         ecoli_comp = create_ecoli_2part(**problem_kwargs)
         ecoli_comp.node_rotation(np.array((0, 1, 0)), theta=ini_rot_theta)
         ecoli_comp.node_rotation(np.array((0, 0, 1)), theta=ini_rot_phi)
-        ecoli_comp.dbg_set_rel_U_list([np.zeros(6), np.zeros(6)])
+        ecoli_comp.set_rel_U_list([np.zeros(6), np.zeros(6)])
         problem_ff = sf.ShearFlowForceFreeProblem(**problem_kwargs)
         problem_ff.add_obj(ecoli_comp)
         problem_ff.print_info()

@@ -9,15 +9,12 @@ import numpy as np
 from time import time
 from scipy.io import savemat
 # from src.stokes_flow import problem_dic, obj_dic
-from src.geo import *
 from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.myio import *
-from src.support_class import *
 from src.objComposite import *
 # from src.myvtk import save_singleEcoli_vtk
-import ecoli_in_pipe.ecoli_common as ec
-import os
+import codeStore.ecoli_common as ec
 import pickle
 
 
@@ -79,7 +76,7 @@ def do_solve_once(problem_ff: sf.ShearFlowForceFreeProblem,
     PETSc.Sys.Print('  ini ref_U1 in shear flow %s' % str(ref_U1))
     # 2) optimize force and torque free
     problem.create_matrix()
-    ref_U = problem.do_iterate3(ini_refU0=ref_U0, ini_refU1=ref_U1, tolerate=iter_tor)
+    ref_U = problem.do_iterate3(ini_refU0=ref_U0, ini_refU1=ref_U1, rtol=iter_tor)
     ecoli_comp.set_ref_U(ref_U)
 
     PETSc.Sys.Print('  true ref_U in shear flow', ref_U)

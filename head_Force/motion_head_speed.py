@@ -13,12 +13,9 @@ from src.geo import *
 from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.myio import *
-from src.StokesFlowMethod import light_stokeslets_matrix_3d
-from src.support_class import *
 # from src.objComposite import createEcoliComp_tunnel
 # from src.myvtk import save_singleEcoli_vtk
-import ecoli_in_pipe.ecoli_common as ec
-import os
+import codeStore.ecoli_common as ec
 
 
 # import import_my_lib
@@ -74,7 +71,7 @@ def create_ellipse_obj(**problem_kwargs):
     ellipse_center = problem_kwargs['ellipse_center']
     # matrix_method = problem_kwargs['matrix_method']
 
-    ellipse_geo0 = ellipse_geo()
+    ellipse_geo0 = ellipse_base_geo()
     ellipse_geo0.create_delta(ds, rs1, rs2)
     ellipse_geo0.node_rotation(rot_norm, rot_theta)
     ellipse_geo0.move(ellipse_center)

@@ -16,7 +16,7 @@ from src.myio import *
 # from src.support_class import *
 from src.objComposite import createEcoliComp_tunnel
 from src.myvtk import save_singleEcoli_vtk
-import ecoli_in_pipe.ecoli_common as ec
+import codeStore.ecoli_common as ec
 
 
 def get_problem_kwargs(**main_kwargs):
