@@ -30,6 +30,8 @@ def get_problem_kwargs(**main_kwargs):
                               spf_tb.do_calculate_ecoli_Petsc4nPsi,
                           'do_ShearFlowPetsc4nPsiObj':
                               spf_tb.do_ShearFlowPetsc4nPsiObj,
+                          'do_ShearFlowPetsc4nPsiObj_dbg':
+                              spf_tb.do_ShearFlowPetsc4nPsiObj_dbg,
                           'do_calculate_ecoli_AvrPetsc4n':
                               spf_tb.do_calculate_ecoli_AvrPetsc4n,
                           'do_calculate_ecoli_passive_Petsc4n':
@@ -48,6 +50,7 @@ def get_problem_kwargs(**main_kwargs):
     calculate_fun = OptDB.getString('calculate_fun', 'do_calculate_helix_Petsc4n')
     update_fun = OptDB.getString('update_fun', '5bs')
     table_name = OptDB.getString('table_name', 'hlxB01_tau1a')
+    fileHandle = OptDB.getString('f', '')
     omega_tail = OptDB.getReal('omega_tail', 0)
     flow_strength = OptDB.getReal('flow_strength', 0)
 
@@ -62,6 +65,7 @@ def get_problem_kwargs(**main_kwargs):
                       'atol':          atol,
                       'eval_dt':       eval_dt,
                       'table_name':    table_name,
+                      'fileHandle':    fileHandle,
                       'omega_tail':    omega_tail,
                       'flow_strength': flow_strength, }
 
@@ -140,7 +144,9 @@ def main_fun(**main_kwargs):
     problem_kwargs['save_every'] = 1
     save_every = problem_kwargs['save_every']
     idx_time = datetime.today().strftime('D%Y%m%d_T%H%M%S')
-    t_name = 'th%5.3f_ph%5.3f_ps%5.3f_%s' % (ini_theta, ini_phi, ini_psi, idx_time)
+    fileHandle = problem_kwargs['fileHandle']
+    fileHandle = fileHandle + '_' if len(fileHandle) > 0 else ''
+    t_name = '%sth%5.3f_ph%5.3f_ps%5.3f_%s' % (fileHandle, ini_theta, ini_phi, ini_psi, idx_time)
     problem_kwargs['t_name'] = t_name
 
     t0 = time()
@@ -158,11 +164,13 @@ def main_fun(**main_kwargs):
     print(expt_str)
     with open('%s.txt' % t_name, 'w') as text_file:
         text_file.write(expt_str)
+    return True
 
 
 def main_fun_base_flow(**main_kwargs):
     OptDB = PETSc.Options()
-    assert OptDB.getString('calculate_fun') == 'do_ShearFlowPetsc4nPsiObj'
+    assert OptDB.getString('calculate_fun') in ('do_ShearFlowPetsc4nPsiObj',
+                                                'do_ShearFlowPetsc4nPsiObj_dbg',)
 
     problem_kwargs = get_problem_kwargs(**main_kwargs)
     ini_theta = problem_kwargs['ini_theta']
@@ -180,7 +188,9 @@ def main_fun_base_flow(**main_kwargs):
     problem_kwargs['save_every'] = 1
     save_every = problem_kwargs['save_every']
     idx_time = datetime.today().strftime('D%Y%m%d_T%H%M%S')
-    t_name = 'th%5.3f_ph%5.3f_ps%5.3f_%s' % (ini_theta, ini_phi, ini_psi, idx_time)
+    fileHandle = problem_kwargs['fileHandle']
+    fileHandle = fileHandle + '_' if len(fileHandle) > 0 else ''
+    t_name = '%sth%5.3f_ph%5.3f_ps%5.3f_%s' % (fileHandle, ini_theta, ini_phi, ini_psi, idx_time)
     problem_kwargs['t_name'] = t_name
     calculate_fun = problem_kwargs['calculate_fun']
 
@@ -200,11 +210,13 @@ def main_fun_base_flow(**main_kwargs):
     print(expt_str)
     with open('%s.txt' % t_name, 'w') as text_file:
         text_file.write(expt_str)
+    return True
 
 
 if __name__ == '__main__':
     OptDB = PETSc.Options()
-    if OptDB.getString('calculate_fun') in ('do_ShearFlowPetsc4nPsiObj',):
+    if OptDB.getString('calculate_fun') in ('do_ShearFlowPetsc4nPsiObj',
+                                            'do_ShearFlowPetsc4nPsiObj_dbg',):
         OptDB.setValue('main_fun', False)
         main_fun_base_flow()
 

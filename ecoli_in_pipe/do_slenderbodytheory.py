@@ -210,6 +210,10 @@ if __name__ == '__main__':
     assert matrix_method in ('do_KRJ_nhelix', 'do_mod_KRJ_nhelix', 'do_Lightill_nhelix')
     if matrix_method == 'do_KRJ_nhelix':
         slb_fun = do_KRJ_nhelix
+    # elif matrix_method == 'do_Lightill_nhelix':
+    #     slb_fun = do_Lightill_nhelix
+    # elif matrix_method == 'do_mod_KRJ_nhelix':
+    #     slb_fun = do_mod_KRJ_nhelix
     slb_geo_fun = OptDB.getString('slb_geo_fun', 'slb_helix')
     assert slb_geo_fun in ('slb_helix', 'Johnson_helix')
     if slb_geo_fun == 'slb_helix':

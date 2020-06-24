@@ -13,9 +13,9 @@ from matplotlib import pyplot as plt
 # fontsize = 40
 
 import os
-import glob
+# import glob
 import numpy as np
-import matplotlib
+# import matplotlib
 import re
 from scanf import scanf
 from scipy import interpolate, integrate
@@ -266,9 +266,9 @@ def write_main_run_comm_list(comm_list, txt_list, use_node, njob_node, job_dir,
     # generate comm_list.sh
     t_name0 = os.path.join(t_path, 'comm_list.sh')
     with open(t_name0, 'w') as fcomm:
-        for ts, f in zip(comm_list, txt_list):
-            fcomm.write('%s > %s.txt 2> %s.err' % (ts, f, f))
-            fcomm.write('\n\n')
+        for i0, ts, f in zip(range(n_case), comm_list, txt_list):
+            fcomm.write('%s > %s.txt 2> %s.err \n' % (ts, f, f))
+            fcomm.write('echo \'%d / %d, %s finished.\'  \n\n' % (i0+1, n_case, f))
 
     assert callable(write_pbs_head000)
     if write_pbs_head000 is write_pbs_head:

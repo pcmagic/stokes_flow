@@ -388,6 +388,30 @@ def do_ShearFlowPetsc4nPsiObj(norm, ini_psi, max_t, table_name, update_fun='3bs'
                Table_theta, Table_phi, Table_psi, Table_eta,
 
 
+def do_ShearFlowPetsc4nPsiObj_dbg(norm, ini_psi, max_t, table_name, update_fun='3bs',
+                                  rtol=1e-6, atol=1e-9, eval_dt=0.001, ini_t=0, save_every=1,
+                                  tqdm_fun=tqdm_notebook, omega_tail=0, flow_strength=0,
+                                  return_psi_body=False):
+    P0, P20, tcenter, problem = do_calculate_prepare(norm)
+    ecoli_kwargs = do_ecoli_kwargs(tcenter, P0, P20, ini_psi, omega_tail, table_name,
+                                   flow_strength=flow_strength, name='ShearFlowPetsc4nPsi')
+    obj = jm.ShearFlowPetsc4nPsiObj_dbg(**ecoli_kwargs)
+
+    obj.set_update_para(fix_x=False, fix_y=False, fix_z=False, update_fun=update_fun,
+                        rtol=rtol, atol=atol, save_every=save_every, tqdm_fun=tqdm_fun)
+    problem.add_obj(obj)
+    Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_psi = \
+        obj.update_self(t0=ini_t, t1=max_t, eval_dt=eval_dt)
+    Table_theta, Table_phi, Table_psib = obj.theta_phi_psi
+    Table_eta = np.arccos(np.sin(Table_theta) * np.sin(Table_phi))
+    if return_psi_body:
+        return Table_t, Table_dt, Table_X, Table_P, Table_P2, \
+               Table_theta, Table_phi, Table_psi, Table_eta, Table_psib,
+    else:
+        return Table_t, Table_dt, Table_X, Table_P, Table_P2, \
+               Table_theta, Table_phi, Table_psi, Table_eta,
+
+
 def do_calculate_ecoli_AvrPetsc4n(norm, ini_psi, max_t, update_fun='3bs', rtol=1e-6, atol=1e-9,
                                   eval_dt=0.001, ini_t=0,
                                   save_every=1, table_name='planeShearRatex_1d_avr',
@@ -1027,18 +1051,20 @@ def save_theta_phi(filename, Table_t, Table_dt, Table_X, Table_P, Table_P2,
 
 def core_light_show_theta_phi(Table_t, Table_dt, Table_X, Table_P, Table_P2,
                               Table_theta, Table_phi, Table_psi, Table_eta,
-                              fig=None):
+                              fig=None, show_colorbar=True):
     fontsize = 30
     if fig is None:
         fig = plt.figure(figsize=(10, 10), dpi=200)
     else:
+        pass
         fig.clf()
     fig.patch.set_facecolor('white')
     ax0 = fig.add_subplot(111)
     ax0.set_xlim(-np.pi * 1.1, np.pi * 1.1)
     ax0.set_ylim(-np.pi * 1.1, np.pi * 1.1)
     ax0.axis('off')
-    cax0 = colorbar.make_axes(ax0, orientation='vertical', aspect=20, shrink=0.6)[0]
+    if show_colorbar:
+        cax0 = colorbar.make_axes(ax0, orientation='vertical', aspect=20, shrink=0.6)[0]
     ax0.set_aspect('equal')
 
     # polar version of theta-phi
@@ -1054,30 +1080,25 @@ def core_light_show_theta_phi(Table_t, Table_dt, Table_X, Table_P, Table_P2,
     cmap = plt.get_cmap('jet')
     ax1.plot(Table_phi, Table_theta, '-', alpha=0.2)
     ax1.scatter(Table_phi[0], Table_theta[0], c='k', s=fontsize * 6, marker='*')
-    lc = ax1.scatter(Table_phi, Table_theta, c=Table_t, cmap=cmap, norm=norm, s=fontsize * 0.2)
-    clb = fig.colorbar(lc, cax=cax0, orientation="vertical")
-    clb.ax.tick_params(labelsize=fontsize * 0.6)
-    clb.ax.set_title('time', size=fontsize * 0.6)
+    if show_colorbar:
+        lc = ax1.scatter(Table_phi, Table_theta, c=Table_t, cmap=cmap, norm=norm, s=fontsize * 0.2)
+        clb = fig.colorbar(lc, cax=cax0, orientation="vertical")
+        clb.ax.tick_params(labelsize=fontsize * 0.6)
+        clb.ax.set_title('time', size=fontsize * 0.6)
+    else:
+        ax1.scatter(Table_phi, Table_theta, cmap=cmap, norm=norm, s=fontsize * 0.2)
     # plt.sca(ax1)
     # plt.tight_layout()
     return fig
 
 
-def light_show_theta_phi(Table_t, Table_dt, Table_X, Table_P, Table_P2,
-                         Table_theta, Table_phi, Table_psi, Table_eta,
-                         fig=None):
-    core_light_show_theta_phi(Table_t, Table_dt, Table_X, Table_P, Table_P2,
-                              Table_theta, Table_phi, Table_psi, Table_eta,
-                              fig)
+def light_show_theta_phi(*args, **kwargs):
+    core_light_show_theta_phi(*args, **kwargs)
     return True
 
 
-def light_save_theta_phi(filename, Table_t, Table_dt, Table_X, Table_P, Table_P2,
-                         Table_theta, Table_phi, Table_psi, Table_eta,
-                         fig=None):
-    fig = core_light_show_theta_phi(Table_t, Table_dt, Table_X, Table_P, Table_P2,
-                                    Table_theta, Table_phi, Table_psi, Table_eta,
-                                    fig)
+def light_save_theta_phi(filename, *args, **kwargs):
+    fig = core_light_show_theta_phi(*args, **kwargs)
     fig.savefig(filename, dpi=300)
     return fig
 
@@ -1342,13 +1363,23 @@ def get_major_fre(tx, ty1, fft_full_mode=False):
     return freq_pk[-1]
 
 
-def get_primary_fft_fre(tx, ty1, fft_full_mode=False):
+def get_primary_fft_fre(tx, ty1, continue_angle=True, sub_mean=False,
+                        cos_mode=False, fft_full_mode=False):
     idx = np.ones_like(tx, dtype=bool)
     if not fft_full_mode:
         idx[:-20000] = False
-    t_use = np.linspace(tx[idx].min(), tx[idx].max(), tx[idx].size)
-    ty = get_continue_angle(tx[idx], ty1[idx], t_use)
-    tfft = np.fft.rfft(ty)
+    if continue_angle:
+        t_use = np.linspace(tx[idx].min(), tx[idx].max(), tx[idx].size)
+        ty = get_continue_angle(tx[idx], ty1[idx], t_use)
+    else:
+        t_use = tx
+        ty = ty1
+    if sub_mean:
+        ty = ty - np.mean(ty)
+    if cos_mode:
+        tfft = np.fft.rfft(np.cos(ty))
+    else:
+        tfft = np.fft.rfft(ty)
     tfft_abs = np.abs(tfft)
     # noinspection PyTypeChecker
     tfreq = np.fft.rfftfreq(t_use.size, np.mean(np.diff(t_use)))
@@ -1357,6 +1388,77 @@ def get_primary_fft_fre(tx, ty1, fft_full_mode=False):
     freq_pk = tfreq[tpk]
     tidx = np.argsort(fft_abs_pk)
     return freq_pk[tidx]
+
+
+def get_primary_autocorrelate_fft_fre(tx, ty1, continue_angle=True, sub_mean=False, sin_mode=False,
+                                      fft_full_mode=False, strength_threshold=0):
+    idx = np.ones_like(tx, dtype=bool)
+    if not fft_full_mode:
+        idx[:-20000] = False
+    if continue_angle:
+        t_use = np.linspace(tx[idx].min(), tx[idx].max(), tx[idx].size)
+        ty = get_continue_angle(tx[idx], ty1[idx], t_use)
+    else:
+        t_use = tx
+        ty = ty1
+    if sub_mean:
+        ty = ty - np.mean(ty)
+    if sin_mode:
+        ty = np.sin(ty)
+    sampling_rate = ty.size / (t_use.max() - t_use.min())
+
+    tfft = np.fft.rfft(np.correlate(ty, ty, mode='full')[ty.size - 1:])
+    tfft = tfft / ty.size / sampling_rate * 2
+    tfft_abs = np.abs(tfft)
+    # noinspection PyTypeChecker
+    tfreq = np.fft.rfftfreq(t_use.size, np.mean(np.diff(t_use)))
+    tpk = signal.find_peaks(tfft_abs)[0]
+    fft_abs_pk = tfft_abs[tpk]
+    freq_pk = tfreq[tpk]
+    freq_pk = freq_pk[fft_abs_pk > (fft_abs_pk.max() * strength_threshold)]
+    fft_abs_pk = fft_abs_pk[fft_abs_pk > (fft_abs_pk.max() * strength_threshold)]
+    tidx = np.argsort(fft_abs_pk)
+    return freq_pk[tidx]
+    # return freq_pk[tidx], fft_abs_pk[tidx]
+
+
+def get_primary_autocorrelate_fft_fre_v2(tx, ty1, continue_angle=True, fft_full_mode=False):
+    idx = np.ones_like(tx, dtype=bool)
+    if not fft_full_mode:
+        idx[:-20000] = False
+    if continue_angle:
+        t_use = np.linspace(tx[idx].min(), tx[idx].max(), tx[idx].size)
+        ty = get_continue_angle(tx[idx], ty1[idx], t_use)
+    else:
+        t_use = tx
+        ty = ty1
+    ty = np.cos(ty - np.mean(ty) + np.pi / 2)
+    sampling_rate = ty.size / (t_use.max() - t_use.min())
+
+    tfft = np.fft.rfft(np.correlate(ty, ty, mode='full')[ty.size - 1:])
+    tfft = tfft / ty.size / sampling_rate * 2
+    tfft_abs = np.abs(tfft)
+    # noinspection PyTypeChecker
+    tfreq = np.fft.rfftfreq(t_use.size, np.mean(np.diff(t_use)))
+    # tfft_abs = tfft_abs[:-1]
+    # tfreq = tfreq[:-1]
+    # plt.plot(t_use, ty)
+    # plt.loglog(tfreq, tfft_abs)
+    tpk = signal.find_peaks(tfft_abs)[0]
+    fft_abs_pk = tfft_abs[tpk]
+    tidx = np.argsort(fft_abs_pk)
+    fft_abs_pk = fft_abs_pk[tidx]
+    freq_pk = tfreq[tpk][tidx]
+    low_fft_abs_pk = fft_abs_pk[freq_pk < freq_pk[-1]]
+    low_freq_pk = freq_pk[freq_pk < freq_pk[-1]]
+    if low_fft_abs_pk.size > 0:
+        tidx2 = np.argmax(low_fft_abs_pk)
+        pk_fre = np.hstack((freq_pk[-1], low_freq_pk[tidx2]))
+        pk_fft = np.hstack((fft_abs_pk[-1], low_fft_abs_pk[tidx2]))
+    else:
+        pk_fre = np.hstack((freq_pk[-1], freq_pk[-1],))
+        pk_fft = np.hstack((fft_abs_pk[-1], fft_abs_pk[-1]))
+    return pk_fre, pk_fft
 
 
 def separate_angle_idx(ty):
@@ -1817,9 +1919,139 @@ def load_rand_data_pickle_dir(t_dir, t_headle='(.*?).pickle', n_load=None, rand_
         phi_max_fre_list.append(get_major_fre(tx[idx], tpick['Table_phi'][idx]))
         psi_max_fre_list.append(get_major_fre(tx[idx], tpick['Table_psi'][idx]))
 
+    ini_theta_list = np.hstack(ini_theta_list)
+    ini_phi_list = np.hstack(ini_phi_list)
+    ini_psi_list = np.hstack(ini_psi_list)
+    theta_max_fre_list = np.hstack(theta_max_fre_list)
+    phi_max_fre_list = np.hstack(phi_max_fre_list)
+    psi_max_fre_list = np.hstack(psi_max_fre_list)
+    pickle_path_list = np.hstack(pickle_path_list)
     return ini_theta_list, ini_phi_list, ini_psi_list, \
            theta_max_fre_list, phi_max_fre_list, psi_max_fre_list, \
            pickle_path_list
+
+
+def load_rand_data_pickle_dir_v2(t_dir, t_headle='(.*?).pickle', n_load=None, rand_mode=False):
+    def _get_primary_autocorrelate_fft_fre_v2(tx, ty1, continue_angle=True, fft_full_mode=False):
+        idx = np.ones_like(tx, dtype=bool)
+        if not fft_full_mode:
+            idx[:-20000] = False
+        if continue_angle:
+            t_use = np.linspace(tx[idx].min(), tx[idx].max(), tx[idx].size)
+            ty = get_continue_angle(tx[idx], ty1[idx], t_use)
+        else:
+            t_use = tx
+            ty = ty1
+        ty = np.cos(ty - np.mean(ty) + np.pi / 2)
+        sampling_rate = ty.size / (t_use.max() - t_use.min())
+
+        tfft = np.fft.rfft(np.correlate(ty, ty, mode='full')[ty.size - 1:])
+        tfft = tfft / ty.size / sampling_rate * 2
+        tfft_abs = np.abs(tfft)
+        # noinspection PyTypeChecker
+        tfreq = np.fft.rfftfreq(t_use.size, np.mean(np.diff(t_use)))
+        # tfft_abs = tfft_abs[:-1]
+        # tfreq = tfreq[:-1]
+        # plt.plot(t_use, ty)
+        # plt.loglog(tfreq, tfft_abs)
+        tpk = signal.find_peaks(tfft_abs)[0]
+        fft_abs_pk = tfft_abs[tpk]
+        tidx = np.argsort(fft_abs_pk)
+        fft_abs_pk = fft_abs_pk[tidx]
+        freq_pk = tfreq[tpk][tidx]
+        low_fft_abs_pk = fft_abs_pk[freq_pk < freq_pk[-1]]
+        low_freq_pk = freq_pk[freq_pk < freq_pk[-1]]
+        if low_fft_abs_pk.size > 0:
+            tidx2 = np.argmax(low_fft_abs_pk)
+            pk_fre = np.hstack((freq_pk[-1], low_freq_pk[tidx2]))
+            pk_fft = np.hstack((fft_abs_pk[-1], low_fft_abs_pk[tidx2]))
+        else:
+            pk_fre = np.hstack((freq_pk[-1], freq_pk[-1],))
+            pk_fft = np.hstack((fft_abs_pk[-1], fft_abs_pk[-1]))
+        return pk_fre, pk_fft
+
+    t_path = os.listdir(t_dir)
+    filename_list = [filename for filename in t_path if re.match(t_headle, filename) is not None]
+    ini_theta_list = []
+    ini_phi_list = []
+    ini_psi_list = []
+    std_eta_list = []
+    # theta_primary_fre_list = []
+    # phi_primary_fre_list = []
+    # psi_primary_fre_list = []
+    # eta_primary_fre_list = []
+    theta_autocorrelate_fre_list = []
+    phi_autocorrelate_fre_list = []
+    psi_autocorrelate_fre_list = []
+    eta_autocorrelate_fre_list = []
+    psi_max_phi_list = []
+    dx_list = []
+    dy_list = []
+    dz_list = []
+    pickle_path_list = []
+    idx_list = []
+
+    n_load = len(filename_list) if n_load is None else n_load
+    assert n_load <= len(filename_list)
+    if rand_mode:
+        tidx = np.random.choice(len(filename_list), n_load, replace=False)
+    else:
+        tidx = np.arange(n_load)
+    use_filename_list = np.array(filename_list)[tidx]
+
+    for i0, tname in enumerate(tqdm_notebook(use_filename_list)):
+        tpath = os.path.join(t_dir, tname)
+        with open(tpath, 'rb') as handle:
+            tpick = pickle.load(handle)
+        ini_theta_list.append(tpick['ini_theta'])
+        ini_phi_list.append(tpick['ini_phi'])
+        ini_psi_list.append(tpick['ini_psi'])
+        pickle_path_list.append(tpath)
+        idx_list.append(i0)
+
+        # fft rule
+        tx = tpick['Table_t']
+        tmin = np.max((0, tx.max() - 1000))
+        idx = tx > tmin
+        freq_pk = get_major_fre(tx[idx], tpick['Table_theta'][idx])
+        idx = tx > (tx.max() - 1 / freq_pk * 10)
+        psi_max_phi_list.append(tpick['Table_psi'][idx][np.argmax(tpick['Table_phi'][idx])])
+        #     theta_primary_fre_list.append(spf_tb.get_primary_fft_fre(tx[idx], tpick['Table_theta'][idx], cos_mode=True)[-10:])
+        #     phi_primary_fre_list.append(spf_tb.get_primary_fft_fre(tx[idx], tpick['Table_phi'][idx], cos_mode=True)[-10:])
+        #     psi_primary_fre_list.append(spf_tb.get_primary_fft_fre(tx[idx], tpick['Table_psi'][idx], cos_mode=True)[-10:])
+        #     eta_primary_fre_list.append(spf_tb.get_primary_fft_fre(tx[idx], tpick['Table_eta'][idx], cos_mode=True)[-10:])
+        theta_autocorrelate_fre_list.append(
+                _get_primary_autocorrelate_fft_fre_v2(tx[idx], tpick['Table_theta'][idx]))
+        phi_autocorrelate_fre_list.append(
+                _get_primary_autocorrelate_fft_fre_v2(tx[idx], tpick['Table_phi'][idx]))
+        psi_autocorrelate_fre_list.append(
+                _get_primary_autocorrelate_fft_fre_v2(tx[idx], tpick['Table_psi'][idx]))
+        eta_autocorrelate_fre_list.append(
+                _get_primary_autocorrelate_fft_fre_v2(tx[idx], tpick['Table_eta'][idx]))
+        std_eta_list.append((np.mean(tpick['Table_eta'][idx]), np.std(tpick['Table_eta'][idx])))
+        for i0, tlist in enumerate((dx_list, dy_list, dz_list)):
+            tpoly = np.polyfit(tx[idx], tpick['Table_X'][idx, i0], 1, w=np.blackman(idx.sum()))
+            tlist.append(tpoly[0])
+
+    ini_theta_list = np.hstack(ini_theta_list)
+    ini_phi_list = np.hstack(ini_phi_list)
+    std_eta_list = np.array(std_eta_list)
+    psi_max_phi_list = np.array(psi_max_phi_list)
+    # theta_primary_fre_list = np.array(theta_primary_fre_list)
+    # phi_primary_fre_list = np.array(phi_primary_fre_list)
+    # psi_primary_fre_list = np.array(psi_primary_fre_list)
+    # eta_primary_fre_list = np.array(eta_primary_fre_list)
+    theta_autocorrelate_fre_list = np.array(theta_autocorrelate_fre_list)
+    phi_autocorrelate_fre_list = np.array(phi_autocorrelate_fre_list)
+    psi_autocorrelate_fre_list = np.array(psi_autocorrelate_fre_list)
+    eta_autocorrelate_fre_list = np.array(eta_autocorrelate_fre_list)
+    dx_list = np.hstack(dx_list)
+    dy_list = np.hstack(dy_list)
+    dz_list = np.hstack(dz_list)
+    pickle_path_list = np.array(pickle_path_list)
+    return ini_theta_list, ini_phi_list, ini_psi_list, std_eta_list, psi_max_phi_list, \
+           theta_autocorrelate_fre_list, phi_autocorrelate_fre_list, psi_autocorrelate_fre_list, \
+           eta_autocorrelate_fre_list, dx_list, dy_list, dz_list, pickle_path_list
 
 
 def load_lookup_table_pickle(pickle_name):
@@ -2389,10 +2621,10 @@ def factor_wpi_klj(tw, tktltj):
 def fill_Ui(ttheta, tphi, use_U):
     if tphi[-1] < (2 * np.pi):
         tphi = np.hstack((tphi, 2 * np.pi))
-        use_U = np.vstack((use_U.T, use_U[:, -1])).T
+        use_U = np.vstack((use_U.T, use_U[:, 0])).T
     if ttheta[-1] < (np.pi):
         ttheta = np.hstack((ttheta, np.pi))
-        use_U = np.vstack((use_U, use_U[-1]))
+        use_U = np.vstack((use_U, use_U[0]))
     return ttheta, tphi, use_U
 
 

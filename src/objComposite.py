@@ -15,6 +15,7 @@ __all__ = ['createEcoli_ellipse', 'createEcoliComp_ellipse', 'createEcoli_2tails
            'create_rod',
            'create_infHelix',
            'create_helicoid_list', 'create_helicoid_comp',
+           'obj2helicoid_list', 'obj2helicoid_comp',
            'create_sphere', 'create_move_single_sphere', 'create_one_ellipse']
 
 
@@ -45,7 +46,7 @@ def create_capsule(rs1, rs2, ls, ds, node_dof=3):
     return vsgeo
 
 
-def create_ecoli_tail_bck(moveh, **kwargs):
+def create_ecoli_tail(moveh, **kwargs):
     nth = kwargs['nth']
     hfct = kwargs['hfct']
     eh = kwargs['eh']
@@ -98,7 +99,7 @@ def create_ecoli_tail_bck(moveh, **kwargs):
     return tail_list
 
 
-def create_ecoli_tail(moveh, **kwargs):
+def create_ecoli_tail_bck(moveh, **kwargs):
     nth = kwargs['nth']
     hfct = kwargs['hfct']
     eh = kwargs['eh']
@@ -734,7 +735,7 @@ def create_helicoid_list(namehandle='helicoid', **problem_kwargs):
     tobj_list = []
     for i0, tgeo in enumerate(tgeo_list):
         tobj = sf.StokesFlowObj()
-        tobj.set_matrix_method('rs')  # the geo is regularizeDisk
+        tobj.set_matrix_method(matrix_method)  # the geo is regularizeDisk
         tobj.set_data(f_geo=tgeo, u_geo=tgeo, name=namehandle + '%02d' % i0)
         tobj_list.append(tobj)
     return tobj_list
@@ -748,6 +749,46 @@ def create_helicoid_comp(*args, **kwargs):
                                           name='helicoid_comp')
     for tobj in helicoid_list:
         # print(tobj)
+        helicoid_comp.add_obj(obj=tobj, rel_U=np.zeros(6))
+    helicoid_comp.set_update_para(fix_x=False, fix_y=False, fix_z=False,
+                                  update_fun=update_fun, update_order=update_order)
+    return helicoid_comp
+
+
+def obj2helicoid_list(tobj0, **problem_kwargs):
+    helicoid_r = problem_kwargs['helicoid_r']
+    ndsk_each = problem_kwargs['helicoid_ndsk_each']
+
+    tobj = tobj0.copy()
+    tobj.move(np.array((helicoid_r, 0, 0)))
+
+    tobj_list = []
+    rot_dth = 2 * np.pi / ndsk_each
+    namehandle = tobj.get_name()
+    for i0 in range(ndsk_each):
+        rot_th = i0 * rot_dth + rot_dth / 2
+        tobj21 = tobj.copy()
+        tobj21.set_name('%s_%02d_%01d' % (namehandle, i0, 1))
+        tobj21.node_rotation(norm=np.array([0, 0, 1]), theta=rot_th, rotation_origin=np.zeros(3))
+        tobj_list.append(tobj21)
+        tobj22 = tobj21.copy()
+        tobj21.set_name('%s_%02d_%01d' % (namehandle, i0, 2))
+        tobj22.node_rotation(norm=np.array([1, 0, 0]), theta=np.pi / 2, rotation_origin=np.zeros(3))
+        tobj_list.append(tobj22)
+        tobj23 = tobj21.copy()
+        tobj21.set_name('%s_%02d_%01d' % (namehandle, i0, 3))
+        tobj23.node_rotation(norm=np.array([0, 1, 0]), theta=np.pi / 2, rotation_origin=np.zeros(3))
+        tobj_list.append(tobj23)
+    return tobj_list
+
+
+def obj2helicoid_comp(tobj0, *args, **kwargs):
+    update_order = kwargs['update_order'] if 'update_order' in kwargs.keys() else 1
+    update_fun = kwargs['update_fun'] if 'update_fun' in kwargs.keys() else Adams_Bashforth_Methods
+    helicoid_list = obj2helicoid_list(tobj0, *args, **kwargs)
+    helicoid_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((1, 0, 0)),
+                                          name='helicoid_comp')
+    for tobj in helicoid_list:
         helicoid_comp.add_obj(obj=tobj, rel_U=np.zeros(6))
     helicoid_comp.set_update_para(fix_x=False, fix_y=False, fix_z=False,
                                   update_fun=update_fun, update_order=update_order)

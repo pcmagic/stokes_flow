@@ -4480,16 +4480,23 @@ class StrainRateBaseProblem(_GivenFlowProblem):
             u = np.vstack((np.zeros(n_nodes), np.zeros(n_nodes), np.zeros(n_nodes))).T.flatten()
             return u
 
-        _base_fun = {0: base0,
-                     1: base1,
-                     2: base2,
-                     3: base3,
-                     4: base4,
-                     5: base5,
-                     6: base6,
-                     7: base7,
-                     8: base8,
-                     9: base9}
+        # u=(0, 0, 0)
+        def base10(unodes):
+            n_nodes = unodes.shape[0]
+            u = np.vstack((np.zeros(n_nodes), np.ones(n_nodes), np.zeros(n_nodes))).T.flatten()
+            return u
+
+        _base_fun = {0:  base0,
+                     1:  base1,
+                     2:  base2,
+                     3:  base3,
+                     4:  base4,
+                     5:  base5,
+                     6:  base6,
+                     7:  base7,
+                     8:  base8,
+                     9:  base9,
+                     10: base10, }
         return _base_fun
 
     def get_given_flow(self, obj):
@@ -5151,6 +5158,7 @@ obj_dic = {
     'pf_selfRepeat':                StokesFlowObj,
     'pf_selfRotate':                StokesFlowObj,
     'KRJ_slb':                      StokesFlowObj,
+    'lightill_slb':                 StokesFlowObj,
 }
 
 # names of models that need two geometries.

@@ -9,9 +9,10 @@ import pickle
 # from time import time
 # from scipy.io import loadmat
 # from src.stokes_flow import problem_dic, obj_dic
-# from src.geo import *
+from src.geo import *
 from petsc4py import PETSc
 from src import stokes_flow as sf
+from src import slender_body as slb
 # from src.myio import *
 from src.objComposite import *
 # from src.myvtk import *
@@ -23,7 +24,7 @@ def get_problem_kwargs(**main_kwargs):
     problem_kwargs = helix_common.get_problem_kwargs(**main_kwargs)
 
     OptDB = PETSc.Options()
-    hlx_ini_rot_theta = OptDB.getReal('hlx_ini_rot_theta', np.pi / 2)
+    hlx_ini_rot_theta = OptDB.getReal('hlx_ini_rot_theta', 0)
     problem_kwargs['hlx_ini_rot_theta'] = hlx_ini_rot_theta
     return problem_kwargs
 
@@ -41,7 +42,9 @@ def do_solve_base_flow(basei, problem, obj_comp, uw_Base_list, sumFT_Base_list):
     problem.solve()
     PETSc.Sys.Print('---> basei %d' % basei)
     PETSc.Sys.Print(obj_comp.get_total_force())
-    PETSc.Sys.Print(obj_comp.get_ref_U())
+    ref_U = obj_comp.get_ref_U()
+    PETSc.Sys.Print('ref_u: %f %f %f' % (ref_U[0], ref_U[1], ref_U[2]))
+    PETSc.Sys.Print('ref_w: %f %f %f' % (ref_U[3], ref_U[4], ref_U[5]))
     uw_Base_list.append(obj_comp.get_ref_U())
     sumFT_Base_list.append(obj_comp.get_total_force())
     return uw_Base_list, sumFT_Base_list
@@ -53,7 +56,9 @@ def do_solve_base_flow_iter(basei, problem, obj_comp, uw_Base_list, sumFT_Base_l
     problem.do_iterate3()
     PETSc.Sys.Print('---> basei %d' % basei)
     PETSc.Sys.Print(obj_comp.get_total_force())
-    PETSc.Sys.Print(obj_comp.get_ref_U())
+    ref_U = obj_comp.get_ref_U()
+    PETSc.Sys.Print('ref_u: %f %f %f' % (ref_U[0], ref_U[1], ref_U[2]))
+    PETSc.Sys.Print('ref_w: %f %f %f' % (ref_U[3], ref_U[4], ref_U[5]))
     uw_Base_list.append(obj_comp.get_ref_U())
     sumFT_Base_list.append(obj_comp.get_total_force())
     return uw_Base_list, sumFT_Base_list
@@ -114,6 +119,39 @@ def main_fun(**main_kwargs):
         with open('%s.pickle' % fileHandle, 'wb') as handle:
             pickle.dump(pickle_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
         PETSc.Sys.Print('save table_data to %s.pickle' % fileHandle)
+    return True
+
+
+def main_fun_E(**main_kwargs):
+    OptDB = PETSc.Options()
+    fileHandle = OptDB.getString('f', 'helix_strain_rate')
+    OptDB.setValue('f', fileHandle)
+    main_kwargs['fileHandle'] = fileHandle
+    problem_kwargs = get_problem_kwargs(**main_kwargs)
+    problem_kwargs['basei'] = 1
+    hlx_ini_rot_theta = problem_kwargs['hlx_ini_rot_theta']
+
+    if not problem_kwargs['restart']:
+        print_case_info(**problem_kwargs)
+        tail_obj_list = create_ecoli_tail(moveh=np.zeros(3), **problem_kwargs)
+        # PETSc.Sys.Print(problem_kwargs)
+        tail_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((0, 0, 1)),
+                                          name='tail_comp')
+        for tobj in tail_obj_list:
+            tobj.node_rotation(norm=np.array([0, 1, 0]), theta=hlx_ini_rot_theta)
+            # tobj.node_rotation(norm=np.array([0, 0, 1]), theta=np.pi)
+            tail_comp.add_obj(obj=tobj, rel_U=np.zeros(6))
+
+        problem = sf.StrainRateBaseForceFreeProblem(**problem_kwargs)
+        problem.add_obj(tail_comp)
+        problem.print_info()
+        problem.create_matrix()
+        uw_Base_list = []
+        sumFT_Base_list = []
+        # passive cases
+        for basei in (1, 2, 3, 4, 5, ):
+            uw_Base_list, sumFT_Base_list = do_solve_base_flow(basei, problem, tail_comp,
+                                                               uw_Base_list, sumFT_Base_list)
     return True
 
 
@@ -235,6 +273,56 @@ def main_fun_iter(**main_kwargs):
     return True
 
 
+def main_fun_SLB_E(**main_kwargs):
+    OptDB = PETSc.Options()
+    fileHandle = OptDB.getString('f', 'helix_strain_rate')
+    OptDB.setValue('f', fileHandle)
+    main_kwargs['fileHandle'] = fileHandle
+    problem_kwargs = get_problem_kwargs(**main_kwargs)
+    problem_kwargs['basei'] = 1
+    hlx_ini_rot_theta = problem_kwargs['hlx_ini_rot_theta']
+    ph = problem_kwargs['ph']
+    ch = problem_kwargs['ch']
+    rt1 = problem_kwargs['rh11']
+    rt2 = problem_kwargs['rh2']
+    n_sgm = OptDB.getInt('n_sgm', 10)
+    n_segment = int(np.ceil(n_sgm * ch))
+    n_hlx = problem_kwargs['n_tail']
+    matrix_method = problem_kwargs['matrix_method']
+    problem_kwargs['basei'] = 1
+    # slb_epsabs = OptDB.getReal('slb_epsabs', 1e-200)
+    # slb_epsrel = OptDB.getReal('slb_epsrel', 1e-8)
+    # slb_limit = OptDB.getReal('slb_limit', 10000)
+
+    if not problem_kwargs['restart']:
+        print_case_info(**problem_kwargs)
+        tail_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((0, 0, 1)),
+                                          name='tail_comp')
+        check_nth = matrix_method == 'lightill_slb'
+        slb_geo_fun = slb_helix if matrix_method == 'lightill_slb' else Johnson_helix
+        for i0, theta0 in enumerate(np.linspace(0, 2 * np.pi, n_hlx, endpoint=False)):
+            hlx1_geo = slb_geo_fun(ph, ch, rt1, rt2, theta0=theta0)
+            hlx1_geo.create_nSegment(n_segment, check_nth=check_nth)
+            hlx1_obj = sf.StokesFlowObj()
+            obj_name = 'helix%d' % i0
+            hlx1_obj.set_data(hlx1_geo, hlx1_geo, name=obj_name)
+            hlx1_obj.node_rotation(norm=np.array([0, 1, 0]), theta=hlx_ini_rot_theta)
+            tail_comp.add_obj(hlx1_obj, rel_U=np.zeros(6))
+
+        problem = slb.StrainRateBaseForceFreeProblem(**problem_kwargs)
+        problem.add_obj(tail_comp)
+        problem.print_info()
+        problem.create_matrix()
+        uw_Base_list = []
+        sumFT_Base_list = []
+        # passive cases
+        for basei in (1, 2, 3, 4, 5, ):
+            uw_Base_list, sumFT_Base_list = do_solve_base_flow(basei, problem, tail_comp,
+                                                               uw_Base_list, sumFT_Base_list)
+    return True
+
+
+
 if __name__ == '__main__':
     OptDB = PETSc.Options()
     if OptDB.getBool('main_fun_iter', False):
@@ -244,6 +332,14 @@ if __name__ == '__main__':
     if OptDB.getBool('main_fun_rote', False):
         OptDB.setValue('main_fun', False)
         main_fun_rote()
+
+    if OptDB.getBool('main_fun_E', False):
+        OptDB.setValue('main_fun', False)
+        main_fun_E()
+
+    if OptDB.getBool('main_fun_SLB_E', False):
+        OptDB.setValue('main_fun', False)
+        main_fun_SLB_E()
 
     if OptDB.getBool('main_fun', True):
         main_fun()

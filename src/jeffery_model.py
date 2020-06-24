@@ -1946,6 +1946,10 @@ class TablePetsc4nPsiEcoli(TablePetsc4nEcoli):
         self.q = self._get_q(self.norm, self.lateral_norm)
         self._psi_hist = [j for (i, j) in zip(self._tmp_idx, self.psi_hist) if i]
         Table_psi = np.hstack(self.psi_hist)
+
+        # # dbg
+        # from matplotlib import pyplot as plt
+        # plt.plot(Table_X[:, 0])
         return Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_psi
 
     def _postfunction(self, ts):
@@ -2047,37 +2051,47 @@ class _GivenFlowPetsc4nPsiObj(TablePetsc4nPsiEcoli):
         return self._flow_strength
 
     # back flow induced passive velocity of the microswimmer
-    def calc_Up_fun(self, t_theta, t_phi, t_psi):
+    def calc_Up_fun(self, t_theta, t_phi, t_psi, Rlog2glb):
         uEbase_list = self.uEbase_list
         uSbase_list = self.uSbase_list
         wEbase_list = self.wEbase_list
         wSbase_list = self.wSbase_list
-        flow_strength = self.flow_strength
-        U_a_loc = self._U_a_loc
-        omega_tail = self.omega_tail
 
         Eij_loc = self.Eij_loc(t_theta, t_phi, t_psi)
         Sij_loc = self.Sij_loc(t_theta, t_phi, t_psi)
-        Rlog2glb = self.Rloc2glb(t_theta, t_phi, t_psi)
         Ebase_fct = np.array([Eij_loc[0, 0], Eij_loc[2, 2], Eij_loc[0, 1],
                               Eij_loc[0, 2], Eij_loc[1, 2]])
         Sbase_fct = np.array([Sij_loc[2, 1], Sij_loc[0, 2], Sij_loc[1, 0]])
 
         uE_loc = np.sum([a * b for a, b in zip(Ebase_fct, uEbase_list)], axis=0)
         uS_loc = np.sum([a * b for a, b in zip(Sbase_fct, uSbase_list)], axis=0)
-        dX = np.dot(Rlog2glb, flow_strength * (uE_loc + uS_loc) + omega_tail * U_a_loc[:3])
+        dX = np.dot(Rlog2glb, uE_loc + uS_loc)
         wE_loc = np.sum([a * b for a, b in zip(Ebase_fct, wEbase_list)], axis=0)
         wS_loc = np.sum([a * b for a, b in zip(Sbase_fct, wSbase_list)], axis=0)
-        omega = np.dot(Rlog2glb, flow_strength * (wE_loc + wS_loc) + omega_tail * U_a_loc[3:])
+        omega = np.dot(Rlog2glb, wE_loc + wS_loc)
+        return np.hstack((dX, omega))
+
+    # active velocity
+    def calc_Ua_fun(self, Rlog2glb):
+        U_a_loc = self._U_a_loc
+        dX = np.dot(Rlog2glb, U_a_loc[:3])
+        omega = np.dot(Rlog2glb, U_a_loc[3:])
         return np.hstack((dX, omega))
 
     def _get_velocity_at2(self, X, P, P2, psi):
+        flow_strength = self.flow_strength
+        omega_tail = self.omega_tail
+
         t_theta, t_phi, t_psi = self._theta_phi_psi2(P, P2)
         t_psi = (t_psi + psi - self._ini_psi) % (2 * np.pi)
-        U = self.calc_Up_fun(t_theta, t_phi, t_psi)
-        Ub = self.father.flow_velocity(X)  # background velocity
-        dX = U[:3] + Ub
-        omega = U[3:]
+        Rlog2glb = self.Rloc2glb(t_theta, t_phi, t_psi)
+
+        Up = flow_strength * self.calc_Up_fun(t_theta, t_phi, t_psi, Rlog2glb)
+        Ua = omega_tail * self.calc_Ua_fun(Rlog2glb)
+        Ub = flow_strength * self.father.flow_velocity(X)  # background velocity
+        dX = Up[:3] + Ua[:3] + Ub
+        # print((t_theta, t_phi, t_psi), Ua[:3])
+        omega = Up[3:] + Ua[3:]
         return dX, omega
 
 
@@ -2115,6 +2129,35 @@ class ShearFlowPetsc4nPsiObj(_GivenFlowPetsc4nPsiObj):
                   (np.cos(psi) * np.cos(theta) * np.sin(phi) + np.cos(phi) * np.sin(psi)) / 2.,
                   0)))
         return Sij_loc
+
+
+class ShearFlowPetsc4nPsiObj_dbg(ShearFlowPetsc4nPsiObj):
+    def _get_velocity_at2(self, X, P, P2, psi):
+        flow_strength = self.flow_strength
+        omega_tail = self.omega_tail
+
+        t_theta, t_phi, t_psi = self._theta_phi_psi2(P, P2)
+        t_psi = (t_psi + psi - self._ini_psi) % (2 * np.pi)
+        Rlog2glb = self.Rloc2glb(t_theta, t_phi, t_psi)
+
+        Up = flow_strength * self.calc_Up_fun(t_theta, t_phi, t_psi, Rlog2glb)
+        Ua0 = self.calc_Ua_fun(Rlog2glb)
+
+        omega_p = Up[3:]
+        omega_a0 = Ua0[3:]
+        dp_p = np.cross(omega_p, P)
+        dp_a0 = np.cross(omega_a0, P)
+        omega_tail_adp = -dp_p[1] / dp_a0[1]
+        omega_tail_adp = np.sign(omega_tail_adp) * np.min((np.abs(omega_tail_adp), omega_tail))
+        # print(omega_tail_adp)
+        # omega_tail_adp = omega_tail
+
+        Ub = flow_strength * self.father.flow_velocity(X)  # background velocity
+        Ua = omega_tail_adp * Ua0
+        dX = Up[:3] + Ua[:3] + Ub
+        omega = Up[3:] + Ua[3:]
+
+        return dX, omega
 
 # class JefferyObj3D(JefferyObj):
 #     def __init__(self, name='...', **kwargs):

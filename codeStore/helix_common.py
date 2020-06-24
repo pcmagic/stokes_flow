@@ -35,7 +35,7 @@ def print_case_info(caseIntro='-->(some introduce here)', **problem_kwargs):
     return True
 
 
-def AtBtCt(problem: 'sf.StokesFlowProblem', pick_M=False):
+def AtBtCt(problem: 'sf.StokesFlowProblem', pick_M=False, save_vtk=True):
     def _set_rigid_velocity(problem: 'sf.StokesFlowProblem', u, w):
         for obji in problem.get_obj_list():
             u_geo = obji.get_u_geo()
@@ -72,7 +72,8 @@ def AtBtCt(problem: 'sf.StokesFlowProblem', pick_M=False):
     At, Bt1, ftr_info = _get_total_force(problem)
     At = np.linalg.norm(At)
     Bt1 = np.linalg.norm(Bt1)
-    problem.vtk_self('%s_%s' % (fileHandle, t1))
+    if save_vtk:
+        problem.vtk_self('%s_%s' % (fileHandle, t1))
 
     # rotation
     u, w, t1 = 0, 1, 'rot'
@@ -84,7 +85,8 @@ def AtBtCt(problem: 'sf.StokesFlowProblem', pick_M=False):
     Bt2, Ct, frt_info = _get_total_force(problem)
     Ct = np.linalg.norm(Ct)
     Bt2 = np.linalg.norm(Bt2)
-    problem.vtk_self('%s_%s' % (fileHandle, t1))
+    if save_vtk:
+        problem.vtk_self('%s_%s' % (fileHandle, t1))
 
     Bt = np.mean((Bt1, Bt2))
     PETSc.Sys.Print('-->>At=%f, Bt=%f, Ct=%f, rel_err of Bt is %e' % (At, Bt, Ct, (Bt1 - Bt2) / Bt))

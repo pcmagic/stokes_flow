@@ -17,11 +17,13 @@ __all__ = ['get_solver_kwargs', 'get_forcefree_kwargs', 'get_givenForce_kwargs',
            'get_PoiseuilleFlow_kwargs', 'print_PoiseuilleFlow_info',
            'get_ecoli_kwargs', 'print_ecoli_info', 'print_ecoli_U_info',
            'get_helix_kwargs', 'print_helix_info',
+           'get_helix_SLB_kwargs', 'print_helix_SLB_info',
            'print_single_ecoli_forcefree_result', 'print_single_ecoli_force_result',
            'get_rod_kwargs', 'print_Rod_info',
            'get_one_ellipse_kwargs', 'print_one_ellipse_info',
            'get_integrate_kwargs', 'print_integrate_kwargs',
            'get_helicoid_kwargs', 'print_helicoid_info',
+           'get_obj_helicoid_kwargs', 'print_obj_helicoid_info',
            # 'print_infhelix_info',
            'get_sphere_kwargs', 'print_sphere_info',
            'get_pipe_kwargs', 'print_pipe_info', ]
@@ -281,6 +283,56 @@ def get_helix_kwargs():
     return helix_kwargs
 
 
+def get_helix_SLB_kwargs():
+    from src.geo import slb_helix, Johnson_helix
+
+    OptDB = PETSc.Options()
+    rh1 = OptDB.getReal('rh1', 0.2)  # radius of helix
+    rh2 = OptDB.getReal('rh2', 0.05)  # radius of helix
+    ch = OptDB.getReal('ch', 0.1)  # cycles of helix
+    ph = OptDB.getReal('ph', 3)  # helix pitch
+    n_sgm = OptDB.getInt('n_sgm', 10)
+    n_segment = int(np.ceil(n_sgm * ch))
+    n_tail = OptDB.getInt('n_tail', 2)  # total of tails
+    matrix_method = OptDB.getString('sm', 'pf')
+    check_nth = matrix_method == 'lightill_slb'
+    slb_geo_fun = slb_helix if matrix_method == 'lightill_slb' else Johnson_helix
+    # left_hand = OptDB.getBool('left_hand', False) # current version now available.
+
+    rel_uhx = OptDB.getReal('rel_uhx', 0)
+    rel_uhy = OptDB.getReal('rel_uhy', 0)
+    rel_uhz = OptDB.getReal('rel_uhz', 0)
+    rel_whx = OptDB.getReal('rel_whx', 0)
+    rel_why = OptDB.getReal('rel_why', 0)
+    rel_whz = OptDB.getReal('rel_whz', 0)
+    # relative velocity of helix
+    rel_Uh = np.array((0, 0, rel_uhz, 0, 0, rel_whz))
+    centerx = OptDB.getReal('centerx', 0)
+    centery = OptDB.getReal('centery', 0)
+    centerz = OptDB.getReal('centerz', 0)
+    center = np.array((centerx, centery, centerz))  # center of tail
+    zoom_factor = OptDB.getReal('zoom_factor', 1)
+
+    slb_epsabs = OptDB.getReal('slb_epsabs', 1e-200)
+    slb_epsrel = OptDB.getReal('slb_epsrel', 1e-8)
+    slb_limit = OptDB.getReal('slb_limit', 10000)
+    helix_kwargs = {'rh1':         rh1,
+                    'rh2':         rh2,
+                    'ch':          ch,
+                    'center':      center,
+                    'ph':          ph,
+                    'n_segment':   n_segment,
+                    'n_tail':      n_tail,
+                    'rel_Uh':      rel_Uh,
+                    'check_nth':   check_nth,
+                    'slb_geo_fun': slb_geo_fun,
+                    'zoom_factor': zoom_factor,
+                    'slb_epsabs':  slb_epsabs,
+                    'slb_epsrel':  slb_epsrel,
+                    'slb_limit':   slb_limit, }
+    return helix_kwargs
+
+
 def print_ecoli_info(ecoName, **problem_kwargs):
     nth = problem_kwargs['nth']
     n_tail = problem_kwargs['n_tail']
@@ -377,6 +429,34 @@ def print_helix_info(helixName, **problem_kwargs):
     PETSc.Sys.Print('  relative velocity of helix is %s' % (str(rel_Uh)))
     PETSc.Sys.Print('  rot_norm is %s, rot_theta is %f*pi' % (str(rot_norm), rot_theta))
     PETSc.Sys.Print('  geometry zoom factor is %f' % zoom_factor)
+    return True
+
+
+def print_helix_SLB_info(helixName, **problem_kwargs):
+    rh1 = problem_kwargs['rh1']
+    rh2 = problem_kwargs['rh2']
+    ch = problem_kwargs['ch']
+    center = problem_kwargs['center']
+    ph = problem_kwargs['ph']
+    n_segment = problem_kwargs['n_segment']
+    n_tail = problem_kwargs['n_tail']
+    # left_hand = problem_kwargs['left_hand']
+    rel_Uh = problem_kwargs['rel_Uh']
+    check_nth = problem_kwargs['check_nth']
+    slb_geo_fun = problem_kwargs['slb_geo_fun']
+    slb_epsabs = problem_kwargs['slb_epsabs']
+    slb_epsrel = problem_kwargs['slb_epsrel']
+    slb_limit = problem_kwargs['slb_limit']
+
+    PETSc.Sys.Print(helixName, 'geo information: ')
+    PETSc.Sys.Print(
+            '  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
+    PETSc.Sys.Print('    n_tail: %d, n_segment: %d, check_nth: %d. ' % (
+        n_tail, n_segment, check_nth))
+    PETSc.Sys.Print('    slb_geo_fun, %s' % slb_geo_fun)
+    PETSc.Sys.Print('    slb_epsabs %e, n_segment %e, n_segment %d' %
+                    (slb_epsabs, slb_epsrel, slb_limit))
+    PETSc.Sys.Print('  relative velocity of helix is %s' % (str(rel_Uh)))
     return True
 
 
@@ -657,8 +737,26 @@ def print_helicoid_info(**problem_kwargs):
     helicoid_ndsk_each = problem_kwargs['helicoid_ndsk_each']
     PETSc.Sys.Print('  helicoid: r1, r2, ds are %f, %f, %f' %
                     (helicoid_r1, helicoid_r2, helicoid_ds))
-    PETSc.Sys.Print('  helicoid_th_loc %f, helicoid_ndsk_each %f. ' %
+    PETSc.Sys.Print('  helicoid_th_loc %f, helicoid_ndsk_each %d. ' %
                     (helicoid_th_loc, helicoid_ndsk_each))
+    return True
+
+
+def get_obj_helicoid_kwargs():
+    OptDB = PETSc.Options()
+
+    helicoid_r = OptDB.getReal('helicoid_r', 1)
+    helicoid_ndsk_each = OptDB.getInt('helicoid_ndsk_each', 4)
+    problem_kwargs = {'helicoid_r':         helicoid_r,
+                      'helicoid_ndsk_each': helicoid_ndsk_each, }
+    return problem_kwargs
+
+
+def print_obj_helicoid_info(**problem_kwargs):
+    helicoid_r = problem_kwargs['helicoid_r']
+    helicoid_ndsk_each = problem_kwargs['helicoid_ndsk_each']
+    PETSc.Sys.Print('  helicoid_r: %f, helicoid_ndsk_each: %d' %
+                    (helicoid_r, helicoid_ndsk_each))
     return True
 
 

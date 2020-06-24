@@ -31,6 +31,13 @@ class SlenderBodyProblem(sf.StokesFlowProblem):
         m_petsc.assemble()
         return True
 
+# class _GivenFlowForceFreeProblem
+
+class StrainRateBaseForceFreeProblem(SlenderBodyProblem,
+                                     sf.StrainRateBaseProblem,
+                                     sf._GivenFlowForceFreeProblem):
+    def _nothing(self):
+        pass
 
 problem_dic = {
     'lightill_slb': SlenderBodyProblem,
@@ -43,3 +50,8 @@ obj_dic = {
     'KRJ_slb':      sf.StokesFlowObj,
     'mod_KRJ_slb':  sf.StokesFlowObj,
 }
+
+def check_matrix_method(matrix_method):
+    keys = problem_dic.keys()
+    err_msg = 'error matrix method. '
+    assert matrix_method in keys, err_msg

@@ -16,7 +16,27 @@ from src import stokes_flow as sf
 from src.objComposite import *
 # from src.myvtk import *
 # from src.support_class import *
-from codeStore.ecoli_common import *
+from codeStore import ecoli_common
+
+
+def get_problem_kwargs(**main_kwargs):
+    problem_kwargs = ecoli_common.get_problem_kwargs(**main_kwargs)
+
+    OptDB = PETSc.Options()
+    hlx_ini_rot_theta = OptDB.getReal('hlx_ini_rot_theta', 0)
+    problem_kwargs['hlx_ini_rot_theta'] = hlx_ini_rot_theta
+    hlx_ini_rot_phi = OptDB.getReal('hlx_ini_rot_phi', 0)
+    problem_kwargs['hlx_ini_rot_phi'] = hlx_ini_rot_phi
+    return problem_kwargs
+
+
+def print_case_info(**problem_kwargs):
+    t1 = ecoli_common.print_case_info(**problem_kwargs)
+    hlx_ini_rot_theta = problem_kwargs['hlx_ini_rot_theta']
+    PETSc.Sys.Print('  hlx_ini_rot_theta is %f' % hlx_ini_rot_theta)
+    hlx_ini_rot_phi = problem_kwargs['hlx_ini_rot_phi']
+    PETSc.Sys.Print('  hlx_ini_rot_phi is %f' % hlx_ini_rot_phi)
+    return t1
 
 
 def do_solve_base_flow(basei, problem, obj_comp, uw_Base_list, sumFT_Base_list):
@@ -25,7 +45,9 @@ def do_solve_base_flow(basei, problem, obj_comp, uw_Base_list, sumFT_Base_list):
     problem.solve()
     PETSc.Sys.Print('---> basei %d' % basei)
     PETSc.Sys.Print(obj_comp.get_total_force())
-    PETSc.Sys.Print(obj_comp.get_ref_U())
+    ref_U = obj_comp.get_ref_U()
+    PETSc.Sys.Print('ref_u: %f %f %f' % (ref_U[0], ref_U[1], ref_U[2]))
+    PETSc.Sys.Print('ref_w: %f %f %f' % (ref_U[3], ref_U[4], ref_U[5]))
     uw_Base_list.append(obj_comp.get_ref_U())
     sumFT_Base_list.append(obj_comp.get_total_force())
     return uw_Base_list, sumFT_Base_list
@@ -37,7 +59,9 @@ def do_solve_base_flow_iter(basei, problem, obj_comp, uw_Base_list, sumFT_Base_l
     problem.do_iterate3()
     PETSc.Sys.Print('---> basei %d' % basei)
     PETSc.Sys.Print(obj_comp.get_total_force())
-    PETSc.Sys.Print(obj_comp.get_ref_U())
+    ref_U = obj_comp.get_ref_U()
+    PETSc.Sys.Print('ref_u: %f %f %f' % (ref_U[0], ref_U[1], ref_U[2]))
+    PETSc.Sys.Print('ref_w: %f %f %f' % (ref_U[3], ref_U[4], ref_U[5]))
     uw_Base_list.append(obj_comp.get_ref_U())
     sumFT_Base_list.append(obj_comp.get_total_force())
     return uw_Base_list, sumFT_Base_list
@@ -115,6 +139,41 @@ def main_fun(**main_kwargs):
     return True
 
 
+def main_fun_E(**main_kwargs):
+    OptDB = PETSc.Options()
+    fileHandle = OptDB.getString('f', 'ecoli_strain_rate')
+    OptDB.setValue('f', fileHandle)
+    main_kwargs['fileHandle'] = fileHandle
+    problem_kwargs = get_problem_kwargs(**main_kwargs)
+    problem_kwargs['basei'] = 1
+    hlx_ini_rot_theta = problem_kwargs['hlx_ini_rot_theta']
+    hlx_ini_rot_phi = problem_kwargs['hlx_ini_rot_phi']
+
+    if not problem_kwargs['restart']:
+        print_case_info(**problem_kwargs)
+
+        ecoli_comp = create_ecoli_2part(**problem_kwargs)
+        ecoli_comp.node_rotation(norm=np.array([0, 1, 0]), theta=hlx_ini_rot_theta)
+        ecoli_comp.node_rotation(norm=np.array([0, 0, 1]), theta=hlx_ini_rot_phi)
+        ecoli_comp.set_rel_U_list([np.zeros(6), np.zeros(6)])
+        # for tobj in ecoli_comp.get_obj_list():
+        #     tobj.get_u_geo().mirrorImage(norm=np.array((0, 0, 1)), rotation_origin=np.zeros(3))
+        #     tobj.get_f_geo().mirrorImage(norm=np.array((0, 0, 1)), rotation_origin=np.zeros(3))
+
+        problem = sf.StrainRateBaseForceFreeProblem(**problem_kwargs)
+        problem.add_obj(ecoli_comp)
+        problem.print_info()
+        problem.create_matrix()
+        uw_Base_list = []
+        sumFT_Base_list = []
+
+        # passive cases
+        for basei in (1, 2, 3, 4, 5,):
+            uw_Base_list, sumFT_Base_list = do_solve_base_flow(basei, problem, ecoli_comp,
+                                                               uw_Base_list, sumFT_Base_list)
+    return True
+
+
 def main_fun_iter(**main_kwargs):
     OptDB = PETSc.Options()
     fileHandle = OptDB.getString('f', 'ecoli_strain_rate')
@@ -165,11 +224,38 @@ def main_fun_iter(**main_kwargs):
     return True
 
 
+def main_fun_plot(**main_kwargs):
+    OptDB = PETSc.Options()
+    fileHandle = OptDB.getString('f', 'ecoli_strain_rate')
+    OptDB.setValue('f', fileHandle)
+    main_kwargs['fileHandle'] = fileHandle
+    problem_kwargs = get_problem_kwargs(**main_kwargs)
+    problem_kwargs['basei'] = 1
+
+    if not problem_kwargs['restart']:
+        print_case_info(**problem_kwargs)
+        ecoli_comp = create_ecoli_2part(**problem_kwargs)
+        ecoli_comp.set_rel_U_list([np.zeros(6), np.zeros(6)])
+        # for tobj in ecoli_comp.get_obj_list():
+        #     tobj.get_u_geo().mirrorImage(norm=np.array((0, 0, 1)), rotation_origin=np.zeros(3))
+        #     tobj.get_f_geo().mirrorImage(norm=np.array((0, 0, 1)), rotation_origin=np.zeros(3))
+        ecoli_comp.show_u_nodes(linestyle='')
+    return True
+
+
 if __name__ == '__main__':
     OptDB = PETSc.Options()
     if OptDB.getBool('main_fun_iter', False):
         OptDB.setValue('main_fun', False)
         main_fun_iter()
+
+    if OptDB.getBool('main_fun_E', False):
+        OptDB.setValue('main_fun', False)
+        main_fun_E()
+
+    if OptDB.getBool('main_fun_plot', False):
+        OptDB.setValue('main_fun', False)
+        main_fun_plot()
 
     if OptDB.getBool('main_fun', True):
         main_fun()

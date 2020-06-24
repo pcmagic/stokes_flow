@@ -315,7 +315,7 @@ class base_geo():
         return self._geo_norm
 
     def set_geo_norm(self, geo_norm):
-        geo_norm = np.array(geo_norm).flatten()
+        geo_norm = np.array(geo_norm).ravel()
         assert geo_norm.size == 3
         self._geo_norm = geo_norm
         return True
@@ -327,7 +327,8 @@ class base_geo():
         return self.get_origin()
 
     def set_origin(self, origin):
-        self._origin = origin
+        self._origin = np.array(origin).ravel()
+        assert self._origin.size == 3
         return True
 
     def set_center(self, origin):
@@ -2638,68 +2639,6 @@ class lineOnFatHelix(FatHelix):
         return self._create_deltatheta(dth, radius, epsilon, with_cover, theta0)
 
 
-class slb_geo(base_geo):
-    def __init__(self, rt2):
-        super().__init__()
-        self._rt2 = rt2
-        self._s_list = np.ones(0)
-
-    @property
-    def rt2(self):
-        return self._rt2
-
-    @property
-    def s_list(self):
-        return self._s_list
-
-    @abc.abstractmethod
-    # xc = xc(s), the center line function of slender body.
-    def xc_fun(self, s):
-        return
-
-    @abc.abstractmethod
-    # xs = xs(s, theta), the surface function of slender body.
-    def xs_fun(self, s, theta):
-        return
-
-    @abc.abstractmethod
-    # tangent
-    def t_fun(self, s):
-        return
-
-    @abc.abstractmethod
-    # normal
-    def n_fun(self, s):
-        return
-
-    @abc.abstractmethod
-    # binormal
-    def b_fun(self, s):
-        return
-
-    @abc.abstractmethod
-    def arclength(self, s):
-        return
-
-    @abc.abstractmethod
-    def rho_r(self, s):
-        return
-
-    # normal component of force
-    def fn_matrix(self, s):
-        t = self.t_fun(s)
-        tm = np.eye(3) - np.outer(t, t)
-        return tm
-
-    def r0_fun(self, s1, s2):
-        r0 = np.linalg.norm(self.xc_fun(s1) - self.xc_fun(s2), axis=-1)
-        return r0
-
-    def natu_cut(self, s):
-        nc = self.rt2 * self.rho_r(s) * np.sqrt(np.e) / 2
-        return nc
-
-
 # archived
 # class _self_repeat_geo(slb_geo):
 #     def __init__(self, rt2):
@@ -2892,6 +2831,67 @@ class slb_geo(base_geo):
 #         vstart_nodes = np.asfortranarray(np.vstack(vgeo_nodes))
 #         fstart_nodes = np.asfortranarray(np.vstack(fgeo_nodes))
 #         return vstart_nodes, fstart_nodes
+
+class slb_geo(base_geo):
+    def __init__(self, rt2):
+        super().__init__()
+        self._rt2 = rt2
+        self._s_list = np.ones(0)
+
+    @property
+    def rt2(self):
+        return self._rt2
+
+    @property
+    def s_list(self):
+        return self._s_list
+
+    @abc.abstractmethod
+    # xc = xc(s), the center line function of slender body.
+    def xc_fun(self, s):
+        return
+
+    @abc.abstractmethod
+    # xs = xs(s, theta), the surface function of slender body.
+    def xs_fun(self, s, theta):
+        return
+
+    @abc.abstractmethod
+    # tangent
+    def t_fun(self, s):
+        return
+
+    @abc.abstractmethod
+    # normal
+    def n_fun(self, s):
+        return
+
+    @abc.abstractmethod
+    # binormal
+    def b_fun(self, s):
+        return
+
+    @abc.abstractmethod
+    def arclength(self, s):
+        return
+
+    @abc.abstractmethod
+    def rho_r(self, s):
+        return
+
+    # normal component of force
+    def fn_matrix(self, s):
+        t = self.t_fun(s)
+        tm = np.eye(3) - np.outer(t, t)
+        return tm
+
+    def r0_fun(self, s1, s2):
+        r0 = np.linalg.norm(self.xc_fun(s1) - self.xc_fun(s2), axis=-1)
+        return r0
+
+    def natu_cut(self, s):
+        nc = self.rt2 * self.rho_r(s) * np.sqrt(np.e) / 2
+        return nc
 
 
 class slb_helix(slb_geo):
