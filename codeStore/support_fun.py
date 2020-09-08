@@ -21,6 +21,13 @@ from scanf import scanf
 from scipy import interpolate, integrate
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
+from matplotlib.patches import FancyArrowPatch
+from mpl_toolkits.mplot3d.proj3d import proj_transform
+from mpl_toolkits.mplot3d.axes3d import Axes3D
+from matplotlib.colors import Normalize
+from matplotlib.ticker import Locator
+from matplotlib.collections import LineCollection
+from matplotlib.offsetbox import AnchoredOffsetbox, TextArea, HPacker, VPacker
 
 # from scipy.optimize import curve_fit
 
@@ -154,6 +161,11 @@ def angle_2vectors(v1, v2, vct_direct=None):
     return theta
 
 
+def get_rot_matrix(*args, **kwargs):
+    from src import support_class as spc
+    return spc.get_rot_matrix(*args, **kwargs)
+
+
 def mycot(x):
     return 1 / np.tan(x)
 
@@ -172,6 +184,34 @@ def write_pbs_head(fpbs, job_name, nodes=1):
     fpbs.write('#PBS -l nodes=%d:ppn=24\n' % nodes)
     fpbs.write('#PBS -l walltime=72:00:00\n')
     fpbs.write('#PBS -q common\n')
+    fpbs.write('#PBS -N %s\n' % job_name)
+    fpbs.write('\n')
+    fpbs.write('cd $PBS_O_WORKDIR\n')
+    fpbs.write('\n')
+    return True
+
+
+def write_pbs_head_dbg(fpbs, job_name, nodes=1):
+    assert np.isclose(nodes, 1)
+    fpbs.write('#! /bin/bash\n')
+    fpbs.write('#PBS -M zhangji@csrc.ac.cn\n')
+    fpbs.write('#PBS -l nodes=%d:ppn=24\n' % nodes)
+    fpbs.write('#PBS -l walltime=24:00:00\n')
+    fpbs.write('#PBS -q debug\n')
+    fpbs.write('#PBS -N %s\n' % job_name)
+    fpbs.write('\n')
+    fpbs.write('cd $PBS_O_WORKDIR\n')
+    fpbs.write('\n')
+    return True
+
+
+def write_pbs_head_serial(fpbs, job_name, nodes=1):
+    assert np.isclose(nodes, 1)
+    fpbs.write('#! /bin/bash\n')
+    fpbs.write('#PBS -M zhangji@csrc.ac.cn\n')
+    fpbs.write('#PBS -l nodes=%d:ppn=1\n' % nodes)
+    fpbs.write('#PBS -l walltime=1000:00:00\n')
+    fpbs.write('#PBS -q serial\n')
     fpbs.write('#PBS -N %s\n' % job_name)
     fpbs.write('\n')
     fpbs.write('cd $PBS_O_WORKDIR\n')
@@ -268,13 +308,19 @@ def write_main_run_comm_list(comm_list, txt_list, use_node, njob_node, job_dir,
     with open(t_name0, 'w') as fcomm:
         for i0, ts, f in zip(range(n_case), comm_list, txt_list):
             fcomm.write('%s > %s.txt 2> %s.err \n' % (ts, f, f))
-            fcomm.write('echo \'%d / %d, %s finished.\'  \n\n' % (i0+1, n_case, f))
+            fcomm.write('echo \'%d / %d, %s finished.\'  \n\n' % (i0 + 1, n_case, f))
 
     assert callable(write_pbs_head000)
     if write_pbs_head000 is write_pbs_head:
         main_hostname = 'ln0'
         _parallel_pbs_use = _parallel_pbs_ln0
     elif write_pbs_head000 is write_pbs_head_q03:
+        main_hostname = 'ln0'
+        _parallel_pbs_use = _parallel_pbs_ln0
+    elif write_pbs_head000 is write_pbs_head_dbg:
+        main_hostname = 'ln0'
+        _parallel_pbs_use = _parallel_pbs_ln0
+    elif write_pbs_head000 is write_pbs_head_serial:
         main_hostname = 'ln0'
         _parallel_pbs_use = _parallel_pbs_ln0
     elif write_pbs_head000 is write_pbs_head_newturb:
@@ -348,6 +394,10 @@ def write_myscript(job_name_list, job_dir):
 
 
 def set_axes_equal(ax):
+    figsize = ax.figure.get_size_inches()
+    l1, l2 = ax.get_position().bounds[2:] * figsize
+    lmax = np.max((l1, l2))
+
     if ax.name == "3d":
         '''Make axes of 3D plot have equal scale so that spheres appear as spheres,
         cubes as cubes, etc..  This is one possible solution to Matplotlib's
@@ -364,10 +414,13 @@ def set_axes_equal(ax):
         ])
 
         origin = np.mean(limits, axis=1)
-        radius = 0.6 * np.max(np.abs(limits[:, 1] - limits[:, 0]))
-        ax.set_xlim3d([origin[0] - radius, origin[0] + radius])
-        ax.set_ylim3d([origin[1] - radius, origin[1] + radius])
-        ax.set_zlim3d([origin[2] - radius, origin[2] + radius])
+        radius = 0.4 * np.max(np.abs(limits[:, 1] - limits[:, 0]))
+        radius_x = l1 / lmax * radius
+        radius_y = l1 / lmax * radius
+        radius_z = l2 / lmax * radius
+        ax.set_xlim3d([origin[0] - radius_x, origin[0] + radius_x])
+        ax.set_ylim3d([origin[1] - radius_y, origin[1] + radius_y])
+        ax.set_zlim3d([origin[2] - radius_z, origin[2] + radius_z])
     else:
         limits = np.array([
             ax.get_xlim(),
@@ -375,9 +428,11 @@ def set_axes_equal(ax):
         ])
 
         origin = np.mean(limits, axis=1)
-        radius = 0.6 * np.max(np.abs(limits[:, 1] - limits[:, 0]))
-        ax.set_xlim([origin[0] - radius, origin[0] + radius])
-        ax.set_ylim([origin[1] - radius, origin[1] + radius])
+        radius = 0.5 * np.max(np.abs(limits[:, 1] - limits[:, 0]))
+        radius_x = l1 / lmax * radius
+        radius_y = l2 / lmax * radius
+        ax.set_xlim([origin[0] - radius_x, origin[0] + radius_x])
+        ax.set_ylim([origin[1] - radius_y, origin[1] + radius_y])
     return ax
 
 
@@ -419,7 +474,6 @@ def colorline(x, y, z=None, cmap=plt.get_cmap('copper'), ax=None, norm=plt.Norma
     Optionally specify colors in the array z
     Optionally specify a colormap, a norm function and a line width
     '''
-    from matplotlib.collections import LineCollection
 
     # Default colors equally spaced on [0,1]:
     if z is None:
@@ -443,14 +497,21 @@ def colorline(x, y, z=None, cmap=plt.get_cmap('copper'), ax=None, norm=plt.Norma
 
 
 def colorline3d(tnodes, tcl, quiver_length_fct=None, clb_title='', show_project=False, tu=None,
-                nu_show=50, return_fig=False):
-    fig = plt.figure(figsize=(8, 8), dpi=100)
-    fig.patch.set_facecolor('white')
-    ax0 = fig.add_subplot(1, 1, 1, projection='3d')
+                nu_show=50, return_fig=False, ax0=None, tcl_lim=None, tcl_fontsize=10):
+    if ax0 is None:
+        fig = plt.figure(figsize=(8, 8), dpi=100)
+        fig.patch.set_facecolor('white')
+        ax0 = fig.add_subplot(1, 1, 1, projection='3d')
+    else:
+        assert hasattr(ax0, 'get_zlim')
+        plt.sca(ax0)
+        fig = plt.gcf()
+    if tcl_lim is None:
+        tcl_lim = (tcl.min(), tcl.max())
     ax0.plot(tnodes[:, 0], tnodes[:, 1], tnodes[:, 2]).pop(0).remove()
     cax1 = inset_axes(ax0, width="100%", height="5%", bbox_to_anchor=(0, 0.1, 1, 1),
                       loc=1, bbox_transform=ax0.transAxes, borderpad=0, )
-    norm = plt.Normalize(tcl.min(), tcl.max())
+    norm = plt.Normalize(*tcl_lim)
     cmap = plt.get_cmap('jet')
     # Create the 3D-line collection object
     points = tnodes.reshape(-1, 1, 3)
@@ -459,7 +520,11 @@ def colorline3d(tnodes, tcl, quiver_length_fct=None, clb_title='', show_project=
     lc.set_array(tcl)
     ax0.add_collection3d(lc, zs=points[:, :, 2].flatten(), zdir='z')
     clb = fig.colorbar(lc, cax=cax1, orientation="horizontal")
+    clb.ax.tick_params(labelsize=tcl_fontsize)
     clb.ax.set_title(clb_title)
+    clb_ticks = np.linspace(*tcl_lim, 5)
+    clb.set_ticks(clb_ticks)
+    clb.ax.set_yticklabels(clb_ticks)
     set_axes_equal(ax0)
     if show_project:
         ax0.plot(np.ones_like(tnodes[:, 0]) * ax0.get_xlim()[0], tnodes[:, 1], tnodes[:, 2], '--k')
@@ -476,9 +541,9 @@ def colorline3d(tnodes, tcl, quiver_length_fct=None, clb_title='', show_project=
                    length=quiver_length, arrow_length_ratio=0.2, pivot='tail', normalize=False,
                    colors='k')
     plt.sca(ax0)
-    ax0.set_xlabel('X')
-    ax0.set_ylabel('Y')
-    ax0.set_zlabel('Z')
+    ax0.set_xlabel('$X_1$')
+    ax0.set_ylabel('$X_2$')
+    ax0.set_zlabel('$X_3$')
     # for spine in ax0.spines.values():
     #     spine.set_visible(False)
     # plt.tight_layout()
@@ -501,7 +566,85 @@ def add_inset(ax0, rect, *args, **kwargs):
     return ax0.figure.add_axes(new_rect, *args, **kwargs)
 
 
-from matplotlib.colors import Normalize
+def multicolor_ylabel(ax, list_of_strings, list_of_colors, axis='x', anchorpad=0, **kw):
+    """this function creates axes labels with multiple colors
+    ax specifies the axes object where the labels should be drawn
+    list_of_strings is a list of all of the text items
+    list_if_colors is a corresponding list of colors for the strings
+    axis='x', 'y', or 'both' and specifies which label(s) should be drawn"""
+
+    # x-axis label
+    if axis == 'x' or axis == 'both':
+        boxes = [TextArea(text, textprops=dict(color=color, ha='left', va='bottom', **kw))
+                 for text, color in zip(list_of_strings, list_of_colors)]
+        xbox = HPacker(children=boxes, align="center", pad=0, sep=5)
+        anchored_xbox = AnchoredOffsetbox(loc='lower left', child=xbox, pad=anchorpad,
+                                          frameon=False, bbox_to_anchor=(0.2, -0.09),
+                                          bbox_transform=ax.transAxes, borderpad=0.)
+        ax.add_artist(anchored_xbox)
+
+    # y-axis label
+    if axis == 'y' or axis == 'both':
+        boxes = [TextArea(text, textprops=dict(color=color, ha='left', va='bottom',
+                                               rotation=90, **kw))
+                 for text, color in zip(list_of_strings[::-1], list_of_colors)]
+        ybox = VPacker(children=boxes, align="center", pad=0, sep=5)
+        anchored_ybox = AnchoredOffsetbox(loc='lower left', child=ybox, pad=anchorpad,
+                                          frameon=False, bbox_to_anchor=(-0.105, 0.25),
+                                          bbox_transform=ax.transAxes, borderpad=0.)
+        ax.add_artist(anchored_ybox)
+
+
+class MinorSymLogLocator(Locator):
+    """
+    Dynamically find minor tick positions based on the positions of
+    major ticks for a symlog scaling.
+    """
+
+    def __init__(self, linthresh):
+        """
+        Ticks will be placed between the major ticks.
+        The placement is linear for x between -linthresh and linthresh,
+        otherwise its logarithmically
+        """
+        self.linthresh = linthresh
+
+    def __call__(self):
+        'Return the locations of the ticks'
+        majorlocs = self.axis.get_majorticklocs()
+        view_interval = self.axis.get_view_interval()
+        if view_interval[-1] > majorlocs[-1]:
+            majorlocs = np.hstack((majorlocs, view_interval[-1]))
+        assert np.all(majorlocs >= 0)
+        if np.isclose(majorlocs[0], 0):
+            majorlocs = majorlocs[1:]
+
+        # # iterate through minor locs, handle the lowest part, old version
+        # minorlocs = []
+        # for i in range(1, len(majorlocs)):
+        #     majorstep = majorlocs[i] - majorlocs[i - 1]
+        #     if abs(majorlocs[i - 1] + majorstep / 2) < self.linthresh:
+        #         ndivs = 10
+        #     else:
+        #         ndivs = 9
+        #     minorstep = majorstep / ndivs
+        #     locs = np.arange(majorlocs[i - 1], majorlocs[i], minorstep)[1:]
+        #     minorlocs.extend(locs)
+
+        # iterate through minor locs, handle the lowest part, my version
+        minorlocs = []
+        for i in range(1, len(majorlocs)):
+            tloc = majorlocs[i - 1]
+            tgap = majorlocs[i] - majorlocs[i - 1]
+            tstp = majorlocs[i - 1] * self.linthresh * 10
+            while tloc < tgap and not np.isclose(tloc, tgap):
+                tloc = tloc + tstp
+                minorlocs.append(tloc)
+        return self.raise_if_exceeds(np.array(minorlocs))
+
+    def tick_values(self, vmin, vmax):
+        raise NotImplementedError('Cannot get tick locations for a '
+                                  '%s type.' % type(self))
 
 
 # user define color norm
@@ -550,6 +693,7 @@ class midPowerNorm(Normalize):
 # user define color norm
 class midLinearNorm(Normalize):
     def __init__(self, midpoint=1, vmin=None, vmax=None, clip=False):
+        # clip: see np.clip, Clip (limit) the values in an array.
         Normalize.__init__(self, vmin, vmax, clip)
         self.midpoint = midpoint
 
@@ -587,3 +731,27 @@ class midLinearNorm(Normalize):
                 tuse2 = np.zeros_like(resdat2)
             result = np.ma.array(np.hstack((tuse1, tuse2)), mask=result.mask, copy=False)
         return result
+
+
+class Arrow3D(FancyArrowPatch):
+    def __init__(self, x, y, z, dx, dy, dz, *args, **kwargs):
+        super().__init__((0, 0), (0, 0), *args, **kwargs)
+        self._xyz = (x, y, z)
+        self._dxdydz = (dx, dy, dz)
+
+    def draw(self, renderer):
+        x1, y1, z1 = self._xyz
+        dx, dy, dz = self._dxdydz
+        x2, y2, z2 = (x1 + dx, y1 + dy, z1 + dz)
+        xs, ys, zs = proj_transform((x1, x2), (y1, y2), (z1, z2), renderer.M)
+        self.set_positions((xs[0], ys[0]), (xs[1], ys[1]))
+        super().draw(renderer)
+
+
+def _arrow3D(ax, x, y, z, dx, dy, dz, *args, **kwargs):
+    '''Add an 3d arrow to an `Axes3D` instance.'''
+    arrow = Arrow3D(x, y, z, dx, dy, dz, *args, **kwargs)
+    ax.add_artist(arrow)
+
+
+setattr(Axes3D, 'arrow3D', _arrow3D)

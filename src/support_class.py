@@ -14,9 +14,9 @@ __all__ = ['uniqueList', 'typeList', 'intList', 'floatList',
 
 
 class uniqueList(UserList):
-    def __init__(self, acceptType=None):
+    def __init__(self, liste=[], acceptType=None):
         self._acceptType = acceptType
-        super().__init__()
+        super().__init__(liste)
 
     def check(self, other):
         err_msg = 'only type %s is accepted. ' % (self._acceptType)

@@ -24,13 +24,14 @@ __all__ = ['get_solver_kwargs', 'get_forcefree_kwargs', 'get_givenForce_kwargs',
            'get_integrate_kwargs', 'print_integrate_kwargs',
            'get_helicoid_kwargs', 'print_helicoid_info',
            'get_obj_helicoid_kwargs', 'print_obj_helicoid_info',
+           'get_diskVane_kwargs', 'print_diskVane_kwargs',
            # 'print_infhelix_info',
            'get_sphere_kwargs', 'print_sphere_info',
            'get_pipe_kwargs', 'print_pipe_info', ]
 
 
 def print_single_ecoli_force_result(ecoli_comp: sf.ForceFreeComposite, prefix='', part='full',
-                                    self_rotate_fct=1, **kwargs):
+                                    **kwargs):
     def print_full():
         head_obj = ecoli_comp.get_obj_list()[0]
         tail_obj = ecoli_comp.get_obj_list()[1:]
@@ -70,7 +71,7 @@ def print_single_ecoli_force_result(ecoli_comp: sf.ForceFreeComposite, prefix=''
         tail_obj = ecoli_comp.get_obj_list()[0:]
         tail_force = np.sum([t_obj.get_total_force() for t_obj in tail_obj], axis=0)
         helix0_force = tail_obj[0].get_total_force()
-        PETSc.Sys.Print('%s tail resultant is' % prefix, tail_force * self_rotate_fct)
+        PETSc.Sys.Print('%s tail resultant is' % prefix, tail_force)
         PETSc.Sys.Print('%s helix0 resultant is' % prefix, helix0_force)
         if len(tail_obj) > 1:
             helix1_force = tail_obj[1].get_total_force()
@@ -454,7 +455,7 @@ def print_helix_SLB_info(helixName, **problem_kwargs):
     PETSc.Sys.Print('    n_tail: %d, n_segment: %d, check_nth: %d. ' % (
         n_tail, n_segment, check_nth))
     PETSc.Sys.Print('    slb_geo_fun, %s' % slb_geo_fun)
-    PETSc.Sys.Print('    slb_epsabs %e, n_segment %e, n_segment %d' %
+    PETSc.Sys.Print('    slb_epsabs %e, slb_epsrel %e, slb_limit %d' %
                     (slb_epsabs, slb_epsrel, slb_limit))
     PETSc.Sys.Print('  relative velocity of helix is %s' % (str(rel_Uh)))
     return True
@@ -529,10 +530,10 @@ def get_solver_kwargs():
     elif matrix_method in ('pf_stokesletsTwoPlane',):
         twoPlateHeight = OptDB.getReal('twoPlateHeight', 1)  # twoPlateHeight
         problem_kwargs['twoPlateHeight'] = twoPlateHeight
-    elif matrix_method == 'rs':
+    elif matrix_method in ('rs', 'rs_selfRotate'):
         epsilon = OptDB.getReal('epsilon', 0.3)
         problem_kwargs['epsilon'] = epsilon
-    elif matrix_method in ('lg_rs',):
+    elif matrix_method in ('lg_rs', 'lg_rs_selfRotate'):
         legendre_m = OptDB.getInt('legendre_m', 3)
         legendre_k = OptDB.getInt('legendre_k', 2)
         epsilon = OptDB.getReal('epsilon', 3)
@@ -557,19 +558,19 @@ def print_solver_info(**problem_kwargs):
     solve_method = problem_kwargs['solve_method']
     precondition_method = problem_kwargs['precondition_method']
 
-    err_msg = "Only 'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane', 'pf_dualPotential'" \
-              ", 'rs', 'lg_rs', and 'rs_plane' methods are accept for this main code. "
     acceptType = ('rs', 'rs_plane', 'lg_rs',
                   'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane', 'pf_dualPotential',
                   'pf_infhelix', 'pf_stokesletsRingInPipe', 'pf_stokesletsRing',
                   'pf_stokesletsRingInPipeProblemSymz', 'pf_stokesletsRingInPipeSymz',
-                  'pf_selfRepeat', 'pf_selfRotate',
+                  'pf_selfRepeat', 'pf_selfRotate', 'rs_selfRotate', 'lg_rs_selfRotate',
                   'lightill_slb', 'KRJ_slb',)
+    err_msg = "Only 'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane', 'pf_dualPotential'" \
+              ", 'rs', 'lg_rs', and 'rs_plane' methods are accept for this main code. "
     assert matrix_method in acceptType, err_msg
     PETSc.Sys.Print('  output file handle: ' + fileHandle)
     PETSc.Sys.Print('  create matrix method: %s, ' % matrix_method)
     if matrix_method in ('rs', 'pf', 'rs_plane', 'pf_dualPotential', 'pf_infhelix',
-                         'pf_stokesletsRing', 'pf_selfRepeat', 'pf_selfRotate',):
+                         'pf_stokesletsRing', 'pf_selfRepeat', 'pf_selfRotate', 'rs_selfRotate'):
         pass
     elif matrix_method in ('pf_stokesletsInPipe',):
         forcepipe = problem_kwargs['forcepipe']
@@ -577,7 +578,7 @@ def print_solver_info(**problem_kwargs):
     elif matrix_method in ('pf_stokesletsTwoPlane',):
         twoPlateHeight = problem_kwargs['twoPlateHeight']
         PETSc.Sys.Print('  Height of upper plane is %f ' % twoPlateHeight)
-    elif matrix_method in ('lg_rs',):
+    elif matrix_method in ('lg_rs', 'lg_rs_selfRotate'):
         legendre_m = problem_kwargs['legendre_m']
         legendre_k = problem_kwargs['legendre_k']
         epsilon = problem_kwargs['epsilon']
@@ -746,17 +747,58 @@ def get_obj_helicoid_kwargs():
     OptDB = PETSc.Options()
 
     helicoid_r = OptDB.getReal('helicoid_r', 1)
+    helicoid_th0 = OptDB.getReal('helicoid_th0', 0)
     helicoid_ndsk_each = OptDB.getInt('helicoid_ndsk_each', 4)
     problem_kwargs = {'helicoid_r':         helicoid_r,
+                      'helicoid_th0':       helicoid_th0,
                       'helicoid_ndsk_each': helicoid_ndsk_each, }
     return problem_kwargs
 
 
 def print_obj_helicoid_info(**problem_kwargs):
     helicoid_r = problem_kwargs['helicoid_r']
+    helicoid_th0 = problem_kwargs['helicoid_th0']
     helicoid_ndsk_each = problem_kwargs['helicoid_ndsk_each']
-    PETSc.Sys.Print('  helicoid_r: %f, helicoid_ndsk_each: %d' %
-                    (helicoid_r, helicoid_ndsk_each))
+    PETSc.Sys.Print('  helicoid_r: %f, helicoid_ndsk_each: %d, helicoid_th0: %f' %
+                    (helicoid_r, helicoid_ndsk_each, helicoid_th0))
+    return True
+
+
+def get_diskVane_kwargs():
+    OptDB = PETSc.Options()
+
+    diskVane_r1 = OptDB.getReal('diskVane_r1', 1)
+    diskVane_rz = OptDB.getReal('diskVane_rz', 1)
+    diskVane_r2 = OptDB.getReal('diskVane_r2', np.sqrt(0.1))
+    diskVane_ds = OptDB.getReal('diskVane_ds', 0.1)
+    diskVane_th_loc = OptDB.getReal('diskVane_th_loc', 0)
+    diskVane_ph_loc = OptDB.getReal('diskVane_ph_loc', 0)
+    diskVane_nr = OptDB.getInt('diskVane_nr', 1)
+    diskVane_nz = OptDB.getInt('diskVane_nz', 2)
+    problem_kwargs = {'diskVane_r1':     diskVane_r1,
+                      'diskVane_rz':     diskVane_rz,
+                      'diskVane_r2':     diskVane_r2,
+                      'diskVane_ds':     diskVane_ds,
+                      'diskVane_th_loc': diskVane_th_loc,
+                      'diskVane_ph_loc': diskVane_ph_loc,
+                      'diskVane_nr':     diskVane_nr,
+                      'diskVane_nz':     diskVane_nz, }
+    return problem_kwargs
+
+
+def print_diskVane_kwargs(**problem_kwargs):
+    r1 = problem_kwargs['diskVane_r1']
+    rz = problem_kwargs['diskVane_rz']
+    r2 = problem_kwargs['diskVane_r2']
+    ds = problem_kwargs['diskVane_ds']
+    th_loc = problem_kwargs['diskVane_th_loc']
+    ph_loc = problem_kwargs['diskVane_ph_loc']
+    nr = problem_kwargs['diskVane_nr']
+    nz = problem_kwargs['diskVane_nz']
+    PETSc.Sys.Print('  diskVane_r1 %f, diskVane_rz %f, diskVane_r2 %f, diskVane_ds %f' %
+                    (r1, rz, r2, ds))
+    PETSc.Sys.Print('  diskVane_th_loc %f, diskVane_ph_loc %f, diskVane_nr %d, diskVane_nz %d' %
+                    (th_loc, ph_loc, nr, nz))
     return True
 
 
@@ -902,9 +944,8 @@ def print_sphere_info(sphereName, **problem_kwargs):
     sphere_coord = problem_kwargs['sphere_coord']
 
     PETSc.Sys.Print(sphereName, 'geo information: ')
-    PETSc.Sys.Print(
-            '  radius deltalength and epsilon of sphere: {rs}, {ds}, {es}'.format(rs=rs, ds=ds,
-                                                                                  es=es))
+    PETSc.Sys.Print('  radius deltalength and epsilon of sphere: {rs}, {ds}, {es}'
+                    .format(rs=rs, ds=ds, es=es))
     PETSc.Sys.Print('  center coordinates and rigid body velocity are:')
     for t_coord, t_velocity in zip(sphere_coord, sphere_velocity):
         PETSc.Sys.Print(' ', t_coord, '&', t_velocity)
@@ -921,6 +962,7 @@ def get_one_ellipse_kwargs():
     OptDB = PETSc.Options()
     rs1 = OptDB.getReal('rs1', 0.5)
     rs2 = OptDB.getReal('rs2', 0.5)
+    rs3 = OptDB.getReal('rs3', rs2)
     ds = OptDB.getReal('ds', 0.1)
     es = OptDB.getReal('es', -0.1)
     ux = OptDB.getReal('ux', 0)
@@ -929,36 +971,40 @@ def get_one_ellipse_kwargs():
     wx = OptDB.getReal('wx', 0)
     wy = OptDB.getReal('wy', 0)
     wz = OptDB.getReal('wz', 0)
+    zoom_factor = OptDB.getReal('zoom_factor', 1)
     random_velocity = OptDB.getBool('random_velocity', False)
     t_velocity = np.array((ux, uy, uz, wx, wy, wz))
     if random_velocity:
-        sphere_velocity = np.random.sample(6) * t_velocity
+        velocity = np.random.sample(6) * t_velocity
     else:
-        sphere_velocity = np.ones(6) * t_velocity
+        velocity = np.ones(6) * t_velocity
 
     sphere_kwargs = {
-        'rs1':             rs1,
-        'rs2':             rs2,
-        'sphere_velocity': sphere_velocity,
-        'ds':              ds,
-        'es':              es,
-        'sphere_coord':    np.zeros(3), }
+        'rs1':         rs1,
+        'rs2':         rs2,
+        'rs3':         rs3,
+        'velocity':    velocity,
+        'ds':          ds,
+        'es':          es,
+        'zoom_factor': zoom_factor,
+        'center':      np.zeros(3), }
     return sphere_kwargs
 
 
 def print_one_ellipse_info(sphereName, **problem_kwargs):
     rs1 = problem_kwargs['rs1']
     rs2 = problem_kwargs['rs2']
-    sphere_velocity = problem_kwargs['sphere_velocity']
+    rs3 = problem_kwargs['rs3']
+    velocity = problem_kwargs['velocity']
     ds = problem_kwargs['ds']
     es = problem_kwargs['es']
-    sphere_coord = problem_kwargs['sphere_coord']
+    zoom_factor = problem_kwargs['zoom_factor']
+    center = problem_kwargs['center']
 
     PETSc.Sys.Print(sphereName, 'geo information: ')
-    PETSc.Sys.Print('  radius deltalength and epsilon of sphere: {rs1}, {rs2}, {ds}, {es}'
-                    .format(rs1=rs1, rs2=rs2, ds=ds, es=es))
-    PETSc.Sys.Print('  center coordinates and rigid body velocity are:')
-    PETSc.Sys.Print(' ', sphere_coord, '&', sphere_velocity)
+    PETSc.Sys.Print('  ellipsoid: rs1=%f, rs2=%f, rs3=%f, ds=%f, es=%f' % (rs1, rs2, rs3, ds, es))
+    PETSc.Sys.Print('  ellipsoid: center=%s, velocity=%s, zoom_factor=%f' %
+                    (str(center), str(velocity), zoom_factor))
     return True
 
 

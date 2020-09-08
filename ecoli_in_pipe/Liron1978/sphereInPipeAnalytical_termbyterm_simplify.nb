@@ -1,0 +1,3579 @@
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[         0,          0]
+NotebookDataLength[    148567,       3578]
+NotebookOptionsPosition[    144582,       3508]
+NotebookOutlinePosition[    144955,       3524]
+CellTagsIndexPosition[    144912,       3521]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"Clear", "[", "\"\<Global`*\>\"", "]"}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{"<<", "ToMatlab.m"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"DBesselK", "[", 
+    RowBox[{"k_", ",", "s_"}], "]"}], "=", 
+   RowBox[{"FullSimplify", "[", 
+    RowBox[{"D", "[", 
+     RowBox[{
+      RowBox[{"BesselK", "[", 
+       RowBox[{"k", ",", "s"}], "]"}], ",", "s"}], "]"}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"DBesselI", "[", 
+    RowBox[{"k_", ",", "s_"}], "]"}], "=", 
+   RowBox[{"FullSimplify", "[", 
+    RowBox[{"D", "[", 
+     RowBox[{
+      RowBox[{"BesselI", "[", 
+       RowBox[{"k", ",", "s"}], "]"}], ",", "s"}], "]"}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"DDBesselK", "[", 
+    RowBox[{"k_", ",", "s_"}], "]"}], "=", 
+   RowBox[{"FullSimplify", "[", 
+    RowBox[{"D", "[", 
+     RowBox[{
+      RowBox[{"BesselK", "[", 
+       RowBox[{"k", ",", "s"}], "]"}], ",", 
+      RowBox[{"{", 
+       RowBox[{"s", ",", "2"}], "}"}]}], "]"}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"DDBesselI", "[", 
+    RowBox[{"k_", ",", "s_"}], "]"}], "=", 
+   RowBox[{"FullSimplify", "[", 
+    RowBox[{"D", "[", 
+     RowBox[{
+      RowBox[{"BesselI", "[", 
+       RowBox[{"k", ",", "s"}], "]"}], ",", 
+      RowBox[{"{", 
+       RowBox[{"s", ",", "2"}], "}"}]}], "]"}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"myD", "[", 
+    RowBox[{"k_", ",", "s_"}], "]"}], "=", 
+   RowBox[{"FullSimplify", "[", 
+    RowBox[{
+     RowBox[{"s", "*", 
+      RowBox[{"BesselI", "[", 
+       RowBox[{"k", ",", "s"}], "]"}], "*", 
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{
+         RowBox[{"BesselI", "[", 
+          RowBox[{
+           RowBox[{"k", "-", "1"}], ",", "s"}], "]"}], "*", 
+         RowBox[{"DBesselI", "[", 
+          RowBox[{
+           RowBox[{"k", "+", "1"}], ",", "s"}], "]"}]}], "+", 
+        RowBox[{
+         RowBox[{"DBesselI", "[", 
+          RowBox[{
+           RowBox[{"k", "-", "1"}], ",", "s"}], "]"}], "*", 
+         RowBox[{"BesselI", "[", 
+          RowBox[{
+           RowBox[{"k", "+", "1"}], ",", "s"}], "]"}]}]}], ")"}]}], "-", 
+     RowBox[{"2", "*", 
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", "s"}], "]"}], "+", 
+        RowBox[{"s", "*", 
+         RowBox[{"DBesselI", "[", 
+          RowBox[{"k", ",", "s"}], "]"}]}]}], ")"}], "*", 
+      RowBox[{"BesselI", "[", 
+       RowBox[{
+        RowBox[{"k", "-", "1"}], ",", "s"}], "]"}], "*", 
+      RowBox[{"BesselI", "[", 
+       RowBox[{
+        RowBox[{"k", "+", "1"}], ",", "s"}], "]"}]}]}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"DmyD", "[", 
+    RowBox[{"k_", ",", "s_"}], "]"}], "=", 
+   RowBox[{"FullSimplify", "[", 
+    RowBox[{"D", "[", 
+     RowBox[{
+      RowBox[{"myD", "[", 
+       RowBox[{"k", ",", "s"}], "]"}], ",", "s"}], "]"}], "]"}]}], 
+  ";"}]}], "Input",
+ CellChangeTimes->{
+  3.7879783526134295`*^9, {3.787978386585428*^9, 3.787978400574112*^9}},
+ CellLabel->"In[32]:=",ExpressionUUID->"ffcdd764-d575-4feb-a4ac-e4845e9048f8"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"pw", "=", 
+   RowBox[{"PageWidth", "/.", 
+    RowBox[{"Options", "[", "$Output", "]"}]}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{"SetOptions", "[", 
+   RowBox[{"$Output", ",", 
+    RowBox[{"PageWidth", "\[Rule]", "Infinity"}]}], "]"}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"t1", "=", 
+   RowBox[{"DmyD", "[", 
+    RowBox[{"k", ",", "s"}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{"FortranForm", "[", "t1", "]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"SetOptions", "[", 
+   RowBox[{"$Output", ",", 
+    RowBox[{"PageWidth", "\[Rule]", "pw"}]}], "]"}], ";"}]}], "Input",
+ CellChangeTimes->{{3.7873726629278812`*^9, 3.7873727216768565`*^9}, {
+   3.7873729392540936`*^9, 3.7873729457111974`*^9}, {3.7873729858767815`*^9, 
+   3.7873730086317286`*^9}, {3.787373039775941*^9, 3.7873730558312902`*^9}, {
+   3.7873732718384533`*^9, 3.787373278146645*^9}, {3.7873734509126415`*^9, 
+   3.7873734988710885`*^9}, {3.787373533490798*^9, 3.7873735903629584`*^9}, {
+   3.787373654983741*^9, 3.7873736969046173`*^9}, 3.7874074681404724`*^9, {
+   3.787457277035634*^9, 3.7874573758928223`*^9}, {3.787457498772256*^9, 
+   3.787457503450737*^9}, 3.787461117295762*^9, 3.787463102280509*^9, {
+   3.7879783654181967`*^9, 3.7879783714758615`*^9}, {3.787978401779485*^9, 
+   3.787978403544741*^9}, {3.7879784909769926`*^9, 3.787978497079809*^9}, {
+   3.7879785285406013`*^9, 3.787978566905595*^9}},
+ CellLabel->"In[66]:=",ExpressionUUID->"a1b60eb8-59da-4988-834e-a8986a8f4215"],
+
+Cell["\<\
+(2*BesselI(k,s)*(-(s*(-4 + k**2 + s**2)*BesselI(-1 + k,s)**2) + 2*(-2 + \
+k)*(k*(2 + k) + s**2)*BesselI(-1 + k,s)*BesselI(k,s) + s*(k*(4 + k) + \
+s**2)*BesselI(k,s)**2))/s**2\
+\>", "Output",
+ CellChangeTimes->{
+  3.787978112957162*^9, {3.78797840459378*^9, 3.7879784082156925`*^9}, {
+   3.7879784930753794`*^9, 3.787978498628336*^9}, {3.787978529716121*^9, 
+   3.787978567803138*^9}},
+ CellLabel->
+  "Out[69]//FortranForm=",ExpressionUUID->"189c28b8-0fc4-4c25-a583-\
+7d5234d4d4f4"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"d1", "[", 
+   RowBox[{"a_", ",", "b_", ",", "r_", ",", "s_", ",", "k_"}], "]"}], "=", 
+  RowBox[{"FullSimplify", "[", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"-", "s"}], "*", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "-", "1"}], ",", "s"}], "]"}], "*", 
+        RowBox[{"DBesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "+", "1"}], ",", "s"}], "]"}]}], "+", 
+       RowBox[{
+        RowBox[{"DBesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "-", "1"}], ",", "s"}], "]"}], "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "+", "1"}], ",", "s"}], "]"}]}]}], ")"}], "*", "a"}], 
+    "-", 
+    RowBox[{
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"BesselI", "[", 
+        RowBox[{"k", ",", "s"}], "]"}], "+", 
+       RowBox[{"s", "*", 
+        RowBox[{"DBesselI", "[", 
+         RowBox[{"k", ",", "s"}], "]"}]}]}], ")"}], "*", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"b", "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "-", "1"}], ",", "s"}], "]"}]}], "+", 
+       RowBox[{"r", "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "+", "1"}], ",", "s"}], "]"}]}]}], ")"}]}]}], 
+   "]"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"d2", "[", 
+   RowBox[{"a_", ",", "b_", ",", "r_", ",", "s_", ",", "k_"}], "]"}], "=", 
+  RowBox[{"FullSimplify", "[", 
+   RowBox[{
+    RowBox[{"s", "*", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "-", "1"}], ",", "s"}], "]"}], "*", 
+        RowBox[{"DBesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "+", "1"}], ",", "s"}], "]"}]}], "-", 
+       RowBox[{
+        RowBox[{"DBesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "-", "1"}], ",", "s"}], "]"}], "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "+", "1"}], ",", "s"}], "]"}]}]}], ")"}], "*", "a"}], 
+    "+", 
+    RowBox[{
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"BesselI", "[", 
+           RowBox[{"k", ",", "s"}], "]"}], "+", 
+          RowBox[{"s", "*", 
+           RowBox[{"DBesselI", "[", 
+            RowBox[{"k", ",", "s"}], "]"}]}]}], ")"}], "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "-", "1"}], ",", "s"}], "]"}]}], "-", 
+       RowBox[{"s", "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", "s"}], "]"}], "*", 
+        RowBox[{"DBesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "-", "1"}], ",", "s"}], "]"}]}]}], ")"}], "*", "b"}], 
+    "+", 
+    RowBox[{
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"s", "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", "s"}], "]"}], "*", 
+        RowBox[{"DBesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "+", "1"}], ",", "s"}], "]"}]}], "-", 
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"BesselI", "[", 
+           RowBox[{"k", ",", "s"}], "]"}], "+", 
+          RowBox[{"s", "*", 
+           RowBox[{"DBesselI", "[", 
+            RowBox[{"k", ",", "s"}], "]"}]}]}], ")"}], "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "+", "1"}], ",", "s"}], "]"}]}]}], ")"}], "*", "r"}]}],
+    "]"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"d3", "[", 
+   RowBox[{"a_", ",", "b_", ",", "r_", ",", "s_", ",", "k_"}], "]"}], "=", 
+  RowBox[{"FullSimplify", "[", 
+   RowBox[{
+    RowBox[{"2", "*", "a", "*", 
+     RowBox[{"BesselI", "[", 
+      RowBox[{
+       RowBox[{"k", "-", "1"}], ",", "s"}], "]"}], "*", 
+     RowBox[{"BesselI", "[", 
+      RowBox[{
+       RowBox[{"k", "+", "1"}], ",", "s"}], "]"}]}], "+", 
+    RowBox[{
+     RowBox[{"BesselI", "[", 
+      RowBox[{"k", ",", "s"}], "]"}], "*", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"b", "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "-", "1"}], ",", "s"}], "]"}]}], "+", 
+       RowBox[{"r", "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "+", "1"}], ",", "s"}], "]"}]}]}], ")"}]}]}], 
+   "]"}]}]}], "Input",
+ CellChangeTimes->{{3.7879777637715054`*^9, 3.787977765042059*^9}},
+ CellLabel->"In[76]:=",ExpressionUUID->"aa667ad1-6b74-42ca-b9a3-337ff6b105e0"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"-", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"s", " ", 
+       RowBox[{"BesselI", "[", 
+        RowBox[{
+         RowBox[{
+          RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "-", 
+      RowBox[{
+       RowBox[{"(", 
+        RowBox[{
+         RowBox[{"-", "1"}], "+", "k"}], ")"}], " ", 
+       RowBox[{"BesselI", "[", 
+        RowBox[{"k", ",", "s"}], "]"}]}]}], ")"}]}], " ", 
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{"b", " ", 
+      RowBox[{"BesselI", "[", 
+       RowBox[{
+        RowBox[{
+         RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "+", 
+     RowBox[{"r", " ", 
+      RowBox[{"BesselI", "[", 
+       RowBox[{
+        RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}]}], ")"}]}], "-", 
+  RowBox[{
+   FractionBox["1", "2"], " ", "a", " ", "s", " ", 
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "2"}], "+", "k"}], ",", "s"}], "]"}], "+", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", "s"}], "]"}]}], ")"}], " ", 
+      RowBox[{"BesselI", "[", 
+       RowBox[{
+        RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}], "+", 
+     RowBox[{
+      RowBox[{"BesselI", "[", 
+       RowBox[{
+        RowBox[{
+         RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], " ", 
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", "s"}], "]"}], "+", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"2", "+", "k"}], ",", "s"}], "]"}]}], ")"}]}]}], 
+    ")"}]}]}]], "Output",
+ CellChangeTimes->{3.787977599204833*^9, 3.7879786552997236`*^9},
+ CellLabel->"Out[76]=",ExpressionUUID->"c6cee56f-8139-4584-9501-212231981b86"],
+
+Cell[BoxData[
+ RowBox[{
+  FractionBox["1", "s"], 
+  RowBox[{"(", 
+   RowBox[{
+    RowBox[{"s", " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"-", "2"}], " ", "a", " ", "k"}], "+", 
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{"b", "-", "r"}], ")"}], " ", "s"}]}], ")"}], " ", 
+     SuperscriptBox[
+      RowBox[{"BesselI", "[", 
+       RowBox[{
+        RowBox[{
+         RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], "2"]}], "+", 
+    RowBox[{"2", " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"2", " ", "a", " ", 
+        SuperscriptBox["k", "2"]}], "-", 
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"-", "1"}], "+", "k"}], ")"}], " ", 
+        RowBox[{"(", 
+         RowBox[{"b", "-", "r"}], ")"}], " ", "s"}]}], ")"}], " ", 
+     RowBox[{"BesselI", "[", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], " ", 
+     RowBox[{"BesselI", "[", 
+      RowBox[{"k", ",", "s"}], "]"}]}], "+", 
+    RowBox[{
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"4", " ", "k", " ", "r"}], "+", 
+       RowBox[{"2", " ", "a", " ", "k", " ", "s"}], "+", 
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"-", "b"}], "+", "r"}], ")"}], " ", 
+        SuperscriptBox["s", "2"]}]}], ")"}], " ", 
+     SuperscriptBox[
+      RowBox[{"BesselI", "[", 
+       RowBox[{"k", ",", "s"}], "]"}], "2"]}]}], ")"}]}]], "Output",
+ CellChangeTimes->{3.787977599204833*^9, 3.787978656440235*^9},
+ CellLabel->"Out[77]=",ExpressionUUID->"ddbce4e7-26a5-4881-a6ee-80699983ba73"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"r", " ", 
+   RowBox[{"BesselI", "[", 
+    RowBox[{"k", ",", "s"}], "]"}], " ", 
+   RowBox[{"BesselI", "[", 
+    RowBox[{
+     RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}], "+", 
+  RowBox[{
+   RowBox[{"BesselI", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], " ", 
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{"b", " ", 
+      RowBox[{"BesselI", "[", 
+       RowBox[{"k", ",", "s"}], "]"}]}], "+", 
+     RowBox[{"2", " ", "a", " ", 
+      RowBox[{"BesselI", "[", 
+       RowBox[{
+        RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}]}], ")"}]}]}]], "Output",
+ CellChangeTimes->{3.787977599204833*^9, 3.7879786565659475`*^9},
+ CellLabel->"Out[78]=",ExpressionUUID->"a0ba1311-19a6-430d-9504-c369ed4e2a7d"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"pw", "=", 
+   RowBox[{"PageWidth", "/.", 
+    RowBox[{"Options", "[", "$Output", "]"}]}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{"SetOptions", "[", 
+   RowBox[{"$Output", ",", 
+    RowBox[{"PageWidth", "\[Rule]", "Infinity"}]}], "]"}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"t1", "=", 
+   RowBox[{"d3", "[", 
+    RowBox[{"a", ",", "b", ",", "r", ",", "s", ",", "k"}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{"FortranForm", "[", "t1", "]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"SetOptions", "[", 
+   RowBox[{"$Output", ",", 
+    RowBox[{"PageWidth", "\[Rule]", "pw"}]}], "]"}], ";"}]}], "Input",
+ CellChangeTimes->{{3.7879786424617357`*^9, 3.787978649552805*^9}, {
+  3.7879786803786855`*^9, 3.7879787025356693`*^9}},
+ CellLabel->"In[89]:=",ExpressionUUID->"37c5f586-c2df-415e-9605-976cc31bc44e"],
+
+Cell["\<\
+r*BesselI(k,s)*BesselI(1 + k,s) + BesselI(-1 + k,s)*(b*BesselI(k,s) + \
+2*a*BesselI(1 + k,s))\
+\>", "Output",
+ CellChangeTimes->{{3.78797865068471*^9, 3.7879787032176533`*^9}},
+ CellLabel->
+  "Out[92]//FortranForm=",ExpressionUUID->"b4a6efc1-5fe5-4e10-a2e7-\
+618ed0813513"]
+}, Open  ]],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"L1", "[", 
+    RowBox[{"s_", ",", "k_", ",", "b_"}], "]"}], "=", 
+   RowBox[{"FullSimplify", "[", 
+    RowBox[{
+     RowBox[{"1", "/", 
+      RowBox[{"(", 
+       RowBox[{"4", "*", 
+        RowBox[{"Pi", "^", "2"}]}], ")"}]}], "*", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{
+         RowBox[{"-", "1"}], "/", "2"}], "*", "s", "*", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"BesselK", "[", 
+            RowBox[{
+             RowBox[{"k", "-", "1"}], ",", "s"}], "]"}], "*", 
+           RowBox[{"BesselI", "[", 
+            RowBox[{
+             RowBox[{"k", "-", "1"}], ",", 
+             RowBox[{"s", "*", "b"}]}], "]"}]}], "+", 
+          RowBox[{
+           RowBox[{"BesselK", "[", 
+            RowBox[{
+             RowBox[{"k", "+", "1"}], ",", "s"}], "]"}], "*", 
+           RowBox[{"BesselI", "[", 
+            RowBox[{
+             RowBox[{"k", "+", "1"}], ",", 
+             RowBox[{"s", "*", "b"}]}], "]"}]}]}], ")"}]}], "+", 
+       RowBox[{"s", "*", "b", "*", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{"k", ",", "s"}], "]"}], "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", 
+          RowBox[{"s", "*", "b"}]}], "]"}]}]}], ")"}]}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"H1", "[", 
+    RowBox[{"s_", ",", "k_", ",", "b_"}], "]"}], "=", 
+   RowBox[{"FullSimplify", "[", 
+    RowBox[{
+     RowBox[{"1", "/", 
+      RowBox[{"(", 
+       RowBox[{"4", "*", 
+        RowBox[{"Pi", "^", "2"}]}], ")"}]}], "*", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"1", "/", "2"}], "*", "s", "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "+", "1"}], ",", 
+          RowBox[{"s", "*", "b"}]}], "]"}], "*", 
+        RowBox[{"DBesselK", "[", 
+         RowBox[{
+          RowBox[{"k", "+", "1"}], ",", "s"}], "]"}]}], "-", 
+       RowBox[{
+        RowBox[{"1", "/", "2"}], "*", "s", "*", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{"k", ",", "s"}], "]"}], "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "-", "1"}], ",", 
+          RowBox[{"s", "*", "b"}]}], "]"}]}], "+", 
+       RowBox[{
+        RowBox[{"1", "/", "2"}], 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{"k", "+", "1"}], ",", "s"}], "]"}], "*", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"s", "*", "b", "*", 
+           RowBox[{"(", 
+            RowBox[{
+             RowBox[{"BesselI", "[", 
+              RowBox[{"k", ",", 
+               RowBox[{"s", "*", "b"}]}], "]"}], "+", 
+             RowBox[{"DBesselI", "[", 
+              RowBox[{
+               RowBox[{"k", "+", "1"}], ",", 
+               RowBox[{"s", "*", "b"}]}], "]"}]}], ")"}]}], "-", 
+          RowBox[{"2", "*", 
+           RowBox[{"BesselI", "[", 
+            RowBox[{
+             RowBox[{"k", "+", "1"}], ",", 
+             RowBox[{"s", "*", "b"}]}], "]"}]}]}], ")"}]}]}], ")"}]}], 
+    "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"G1", "[", 
+    RowBox[{"s_", ",", "k_", ",", "b_"}], "]"}], "=", 
+   RowBox[{"FullSimplify", "[", 
+    RowBox[{
+     RowBox[{"1", "/", 
+      RowBox[{"(", 
+       RowBox[{"4", "*", 
+        RowBox[{"Pi", "^", "2"}]}], ")"}]}], "*", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"1", "/", "2"}], "*", "s", "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "-", "1"}], ",", 
+          RowBox[{"s", "*", "b"}]}], "]"}], "*", 
+        RowBox[{"DBesselK", "[", 
+         RowBox[{
+          RowBox[{"k", "-", "1"}], ",", "s"}], "]"}]}], "-", 
+       RowBox[{
+        RowBox[{"1", "/", "2"}], "*", "s", "*", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{"k", ",", "s"}], "]"}], "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "+", "1"}], ",", 
+          RowBox[{"s", "*", "b"}]}], "]"}]}], "+", 
+       RowBox[{
+        RowBox[{"1", "/", "2"}], 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{"k", "-", "1"}], ",", "s"}], "]"}], "*", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"s", "*", "b", "*", 
+           RowBox[{"(", 
+            RowBox[{
+             RowBox[{"BesselI", "[", 
+              RowBox[{"k", ",", 
+               RowBox[{"s", "*", "b"}]}], "]"}], "+", 
+             RowBox[{"DBesselI", "[", 
+              RowBox[{
+               RowBox[{"k", "-", "1"}], ",", 
+               RowBox[{"s", "*", "b"}]}], "]"}]}], ")"}]}], "-", 
+          RowBox[{"2", "*", 
+           RowBox[{"BesselI", "[", 
+            RowBox[{
+             RowBox[{"k", "-", "1"}], ",", 
+             RowBox[{"s", "*", "b"}]}], "]"}]}]}], ")"}]}]}], ")"}]}], 
+    "]"}]}], " ", ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"L2", "[", 
+    RowBox[{"s_", ",", "k_", ",", "b_"}], "]"}], "=", 
+   RowBox[{"FullSimplify", "[", 
+    RowBox[{
+     RowBox[{"1", "/", 
+      RowBox[{"(", 
+       RowBox[{"4", "*", 
+        RowBox[{"Pi", "^", "2"}]}], ")"}]}], "*", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"-", "1"}], "/", "2"}], "*", "s", "*", 
+       RowBox[{"(", 
+        RowBox[{
+         RowBox[{
+          RowBox[{"BesselK", "[", 
+           RowBox[{
+            RowBox[{"k", "-", "1"}], ",", "s"}], "]"}], "*", 
+          RowBox[{"BesselI", "[", 
+           RowBox[{
+            RowBox[{"k", "-", "1"}], ",", 
+            RowBox[{"s", "*", "b"}]}], "]"}]}], "-", 
+         RowBox[{
+          RowBox[{"BesselK", "[", 
+           RowBox[{
+            RowBox[{"k", "+", "1"}], ",", "s"}], "]"}], "*", 
+          RowBox[{"BesselI", "[", 
+           RowBox[{
+            RowBox[{"k", "+", "1"}], ",", 
+            RowBox[{"s", "*", "b"}]}], "]"}]}]}], ")"}]}], ")"}]}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"H2", "[", 
+    RowBox[{"s_", ",", "k_", ",", "b_"}], "]"}], "=", 
+   RowBox[{"FullSimplify", "[", 
+    RowBox[{
+     RowBox[{"1", "/", 
+      RowBox[{"(", 
+       RowBox[{"4", "*", 
+        RowBox[{"Pi", "^", "2"}]}], ")"}]}], "*", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{"k", "+", "2"}], ")"}], "*", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{"k", "+", "1"}], ",", "s"}], "]"}], "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "+", "1"}], ",", 
+          RowBox[{"s", "*", "b"}]}], "]"}]}], "-", 
+       RowBox[{
+        RowBox[{"k", "/", "b"}], "*", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{"k", ",", "s"}], "]"}], "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", 
+          RowBox[{"s", "*", "b"}]}], "]"}]}]}], ")"}]}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"G2", "[", 
+    RowBox[{"s_", ",", "k_", ",", "b_"}], "]"}], "=", 
+   RowBox[{"FullSimplify", "[", 
+    RowBox[{
+     RowBox[{"1", "/", 
+      RowBox[{"(", 
+       RowBox[{"4", "*", 
+        RowBox[{"Pi", "^", "2"}]}], ")"}]}], "*", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{"k", "-", "2"}], ")"}], "*", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{"k", "-", "1"}], ",", "s"}], "]"}], "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"k", "-", "1"}], ",", 
+          RowBox[{"s", "*", "b"}]}], "]"}]}], "-", 
+       RowBox[{
+        RowBox[{"k", "/", "b"}], "*", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{"k", ",", "s"}], "]"}], "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", 
+          RowBox[{"s", "*", "b"}]}], "]"}]}]}], ")"}]}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"L3", "[", 
+    RowBox[{"s_", ",", "k_", ",", "b_"}], "]"}], "=", 
+   RowBox[{"FullSimplify", "[", 
+    RowBox[{
+     RowBox[{"1", "/", 
+      RowBox[{"(", 
+       RowBox[{"4", "*", 
+        RowBox[{"Pi", "^", "2"}]}], ")"}]}], "*", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", 
+          RowBox[{"s", "*", "b"}]}], "]"}], "*", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"2", "*", 
+           RowBox[{"BesselK", "[", 
+            RowBox[{"k", ",", "s"}], "]"}]}], "+", 
+          RowBox[{"s", "*", 
+           RowBox[{"DBesselK", "[", 
+            RowBox[{"k", ",", "s"}], "]"}]}]}], ")"}]}], "+", 
+       RowBox[{"s", "*", "b", "*", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{"k", ",", "s"}], "]"}], "*", 
+        RowBox[{"DBesselI", "[", 
+         RowBox[{"k", ",", 
+          RowBox[{"s", "*", "b"}]}], "]"}]}]}], ")"}]}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"H3", "[", 
+    RowBox[{"s_", ",", "k_", ",", "b_"}], "]"}], "=", 
+   RowBox[{"FullSimplify", "[", 
+    RowBox[{
+     RowBox[{"1", "/", 
+      RowBox[{"(", 
+       RowBox[{"4", "*", 
+        RowBox[{"Pi", "^", "2"}]}], ")"}]}], "*", 
+     RowBox[{"(", 
+      RowBox[{"s", "*", 
+       RowBox[{"(", 
+        RowBox[{
+         RowBox[{"b", "*", 
+          RowBox[{"BesselK", "[", 
+           RowBox[{
+            RowBox[{"k", "+", "1"}], ",", "s"}], "]"}], "*", 
+          RowBox[{"BesselI", "[", 
+           RowBox[{
+            RowBox[{"k", "+", "1"}], ",", 
+            RowBox[{"s", "*", "b"}]}], "]"}]}], "-", 
+         RowBox[{
+          RowBox[{"BesselK", "[", 
+           RowBox[{"k", ",", "s"}], "]"}], "*", 
+          RowBox[{"BesselI", "[", 
+           RowBox[{"k", ",", 
+            RowBox[{"s", "*", "b"}]}], "]"}]}]}], ")"}]}], ")"}]}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"G3", "[", 
+    RowBox[{"s_", ",", "k_", ",", "b_"}], "]"}], "=", 
+   RowBox[{"FullSimplify", "[", 
+    RowBox[{
+     RowBox[{"1", "/", 
+      RowBox[{"(", 
+       RowBox[{"4", "*", 
+        RowBox[{"Pi", "^", "2"}]}], ")"}]}], "*", 
+     RowBox[{"(", 
+      RowBox[{"s", "*", 
+       RowBox[{"(", 
+        RowBox[{
+         RowBox[{"b", "*", 
+          RowBox[{"BesselK", "[", 
+           RowBox[{
+            RowBox[{"k", "-", "1"}], ",", "s"}], "]"}], "*", 
+          RowBox[{"BesselI", "[", 
+           RowBox[{
+            RowBox[{"k", "-", "1"}], ",", 
+            RowBox[{"s", "*", "b"}]}], "]"}]}], "-", 
+         RowBox[{
+          RowBox[{"BesselK", "[", 
+           RowBox[{"k", ",", "s"}], "]"}], "*", 
+          RowBox[{"BesselI", "[", 
+           RowBox[{"k", ",", 
+            RowBox[{"s", "*", "b"}]}], "]"}]}]}], ")"}]}], ")"}]}], "]"}]}], 
+  ";"}]}], "Input",
+ CellChangeTimes->{{3.6956174272417803`*^9, 3.6956174281686*^9}, {
+  3.698440191239232*^9, 3.698440219698591*^9}, {3.698440253819334*^9, 
+  3.6984402964680853`*^9}, {3.6984765432369957`*^9, 3.698476569373248*^9}, {
+  3.698476623589768*^9, 3.698476623725795*^9}, {3.787977552554459*^9, 
+  3.787977583479623*^9}},
+ CellLabel->
+  "In[233]:=",ExpressionUUID->"b2073096-be20-4f08-b9da-ca7200eee9f0"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"\[Psi]1", "[", 
+   RowBox[{"s_", ",", "k_", ",", "b_"}], "]"}], "=", 
+  RowBox[{"FullSimplify", "[", 
+   RowBox[{"d1", "[", 
+    RowBox[{
+     RowBox[{"L1", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+     RowBox[{"H1", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+     RowBox[{"G1", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", "s", ",", "k"}], "]"}], 
+   "]"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"\[Omega]1", "[", 
+   RowBox[{"s_", ",", "k_", ",", "b_"}], "]"}], "=", 
+  RowBox[{"FullSimplify", "[", 
+   RowBox[{"d2", "[", 
+    RowBox[{
+     RowBox[{"L1", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+     RowBox[{"H1", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+     RowBox[{"G1", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", "s", ",", "k"}], "]"}], 
+   "]"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"\[Pi]1", "[", 
+   RowBox[{"s_", ",", "k_", ",", "b_"}], "]"}], "=", 
+  RowBox[{"FullSimplify", "[", 
+   RowBox[{"d3", "[", 
+    RowBox[{
+     RowBox[{"L1", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+     RowBox[{"H1", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+     RowBox[{"G1", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", "s", ",", "k"}], "]"}], 
+   "]"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"\[Psi]2", "[", 
+   RowBox[{"s_", ",", "k_", ",", "b_"}], "]"}], "=", 
+  RowBox[{"FullSimplify", "[", 
+   RowBox[{"d1", "[", 
+    RowBox[{
+     RowBox[{"L2", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+     RowBox[{"H2", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+     RowBox[{"G2", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", "s", ",", "k"}], "]"}], 
+   "]"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"\[Omega]2", "[", 
+   RowBox[{"s_", ",", "k_", ",", "b_"}], "]"}], "=", 
+  RowBox[{"FullSimplify", "[", 
+   RowBox[{
+    RowBox[{"d2", "[", 
+     RowBox[{
+      RowBox[{"L2", "[", 
+       RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+      RowBox[{"H2", "[", 
+       RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+      RowBox[{"G2", "[", 
+       RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", "s", ",", "k"}], "]"}], 
+    "*", 
+    RowBox[{"-", "1"}]}], "]"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"\[Pi]2", "[", 
+   RowBox[{"s_", ",", "k_", ",", "b_"}], "]"}], "=", 
+  RowBox[{"FullSimplify", "[", 
+   RowBox[{"d3", "[", 
+    RowBox[{
+     RowBox[{"L2", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+     RowBox[{"H2", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+     RowBox[{"G2", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", "s", ",", "k"}], "]"}], 
+   "]"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"\[Psi]3", "[", 
+   RowBox[{"s_", ",", "k_", ",", "b_"}], "]"}], "=", 
+  RowBox[{"FullSimplify", "[", 
+   RowBox[{"d1", "[", 
+    RowBox[{
+     RowBox[{"L3", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+     RowBox[{"H3", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+     RowBox[{"G3", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", "s", ",", "k"}], "]"}], 
+   "]"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"\[Omega]3", "[", 
+   RowBox[{"s_", ",", "k_", ",", "b_"}], "]"}], "=", 
+  RowBox[{"FullSimplify", "[", 
+   RowBox[{"d2", "[", 
+    RowBox[{
+     RowBox[{"L3", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+     RowBox[{"H3", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+     RowBox[{"G3", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", "s", ",", "k"}], "]"}], 
+   "]"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"\[Pi]3", "[", 
+   RowBox[{"s_", ",", "k_", ",", "b_"}], "]"}], "=", 
+  RowBox[{"FullSimplify", "[", 
+   RowBox[{"d3", "[", 
+    RowBox[{
+     RowBox[{"L3", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+     RowBox[{"H3", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+     RowBox[{"G3", "[", 
+      RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", "s", ",", "k"}], "]"}], 
+   "]"}]}]}], "Input",
+ CellChangeTimes->{{3.6956170749195013`*^9, 3.695617081295215*^9}, {
+  3.69844030487601*^9, 3.698440314748706*^9}, {3.787970730343276*^9, 
+  3.7879707521772213`*^9}},
+ CellLabel->
+  "In[133]:=",ExpressionUUID->"e49e4001-9428-4b75-8224-cd073aaeb2f3"],
+
+Cell[BoxData[
+ RowBox[{
+  FractionBox["1", 
+   RowBox[{"16", " ", 
+    SuperscriptBox["\[Pi]", "2"]}]], 
+  RowBox[{"(", 
+   RowBox[{
+    RowBox[{
+     SuperscriptBox["s", "2"], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"BesselI", "[", 
+           RowBox[{
+            RowBox[{
+             RowBox[{"-", "2"}], "+", "k"}], ",", "s"}], "]"}], "+", 
+          RowBox[{"BesselI", "[", 
+           RowBox[{"k", ",", "s"}], "]"}]}], ")"}], " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}], "+", 
+       RowBox[{
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"BesselI", "[", 
+           RowBox[{"k", ",", "s"}], "]"}], "+", 
+          RowBox[{"BesselI", "[", 
+           RowBox[{
+            RowBox[{"2", "+", "k"}], ",", "s"}], "]"}]}], ")"}]}]}], ")"}], 
+     " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "-", 
+       RowBox[{"2", " ", "b", " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{"k", ",", "s"}], "]"}]}], "+", 
+       RowBox[{
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}]}], ")"}]}], "-", 
+    RowBox[{
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"s", " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "-", 
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"-", "1"}], "+", "k"}], ")"}], " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", "s"}], "]"}]}]}], ")"}], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", "s"}], "]"}], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"b", " ", "s", " ", 
+           RowBox[{"(", 
+            RowBox[{
+             RowBox[{"BesselI", "[", 
+              RowBox[{
+               RowBox[{
+                RowBox[{"-", "2"}], "+", "k"}], ",", 
+               RowBox[{"b", " ", "s"}]}], "]"}], "+", 
+             RowBox[{"3", " ", 
+              RowBox[{"BesselI", "[", 
+               RowBox[{"k", ",", 
+                RowBox[{"b", " ", "s"}]}], "]"}]}]}], ")"}], " ", 
+           RowBox[{"BesselK", "[", 
+            RowBox[{
+             RowBox[{
+              RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "+", 
+          RowBox[{
+           RowBox[{"BesselI", "[", 
+            RowBox[{
+             RowBox[{
+              RowBox[{"-", "1"}], "+", "k"}], ",", 
+             RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+           RowBox[{"(", 
+            RowBox[{
+             RowBox[{
+              RowBox[{"-", "2"}], " ", "s", " ", 
+              RowBox[{"BesselK", "[", 
+               RowBox[{
+                RowBox[{
+                 RowBox[{"-", "2"}], "+", "k"}], ",", "s"}], "]"}]}], "-", 
+             RowBox[{"2", " ", 
+              RowBox[{"(", 
+               RowBox[{"1", "+", "k"}], ")"}], " ", 
+              RowBox[{"BesselK", "[", 
+               RowBox[{
+                RowBox[{
+                 RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}]}], 
+            ")"}]}], "-", 
+          RowBox[{"2", " ", "s", " ", 
+           RowBox[{"BesselI", "[", 
+            RowBox[{
+             RowBox[{"1", "+", "k"}], ",", 
+             RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+           RowBox[{"BesselK", "[", 
+            RowBox[{"k", ",", "s"}], "]"}]}]}], ")"}]}], "-", 
+       RowBox[{"2", " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"s", " ", 
+           RowBox[{"(", 
+            RowBox[{
+             RowBox[{"BesselI", "[", 
+              RowBox[{
+               RowBox[{
+                RowBox[{"-", "1"}], "+", "k"}], ",", 
+               RowBox[{"b", " ", "s"}]}], "]"}], "+", 
+             RowBox[{"BesselI", "[", 
+              RowBox[{
+               RowBox[{"1", "+", "k"}], ",", 
+               RowBox[{"b", " ", "s"}]}], "]"}]}], ")"}], " ", 
+           RowBox[{"BesselK", "[", 
+            RowBox[{"k", ",", "s"}], "]"}]}], "+", 
+          RowBox[{"2", " ", 
+           RowBox[{"(", 
+            RowBox[{
+             RowBox[{
+              RowBox[{"-", "b"}], " ", "s", " ", 
+              RowBox[{"BesselI", "[", 
+               RowBox[{"k", ",", 
+                RowBox[{"b", " ", "s"}]}], "]"}]}], "+", 
+             RowBox[{
+              RowBox[{"(", 
+               RowBox[{"2", "+", "k"}], ")"}], " ", 
+              RowBox[{"BesselI", "[", 
+               RowBox[{
+                RowBox[{"1", "+", "k"}], ",", 
+                RowBox[{"b", " ", "s"}]}], "]"}]}]}], ")"}], " ", 
+           RowBox[{"BesselK", "[", 
+            RowBox[{
+             RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}]}], ")"}]}]}], 
+      ")"}]}]}], ")"}]}]], "Output",
+ CellChangeTimes->{3.7879707543220663`*^9, 3.7879716426320143`*^9},
+ CellLabel->
+  "Out[133]=",ExpressionUUID->"6ced6c5d-1986-4db7-954b-b3873238abb0"],
+
+Cell[BoxData[
+ RowBox[{
+  FractionBox["1", 
+   RowBox[{"b", " ", 
+    SuperscriptBox["\[Pi]", "2"], " ", "s"}]], 
+  RowBox[{"k", " ", 
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{"s", " ", 
+      SuperscriptBox[
+       RowBox[{"BesselI", "[", 
+        RowBox[{
+         RowBox[{
+          RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], "2"], " ", 
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{
+         RowBox[{"BesselI", "[", 
+          RowBox[{"k", ",", 
+           RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+         RowBox[{"BesselK", "[", 
+          RowBox[{
+           RowBox[{
+            RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "-", 
+        RowBox[{"b", " ", 
+         RowBox[{"BesselI", "[", 
+          RowBox[{
+           RowBox[{"1", "+", "k"}], ",", 
+           RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+         RowBox[{"BesselK", "[", 
+          RowBox[{"k", ",", "s"}], "]"}]}]}], ")"}]}], "+", 
+     RowBox[{
+      SuperscriptBox[
+       RowBox[{"BesselI", "[", 
+        RowBox[{"k", ",", "s"}], "]"}], "2"], " ", 
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"b", " ", 
+         RowBox[{"(", 
+          RowBox[{
+           RowBox[{"-", "2"}], "+", "k"}], ")"}], " ", 
+         RowBox[{"BesselI", "[", 
+          RowBox[{
+           RowBox[{
+            RowBox[{"-", "1"}], "+", "k"}], ",", 
+           RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+         RowBox[{"BesselK", "[", 
+          RowBox[{
+           RowBox[{
+            RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "+", 
+        RowBox[{
+         RowBox[{"BesselI", "[", 
+          RowBox[{"k", ",", 
+           RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+         RowBox[{"(", 
+          RowBox[{
+           RowBox[{
+            RowBox[{"(", 
+             RowBox[{
+              RowBox[{"-", "1"}], "+", 
+              SuperscriptBox["b", "2"]}], ")"}], " ", "s", " ", 
+            RowBox[{"BesselK", "[", 
+             RowBox[{
+              RowBox[{
+               RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "-", 
+           RowBox[{"k", " ", 
+            RowBox[{"BesselK", "[", 
+             RowBox[{"k", ",", "s"}], "]"}]}]}], ")"}]}]}], ")"}]}], "+", 
+     RowBox[{
+      SuperscriptBox["2", 
+       RowBox[{"1", "-", 
+        RowBox[{"3", " ", "k"}]}]], " ", 
+      SuperscriptBox["s", 
+       RowBox[{
+        RowBox[{"-", "2"}], "+", 
+        RowBox[{"2", " ", "k"}]}]], " ", 
+      SuperscriptBox[
+       RowBox[{"(", 
+        RowBox[{"b", " ", "s"}], ")"}], "k"], " ", 
+      RowBox[{"Hypergeometric0F1Regularized", "[", 
+       RowBox[{"k", ",", 
+        FractionBox[
+         SuperscriptBox["s", "2"], "4"]}], "]"}], " ", 
+      RowBox[{"Hypergeometric0F1Regularized", "[", 
+       RowBox[{
+        RowBox[{"1", "+", "k"}], ",", 
+        FractionBox[
+         SuperscriptBox["s", "2"], "4"]}], "]"}], " ", 
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"2", " ", 
+         RowBox[{"(", 
+          RowBox[{
+           RowBox[{
+            RowBox[{"-", "s"}], " ", 
+            RowBox[{"BesselK", "[", 
+             RowBox[{
+              RowBox[{
+               RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "+", 
+           RowBox[{
+            RowBox[{"(", 
+             RowBox[{
+              RowBox[{"-", "2"}], "+", "k"}], ")"}], " ", 
+            RowBox[{"BesselK", "[", 
+             RowBox[{"k", ",", "s"}], "]"}]}]}], ")"}], " ", 
+         RowBox[{"Hypergeometric0F1Regularized", "[", 
+          RowBox[{"k", ",", 
+           FractionBox[
+            RowBox[{
+             SuperscriptBox["b", "2"], " ", 
+             SuperscriptBox["s", "2"]}], "4"]}], "]"}]}], "+", 
+        RowBox[{"s", " ", 
+         RowBox[{"(", 
+          RowBox[{
+           RowBox[{
+            SuperscriptBox["b", "2"], " ", "s", " ", 
+            RowBox[{"BesselK", "[", 
+             RowBox[{"k", ",", "s"}], "]"}]}], "-", 
+           RowBox[{
+            RowBox[{"(", 
+             RowBox[{
+              RowBox[{"-", "2"}], "+", "k"}], ")"}], " ", 
+            RowBox[{"BesselK", "[", 
+             RowBox[{
+              RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}]}], ")"}], " ", 
+         RowBox[{"Hypergeometric0F1Regularized", "[", 
+          RowBox[{
+           RowBox[{"1", "+", "k"}], ",", 
+           FractionBox[
+            RowBox[{
+             SuperscriptBox["b", "2"], " ", 
+             SuperscriptBox["s", "2"]}], "4"]}], "]"}]}]}], ")"}]}]}], 
+    ")"}]}]}]], "Output",
+ CellChangeTimes->{3.7879707543220663`*^9, 3.787972256755557*^9},
+ CellLabel->
+  "Out[134]=",ExpressionUUID->"189c46da-772e-4c03-81c1-c7bbcbe91795"],
+
+Cell[BoxData[
+ RowBox[{
+  FractionBox["1", 
+   RowBox[{"16", " ", 
+    SuperscriptBox["\[Pi]", "2"]}]], 
+  RowBox[{"(", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"BesselI", "[", 
+      RowBox[{"k", ",", "s"}], "]"}], " ", 
+     RowBox[{"BesselI", "[", 
+      RowBox[{
+       RowBox[{"1", "+", "k"}], ",", "s"}], "]"}], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"b", " ", "s", " ", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"BesselI", "[", 
+           RowBox[{
+            RowBox[{
+             RowBox[{"-", "2"}], "+", "k"}], ",", 
+            RowBox[{"b", " ", "s"}]}], "]"}], "+", 
+          RowBox[{"3", " ", 
+           RowBox[{"BesselI", "[", 
+            RowBox[{"k", ",", 
+             RowBox[{"b", " ", "s"}]}], "]"}]}]}], ")"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "+", 
+       RowBox[{
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "2"}], " ", "s", " ", 
+           RowBox[{"BesselK", "[", 
+            RowBox[{
+             RowBox[{
+              RowBox[{"-", "2"}], "+", "k"}], ",", "s"}], "]"}]}], "-", 
+          RowBox[{"2", " ", 
+           RowBox[{"(", 
+            RowBox[{"1", "+", "k"}], ")"}], " ", 
+           RowBox[{"BesselK", "[", 
+            RowBox[{
+             RowBox[{
+              RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}]}], ")"}]}], 
+       "-", 
+       RowBox[{"2", " ", "s", " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{"k", ",", "s"}], "]"}]}]}], ")"}]}], "-", 
+    RowBox[{"2", " ", 
+     RowBox[{"BesselI", "[", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"s", " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"2", " ", 
+           RowBox[{"BesselI", "[", 
+            RowBox[{
+             RowBox[{"1", "+", "k"}], ",", "s"}], "]"}], " ", 
+           RowBox[{"BesselK", "[", 
+            RowBox[{
+             RowBox[{
+              RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "+", 
+          RowBox[{
+           RowBox[{"BesselI", "[", 
+            RowBox[{"k", ",", "s"}], "]"}], " ", 
+           RowBox[{"BesselK", "[", 
+            RowBox[{"k", ",", "s"}], "]"}]}]}], ")"}]}], "-", 
+       RowBox[{"2", " ", "b", " ", "s", " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"2", " ", 
+           RowBox[{"BesselI", "[", 
+            RowBox[{
+             RowBox[{"1", "+", "k"}], ",", "s"}], "]"}], " ", 
+           RowBox[{"BesselK", "[", 
+            RowBox[{"k", ",", "s"}], "]"}]}], "+", 
+          RowBox[{
+           RowBox[{"BesselI", "[", 
+            RowBox[{"k", ",", "s"}], "]"}], " ", 
+           RowBox[{"BesselK", "[", 
+            RowBox[{
+             RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}]}], ")"}]}], "+", 
+       RowBox[{
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"2", " ", "s", " ", 
+           RowBox[{"BesselI", "[", 
+            RowBox[{
+             RowBox[{"1", "+", "k"}], ",", "s"}], "]"}], " ", 
+           RowBox[{"BesselK", "[", 
+            RowBox[{
+             RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}], "+", 
+          RowBox[{
+           RowBox[{"BesselI", "[", 
+            RowBox[{"k", ",", "s"}], "]"}], " ", 
+           RowBox[{"(", 
+            RowBox[{
+             RowBox[{"s", " ", 
+              RowBox[{"BesselK", "[", 
+               RowBox[{"k", ",", "s"}], "]"}]}], "+", 
+             RowBox[{"2", " ", 
+              RowBox[{"(", 
+               RowBox[{"2", "+", "k"}], ")"}], " ", 
+              RowBox[{"BesselK", "[", 
+               RowBox[{
+                RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}]}], ")"}]}]}], 
+         ")"}]}]}], ")"}]}]}], ")"}]}]], "Output",
+ CellChangeTimes->{3.7879707543220663`*^9, 3.787972552166155*^9},
+ CellLabel->
+  "Out[135]=",ExpressionUUID->"e4fa2f00-11b4-4c92-9e3f-ec08e141343c"],
+
+Cell[BoxData[
+ RowBox[{
+  FractionBox["1", 
+   RowBox[{"16", " ", "b", " ", 
+    SuperscriptBox["\[Pi]", "2"]}]], 
+  RowBox[{"(", 
+   RowBox[{
+    RowBox[{"b", " ", 
+     SuperscriptBox["s", "2"], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"BesselI", "[", 
+           RowBox[{
+            RowBox[{
+             RowBox[{"-", "2"}], "+", "k"}], ",", "s"}], "]"}], "+", 
+          RowBox[{"BesselI", "[", 
+           RowBox[{"k", ",", "s"}], "]"}]}], ")"}], " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}], "+", 
+       RowBox[{
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"BesselI", "[", 
+           RowBox[{"k", ",", "s"}], "]"}], "+", 
+          RowBox[{"BesselI", "[", 
+           RowBox[{
+            RowBox[{"2", "+", "k"}], ",", "s"}], "]"}]}], ")"}]}]}], ")"}], 
+     " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "-", 
+       RowBox[{
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}]}], ")"}]}], "+", 
+    RowBox[{"4", " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"s", " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "-", 
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"-", "1"}], "+", "k"}], ")"}], " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", "s"}], "]"}]}]}], ")"}], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"-", "b"}], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"-", "2"}], "+", "k"}], ")"}], " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", "s"}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "+", 
+       RowBox[{"k", " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"BesselI", "[", 
+           RowBox[{
+            RowBox[{
+             RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], "+", 
+          RowBox[{"BesselI", "[", 
+           RowBox[{
+            RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}], ")"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{"k", ",", "s"}], "]"}]}], "-", 
+       RowBox[{"b", " ", 
+        RowBox[{"(", 
+         RowBox[{"2", "+", "k"}], ")"}], " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}]}], ")"}]}]}], 
+   ")"}]}]], "Output",
+ CellChangeTimes->{3.7879707543220663`*^9, 3.787972866268699*^9},
+ CellLabel->
+  "Out[136]=",ExpressionUUID->"87a7284c-6c66-4856-9b7e-4a21d4b41146"],
+
+Cell[BoxData[
+ RowBox[{
+  FractionBox["1", 
+   RowBox[{"2", " ", "b", " ", 
+    SuperscriptBox["\[Pi]", "2"], " ", "s"}]], 
+  RowBox[{"(", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"-", "b"}], " ", 
+     SuperscriptBox["s", "2"], " ", 
+     SuperscriptBox[
+      RowBox[{"BesselI", "[", 
+       RowBox[{
+        RowBox[{
+         RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], "2"], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "+", 
+       RowBox[{
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}]}], ")"}]}], "+", 
+    RowBox[{"b", " ", "s", " ", 
+     RowBox[{"BesselI", "[", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], " ", 
+     RowBox[{"BesselI", "[", 
+      RowBox[{"k", ",", "s"}], "]"}], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"-", "2"}], "+", 
+          RowBox[{"3", " ", "k"}]}], ")"}], " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "+", 
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"-", "2"}], "+", "k"}], ")"}], " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}]}], ")"}]}], "+", 
+    RowBox[{
+     SuperscriptBox[
+      RowBox[{"BesselI", "[", 
+       RowBox[{"k", ",", "s"}], "]"}], "2"], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"b", " ", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "2"}], " ", 
+           RowBox[{"(", 
+            RowBox[{
+             RowBox[{"-", "2"}], "+", "k"}], ")"}], " ", "k"}], "+", 
+          SuperscriptBox["s", "2"]}], ")"}], " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "+", 
+       RowBox[{"2", " ", 
+        SuperscriptBox["k", "2"], " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{"k", ",", "s"}], "]"}]}], "+", 
+       RowBox[{"b", " ", 
+        SuperscriptBox["s", "2"], " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}]}], ")"}]}]}], 
+   ")"}]}]], "Output",
+ CellChangeTimes->{3.7879707543220663`*^9, 3.7879729793793726`*^9},
+ CellLabel->
+  "Out[137]=",ExpressionUUID->"2b234c4a-85ec-409c-9e74-4b8470486127"],
+
+Cell[BoxData[
+ RowBox[{
+  FractionBox["1", 
+   RowBox[{"4", " ", "b", " ", 
+    SuperscriptBox["\[Pi]", "2"]}]], 
+  RowBox[{"(", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"BesselI", "[", 
+      RowBox[{"k", ",", "s"}], "]"}], " ", 
+     RowBox[{"BesselI", "[", 
+      RowBox[{
+       RowBox[{"1", "+", "k"}], ",", "s"}], "]"}], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"b", " ", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"-", "2"}], "+", "k"}], ")"}], " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "-", 
+       RowBox[{"k", " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{"k", ",", "s"}], "]"}]}]}], ")"}]}], "+", 
+    RowBox[{
+     RowBox[{"BesselI", "[", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"-", "b"}], " ", "s", " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", "s"}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "-", 
+       RowBox[{"k", " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", "s"}], "]"}], " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{"k", ",", "s"}], "]"}]}], "+", 
+       RowBox[{"b", " ", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"(", 
+            RowBox[{"2", "+", "k"}], ")"}], " ", 
+           RowBox[{"BesselI", "[", 
+            RowBox[{"k", ",", "s"}], "]"}]}], "+", 
+          RowBox[{"s", " ", 
+           RowBox[{"BesselI", "[", 
+            RowBox[{
+             RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}]}], ")"}], " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}]}], ")"}]}]}], 
+   ")"}]}]], "Output",
+ CellChangeTimes->{3.7879707543220663`*^9, 3.7879730756395984`*^9},
+ CellLabel->
+  "Out[138]=",ExpressionUUID->"78e1474f-a75c-4573-8dc2-2d36fc828b43"],
+
+Cell[BoxData[
+ RowBox[{"-", 
+  RowBox[{
+   FractionBox["1", 
+    RowBox[{"8", " ", 
+     SuperscriptBox["\[Pi]", "2"]}]], 
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{"s", " ", 
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{
+         RowBox[{"(", 
+          RowBox[{
+           RowBox[{"BesselI", "[", 
+            RowBox[{
+             RowBox[{
+              RowBox[{"-", "2"}], "+", "k"}], ",", "s"}], "]"}], "+", 
+           RowBox[{"BesselI", "[", 
+            RowBox[{"k", ",", "s"}], "]"}]}], ")"}], " ", 
+         RowBox[{"BesselI", "[", 
+          RowBox[{
+           RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}], "+", 
+        RowBox[{
+         RowBox[{"BesselI", "[", 
+          RowBox[{
+           RowBox[{
+            RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], " ", 
+         RowBox[{"(", 
+          RowBox[{
+           RowBox[{"BesselI", "[", 
+            RowBox[{"k", ",", "s"}], "]"}], "+", 
+           RowBox[{"BesselI", "[", 
+            RowBox[{
+             RowBox[{"2", "+", "k"}], ",", "s"}], "]"}]}], ")"}]}]}], ")"}], 
+      " ", 
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"b", " ", "s", " ", 
+         RowBox[{"BesselI", "[", 
+          RowBox[{
+           RowBox[{
+            RowBox[{"-", "1"}], "+", "k"}], ",", 
+           RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+         RowBox[{"BesselK", "[", 
+          RowBox[{"k", ",", "s"}], "]"}]}], "-", 
+        RowBox[{
+         RowBox[{"BesselI", "[", 
+          RowBox[{"k", ",", 
+           RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+         RowBox[{"(", 
+          RowBox[{
+           RowBox[{"s", " ", 
+            RowBox[{"BesselK", "[", 
+             RowBox[{
+              RowBox[{
+               RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "+", 
+           RowBox[{"2", " ", 
+            RowBox[{"(", 
+             RowBox[{
+              RowBox[{"-", "1"}], "+", "k"}], ")"}], " ", 
+            RowBox[{"BesselK", "[", 
+             RowBox[{"k", ",", "s"}], "]"}]}]}], ")"}]}]}], ")"}]}], "+", 
+     RowBox[{"2", " ", "s", " ", 
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"s", " ", 
+         RowBox[{"BesselI", "[", 
+          RowBox[{
+           RowBox[{
+            RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "-", 
+        RowBox[{
+         RowBox[{"(", 
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ")"}], " ", 
+         RowBox[{"BesselI", "[", 
+          RowBox[{"k", ",", "s"}], "]"}]}]}], ")"}], " ", 
+      RowBox[{"(", 
+       RowBox[{
+        RowBox[{"b", " ", 
+         RowBox[{"BesselI", "[", 
+          RowBox[{
+           RowBox[{
+            RowBox[{"-", "1"}], "+", "k"}], ",", 
+           RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+         RowBox[{"BesselI", "[", 
+          RowBox[{
+           RowBox[{"1", "+", "k"}], ",", "s"}], "]"}], " ", 
+         RowBox[{"BesselK", "[", 
+          RowBox[{
+           RowBox[{
+            RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "-", 
+        RowBox[{
+         RowBox[{"BesselI", "[", 
+          RowBox[{"k", ",", 
+           RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+         RowBox[{"(", 
+          RowBox[{
+           RowBox[{"BesselI", "[", 
+            RowBox[{
+             RowBox[{
+              RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], "+", 
+           RowBox[{"BesselI", "[", 
+            RowBox[{
+             RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}], ")"}], " ", 
+         RowBox[{"BesselK", "[", 
+          RowBox[{"k", ",", "s"}], "]"}]}], "+", 
+        RowBox[{"b", " ", 
+         RowBox[{"BesselI", "[", 
+          RowBox[{
+           RowBox[{
+            RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], " ", 
+         RowBox[{"BesselI", "[", 
+          RowBox[{
+           RowBox[{"1", "+", "k"}], ",", 
+           RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+         RowBox[{"BesselK", "[", 
+          RowBox[{
+           RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}]}], ")"}]}]}], 
+    ")"}]}]}]], "Output",
+ CellChangeTimes->{3.7879707543220663`*^9, 3.787973306611651*^9},
+ CellLabel->
+  "Out[139]=",ExpressionUUID->"f5dab423-d4dd-4d96-90c9-95be26ce1c9a"],
+
+Cell[BoxData[
+ FractionBox[
+  RowBox[{"k", " ", 
+   RowBox[{"(", 
+    RowBox[{
+     RowBox[{"b", " ", 
+      RowBox[{"BesselI", "[", 
+       RowBox[{
+        RowBox[{
+         RowBox[{"-", "1"}], "+", "k"}], ",", 
+        RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+      RowBox[{"BesselI", "[", 
+       RowBox[{"k", ",", "s"}], "]"}]}], "-", 
+     RowBox[{
+      RowBox[{"BesselI", "[", 
+       RowBox[{
+        RowBox[{
+         RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], " ", 
+      RowBox[{"BesselI", "[", 
+       RowBox[{"k", ",", 
+        RowBox[{"b", " ", "s"}]}], "]"}]}]}], ")"}]}], 
+  RowBox[{
+   SuperscriptBox["\[Pi]", "2"], " ", "s"}]]], "Output",
+ CellChangeTimes->{3.7879707543220663`*^9, 3.7879733072913585`*^9},
+ CellLabel->
+  "Out[140]=",ExpressionUUID->"e8bcf8bc-85ba-49d2-9dca-da658a6a2d7c"],
+
+Cell[BoxData[
+ RowBox[{
+  FractionBox["1", 
+   RowBox[{"4", " ", 
+    SuperscriptBox["\[Pi]", "2"]}]], 
+  RowBox[{"(", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"-", "s"}], " ", 
+     RowBox[{"BesselI", "[", 
+      RowBox[{"k", ",", "s"}], "]"}], " ", 
+     RowBox[{"BesselI", "[", 
+      RowBox[{"k", ",", 
+       RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+     RowBox[{"BesselI", "[", 
+      RowBox[{
+       RowBox[{"1", "+", "k"}], ",", "s"}], "]"}], " ", 
+     RowBox[{"BesselK", "[", 
+      RowBox[{"k", ",", "s"}], "]"}]}], "+", 
+    RowBox[{"b", " ", "s", " ", 
+     RowBox[{"BesselI", "[", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"-", "1"}], "+", "k"}], ",", 
+       RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+     RowBox[{"BesselI", "[", 
+      RowBox[{
+       RowBox[{"1", "+", "k"}], ",", "s"}], "]"}], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", "s"}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "+", 
+       RowBox[{"2", " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{"k", ",", "s"}], "]"}]}]}], ")"}]}], "+", 
+    RowBox[{
+     RowBox[{"BesselI", "[", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"-", 
+         RowBox[{"BesselI", "[", 
+          RowBox[{"k", ",", 
+           RowBox[{"b", " ", "s"}]}], "]"}]}], " ", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"s", " ", 
+           RowBox[{"BesselI", "[", 
+            RowBox[{"k", ",", "s"}], "]"}], " ", 
+           RowBox[{"BesselK", "[", 
+            RowBox[{"k", ",", "s"}], "]"}]}], "+", 
+          RowBox[{
+           RowBox[{"BesselI", "[", 
+            RowBox[{
+             RowBox[{"1", "+", "k"}], ",", "s"}], "]"}], " ", 
+           RowBox[{"(", 
+            RowBox[{
+             RowBox[{"2", " ", "s", " ", 
+              RowBox[{"BesselK", "[", 
+               RowBox[{
+                RowBox[{
+                 RowBox[{"-", "1"}], "+", "k"}], ",", "s"}], "]"}]}], "+", 
+             RowBox[{"4", " ", 
+              RowBox[{"(", 
+               RowBox[{
+                RowBox[{"-", "1"}], "+", "k"}], ")"}], " ", 
+              RowBox[{"BesselK", "[", 
+               RowBox[{"k", ",", "s"}], "]"}]}]}], ")"}]}]}], ")"}]}], "+", 
+       RowBox[{"b", " ", "s", " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", "s"}], "]"}], " ", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", 
+          RowBox[{"b", " ", "s"}]}], "]"}], " ", 
+        RowBox[{"BesselK", "[", 
+         RowBox[{
+          RowBox[{"1", "+", "k"}], ",", "s"}], "]"}]}]}], ")"}]}]}], 
+   ")"}]}]], "Output",
+ CellChangeTimes->{3.7879707543220663`*^9, 3.787973488985535*^9},
+ CellLabel->
+  "Out[141]=",ExpressionUUID->"ac50f8db-4127-4b35-9637-69d760e4dcf6"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"PrintMatlab", "[", 
+  RowBox[{
+   RowBox[{"\[Omega]3", "[", 
+    RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", "2000"}], "]"}]], "Input",
+ CellChangeTimes->{{3.698478610440565*^9, 3.6984786917639837`*^9}, 
+   3.698478831487095*^9, 3.6984789175046453`*^9, {3.698478950003603*^9, 
+   3.69847895572937*^9}, {3.698478986930125*^9, 3.698479034570965*^9}, 
+   3.698497830716958*^9, 3.698497906565978*^9, {3.698497938806802*^9, 
+   3.6984979595069857`*^9}, 
+   3.698500523806265*^9},ExpressionUUID->"42d2944f-8205-463b-93aa-\
+0817c68e5d8b"],
+
+Cell[BoxData["\<\"(1/4).*pi.^(-2).*((-1).*s.*besseli(k,s).*besseli(k,b.*s).*\
+besseli(1+k,s).*besselk(k,s)+b.*s.*besseli((-1)+k,b.*s).*besseli(1+k,s).*(\
+besseli(k,s).*besselk((-1)+k,s)+2.*besseli((-1)+k,s).*besselk(k,s))+besseli((-\
+1)+k,s).*((-1).*besseli(k,b.*s).*(s.*besseli(k,s).*besselk(k,s)+2.*besseli(1+\
+k,s).*(s.*besselk((-1)+k,s)+2.*((-1)+k).*besselk(k,s)))+b.*s.*besseli(k,s).*\
+besseli(1+k,b.*s).*besselk(1+k,s)));\\n\"\>"], "Print",
+ CellChangeTimes->{3.698497875842712*^9, 3.698497908836673*^9, 
+  3.698497939871972*^9},ExpressionUUID->"b79f10dd-f73c-4a8a-ad02-\
+e00ae1de0baf"]
+}, Open  ]],
+
+Cell[BoxData[
+ RowBox[{
+  StyleBox[
+   RowBox[{"(*", " ", 
+    RowBox[{"This", " ", "version", " ", "must", " ", "divided", " ", 
+     RowBox[{"DmyD", "[", 
+      RowBox[{"k", ",", "s"}], "]"}]}], " ", "*)"}], "Section"], 
+  "\[IndentingNewLine]", 
+  RowBox[{
+   RowBox[{
+    RowBox[{
+     RowBox[{"C1", "[", 
+      RowBox[{"a_", ",", "b_", ",", "c_", ",", "s_", ",", "k_", ",", "R_"}], 
+      "]"}], "=", 
+     RowBox[{"FullSimplify", "[", 
+      RowBox[{
+       RowBox[{"a", "*", 
+        RowBox[{"DBesselI", "[", 
+         RowBox[{"k", ",", 
+          RowBox[{"s", "*", "R"}]}], "]"}]}], "+", 
+       RowBox[{"b", "*", "k", "*", 
+        RowBox[{
+         RowBox[{"BesselI", "[", 
+          RowBox[{"k", ",", 
+           RowBox[{"s", "*", "R"}]}], "]"}], "/", 
+         RowBox[{"(", 
+          RowBox[{"s", "*", "R"}], ")"}]}]}], "+", 
+       RowBox[{"c", "*", "s", "*", "R", "*", 
+        RowBox[{"DDBesselI", "[", 
+         RowBox[{"k", ",", 
+          RowBox[{"s", "*", "R"}]}], "]"}]}]}], "]"}]}], ";"}], 
+   "\[IndentingNewLine]", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"C2", "[", 
+      RowBox[{"a_", ",", "b_", ",", "c_", ",", "s_", ",", "k_", ",", "R_"}], 
+      "]"}], "=", 
+     RowBox[{"FullSimplify", "[", 
+      RowBox[{
+       RowBox[{"a", "*", "k", "*", 
+        RowBox[{
+         RowBox[{"BesselI", "[", 
+          RowBox[{"k", ",", 
+           RowBox[{"s", "*", "R"}]}], "]"}], "/", 
+         RowBox[{"(", 
+          RowBox[{"s", "*", "R"}], ")"}]}]}], "+", 
+       RowBox[{"b", "*", 
+        RowBox[{"DBesselI", "[", 
+         RowBox[{"k", ",", 
+          RowBox[{"s", "*", "R"}]}], "]"}]}], "+", 
+       RowBox[{"k", "*", "c", "*", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"BesselI", "[", 
+            RowBox[{"k", ",", 
+             RowBox[{"s", "*", "R"}]}], "]"}], "/", 
+           RowBox[{"(", 
+            RowBox[{"s", "*", "R"}], ")"}]}], "-", 
+          RowBox[{"DBesselI", "[", 
+           RowBox[{"k", ",", 
+            RowBox[{"s", "*", "R"}]}], "]"}]}], ")"}]}]}], "]"}]}], ";"}], 
+   "\[IndentingNewLine]", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"C3", "[", 
+      RowBox[{"a_", ",", "c_", ",", "s_", ",", "k_", ",", "R_"}], "]"}], "=", 
+     RowBox[{"FullSimplify", "[", 
+      RowBox[{
+       RowBox[{"a", "*", 
+        RowBox[{"BesselI", "[", 
+         RowBox[{"k", ",", 
+          RowBox[{"s", "*", "R"}]}], "]"}]}], "+", 
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"s", "*", "R", "*", 
+           RowBox[{"DBesselI", "[", 
+            RowBox[{"k", ",", 
+             RowBox[{"s", "*", "R"}]}], "]"}]}], "+", 
+          RowBox[{"BesselI", "[", 
+           RowBox[{"k", ",", 
+            RowBox[{"s", "*", "R"}]}], "]"}]}], ")"}], "*", "c"}]}], "]"}]}], 
+    ";"}]}]}]], "Input",
+ CellLabel->
+  "In[190]:=",ExpressionUUID->"bdc573a4-690f-428c-aee0-0b7b13ee3642"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"FR1", "[", 
+    RowBox[{"s_", ",", "k_", ",", "b_", ",", "R_"}], "]"}], "=", 
+   RowBox[{"Simplify", "[", 
+    RowBox[{"C1", "[", 
+     RowBox[{
+      RowBox[{"\[Psi]1", "[", 
+       RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+      RowBox[{"\[Omega]1", "[", 
+       RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+      RowBox[{"\[Pi]1", "[", 
+       RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", "s", ",", "k", ",", 
+      "R"}], "]"}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"F\[Phi]1", "[", 
+    RowBox[{"s_", ",", "k_", ",", "b_", ",", "R_"}], "]"}], "=", 
+   RowBox[{"Simplify", "[", 
+    RowBox[{"C2", "[", 
+     RowBox[{
+      RowBox[{"-", 
+       RowBox[{"\[Psi]1", "[", 
+        RowBox[{"s", ",", "k", ",", "b"}], "]"}]}], ",", 
+      RowBox[{"-", 
+       RowBox[{"\[Omega]1", "[", 
+        RowBox[{"s", ",", "k", ",", "b"}], "]"}]}], ",", 
+      RowBox[{"\[Pi]1", "[", 
+       RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", "s", ",", "k", ",", 
+      "R"}], "]"}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"Fz1", "[", 
+    RowBox[{"s_", ",", "k_", ",", "b_", ",", "R_"}], "]"}], "=", 
+   RowBox[{"Simplify", "[", 
+    RowBox[{
+     RowBox[{"C3", "[", 
+      RowBox[{
+       RowBox[{"\[Psi]1", "[", 
+        RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+       RowBox[{"\[Pi]1", "[", 
+        RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", "s", ",", "k", ",", 
+       "R"}], "]"}], "*", 
+     RowBox[{"-", "1"}]}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"FR2", "[", 
+    RowBox[{"s_", ",", "k_", ",", "b_", ",", "R_"}], "]"}], "=", 
+   RowBox[{"Simplify", "[", 
+    RowBox[{"C1", "[", 
+     RowBox[{
+      RowBox[{"\[Psi]2", "[", 
+       RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+      RowBox[{"-", 
+       RowBox[{"\[Omega]2", "[", 
+        RowBox[{"s", ",", "k", ",", "b"}], "]"}]}], ",", 
+      RowBox[{"\[Pi]2", "[", 
+       RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", "s", ",", "k", ",", 
+      "R"}], "]"}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"F\[Phi]2", "[", 
+    RowBox[{"s_", ",", "k_", ",", "b_", ",", "R_"}], "]"}], "=", 
+   RowBox[{"Simplify", "[", 
+    RowBox[{"C2", "[", 
+     RowBox[{
+      RowBox[{"\[Psi]2", "[", 
+       RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+      RowBox[{"-", 
+       RowBox[{"\[Omega]2", "[", 
+        RowBox[{"s", ",", "k", ",", "b"}], "]"}]}], ",", 
+      RowBox[{"-", 
+       RowBox[{"\[Pi]2", "[", 
+        RowBox[{"s", ",", "k", ",", "b"}], "]"}]}], ",", "s", ",", "k", ",", 
+      "R"}], "]"}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"Fz2", "[", 
+    RowBox[{"s_", ",", "k_", ",", "b_", ",", "R_"}], "]"}], "=", 
+   RowBox[{"Simplify", "[", 
+    RowBox[{
+     RowBox[{"C3", "[", 
+      RowBox[{
+       RowBox[{"\[Psi]2", "[", 
+        RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+       RowBox[{"\[Pi]2", "[", 
+        RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", "s", ",", "k", ",", 
+       "R"}], "]"}], "*", 
+     RowBox[{"-", "1"}]}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"FR3", "[", 
+    RowBox[{"s_", ",", "k_", ",", "b_", ",", "R_"}], "]"}], "=", 
+   RowBox[{"Simplify", "[", 
+    RowBox[{"C1", "[", 
+     RowBox[{
+      RowBox[{"\[Psi]3", "[", 
+       RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+      RowBox[{"\[Omega]3", "[", 
+       RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+      RowBox[{"\[Pi]3", "[", 
+       RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", "s", ",", "k", ",", 
+      "R"}], "]"}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"F\[Phi]3", "[", 
+    RowBox[{"s_", ",", "k_", ",", "b_", ",", "R_"}], "]"}], "=", 
+   RowBox[{"Simplify", "[", 
+    RowBox[{"C2", "[", 
+     RowBox[{
+      RowBox[{"-", 
+       RowBox[{"\[Psi]3", "[", 
+        RowBox[{"s", ",", "k", ",", "b"}], "]"}]}], ",", 
+      RowBox[{"-", 
+       RowBox[{"\[Omega]3", "[", 
+        RowBox[{"s", ",", "k", ",", "b"}], "]"}]}], ",", 
+      RowBox[{"\[Pi]3", "[", 
+       RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", "s", ",", "k", ",", 
+      "R"}], "]"}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"Fz3", "[", 
+    RowBox[{"s_", ",", "k_", ",", "b_", ",", "R_"}], "]"}], "=", 
+   RowBox[{"Simplify", "[", 
+    RowBox[{"C3", "[", 
+     RowBox[{
+      RowBox[{"\[Psi]3", "[", 
+       RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", 
+      RowBox[{"\[Pi]3", "[", 
+       RowBox[{"s", ",", "k", ",", "b"}], "]"}], ",", "s", ",", "k", ",", 
+      "R"}], "]"}], "]"}]}], ";"}]}], "Input",
+ CellChangeTimes->{{3.695617084732877*^9, 3.6956170927493677`*^9}, {
+  3.6984403174521313`*^9, 3.6984403276655493`*^9}, {3.7879705619735756`*^9, 
+  3.7879705679471164`*^9}},
+ CellLabel->
+  "In[193]:=",ExpressionUUID->"6f4f90dd-1929-4aca-9e83-c6d4513a7cdd"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"FullSimplify", "[", 
+  RowBox[{
+   RowBox[{"a", "*", 
+    RowBox[{"DBesselI", "[", 
+     RowBox[{"k", ",", 
+      RowBox[{"s", "*", "R"}]}], "]"}]}], "+", 
+   RowBox[{"b", "*", "k", "*", 
+    RowBox[{
+     RowBox[{"BesselI", "[", 
+      RowBox[{"k", ",", 
+       RowBox[{"s", "*", "R"}]}], "]"}], "/", 
+     RowBox[{"(", 
+      RowBox[{"s", "*", "R"}], ")"}]}]}], "+", 
+   RowBox[{"c", "*", "s", "*", "R", "*", 
+    RowBox[{"DDBesselI", "[", 
+     RowBox[{"k", ",", 
+      RowBox[{"s", "*", "R"}]}], "]"}]}]}], "]"}]], "Input",
+ CellChangeTimes->{{3.7879759057923536`*^9, 3.787975958207899*^9}, 
+   3.7879760417587423`*^9},
+ CellLabel->
+  "In[179]:=",ExpressionUUID->"23a08b4a-03b1-4cd1-ac84-b559ed99d225"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"(", 
+    RowBox[{"a", "-", "c"}], ")"}], " ", 
+   RowBox[{"BesselI", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"-", "1"}], "+", "k"}], ",", 
+     RowBox[{"R", " ", "s"}]}], "]"}]}], "+", 
+  FractionBox[
+   RowBox[{
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{
+       RowBox[{"-", "a"}], " ", "k"}], "+", 
+      RowBox[{"k", " ", 
+       RowBox[{"(", 
+        RowBox[{"b", "+", "c", "+", 
+         RowBox[{"c", " ", "k"}]}], ")"}]}], "+", 
+      RowBox[{"c", " ", 
+       SuperscriptBox["R", "2"], " ", 
+       SuperscriptBox["s", "2"]}]}], ")"}], " ", 
+    RowBox[{"BesselI", "[", 
+     RowBox[{"k", ",", 
+      RowBox[{"R", " ", "s"}]}], "]"}]}], 
+   RowBox[{"R", " ", "s"}]]}]], "Output",
+ CellChangeTimes->{{3.78797590763575*^9, 3.787975960589304*^9}, 
+   3.7879760436505156`*^9},
+ CellLabel->
+  "Out[179]=",ExpressionUUID->"5eda0b2e-c566-46d2-b688-de585c8212fe"]
+}, Open  ]],
+
+Cell[BoxData[
+ StyleBox[
+  RowBox[{"(*", " ", 
+   RowBox[{"This", " ", "version", " ", "must", " ", "divided", " ", 
+    RowBox[{"DmyD", "[", 
+     RowBox[{"k", ",", "s"}], "]"}]}], " ", "*)"}], "Section"]], "Input",Expre\
+ssionUUID->"724ef9c6-c40b-47e2-a699-6dbfbc681797"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"AFR1n", "[", 
+    RowBox[{"xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_"}], 
+    "]"}], "=", 
+   RowBox[{"Simplify", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"-", "2"}], "*", "Pi", "*", 
+      RowBox[{"Exp", "[", 
+       RowBox[{
+        RowBox[{"-", 
+         RowBox[{"Im", "[", "xn", "]"}]}], "*", "z"}], "]"}], "*", 
+      RowBox[{"Im", "[", 
+       RowBox[{
+        RowBox[{"Exp", "[", 
+         RowBox[{"I", "*", 
+          RowBox[{"Re", "[", "xn", "]"}], "*", "z"}], "]"}], "*", 
+        RowBox[{"FR1", "[", 
+         RowBox[{"xn", ",", "k", ",", "b", ",", "R"}], "]"}]}], "]"}]}], "-", 
+     RowBox[{"Pi", "*", 
+      RowBox[{"Exp", "[", 
+       RowBox[{
+        RowBox[{"-", 
+         RowBox[{"Im", "[", "yn", "]"}]}], "*", "z"}], "]"}], "*", 
+      RowBox[{"Im", "[", 
+       RowBox[{"FR1", "[", 
+        RowBox[{"yn", ",", "k", ",", "b", ",", "R"}], "]"}], "]"}]}]}], 
+    "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"AF\[Phi]1n", "[", 
+    RowBox[{"xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_"}], 
+    "]"}], "=", 
+   RowBox[{"Simplify", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"-", "2"}], "*", "Pi", "*", 
+      RowBox[{"Exp", "[", 
+       RowBox[{
+        RowBox[{"-", 
+         RowBox[{"Im", "[", "xn", "]"}]}], "*", "z"}], "]"}], "*", 
+      RowBox[{"Im", "[", 
+       RowBox[{
+        RowBox[{"Exp", "[", 
+         RowBox[{"I", "*", 
+          RowBox[{"Re", "[", "xn", "]"}], "*", "z"}], "]"}], "*", 
+        RowBox[{"F\[Phi]1", "[", 
+         RowBox[{"xn", ",", "k", ",", "b", ",", "R"}], "]"}]}], "]"}]}], "-", 
+     RowBox[{"Pi", "*", 
+      RowBox[{"Exp", "[", 
+       RowBox[{
+        RowBox[{"-", 
+         RowBox[{"Im", "[", "yn", "]"}]}], "*", "z"}], "]"}], "*", 
+      RowBox[{"Im", "[", 
+       RowBox[{"F\[Phi]1", "[", 
+        RowBox[{"yn", ",", "k", ",", "b", ",", "R"}], "]"}], "]"}]}]}], 
+    "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{
+    RowBox[{"BFz1n", "[", 
+     RowBox[{"xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_"}], 
+     "]"}], "=", 
+    RowBox[{"Simplify", "[", 
+     RowBox[{
+      RowBox[{"2", "*", "Pi", "*", 
+       RowBox[{"Exp", "[", 
+        RowBox[{
+         RowBox[{"-", 
+          RowBox[{"Im", "[", "xn", "]"}]}], "*", "z"}], "]"}], "*", 
+       RowBox[{"Re", "[", 
+        RowBox[{
+         RowBox[{"Exp", "[", 
+          RowBox[{"I", "*", 
+           RowBox[{"Re", "[", "xn", "]"}], "*", "z"}], "]"}], "*", 
+         RowBox[{"Fz1", "[", 
+          RowBox[{"xn", ",", "k", ",", "b", ",", "R"}], "]"}]}], "]"}]}], "+", 
+      RowBox[{"Pi", "*", 
+       RowBox[{"Exp", "[", 
+        RowBox[{
+         RowBox[{"-", 
+          RowBox[{"Im", "[", "yn", "]"}]}], "*", "z"}], "]"}], "*", 
+       RowBox[{"Re", "[", 
+        RowBox[{"Fz1", "[", 
+         RowBox[{"yn", ",", "k", ",", "b", ",", "R"}], "]"}], "]"}]}]}], 
+     "]"}]}], ";"}], "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"AFR2n", "[", 
+    RowBox[{"xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_"}], 
+    "]"}], "=", 
+   RowBox[{"Simplify", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"-", "2"}], "*", "Pi", "*", 
+      RowBox[{"Exp", "[", 
+       RowBox[{
+        RowBox[{"-", 
+         RowBox[{"Im", "[", "xn", "]"}]}], "*", "z"}], "]"}], "*", 
+      RowBox[{"Im", "[", 
+       RowBox[{
+        RowBox[{"Exp", "[", 
+         RowBox[{"I", "*", 
+          RowBox[{"Re", "[", "xn", "]"}], "*", "z"}], "]"}], "*", 
+        RowBox[{"FR2", "[", 
+         RowBox[{"xn", ",", "k", ",", "b", ",", "R"}], "]"}]}], "]"}]}], "-", 
+     RowBox[{"Pi", "*", 
+      RowBox[{"Exp", "[", 
+       RowBox[{
+        RowBox[{"-", 
+         RowBox[{"Im", "[", "yn", "]"}]}], "*", "z"}], "]"}], "*", 
+      RowBox[{"Im", "[", 
+       RowBox[{"FR2", "[", 
+        RowBox[{"yn", ",", "k", ",", "b", ",", "R"}], "]"}], "]"}]}]}], 
+    "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"AF\[Phi]2n", "[", 
+    RowBox[{"xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_"}], 
+    "]"}], "=", 
+   RowBox[{"Simplify", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"-", "2"}], "*", "Pi", "*", 
+      RowBox[{"Exp", "[", 
+       RowBox[{
+        RowBox[{"-", 
+         RowBox[{"Im", "[", "xn", "]"}]}], "*", "z"}], "]"}], "*", 
+      RowBox[{"Im", "[", 
+       RowBox[{
+        RowBox[{"Exp", "[", 
+         RowBox[{"I", "*", 
+          RowBox[{"Re", "[", "xn", "]"}], "*", "z"}], "]"}], "*", 
+        RowBox[{"F\[Phi]2", "[", 
+         RowBox[{"xn", ",", "k", ",", "b", ",", "R"}], "]"}]}], "]"}]}], "-", 
+     RowBox[{"Pi", "*", 
+      RowBox[{"Exp", "[", 
+       RowBox[{
+        RowBox[{"-", 
+         RowBox[{"Im", "[", "yn", "]"}]}], "*", "z"}], "]"}], "*", 
+      RowBox[{"Im", "[", 
+       RowBox[{"F\[Phi]2", "[", 
+        RowBox[{"yn", ",", "k", ",", "b", ",", "R"}], "]"}], "]"}]}]}], 
+    "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{
+    RowBox[{"BFz2n", "[", 
+     RowBox[{"xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_"}], 
+     "]"}], "=", 
+    RowBox[{"Simplify", "[", 
+     RowBox[{
+      RowBox[{"2", "*", "Pi", "*", 
+       RowBox[{"Exp", "[", 
+        RowBox[{
+         RowBox[{"-", 
+          RowBox[{"Im", "[", "xn", "]"}]}], "*", "z"}], "]"}], "*", 
+       RowBox[{"Re", "[", 
+        RowBox[{
+         RowBox[{"Exp", "[", 
+          RowBox[{"I", "*", 
+           RowBox[{"Re", "[", "xn", "]"}], "*", "z"}], "]"}], "*", 
+         RowBox[{"Fz2", "[", 
+          RowBox[{"xn", ",", "k", ",", "b", ",", "R"}], "]"}]}], "]"}]}], "+", 
+      RowBox[{"Pi", "*", 
+       RowBox[{"Exp", "[", 
+        RowBox[{
+         RowBox[{"-", 
+          RowBox[{"Im", "[", "yn", "]"}]}], "*", "z"}], "]"}], "*", 
+       RowBox[{"Re", "[", 
+        RowBox[{"Fz2", "[", 
+         RowBox[{"yn", ",", "k", ",", "b", ",", "R"}], "]"}], "]"}]}]}], 
+     "]"}]}], ";"}], "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"BFR3n", "[", 
+    RowBox[{"xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_"}], 
+    "]"}], "=", 
+   RowBox[{"Simplify", "[", 
+    RowBox[{
+     RowBox[{"2", "*", "Pi", "*", 
+      RowBox[{"Exp", "[", 
+       RowBox[{
+        RowBox[{"-", 
+         RowBox[{"Im", "[", "xn", "]"}]}], "*", "z"}], "]"}], "*", 
+      RowBox[{"Re", "[", 
+       RowBox[{
+        RowBox[{"Exp", "[", 
+         RowBox[{"I", "*", 
+          RowBox[{"Re", "[", "xn", "]"}], "*", "z"}], "]"}], "*", 
+        RowBox[{"FR3", "[", 
+         RowBox[{"xn", ",", "k", ",", "b", ",", "R"}], "]"}]}], "]"}]}], "+", 
+     RowBox[{"Pi", "*", 
+      RowBox[{"Exp", "[", 
+       RowBox[{
+        RowBox[{"-", 
+         RowBox[{"Im", "[", "yn", "]"}]}], "*", "z"}], "]"}], "*", 
+      RowBox[{"Re", "[", 
+       RowBox[{"FR3", "[", 
+        RowBox[{"yn", ",", "k", ",", "b", ",", "R"}], "]"}], "]"}]}]}], 
+    "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"BF\[Phi]3n", "[", 
+    RowBox[{"xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_"}], 
+    "]"}], "=", 
+   RowBox[{"Simplify", "[", 
+    RowBox[{
+     RowBox[{"2", "*", "Pi", "*", 
+      RowBox[{"Exp", "[", 
+       RowBox[{
+        RowBox[{"-", 
+         RowBox[{"Im", "[", "xn", "]"}]}], "*", "z"}], "]"}], "*", 
+      RowBox[{"Re", "[", 
+       RowBox[{
+        RowBox[{"Exp", "[", 
+         RowBox[{"I", "*", 
+          RowBox[{"Re", "[", "xn", "]"}], "*", "z"}], "]"}], "*", 
+        RowBox[{"F\[Phi]3", "[", 
+         RowBox[{"xn", ",", "k", ",", "b", ",", "R"}], "]"}]}], "]"}]}], "+", 
+     RowBox[{"Pi", "*", 
+      RowBox[{"Exp", "[", 
+       RowBox[{
+        RowBox[{"-", 
+         RowBox[{"Im", "[", "yn", "]"}]}], "*", "z"}], "]"}], "*", 
+      RowBox[{"Re", "[", 
+       RowBox[{"F\[Phi]3", "[", 
+        RowBox[{"yn", ",", "k", ",", "b", ",", "R"}], "]"}], "]"}]}]}], 
+    "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"AFz3n", "[", 
+    RowBox[{"xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_"}], 
+    "]"}], "=", 
+   RowBox[{"Simplify", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"-", "2"}], "*", "Pi", "*", 
+      RowBox[{"Exp", "[", 
+       RowBox[{
+        RowBox[{"-", 
+         RowBox[{"Im", "[", "xn", "]"}]}], "*", "z"}], "]"}], "*", 
+      RowBox[{"Im", "[", 
+       RowBox[{
+        RowBox[{"Exp", "[", 
+         RowBox[{"I", "*", 
+          RowBox[{"Re", "[", "xn", "]"}], "*", "z"}], "]"}], "*", 
+        RowBox[{"Fz3", "[", 
+         RowBox[{"xn", ",", "k", ",", "b", ",", "R"}], "]"}]}], "]"}]}], "-", 
+     RowBox[{"Pi", "*", 
+      RowBox[{"Exp", "[", 
+       RowBox[{
+        RowBox[{"-", 
+         RowBox[{"Im", "[", "yn", "]"}]}], "*", "z"}], "]"}], "*", 
+      RowBox[{"Im", "[", 
+       RowBox[{"Fz3", "[", 
+        RowBox[{"yn", ",", "k", ",", "b", ",", "R"}], "]"}], "]"}]}]}], 
+    "]"}]}], ";"}]}], "Input",
+ CellChangeTimes->{{3.6956171196584854`*^9, 3.6956171744144015`*^9}, {
+  3.6984403299088163`*^9, 3.698440335940772*^9}},
+ CellLabel->
+  "In[154]:=",ExpressionUUID->"225dd9b5-c2e0-4ab3-8ea3-29d1d620a0a9"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"uR1n", "[", 
+    RowBox[{
+    "xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_", ",", 
+     "\[Phi]_"}], "]"}], "=", 
+   RowBox[{
+    RowBox[{"AFR1n", "[", 
+     RowBox[{"xn", ",", "yn", ",", "k", ",", "z", ",", "b", ",", "R"}], "]"}],
+     "*", 
+    RowBox[{"Cos", "[", 
+     RowBox[{"k", "*", "\[Phi]"}], "]"}]}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"u\[Phi]1n", "[", 
+    RowBox[{
+    "xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_", ",", 
+     "\[Phi]_"}], "]"}], "=", 
+   RowBox[{
+    RowBox[{"AF\[Phi]1n", "[", 
+     RowBox[{"xn", ",", "yn", ",", "k", ",", "z", ",", "b", ",", "R"}], "]"}],
+     "*", 
+    RowBox[{"Sin", "[", 
+     RowBox[{"k", "*", "\[Phi]"}], "]"}]}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"uz1n", "[", 
+    RowBox[{
+    "xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_", ",", 
+     "\[Phi]_"}], "]"}], "=", 
+   RowBox[{
+    RowBox[{"BFz1n", "[", 
+     RowBox[{"xn", ",", "yn", ",", "k", ",", "z", ",", "b", ",", "R"}], "]"}],
+     "*", 
+    RowBox[{"Cos", "[", 
+     RowBox[{"k", "*", "\[Phi]"}], "]"}]}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"uR2n", "[", 
+    RowBox[{
+    "xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_", ",", 
+     "\[Phi]_"}], "]"}], "=", 
+   RowBox[{
+    RowBox[{"AFR2n", "[", 
+     RowBox[{"xn", ",", "yn", ",", "k", ",", "z", ",", "b", ",", "R"}], "]"}],
+     "*", 
+    RowBox[{"Sin", "[", 
+     RowBox[{"k", "*", "\[Phi]"}], "]"}]}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"u\[Phi]2n", "[", 
+    RowBox[{
+    "xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_", ",", 
+     "\[Phi]_"}], "]"}], "=", 
+   RowBox[{
+    RowBox[{"AF\[Phi]2n", "[", 
+     RowBox[{"xn", ",", "yn", ",", "k", ",", "z", ",", "b", ",", "R"}], "]"}],
+     "*", 
+    RowBox[{"Cos", "[", 
+     RowBox[{"k", "*", "\[Phi]"}], "]"}]}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"uz2n", "[", 
+    RowBox[{
+    "xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_", ",", 
+     "\[Phi]_"}], "]"}], "=", 
+   RowBox[{
+    RowBox[{"BFz2n", "[", 
+     RowBox[{"xn", ",", "yn", ",", "k", ",", "z", ",", "b", ",", "R"}], "]"}],
+     "*", 
+    RowBox[{"Sin", "[", 
+     RowBox[{"k", "*", "\[Phi]"}], "]"}]}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"uR3n", "[", 
+    RowBox[{
+    "xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_", ",", 
+     "\[Phi]_"}], "]"}], "=", 
+   RowBox[{
+    RowBox[{"BFR3n", "[", 
+     RowBox[{"xn", ",", "yn", ",", "k", ",", "z", ",", "b", ",", "R"}], "]"}],
+     "*", 
+    RowBox[{"Cos", "[", 
+     RowBox[{"k", "*", "\[Phi]"}], "]"}]}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"u\[Phi]3n", "[", 
+    RowBox[{
+    "xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_", ",", 
+     "\[Phi]_"}], "]"}], "=", 
+   RowBox[{
+    RowBox[{"BF\[Phi]3n", "[", 
+     RowBox[{"xn", ",", "yn", ",", "k", ",", "z", ",", "b", ",", "R"}], "]"}],
+     "*", 
+    RowBox[{"Sin", "[", 
+     RowBox[{"k", "*", "\[Phi]"}], "]"}]}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"uz3n", "[", 
+    RowBox[{
+    "xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_", ",", 
+     "\[Phi]_"}], "]"}], "=", 
+   RowBox[{
+    RowBox[{"AFz3n", "[", 
+     RowBox[{"xn", ",", "yn", ",", "k", ",", "z", ",", "b", ",", "R"}], "]"}],
+     "*", 
+    RowBox[{"Cos", "[", 
+     RowBox[{"k", "*", "\[Phi]"}], "]"}]}]}], ";"}]}], "Input",
+ CellChangeTimes->{{3.6984423211181717`*^9, 3.6984423569439898`*^9}, {
+  3.698442390472558*^9, 3.698442511319613*^9}},
+ CellLabel->
+  "In[163]:=",ExpressionUUID->"2e3bc5dd-0d7f-4481-a86a-49e3bc22ae60"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"deriv", "[", 
+    RowBox[{"expr_", ",", "var_"}], "]"}], ":=", 
+   RowBox[{
+    RowBox[{"D", "[", 
+     RowBox[{"expr", ",", "var"}], "]"}], "//.", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{
+       RowBox[{
+        RowBox[{"Re", "'"}], "[", "e_", "]"}], "\[RuleDelayed]", 
+       RowBox[{
+        RowBox[{"Re", "[", 
+         RowBox[{"D", "[", 
+          RowBox[{"e", ",", "var"}], "]"}], "]"}], "/", 
+        RowBox[{"D", "[", 
+         RowBox[{"e", ",", "var"}], "]"}]}]}], ",", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"Im", "'"}], "[", "e_", "]"}], "\[RuleDelayed]", 
+       RowBox[{
+        RowBox[{"Im", "[", 
+         RowBox[{"D", "[", 
+          RowBox[{"e", ",", "var"}], "]"}], "]"}], "/", 
+        RowBox[{"D", "[", 
+         RowBox[{"e", ",", "var"}], "]"}]}]}], ",", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"Arg", "'"}], "[", "e_", "]"}], "\[RuleDelayed]", 
+       RowBox[{
+        RowBox[{"Im", "[", 
+         RowBox[{
+          RowBox[{"D", "[", 
+           RowBox[{"e", ",", "var"}], "]"}], "/", "e"}], "]"}], "/", 
+        RowBox[{"D", "[", 
+         RowBox[{"e", ",", "var"}], "]"}]}]}], ",", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"Abs", "'"}], "[", "e_", "]"}], "\[RuleDelayed]", 
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"Re", "[", "e", "]"}], " ", 
+           RowBox[{"Re", "[", 
+            RowBox[{"D", "[", 
+             RowBox[{"e", ",", "var"}], "]"}], "]"}]}], "+", 
+          RowBox[{
+           RowBox[{"Im", "[", "e", "]"}], " ", 
+           RowBox[{"Im", "[", 
+            RowBox[{"D", "[", 
+             RowBox[{"e", ",", "var"}], "]"}], "]"}]}]}], ")"}], "/", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"Abs", "[", "e", "]"}], " ", 
+          RowBox[{"D", "[", 
+           RowBox[{"e", ",", "var"}], "]"}]}], ")"}]}]}]}], "}"}]}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"divu1", "[", 
+    RowBox[{
+    "xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_", ",", 
+     "\[Phi]_"}], "]"}], "=", 
+   RowBox[{"Simplify", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"deriv", "[", 
+       RowBox[{
+        RowBox[{
+         RowBox[{"uR1n", "[", 
+          RowBox[{
+          "xn", ",", "yn", ",", "k", ",", "z", ",", "b", ",", "R", ",", 
+           "\[Phi]"}], "]"}], "*", "R"}], ",", "R"}], "]"}], "/", "R"}], "+", 
+     RowBox[{
+      RowBox[{"deriv", "[", 
+       RowBox[{
+        RowBox[{"u\[Phi]1n", "[", 
+         RowBox[{
+         "xn", ",", "yn", ",", "k", ",", "z", ",", "b", ",", "R", ",", 
+          "\[Phi]"}], "]"}], ",", "\[Phi]"}], "]"}], "/", "R"}], "+", 
+     RowBox[{"deriv", "[", 
+      RowBox[{
+       RowBox[{"uz1n", "[", 
+        RowBox[{
+        "xn", ",", "yn", ",", "k", ",", "z", ",", "b", ",", "R", ",", 
+         "\[Phi]"}], "]"}], ",", "z"}], "]"}]}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"divu2", "[", 
+    RowBox[{
+    "xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_", ",", 
+     "\[Phi]_"}], "]"}], "=", 
+   RowBox[{"Simplify", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"deriv", "[", 
+       RowBox[{
+        RowBox[{
+         RowBox[{"uR2n", "[", 
+          RowBox[{
+          "xn", ",", "yn", ",", "k", ",", "z", ",", "b", ",", "R", ",", 
+           "\[Phi]"}], "]"}], "*", "R"}], ",", "R"}], "]"}], "/", "R"}], "+", 
+     RowBox[{
+      RowBox[{"deriv", "[", 
+       RowBox[{
+        RowBox[{"u\[Phi]2n", "[", 
+         RowBox[{
+         "xn", ",", "yn", ",", "k", ",", "z", ",", "b", ",", "R", ",", 
+          "\[Phi]"}], "]"}], ",", "\[Phi]"}], "]"}], "/", "R"}], "+", 
+     RowBox[{"deriv", "[", 
+      RowBox[{
+       RowBox[{"uz2n", "[", 
+        RowBox[{
+        "xn", ",", "yn", ",", "k", ",", "z", ",", "b", ",", "R", ",", 
+         "\[Phi]"}], "]"}], ",", "z"}], "]"}]}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"divu3", "[", 
+    RowBox[{
+    "xn_", ",", "yn_", ",", "k_", ",", "z_", ",", "b_", ",", "R_", ",", 
+     "\[Phi]_"}], "]"}], "=", 
+   RowBox[{"Simplify", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"deriv", "[", 
+       RowBox[{
+        RowBox[{
+         RowBox[{"uR3n", "[", 
+          RowBox[{
+          "xn", ",", "yn", ",", "k", ",", "z", ",", "b", ",", "R", ",", 
+           "\[Phi]"}], "]"}], "*", "R"}], ",", "R"}], "]"}], "/", "R"}], "+", 
+     RowBox[{
+      RowBox[{"deriv", "[", 
+       RowBox[{
+        RowBox[{"u\[Phi]3n", "[", 
+         RowBox[{
+         "xn", ",", "yn", ",", "k", ",", "z", ",", "b", ",", "R", ",", 
+          "\[Phi]"}], "]"}], ",", "\[Phi]"}], "]"}], "/", "R"}], "+", 
+     RowBox[{"deriv", "[", 
+      RowBox[{
+       RowBox[{"uz3n", "[", 
+        RowBox[{
+        "xn", ",", "yn", ",", "k", ",", "z", ",", "b", ",", "R", ",", 
+         "\[Phi]"}], "]"}], ",", "z"}], "]"}]}], "]"}]}], ";"}]}], "Input",
+ CellChangeTimes->{{3.698440644104994*^9, 3.6984406724271507`*^9}, {
+  3.6984407957719707`*^9, 3.698440801603565*^9}, {3.6984408842209997`*^9, 
+  3.698440906149455*^9}, {3.6984409695647306`*^9, 3.69844098725459*^9}, {
+  3.6984425673422832`*^9, 3.698442571499763*^9}, {3.698442633964981*^9, 
+  3.6984427241983624`*^9}, {3.698443252528789*^9, 3.698443271104795*^9}, {
+  3.698443604880577*^9, 3.698443629248502*^9}, {3.698470464640836*^9, 
+  3.698470469344154*^9}},ExpressionUUID->"017d93d7-920c-4f80-b923-\
+f2f24fe1f161"],
+
+Cell[BoxData[
+ RowBox[{
+  StyleBox[
+   RowBox[{"Set", "::", "write"}], "MessageName"], ":", 
+  " ", "\<\"Tag \[NoBreak]\\!\\(\\*RowBox[{\\\"Times\\\"}]\\)\[NoBreak] in \
+\[NoBreak]\\!\\(\\*RowBox[{RowBox[{\\\"(\\\", RowBox[{\\\"-\\\", \
+FractionBox[RowBox[{SuperscriptBox[\\\"\[ExponentialE]\\\", \
+RowBox[{RowBox[{\\\"-\\\", \\\"z\\\"}], \\\" \\\", RowBox[{\\\"(\\\", \
+RowBox[{RowBox[{\\\"Im\\\", \\\"[\\\", \\\"xn\\\", \\\"]\\\"}], \\\"+\\\", \
+RowBox[{\\\"Im\\\", \\\"[\\\", \\\"yn\\\", \\\"]\\\"}]}], \\\")\\\"}]}]], \
+\\\" \\\", RowBox[{\\\"Cos\\\", \\\"[\\\", RowBox[{\\\"k\\\", \\\" \\\", \\\"\
+\[Phi]\\\"}], \\\"]\\\"}], \\\" \\\", RowBox[{\\\"(\\\", \
+RowBox[{RowBox[{SuperscriptBox[\\\"\[ExponentialE]\\\", RowBox[{\\\"z\\\", \\\
+\" \\\", RowBox[{\\\"Im\\\", \\\"[\\\", \\\"yn\\\", \\\"]\\\"}]}]], \\\" \
+\\\", \\\"R\\\", \\\" \\\", RowBox[{\\\"Im\\\", \\\"[\\\", \
+FractionBox[RowBox[{SuperscriptBox[\\\"\[ExponentialE]\\\", RowBox[{\\\"\
+\[ImaginaryI]\\\", \\\" \\\", \\\"z\\\", \\\" \\\", RowBox[{\\\"Re\\\", \\\"[\
+\\\", RowBox[{\\\"\[LeftSkeleton]\\\", \\\"1\\\", \\\"\[RightSkeleton]\\\"}], \
+\\\"]\\\"}]}]], \\\" \\\", RowBox[{\\\"(\\\", RowBox[{RowBox[{RowBox[{\\\"-\\\
+\", \\\"4\\\"}], \\\" \\\", RowBox[{\\\"Power\\\", \\\"[\\\", RowBox[{\\\"\
+\[LeftSkeleton]\\\", \\\"2\\\", \\\"\[RightSkeleton]\\\"}], \\\"]\\\"}], \\\" \
+\\\", RowBox[{\\\"BesselI\\\", \\\"[\\\", RowBox[{\\\"\[LeftSkeleton]\\\", \\\
+\"2\\\", \\\"\[RightSkeleton]\\\"}], \\\"]\\\"}], \\\" \\\", RowBox[{\\\"Plus\
+\\\", \\\"[\\\", RowBox[{\\\"\[LeftSkeleton]\\\", \\\"4\\\", \\\"\
+\[RightSkeleton]\\\"}], \\\"]\\\"}]}], \\\"+\\\", RowBox[{RowBox[{\\\"Power\\\
+\", \\\"[\\\", RowBox[{\\\"\[LeftSkeleton]\\\", \\\"2\\\", \\\"\
+\[RightSkeleton]\\\"}], \\\"]\\\"}], \\\" \\\", RowBox[{\\\"Plus\\\", \\\"[\\\
+\", RowBox[{\\\"\[LeftSkeleton]\\\", \\\"2\\\", \\\"\[RightSkeleton]\\\"}], \
+\\\"]\\\"}], \\\" \\\", RowBox[{\\\"Plus\\\", \\\"[\\\", RowBox[{\\\"\
+\[LeftSkeleton]\\\", \\\"4\\\", \\\"\[RightSkeleton]\\\"}], \\\"]\\\"}]}], \\\
+\"+\\\", RowBox[{\\\"2\\\", \\\" \\\", RowBox[{\\\"Power\\\", \\\"[\\\", \
+RowBox[{\\\"\[LeftSkeleton]\\\", \\\"2\\\", \\\"\[RightSkeleton]\\\"}], \\\"]\
+\\\"}], \\\" \\\", RowBox[{\\\"BesselI\\\", \\\"[\\\", RowBox[{\\\"\
+\[LeftSkeleton]\\\", \\\"2\\\", \\\"\[RightSkeleton]\\\"}], \\\"]\\\"}], \\\" \
+\\\", RowBox[{\\\"Plus\\\", \\\"[\\\", RowBox[{\\\"\[LeftSkeleton]\\\", \\\"4\
+\\\", \\\"\[RightSkeleton]\\\"}], \\\"]\\\"}]}], \\\"-\\\", \
+RowBox[{RowBox[{\\\"Power\\\", \\\"[\\\", RowBox[{\\\"\[LeftSkeleton]\\\", \\\
+\"2\\\", \\\"\[RightSkeleton]\\\"}], \\\"]\\\"}], \\\" \\\", \\\"xn\\\", \\\" \
+\\\", RowBox[{\\\"Plus\\\", \\\"[\\\", RowBox[{\\\"\[LeftSkeleton]\\\", \\\"2\
+\\\", \\\"\[RightSkeleton]\\\"}], \\\"]\\\"}], \\\" \\\", \
+RowBox[{\\\"Plus\\\", \\\"[\\\", RowBox[{\\\"\[LeftSkeleton]\\\", \\\"4\\\", \
+\\\"\[RightSkeleton]\\\"}], \\\"]\\\"}]}]}], \\\")\\\"}]}], SuperscriptBox[\\\
+\"xn\\\", \\\"2\\\"]], \\\"]\\\"}]}], \\\"+\\\", \
+RowBox[{\\\"\[LeftSkeleton]\\\", \\\"7\\\", \\\"\[RightSkeleton]\\\"}], \\\"+\
+\\\", RowBox[{SuperscriptBox[\\\"\[ExponentialE]\\\", RowBox[{\\\"z\\\", \\\" \
+\\\", RowBox[{\\\"Im\\\", \\\"[\\\", \\\"xn\\\", \\\"]\\\"}]}]], \\\" \\\", \
+\\\"R\\\", \\\" \\\", RowBox[{\\\"Im\\\", \\\"[\\\", \\\"yn\\\", \\\"]\\\"}], \
+\\\" \\\", RowBox[{\\\"Re\\\", \\\"[\\\", RowBox[{\\\"yn\\\", \\\" \\\", \
+RowBox[{\\\"(\\\", RowBox[{RowBox[{RowBox[{\\\"-\\\", \
+RowBox[{\\\"BesselI\\\", \\\"[\\\", RowBox[{\\\"\[LeftSkeleton]\\\", \
+\\\"2\\\", \\\"\[RightSkeleton]\\\"}], \\\"]\\\"}]}], \\\" \\\", \
+RowBox[{\\\"Plus\\\", \\\"[\\\", RowBox[{\\\"\[LeftSkeleton]\\\", \\\"3\\\", \
+\\\"\[RightSkeleton]\\\"}], \\\"]\\\"}]}], \\\"-\\\", RowBox[{\\\"R\\\", \\\" \
+\\\", RowBox[{\\\"BesselI\\\", \\\"[\\\", RowBox[{\\\"\[LeftSkeleton]\\\", \\\
+\"2\\\", \\\"\[RightSkeleton]\\\"}], \\\"]\\\"}], \\\" \\\", RowBox[{\\\"Plus\
+\\\", \\\"[\\\", RowBox[{\\\"\[LeftSkeleton]\\\", \\\"2\\\", \\\"\
+\[RightSkeleton]\\\"}], \\\"]\\\"}]}]}], \\\")\\\"}]}], \\\"]\\\"}]}]}], \
+\\\")\\\"}]}], RowBox[{\\\"16\\\", \\\" \\\", \\\"\[Pi]\\\", \\\" \\\", \\\"R\
+\\\"}]]}], \\\")\\\"}], \\\"[\\\", RowBox[{\\\"xn_\\\", \\\",\\\", \
+\\\"yn_\\\", \\\",\\\", \\\"k_\\\", \\\",\\\", \\\"z_\\\", \\\",\\\", \
+\\\"b_\\\", \\\",\\\", \\\"R_\\\", \\\",\\\", \\\"\[Phi]_\\\"}], \
+\\\"]\\\"}]\\)\[NoBreak] is Protected. \
+\\!\\(\\*ButtonBox[\\\"\[RightSkeleton]\\\", ButtonStyle->\\\"Link\\\", \
+ButtonFrame->None, ButtonData:>\\\"paclet:ref/message/General/write\\\", \
+ButtonNote -> \\\"Set::write\\\"]\\)\"\>"}]], "Message", "MSG",
+ CellChangeTimes->{
+  3.698443830895986*^9},ExpressionUUID->"7ac023e0-8b90-43e8-9091-\
+c776e5210935"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"PrintMatlab", "[", 
+  RowBox[{"divu1", ",", "\"\<divu1\>\"", ",", "1000"}], "]"}]], "Input",
+ CellChangeTimes->{{3.698443042078157*^9, 3.698443074812183*^9}, {
+   3.6984431821349087`*^9, 3.698443183118623*^9}, 3.698443344869545*^9, {
+   3.698470488080386*^9, 
+   3.698470489250856*^9}},ExpressionUUID->"18ac2486-3f9a-4dd2-986c-\
+486edac3d23a"],
+
+Cell[BoxData["\<\"div1=(-1/16).*exp(1).^((-1).*z.*(Im(xn)+Im(yn))).*pi.^(-1).*\
+R.^(-1).*cos(k.*\[Phi]).*(exp(1).^(z.*Im(yn)).*R.*Im(exp(1).^(sqrt(-1).*z.*Re(\
+xn)).*xn.^(-2).*((-4).*xn.^3.*BesselI(k,R.*xn).*((-1).*b.*xn.*BesselI((-2)+k,\
+b.*xn).*BesselI(k,xn).*BesselI(1+k,xn).*BesselK((-1)+k,xn)+2.*BesselI((-1)+k,\
+b.*xn).*BesselI(k,xn).*BesselI(1+k,xn).*(xn.*BesselK((-2)+k,xn)+(1+k).*\
+BesselK((-1)+k,xn))+(-1).*xn.*BesselI(k,xn).*BesselI(1+k,xn).*(3.*b.*BesselI(\
+k,b.*xn).*BesselK((-1)+k,xn)+(-2).*BesselI(1+k,b.*xn).*BesselK(k,xn))+2.*\
+BesselI((-1)+k,xn).*(xn.*BesselI((-1)+k,b.*xn).*(2.*BesselI(1+k,xn).*BesselK((\
+-1)+k,xn)+BesselI(k,xn).*BesselK(k,xn))+(-2).*b.*xn.*BesselI(k,b.*xn).*(2.*\
+BesselI(1+k,xn).*BesselK(k,xn)+BesselI(k,xn).*BesselK(1+k,xn))+BesselI(1+k,b.*\
+xn).*(2.*xn.*BesselI(1+k,xn).*BesselK(1+k,xn)+BesselI(k,xn).*(xn.*BesselK(k,\
+xn)+2.*(2+k).*BesselK(1+k,xn)))))+xn.^3.*(BesselI((-2)+k,R.*xn)+BesselI(k,R.*\
+xn)).*((-1).*BesselI(k,xn).*BesselI(1+k,xn).*(b.*xn.*(BesselI((-2)+k,b.*xn)+3.\
+*BesselI(k,b.*xn)).*BesselK((-1)+k, ...\\n  \
+xn)+BesselI((-1)+k,b.*xn).*((-2).*xn.*BesselK((-2)+k,xn)+(-2).*(1+k).*BesselK(\
+(-1)+k,xn))+(-2).*xn.*BesselI(1+k,b.*xn).*BesselK(k,xn))+xn.^2.*((BesselI((-2)\
++k,xn)+BesselI(k,xn)).*BesselI(1+k,xn)+BesselI((-1)+k,xn).*(BesselI(k,xn)+\
+BesselI(2+k,xn))).*(BesselI((-1)+k,b.*xn).*BesselK((-1)+k,xn)+(-2).*b.*\
+BesselI(k,b.*xn).*BesselK(k,xn)+BesselI(1+k,b.*xn).*BesselK(1+k,xn))+(-1).*(\
+xn.*BesselI((-1)+k,xn)+BesselI(k,xn)+(-1).*k.*BesselI(k,xn)).*(BesselI(1+k,xn)\
+.*(b.*xn.*(BesselI((-2)+k,b.*xn)+3.*BesselI(k,b.*xn)).*BesselK((-1)+k,xn)+\
+BesselI((-1)+k,b.*xn).*((-2).*xn.*BesselK((-2)+k,xn)+(-2).*(1+k).*BesselK((-1)\
++k,xn))+(-2).*xn.*BesselI(1+k,b.*xn).*BesselK(k,xn))+2.*BesselI((-1)+k,xn).*((\
+-1).*xn.*(BesselI((-1)+k,b.*xn)+BesselI(1+k,b.*xn)).*BesselK(k,xn)+2.*(b.*xn.*\
+BesselI(k,b.*xn)+(-1).*(2+k).*BesselI(1+k,b.*xn)).*BesselK(1+k,xn)))+2.*\
+BesselI((-1)+k,xn).*(xn.*BesselI((-1)+k,b.*xn).*(2.*BesselI(1+k,xn).*BesselK((\
+-1)+k,xn)+BesselI(k,xn).*BesselK(k,xn))+(-2).*b.*xn.*BesselI(k,b.*xn).*(2.*\
+BesselI(1+k, ...\\n  \
+xn).*BesselK(k,xn)+BesselI(k,xn).*BesselK(1+k,xn))+BesselI(1+k,b.*xn).*(2.*xn.\
+*BesselI(1+k,xn).*BesselK(1+k,xn)+BesselI(k,xn).*(xn.*BesselK(k,xn)+2.*(2+k).*\
+BesselK(1+k,xn)))))+2.*R.^(-2).*BesselI(k,R.*xn).*(BesselI((-1)+k,b.*xn).*(k.*\
+xn.^3.*BesselI((-2)+k,xn).*BesselI(1+k,xn).*BesselK((-1)+k,xn)+xn.*BesselI(k,\
+xn).*BesselI(1+k,xn).*(2.*(2.*k.*xn+R.^2.*xn.^3).*BesselK((-2)+k,xn)+(4.*k.^2+\
+2.*R.^2.*xn.^2+k.*(4+xn.^2+2.*R.^2.*xn.^2)).*BesselK((-1)+k,xn))+2.*k.*\
+BesselI(k,xn).^2.*((4.*k.*xn+xn.^3).*BesselK((-2)+k,xn)+(4.*k+4.*k.^2+xn.^2+3.\
+*k.*xn.^2).*BesselK((-1)+k,xn)+(-1).*xn.^3.*BesselK(k,xn)))+k.*xn.^2.*BesselI(\
+(-1)+k,xn).^2.*(b.*xn.*BesselI((-2)+k,b.*xn).*BesselK((-1)+k,xn)+3.*b.*xn.*\
+BesselI(k,b.*xn).*BesselK((-1)+k,xn)+8.*b.*k.*BesselI(k,b.*xn).*BesselK(k,xn)+\
+2.*xn.*BesselI(1+k,b.*xn).*BesselK(k,xn)+(-2).*BesselI((-1)+k,b.*xn).*(xn.*\
+BesselK((-2)+k,xn)+(1+3.*k).*BesselK((-1)+k,xn)+(-2).*xn.*BesselK(k,xn))+(-8).\
+*b.*xn.*BesselI(k,b.*xn).*BesselK(1+k,xn)+16.*BesselI(1+k,b.*xn).*BesselK(1+k,\
+ ...\\n  xn)+4.*k.*BesselI(1+k,b.*xn).*BesselK(1+k,xn))+xn.*BesselI((-1)+k,xn)\
+.*(6.*b.*k.*xn.*BesselI(k,xn).*BesselI(k,b.*xn).*BesselK((-1)+k,xn)+(-6).*b.*\
+k.^2.*xn.*BesselI(k,xn).*BesselI(k,b.*xn).*BesselK((-1)+k,xn)+(-3).*b.*k.*xn.^\
+2.*BesselI(k,b.*xn).*BesselI(1+k,xn).*BesselK((-1)+k,xn)+(-1).*b.*k.*xn.*\
+BesselI((-2)+k,b.*xn).*(2.*((-1)+k).*BesselI(k,xn)+xn.*BesselI(1+k,xn)).*\
+BesselK((-1)+k,xn)+(-16).*b.*k.^3.*BesselI(k,xn).*BesselI(k,b.*xn).*BesselK(k,\
+xn)+(-2).*b.*k.*xn.^2.*BesselI(k,xn).*BesselI(k,b.*xn).*BesselK(k,xn)+(-8).*b.\
+*k.*xn.*BesselI(k,b.*xn).*BesselI(1+k,xn).*BesselK(k,xn)+(-8).*b.*k.^2.*xn.*\
+BesselI(k,b.*xn).*BesselI(1+k,xn).*BesselK(k,xn)+(-8).*b.*R.^2.*xn.^3.*\
+BesselI(k,b.*xn).*BesselI(1+k,xn).*BesselK(k,xn)+4.*k.*xn.*BesselI(k,xn).*\
+BesselI(1+k,b.*xn).*BesselK(k,xn)+2.*R.^2.*xn.^3.*BesselI(k,xn).*BesselI(1+k,\
+b.*xn).*BesselK(k,xn)+2.*k.*xn.^2.*BesselI(1+k,xn).*BesselI(1+k,b.*xn).*\
+BesselK(k,xn)+(-2).*b.*k.*xn.^2.*BesselI(k,b.*xn).*BesselI(2+k,xn).*BesselK(k,\
+xn)+BesselI((-1)+k,b.*xn) ...\\n  \
+.*(xn.*(k.*xn.*BesselI(2+k,xn).*BesselK((-1)+k,xn)+2.*BesselI(1+k,xn).*(k.*xn.\
+*BesselK((-2)+k,xn)+(3.*k+3.*k.^2+2.*R.^2.*xn.^2).*BesselK((-1)+k,xn)))+\
+BesselI(k,xn).*(4.*((-1)+k).*k.*xn.*BesselK((-2)+k,xn)+k.*((-4)+12.*k.^2+xn.^\
+2).*BesselK((-1)+k,xn)+2.*xn.*(4.*k+(-2).*k.^2+R.^2.*xn.^2).*BesselK(k,xn)))+(\
+-16).*b.*k.*xn.*BesselI(k,xn).*BesselI(k,b.*xn).*BesselK(1+k,xn)+8.*b.*k.^2.*\
+xn.*BesselI(k,xn).*BesselI(k,b.*xn).*BesselK(1+k,xn)+(-4).*b.*R.^2.*xn.^3.*\
+BesselI(k,xn).*BesselI(k,b.*xn).*BesselK(1+k,xn)+32.*k.*BesselI(k,xn).*\
+BesselI(1+k,b.*xn).*BesselK(1+k,xn)+k.*xn.^2.*BesselI(k,xn).*BesselI(1+k,b.*\
+xn).*BesselK(1+k,xn)+8.*R.^2.*xn.^2.*BesselI(k,xn).*BesselI(1+k,b.*xn).*\
+BesselK(1+k,xn)+4.*k.*R.^2.*xn.^2.*BesselI(k,xn).*BesselI(1+k,b.*xn).*BesselK(\
+1+k,xn)+4.*k.*xn.*BesselI(1+k,xn).*BesselI(1+k,b.*xn).*BesselK(1+k,xn)+4.*k.^\
+2.*xn.*BesselI(1+k,xn).*BesselI(1+k,b.*xn).*BesselK(1+k,xn)+4.*R.^2.*xn.^3.*\
+BesselI(1+k,xn).*BesselI(1+k,b.*xn).*BesselK(1+k,xn)+k.*xn.^2.*BesselI(1+k,b.*\
+xn).*BesselI(2+ ...\\n  \
+k,xn).*BesselK(1+k,xn))+(-1).*xn.*(b.*BesselI((-2)+k,b.*xn).*BesselI(k,xn).*(\
+k.*(4.*k+xn.^2).*BesselI(k,xn)+xn.*(2.*k+R.^2.*xn.^2).*BesselI(1+k,xn)).*\
+BesselK((-1)+k,xn)+k.*xn.^2.*BesselI((-2)+k,xn).*BesselI(1+k,xn).*(2.*b.*\
+BesselI(k,b.*xn).*BesselK(k,xn)+(-1).*BesselI(1+k,b.*xn).*BesselK(1+k,xn))+xn.\
+*BesselI(k,xn).*BesselI(1+k,xn).*(b.*BesselI(k,b.*xn).*(3.*(2.*k+R.^2.*xn.^2).\
+*BesselK((-1)+k,xn)+2.*k.*xn.*BesselK(k,xn))+(-1).*BesselI(1+k,b.*xn).*(2.*(2.\
+*k+R.^2.*xn.^2).*BesselK(k,xn)+k.*xn.*BesselK(1+k,xn)))+k.*BesselI(k,xn).^2.*(\
+8.*BesselI(1+k,b.*xn).*((-1).*k.*BesselK(k,xn)+xn.*BesselK(1+k,xn))+b.*\
+BesselI(k,b.*xn).*(3.*(4.*k+xn.^2).*BesselK((-1)+k,xn)+(-4).*xn.*((-2).*k.*\
+BesselK(k,xn)+xn.*BesselK(1+k,xn))))))+(-1).*R.^(-1).*xn.*(BesselI((-1)+k,R.*\
+xn)+BesselI(1+k,R.*xn)).*(BesselI((-1)+k,b.*xn).*(k.*xn.^3.*BesselI((-2)+k,xn)\
+.*BesselI(1+k,xn).*BesselK((-1)+k,xn)+xn.*BesselI(k,xn).*BesselI(1+k,xn).*(2.*\
+(2.*k.*xn+R.^2.*xn.^3).*BesselK((-2)+k,xn)+(4.*k.^2+2.*R.^2.*xn.^2+k.*(4+xn.^\
+2+2.* ...\\n  \
+R.^2.*xn.^2)).*BesselK((-1)+k,xn))+2.*k.*BesselI(k,xn).^2.*((4.*k.*xn+xn.^3).*\
+BesselK((-2)+k,xn)+(4.*k+4.*k.^2+xn.^2+3.*k.*xn.^2).*BesselK((-1)+k,xn)+(-1).*\
+xn.^3.*BesselK(k,xn)))+k.*xn.^2.*BesselI((-1)+k,xn).^2.*(b.*xn.*BesselI((-2)+\
+k,b.*xn).*BesselK((-1)+k,xn)+3.*b.*xn.*BesselI(k,b.*xn).*BesselK((-1)+k,xn)+8.\
+*b.*k.*BesselI(k,b.*xn).*BesselK(k,xn)+2.*xn.*BesselI(1+k,b.*xn).*BesselK(k,\
+xn)+(-2).*BesselI((-1)+k,b.*xn).*(xn.*BesselK((-2)+k,xn)+(1+3.*k).*BesselK((-\
+1)+k,xn)+(-2).*xn.*BesselK(k,xn))+(-8).*b.*xn.*BesselI(k,b.*xn).*BesselK(1+k,\
+xn)+16.*BesselI(1+k,b.*xn).*BesselK(1+k,xn)+4.*k.*BesselI(1+k,b.*xn).*BesselK(\
+1+k,xn))+xn.*BesselI((-1)+k,xn).*(6.*b.*k.*xn.*BesselI(k,xn).*BesselI(k,b.*xn)\
+.*BesselK((-1)+k,xn)+(-6).*b.*k.^2.*xn.*BesselI(k,xn).*BesselI(k,b.*xn).*\
+BesselK((-1)+k,xn)+(-3).*b.*k.*xn.^2.*BesselI(k,b.*xn).*BesselI(1+k,xn).*\
+BesselK((-1)+k,xn)+(-1).*b.*k.*xn.*BesselI((-2)+k,b.*xn).*(2.*((-1)+k).*\
+BesselI(k,xn)+xn.*BesselI(1+k,xn)).*BesselK((-1)+k,xn)+(-16).*b.*k.^3.*\
+BesselI(k,xn) ...\\n  \
+.*BesselI(k,b.*xn).*BesselK(k,xn)+(-2).*b.*k.*xn.^2.*BesselI(k,xn).*BesselI(k,\
+b.*xn).*BesselK(k,xn)+(-8).*b.*k.*xn.*BesselI(k,b.*xn).*BesselI(1+k,xn).*\
+BesselK(k,xn)+(-8).*b.*k.^2.*xn.*BesselI(k,b.*xn).*BesselI(1+k,xn).*BesselK(k,\
+xn)+(-8).*b.*R.^2.*xn.^3.*BesselI(k,b.*xn).*BesselI(1+k,xn).*BesselK(k,xn)+4.*\
+k.*xn.*BesselI(k,xn).*BesselI(1+k,b.*xn).*BesselK(k,xn)+2.*R.^2.*xn.^3.*\
+BesselI(k,xn).*BesselI(1+k,b.*xn).*BesselK(k,xn)+2.*k.*xn.^2.*BesselI(1+k,xn).\
+*BesselI(1+k,b.*xn).*BesselK(k,xn)+(-2).*b.*k.*xn.^2.*BesselI(k,b.*xn).*\
+BesselI(2+k,xn).*BesselK(k,xn)+BesselI((-1)+k,b.*xn).*(xn.*(k.*xn.*BesselI(2+\
+k,xn).*BesselK((-1)+k,xn)+2.*BesselI(1+k,xn).*(k.*xn.*BesselK((-2)+k,xn)+(3.*\
+k+3.*k.^2+2.*R.^2.*xn.^2).*BesselK((-1)+k,xn)))+BesselI(k,xn).*(4.*((-1)+k).*\
+k.*xn.*BesselK((-2)+k,xn)+k.*((-4)+12.*k.^2+xn.^2).*BesselK((-1)+k,xn)+2.*xn.*\
+(4.*k+(-2).*k.^2+R.^2.*xn.^2).*BesselK(k,xn)))+(-16).*b.*k.*xn.*BesselI(k,xn).\
+*BesselI(k,b.*xn).*BesselK(1+k,xn)+8.*b.*k.^2.*xn.*BesselI(k,xn).*BesselI(k,b.\
+*xn).* ...\\n  \
+BesselK(1+k,xn)+(-4).*b.*R.^2.*xn.^3.*BesselI(k,xn).*BesselI(k,b.*xn).*\
+BesselK(1+k,xn)+32.*k.*BesselI(k,xn).*BesselI(1+k,b.*xn).*BesselK(1+k,xn)+k.*\
+xn.^2.*BesselI(k,xn).*BesselI(1+k,b.*xn).*BesselK(1+k,xn)+8.*R.^2.*xn.^2.*\
+BesselI(k,xn).*BesselI(1+k,b.*xn).*BesselK(1+k,xn)+4.*k.*R.^2.*xn.^2.*BesselI(\
+k,xn).*BesselI(1+k,b.*xn).*BesselK(1+k,xn)+4.*k.*xn.*BesselI(1+k,xn).*BesselI(\
+1+k,b.*xn).*BesselK(1+k,xn)+4.*k.^2.*xn.*BesselI(1+k,xn).*BesselI(1+k,b.*xn).*\
+BesselK(1+k,xn)+4.*R.^2.*xn.^3.*BesselI(1+k,xn).*BesselI(1+k,b.*xn).*BesselK(\
+1+k,xn)+k.*xn.^2.*BesselI(1+k,b.*xn).*BesselI(2+k,xn).*BesselK(1+k,xn))+(-1).*\
+xn.*(b.*BesselI((-2)+k,b.*xn).*BesselI(k,xn).*(k.*(4.*k+xn.^2).*BesselI(k,xn)+\
+xn.*(2.*k+R.^2.*xn.^2).*BesselI(1+k,xn)).*BesselK((-1)+k,xn)+k.*xn.^2.*\
+BesselI((-2)+k,xn).*BesselI(1+k,xn).*(2.*b.*BesselI(k,b.*xn).*BesselK(k,xn)+(-\
+1).*BesselI(1+k,b.*xn).*BesselK(1+k,xn))+xn.*BesselI(k,xn).*BesselI(1+k,xn).*(\
+b.*BesselI(k,b.*xn).*(3.*(2.*k+R.^2.*xn.^2).*BesselK((-1)+k,xn)+2.*k.*xn.*\
+BesselK(k, ...\\n  \
+xn))+(-1).*BesselI(1+k,b.*xn).*(2.*(2.*k+R.^2.*xn.^2).*BesselK(k,xn)+k.*xn.*\
+BesselK(1+k,xn)))+k.*BesselI(k,xn).^2.*(8.*BesselI(1+k,b.*xn).*((-1).*k.*\
+BesselK(k,xn)+xn.*BesselK(1+k,xn))+b.*BesselI(k,b.*xn).*(3.*(4.*k+xn.^2).*\
+BesselK((-1)+k,xn)+(-4).*xn.*((-2).*k.*BesselK(k,xn)+xn.*BesselK(1+k,xn)))))))\
+)+2.*exp(1).^(z.*Im(yn)).*Im(exp(1).^(sqrt(-1).*z.*Re(xn)).*(BesselI((-1)+k,R.\
+*xn).*((-1).*BesselI(k,xn).*BesselI(1+k,xn).*(b.*xn.*(BesselI((-2)+k,b.*xn)+3.\
+*BesselI(k,b.*xn)).*BesselK((-1)+k,xn)+BesselI((-1)+k,b.*xn).*((-2).*xn.*\
+BesselK((-2)+k,xn)+(-2).*(1+k).*BesselK((-1)+k,xn))+(-2).*xn.*BesselI(1+k,b.*\
+xn).*BesselK(k,xn))+xn.^2.*((BesselI((-2)+k,xn)+BesselI(k,xn)).*BesselI(1+k,\
+xn)+BesselI((-1)+k,xn).*(BesselI(k,xn)+BesselI(2+k,xn))).*(BesselI((-1)+k,b.*\
+xn).*BesselK((-1)+k,xn)+(-2).*b.*BesselI(k,b.*xn).*BesselK(k,xn)+BesselI(1+k,\
+b.*xn).*BesselK(1+k,xn))+(-1).*(xn.*BesselI((-1)+k,xn)+(-1).*((-1)+k).*\
+BesselI(k,xn)).*(BesselI(1+k,xn).*(b.*xn.*(BesselI((-2)+k,b.*xn)+3.*BesselI(k,\
+b.*xn)).* ...\\n  \
+BesselK((-1)+k,xn)+BesselI((-1)+k,b.*xn).*((-2).*xn.*BesselK((-2)+k,xn)+(-2).*\
+(1+k).*BesselK((-1)+k,xn))+(-2).*xn.*BesselI(1+k,b.*xn).*BesselK(k,xn))+2.*\
+BesselI((-1)+k,xn).*((-1).*xn.*(BesselI((-1)+k,b.*xn)+BesselI(1+k,b.*xn)).*\
+BesselK(k,xn)+2.*(b.*xn.*BesselI(k,b.*xn)+(-1).*(2+k).*BesselI(1+k,b.*xn)).*\
+BesselK(1+k,xn)))+2.*BesselI((-1)+k,xn).*(xn.*BesselI((-1)+k,b.*xn).*(2.*\
+BesselI(1+k,xn).*BesselK((-1)+k,xn)+BesselI(k,xn).*BesselK(k,xn))+(-2).*b.*xn.\
+*BesselI(k,b.*xn).*(2.*BesselI(1+k,xn).*BesselK(k,xn)+BesselI(k,xn).*BesselK(\
+1+k,xn))+BesselI(1+k,b.*xn).*(2.*xn.*BesselI(1+k,xn).*BesselK(1+k,xn)+BesselI(\
+k,xn).*(xn.*BesselK(k,xn)+2.*(2+k).*BesselK(1+k,xn)))))+(-1).*R.^(-1).*xn.^(-\
+2).*BesselI(k,R.*xn).*(BesselI((-1)+k,b.*xn).*(k.*xn.^3.*BesselI((-2)+k,xn).*\
+BesselI(1+k,xn).*BesselK((-1)+k,xn)+xn.*BesselI(k,xn).*BesselI(1+k,xn).*(2.*(\
+2.*k.*xn+R.^2.*xn.^3).*BesselK((-2)+k,xn)+(4.*k.^2+2.*R.^2.*xn.^2+k.*(4+xn.^2+\
+2.*R.^2.*xn.^2)).*BesselK((-1)+k,xn))+2.*k.*BesselI(k,xn).^2.*((4.*k.*xn+xn.^\
+3).* ...\\n  \
+BesselK((-2)+k,xn)+(4.*k.^2+xn.^2+k.*(4+3.*xn.^2)).*BesselK((-1)+k,xn)+(-1).*\
+xn.^3.*BesselK(k,xn)))+k.*xn.^2.*BesselI((-1)+k,xn).^2.*(b.*xn.*BesselI((-2)+\
+k,b.*xn).*BesselK((-1)+k,xn)+3.*b.*xn.*BesselI(k,b.*xn).*BesselK((-1)+k,xn)+8.\
+*b.*k.*BesselI(k,b.*xn).*BesselK(k,xn)+2.*xn.*BesselI(1+k,b.*xn).*BesselK(k,\
+xn)+(-2).*BesselI((-1)+k,b.*xn).*(xn.*BesselK((-2)+k,xn)+(1+3.*k).*BesselK((-\
+1)+k,xn)+(-2).*xn.*BesselK(k,xn))+(-8).*b.*xn.*BesselI(k,b.*xn).*BesselK(1+k,\
+xn)+16.*BesselI(1+k,b.*xn).*BesselK(1+k,xn)+4.*k.*BesselI(1+k,b.*xn).*BesselK(\
+1+k,xn))+xn.*BesselI((-1)+k,xn).*(6.*b.*k.*xn.*BesselI(k,xn).*BesselI(k,b.*xn)\
+.*BesselK((-1)+k,xn)+(-6).*b.*k.^2.*xn.*BesselI(k,xn).*BesselI(k,b.*xn).*\
+BesselK((-1)+k,xn)+(-3).*b.*k.*xn.^2.*BesselI(k,b.*xn).*BesselI(1+k,xn).*\
+BesselK((-1)+k,xn)+(-1).*b.*k.*xn.*BesselI((-2)+k,b.*xn).*(2.*((-1)+k).*\
+BesselI(k,xn)+xn.*BesselI(1+k,xn)).*BesselK((-1)+k,xn)+(-16).*b.*k.^3.*\
+BesselI(k,xn).*BesselI(k,b.*xn).*BesselK(k,xn)+(-2).*b.*k.*xn.^2.*BesselI(k,\
+xn).*BesselI(k, ...\\n  \
+b.*xn).*BesselK(k,xn)+(-8).*b.*k.*xn.*BesselI(k,b.*xn).*BesselI(1+k,xn).*\
+BesselK(k,xn)+(-8).*b.*k.^2.*xn.*BesselI(k,b.*xn).*BesselI(1+k,xn).*BesselK(k,\
+xn)+(-8).*b.*R.^2.*xn.^3.*BesselI(k,b.*xn).*BesselI(1+k,xn).*BesselK(k,xn)+4.*\
+k.*xn.*BesselI(k,xn).*BesselI(1+k,b.*xn).*BesselK(k,xn)+2.*R.^2.*xn.^3.*\
+BesselI(k,xn).*BesselI(1+k,b.*xn).*BesselK(k,xn)+2.*k.*xn.^2.*BesselI(1+k,xn).\
+*BesselI(1+k,b.*xn).*BesselK(k,xn)+(-2).*b.*k.*xn.^2.*BesselI(k,b.*xn).*\
+BesselI(2+k,xn).*BesselK(k,xn)+BesselI((-1)+k,b.*xn).*(xn.*(k.*xn.*BesselI(2+\
+k,xn).*BesselK((-1)+k,xn)+2.*BesselI(1+k,xn).*(k.*xn.*BesselK((-2)+k,xn)+(3.*\
+k+3.*k.^2+2.*R.^2.*xn.^2).*BesselK((-1)+k,xn)))+BesselI(k,xn).*(4.*((-1)+k).*\
+k.*xn.*BesselK((-2)+k,xn)+k.*((-4)+12.*k.^2+xn.^2).*BesselK((-1)+k,xn)+2.*xn.*\
+(4.*k+(-2).*k.^2+R.^2.*xn.^2).*BesselK(k,xn)))+(-16).*b.*k.*xn.*BesselI(k,xn).\
+*BesselI(k,b.*xn).*BesselK(1+k,xn)+8.*b.*k.^2.*xn.*BesselI(k,xn).*BesselI(k,b.\
+*xn).*BesselK(1+k,xn)+(-4).*b.*R.^2.*xn.^3.*BesselI(k,xn).*BesselI(k,b.*xn).* \
+...\\n  BesselK(1+k,xn)+32.*k.*BesselI(k,xn).*BesselI(1+k,b.*xn).*BesselK(1+k,\
+xn)+k.*xn.^2.*BesselI(k,xn).*BesselI(1+k,b.*xn).*BesselK(1+k,xn)+8.*R.^2.*xn.^\
+2.*BesselI(k,xn).*BesselI(1+k,b.*xn).*BesselK(1+k,xn)+4.*k.*R.^2.*xn.^2.*\
+BesselI(k,xn).*BesselI(1+k,b.*xn).*BesselK(1+k,xn)+4.*k.*xn.*BesselI(1+k,xn).*\
+BesselI(1+k,b.*xn).*BesselK(1+k,xn)+4.*k.^2.*xn.*BesselI(1+k,xn).*BesselI(1+k,\
+b.*xn).*BesselK(1+k,xn)+4.*R.^2.*xn.^3.*BesselI(1+k,xn).*BesselI(1+k,b.*xn).*\
+BesselK(1+k,xn)+k.*xn.^2.*BesselI(1+k,b.*xn).*BesselI(2+k,xn).*BesselK(1+k,xn)\
+)+(-1).*xn.*(b.*BesselI((-2)+k,b.*xn).*BesselI(k,xn).*(k.*(4.*k+xn.^2).*\
+BesselI(k,xn)+xn.*(2.*k+R.^2.*xn.^2).*BesselI(1+k,xn)).*BesselK((-1)+k,xn)+k.*\
+xn.^2.*BesselI((-2)+k,xn).*BesselI(1+k,xn).*(2.*b.*BesselI(k,b.*xn).*BesselK(\
+k,xn)+(-1).*BesselI(1+k,b.*xn).*BesselK(1+k,xn))+xn.*BesselI(k,xn).*BesselI(1+\
+k,xn).*(b.*BesselI(k,b.*xn).*(3.*(2.*k+R.^2.*xn.^2).*BesselK((-1)+k,xn)+2.*k.*\
+xn.*BesselK(k,xn))+(-1).*BesselI(1+k,b.*xn).*(2.*(2.*k+R.^2.*xn.^2).*BesselK(\
+k,xn)+ ...\\n  \
+k.*xn.*BesselK(1+k,xn)))+k.*BesselI(k,xn).^2.*(8.*BesselI(1+k,b.*xn).*((-1).*\
+k.*BesselK(k,xn)+xn.*BesselK(1+k,xn))+b.*BesselI(k,b.*xn).*(3.*(4.*k+xn.^2).*\
+BesselK((-1)+k,xn)+(-4).*xn.*((-2).*k.*BesselK(k,xn)+xn.*BesselK(1+k,xn)))))))\
+)+2.*exp(1).^(z.*Im(yn)).*k.*Im(exp(1).^(sqrt(-1).*z.*Re(xn)).*xn.^(-2).*((-1)\
+.*k.*R.^(-1).*BesselI(k,R.*xn).*(BesselI((-1)+k,b.*xn).*(xn.^3.*BesselI((-2)+\
+k,xn).*BesselI(1+k,xn).*BesselK((-1)+k,xn)+xn.*BesselI(k,xn).*BesselI(1+k,xn).\
+*(4.*xn.*BesselK((-2)+k,xn)+(4+4.*k+xn.^2).*BesselK((-1)+k,xn))+2.*BesselI(k,\
+xn).^2.*((4.*k.*xn+xn.^3).*BesselK((-2)+k,xn)+(4.*k+4.*k.^2+xn.^2+3.*k.*xn.^2)\
+.*BesselK((-1)+k,xn)+(-1).*xn.^3.*BesselK(k,xn)))+xn.^2.*BesselI((-1)+k,xn).^\
+2.*(b.*xn.*BesselI((-2)+k,b.*xn).*BesselK((-1)+k,xn)+3.*b.*xn.*BesselI(k,b.*\
+xn).*BesselK((-1)+k,xn)+8.*b.*k.*BesselI(k,b.*xn).*BesselK(k,xn)+2.*xn.*\
+BesselI(1+k,b.*xn).*BesselK(k,xn)+(-2).*BesselI((-1)+k,b.*xn).*(xn.*BesselK((-\
+2)+k,xn)+(1+3.*k).*BesselK((-1)+k,xn)+(-2).*xn.*BesselK(k,xn))+(-8).*b.*xn.* \
+...\\n  BesselI(k,b.*xn).*BesselK(1+k,xn)+16.*BesselI(1+k,b.*xn).*BesselK(1+k,\
+xn)+4.*k.*BesselI(1+k,b.*xn).*BesselK(1+k,xn))+xn.*BesselI((-1)+k,xn).*(6.*b.*\
+xn.*BesselI(k,xn).*BesselI(k,b.*xn).*BesselK((-1)+k,xn)+(-6).*b.*k.*xn.*\
+BesselI(k,xn).*BesselI(k,b.*xn).*BesselK((-1)+k,xn)+(-3).*b.*xn.^2.*BesselI(k,\
+b.*xn).*BesselI(1+k,xn).*BesselK((-1)+k,xn)+(-1).*b.*xn.*BesselI((-2)+k,b.*xn)\
+.*(2.*((-1)+k).*BesselI(k,xn)+xn.*BesselI(1+k,xn)).*BesselK((-1)+k,xn)+(-16).*\
+b.*k.^2.*BesselI(k,xn).*BesselI(k,b.*xn).*BesselK(k,xn)+(-2).*b.*xn.^2.*\
+BesselI(k,xn).*BesselI(k,b.*xn).*BesselK(k,xn)+(-8).*b.*xn.*BesselI(k,b.*xn).*\
+BesselI(1+k,xn).*BesselK(k,xn)+(-8).*b.*k.*xn.*BesselI(k,b.*xn).*BesselI(1+k,\
+xn).*BesselK(k,xn)+4.*xn.*BesselI(k,xn).*BesselI(1+k,b.*xn).*BesselK(k,xn)+2.*\
+xn.^2.*BesselI(1+k,xn).*BesselI(1+k,b.*xn).*BesselK(k,xn)+(-2).*b.*xn.^2.*\
+BesselI(k,b.*xn).*BesselI(2+k,xn).*BesselK(k,xn)+BesselI((-1)+k,b.*xn).*(xn.*(\
+xn.*BesselI(2+k,xn).*BesselK((-1)+k,xn)+2.*BesselI(1+k,xn).*(xn.*BesselK((-2)+\
+k,xn)+3.*( ...\\n  \
+1+k).*BesselK((-1)+k,xn)))+BesselI(k,xn).*(4.*((-1)+k).*xn.*BesselK((-2)+k,xn)\
++((-4)+12.*k.^2+xn.^2).*BesselK((-1)+k,xn)+(-4).*((-2)+k).*xn.*BesselK(k,xn)))\
++(-16).*b.*xn.*BesselI(k,xn).*BesselI(k,b.*xn).*BesselK(1+k,xn)+8.*b.*k.*xn.*\
+BesselI(k,xn).*BesselI(k,b.*xn).*BesselK(1+k,xn)+32.*BesselI(k,xn).*BesselI(1+\
+k,b.*xn).*BesselK(1+k,xn)+xn.^2.*BesselI(k,xn).*BesselI(1+k,b.*xn).*BesselK(1+\
+k,xn)+4.*xn.*BesselI(1+k,xn).*BesselI(1+k,b.*xn).*BesselK(1+k,xn)+4.*k.*xn.*\
+BesselI(1+k,xn).*BesselI(1+k,b.*xn).*BesselK(1+k,xn)+xn.^2.*BesselI(1+k,b.*xn)\
+.*BesselI(2+k,xn).*BesselK(1+k,xn))+(-1).*xn.*(b.*BesselI((-2)+k,b.*xn).*\
+BesselI(k,xn).*((4.*k+xn.^2).*BesselI(k,xn)+2.*xn.*BesselI(1+k,xn)).*BesselK((\
+-1)+k,xn)+xn.^2.*BesselI((-2)+k,xn).*BesselI(1+k,xn).*(2.*b.*BesselI(k,b.*xn).\
+*BesselK(k,xn)+(-1).*BesselI(1+k,b.*xn).*BesselK(1+k,xn))+xn.*BesselI(k,xn).*\
+BesselI(1+k,xn).*(2.*b.*BesselI(k,b.*xn).*(3.*BesselK((-1)+k,xn)+xn.*BesselK(\
+k,xn))+(-1).*BesselI(1+k,b.*xn).*(4.*BesselK(k,xn)+xn.*BesselK(1+k,xn)))+ ...\
+\\n  BesselI(k,xn).^2.*(8.*BesselI(1+k,b.*xn).*((-1).*k.*BesselK(k,xn)+xn.*\
+BesselK(1+k,xn))+b.*BesselI(k,b.*xn).*(3.*(4.*k+xn.^2).*BesselK((-1)+k,xn)+(-\
+4).*xn.*((-2).*k.*BesselK(k,xn)+xn.*BesselK(1+k,xn))))))+xn.*BesselI((-1)+k,R.\
+*xn).*(xn.^2.*BesselI((-1)+k,xn).^2.*(b.*xn.*BesselI((-2)+k,b.*xn).*BesselK((-\
+1)+k,xn)+3.*b.*xn.*BesselI(k,b.*xn).*BesselK((-1)+k,xn)+8.*b.*k.*BesselI(k,b.*\
+xn).*BesselK(k,xn)+(-2).*BesselI((-1)+k,b.*xn).*(xn.*BesselK((-2)+k,xn)+(1+3.*\
+k).*BesselK((-1)+k,xn)+(-1).*xn.*BesselK(k,xn))+(-4).*b.*xn.*BesselI(k,b.*xn).\
+*BesselK(1+k,xn)+8.*BesselI(1+k,b.*xn).*BesselK(1+k,xn))+2.*xn.*BesselI((-1)+\
+k,xn).*((-1).*b.*((-1)+k).*xn.*BesselI((-2)+k,b.*xn).*BesselI(k,xn).*BesselK((\
+-1)+k,xn)+3.*b.*xn.*BesselI(k,xn).*BesselI(k,b.*xn).*BesselK((-1)+k,xn)+(-3).*\
+b.*k.*xn.*BesselI(k,xn).*BesselI(k,b.*xn).*BesselK((-1)+k,xn)+(-8).*b.*k.^2.*\
+BesselI(k,xn).*BesselI(k,b.*xn).*BesselK(k,xn)+(-4).*b.*k.*xn.*BesselI(k,b.*\
+xn).*BesselI(1+k,xn).*BesselK(k,xn)+k.*xn.*BesselI(k,xn).*BesselI(1+k,b.*xn) \
+...\\n  .*BesselK(k,xn)+BesselI((-1)+k,b.*xn).*(2.*k.*xn.*BesselI(1+k,xn).*\
+BesselK((-1)+k,xn)+BesselI(k,xn).*(2.*((-1)+k).*xn.*BesselK((-2)+k,xn)+((-2)+\
+6.*k.^2).*BesselK((-1)+k,xn)+(-1).*((-2)+k).*xn.*BesselK(k,xn)))+(-4).*b.*xn.*\
+BesselI(k,xn).*BesselI(k,b.*xn).*BesselK(1+k,xn)+2.*b.*k.*xn.*BesselI(k,xn).*\
+BesselI(k,b.*xn).*BesselK(1+k,xn)+8.*BesselI(k,xn).*BesselI(1+k,b.*xn).*\
+BesselK(1+k,xn)+2.*k.^2.*BesselI(k,xn).*BesselI(1+k,b.*xn).*BesselK(1+k,xn)+2.\
+*k.*xn.*BesselI(1+k,xn).*BesselI(1+k,b.*xn).*BesselK(1+k,xn))+BesselI(k,xn).*(\
+2.*BesselI((-1)+k,b.*xn).*(k.*xn.*BesselI(1+k,xn).*(xn.*BesselK((-2)+k,xn)+(1+\
+k).*BesselK((-1)+k,xn))+BesselI(k,xn).*((4.*k.*xn+xn.^3).*BesselK((-2)+k,xn)+(\
+4.*k+4.*k.^2+xn.^2+3.*k.*xn.^2).*BesselK((-1)+k,xn)+(-1).*xn.^3.*BesselK(k,xn)\
+))+(-1).*xn.*(b.*BesselI((-2)+k,b.*xn).*((4.*k+xn.^2).*BesselI(k,xn)+k.*xn.*\
+BesselI(1+k,xn)).*BesselK((-1)+k,xn)+k.*xn.*BesselI(1+k,xn).*(3.*b.*BesselI(k,\
+b.*xn).*BesselK((-1)+k,xn)+(-2).*BesselI(1+k,b.*xn).*BesselK(k,xn))+BesselI(k,\
+xn).*( ...\\n  \
+8.*BesselI(1+k,b.*xn).*((-1).*k.*BesselK(k,xn)+xn.*BesselK(1+k,xn))+b.*\
+BesselI(k,b.*xn).*(3.*(4.*k+xn.^2).*BesselK((-1)+k,xn)+(-4).*xn.*((-2).*k.*\
+BesselK(k,xn)+xn.*BesselK(1+k,xn)))))))))+exp(1).^(z.*Im(xn)).*Im(BesselI((-1)\
++k,R.*yn).*((-1).*BesselI(k,yn).*BesselI(1+k,yn).*(b.*yn.*(BesselI((-2)+k,b.*\
+yn)+3.*BesselI(k,b.*yn)).*BesselK((-1)+k,yn)+BesselI((-1)+k,b.*yn).*((-2).*yn.\
+*BesselK((-2)+k,yn)+(-2).*(1+k).*BesselK((-1)+k,yn))+(-2).*yn.*BesselI(1+k,b.*\
+yn).*BesselK(k,yn))+yn.^2.*((BesselI((-2)+k,yn)+BesselI(k,yn)).*BesselI(1+k,\
+yn)+BesselI((-1)+k,yn).*(BesselI(k,yn)+BesselI(2+k,yn))).*(BesselI((-1)+k,b.*\
+yn).*BesselK((-1)+k,yn)+(-2).*b.*BesselI(k,b.*yn).*BesselK(k,yn)+BesselI(1+k,\
+b.*yn).*BesselK(1+k,yn))+(-1).*(yn.*BesselI((-1)+k,yn)+BesselI(k,yn)+(-1).*k.*\
+BesselI(k,yn)).*(BesselI(1+k,yn).*(b.*yn.*(BesselI((-2)+k,b.*yn)+3.*BesselI(k,\
+b.*yn)).*BesselK((-1)+k,yn)+BesselI((-1)+k,b.*yn).*((-2).*yn.*BesselK((-2)+k,\
+yn)+(-2).*(1+k).*BesselK((-1)+k,yn))+(-2).*yn.*BesselI(1+k,b.*yn).*BesselK(k,\
+yn) ...\\n  \
+)+2.*BesselI((-1)+k,yn).*((-1).*yn.*(BesselI((-1)+k,b.*yn)+BesselI(1+k,b.*yn))\
+.*BesselK(k,yn)+2.*(b.*yn.*BesselI(k,b.*yn)+(-1).*(2+k).*BesselI(1+k,b.*yn)).*\
+BesselK(1+k,yn)))+2.*BesselI((-1)+k,yn).*(yn.*BesselI((-1)+k,b.*yn).*(2.*\
+BesselI(1+k,yn).*BesselK((-1)+k,yn)+BesselI(k,yn).*BesselK(k,yn))+(-2).*b.*yn.\
+*BesselI(k,b.*yn).*(2.*BesselI(1+k,yn).*BesselK(k,yn)+BesselI(k,yn).*BesselK(\
+1+k,yn))+BesselI(1+k,b.*yn).*(2.*yn.*BesselI(1+k,yn).*BesselK(1+k,yn)+BesselI(\
+k,yn).*(yn.*BesselK(k,yn)+2.*(2+k).*BesselK(1+k,yn)))))+(-1).*R.^(-1).*yn.^(-\
+2).*BesselI(k,R.*yn).*(BesselI((-1)+k,b.*yn).*(k.*yn.^3.*BesselI((-2)+k,yn).*\
+BesselI(1+k,yn).*BesselK((-1)+k,yn)+yn.*BesselI(k,yn).*BesselI(1+k,yn).*(2.*(\
+2.*k.*yn+R.^2.*yn.^3).*BesselK((-2)+k,yn)+(4.*k.^2+2.*R.^2.*yn.^2+k.*(4+yn.^2+\
+2.*R.^2.*yn.^2)).*BesselK((-1)+k,yn))+2.*k.*BesselI(k,yn).^2.*((4.*k.*yn+yn.^\
+3).*BesselK((-2)+k,yn)+(4.*k+4.*k.^2+yn.^2+3.*k.*yn.^2).*BesselK((-1)+k,yn)+(-\
+1).*yn.^3.*BesselK(k,yn)))+k.*yn.^2.*BesselI((-1)+k,yn).^2.*(b.*yn.* ...\\n  \
+BesselI((-2)+k,b.*yn).*BesselK((-1)+k,yn)+3.*b.*yn.*BesselI(k,b.*yn).*BesselK(\
+(-1)+k,yn)+8.*b.*k.*BesselI(k,b.*yn).*BesselK(k,yn)+2.*yn.*BesselI(1+k,b.*yn).\
+*BesselK(k,yn)+(-2).*BesselI((-1)+k,b.*yn).*(yn.*BesselK((-2)+k,yn)+(1+3.*k).*\
+BesselK((-1)+k,yn)+(-2).*yn.*BesselK(k,yn))+(-8).*b.*yn.*BesselI(k,b.*yn).*\
+BesselK(1+k,yn)+16.*BesselI(1+k,b.*yn).*BesselK(1+k,yn)+4.*k.*BesselI(1+k,b.*\
+yn).*BesselK(1+k,yn))+yn.*BesselI((-1)+k,yn).*(6.*b.*k.*yn.*BesselI(k,yn).*\
+BesselI(k,b.*yn).*BesselK((-1)+k,yn)+(-6).*b.*k.^2.*yn.*BesselI(k,yn).*\
+BesselI(k,b.*yn).*BesselK((-1)+k,yn)+(-3).*b.*k.*yn.^2.*BesselI(k,b.*yn).*\
+BesselI(1+k,yn).*BesselK((-1)+k,yn)+(-1).*b.*k.*yn.*BesselI((-2)+k,b.*yn).*(2.\
+*((-1)+k).*BesselI(k,yn)+yn.*BesselI(1+k,yn)).*BesselK((-1)+k,yn)+(-16).*b.*k.\
+^3.*BesselI(k,yn).*BesselI(k,b.*yn).*BesselK(k,yn)+(-2).*b.*k.*yn.^2.*BesselI(\
+k,yn).*BesselI(k,b.*yn).*BesselK(k,yn)+(-8).*b.*k.*yn.*BesselI(k,b.*yn).*\
+BesselI(1+k,yn).*BesselK(k,yn)+(-8).*b.*k.^2.*yn.*BesselI(k,b.*yn).*BesselI(1+\
+k,yn).* ...\\n  \
+BesselK(k,yn)+(-8).*b.*R.^2.*yn.^3.*BesselI(k,b.*yn).*BesselI(1+k,yn).*\
+BesselK(k,yn)+4.*k.*yn.*BesselI(k,yn).*BesselI(1+k,b.*yn).*BesselK(k,yn)+2.*R.\
+^2.*yn.^3.*BesselI(k,yn).*BesselI(1+k,b.*yn).*BesselK(k,yn)+2.*k.*yn.^2.*\
+BesselI(1+k,yn).*BesselI(1+k,b.*yn).*BesselK(k,yn)+(-2).*b.*k.*yn.^2.*BesselI(\
+k,b.*yn).*BesselI(2+k,yn).*BesselK(k,yn)+BesselI((-1)+k,b.*yn).*(yn.*(k.*yn.*\
+BesselI(2+k,yn).*BesselK((-1)+k,yn)+2.*BesselI(1+k,yn).*(k.*yn.*BesselK((-2)+\
+k,yn)+(3.*k+3.*k.^2+2.*R.^2.*yn.^2).*BesselK((-1)+k,yn)))+BesselI(k,yn).*(4.*(\
+(-1)+k).*k.*yn.*BesselK((-2)+k,yn)+k.*((-4)+12.*k.^2+yn.^2).*BesselK((-1)+k,\
+yn)+2.*yn.*(4.*k+(-2).*k.^2+R.^2.*yn.^2).*BesselK(k,yn)))+(-16).*b.*k.*yn.*\
+BesselI(k,yn).*BesselI(k,b.*yn).*BesselK(1+k,yn)+8.*b.*k.^2.*yn.*BesselI(k,yn)\
+.*BesselI(k,b.*yn).*BesselK(1+k,yn)+(-4).*b.*R.^2.*yn.^3.*BesselI(k,yn).*\
+BesselI(k,b.*yn).*BesselK(1+k,yn)+32.*k.*BesselI(k,yn).*BesselI(1+k,b.*yn).*\
+BesselK(1+k,yn)+k.*yn.^2.*BesselI(k,yn).*BesselI(1+k,b.*yn).*BesselK(1+k,yn)+\
+8.*R.^2.* ...\\n  \
+yn.^2.*BesselI(k,yn).*BesselI(1+k,b.*yn).*BesselK(1+k,yn)+4.*k.*R.^2.*yn.^2.*\
+BesselI(k,yn).*BesselI(1+k,b.*yn).*BesselK(1+k,yn)+4.*k.*yn.*BesselI(1+k,yn).*\
+BesselI(1+k,b.*yn).*BesselK(1+k,yn)+4.*k.^2.*yn.*BesselI(1+k,yn).*BesselI(1+k,\
+b.*yn).*BesselK(1+k,yn)+4.*R.^2.*yn.^3.*BesselI(1+k,yn).*BesselI(1+k,b.*yn).*\
+BesselK(1+k,yn)+k.*yn.^2.*BesselI(1+k,b.*yn).*BesselI(2+k,yn).*BesselK(1+k,yn)\
+)+(-1).*yn.*(b.*BesselI((-2)+k,b.*yn).*BesselI(k,yn).*(k.*(4.*k+yn.^2).*\
+BesselI(k,yn)+yn.*(2.*k+R.^2.*yn.^2).*BesselI(1+k,yn)).*BesselK((-1)+k,yn)+k.*\
+yn.^2.*BesselI((-2)+k,yn).*BesselI(1+k,yn).*(2.*b.*BesselI(k,b.*yn).*BesselK(\
+k,yn)+(-1).*BesselI(1+k,b.*yn).*BesselK(1+k,yn))+yn.*BesselI(k,yn).*BesselI(1+\
+k,yn).*(b.*BesselI(k,b.*yn).*(3.*(2.*k+R.^2.*yn.^2).*BesselK((-1)+k,yn)+2.*k.*\
+yn.*BesselK(k,yn))+(-1).*BesselI(1+k,b.*yn).*(2.*(2.*k+R.^2.*yn.^2).*BesselK(\
+k,yn)+k.*yn.*BesselK(1+k,yn)))+k.*BesselI(k,yn).^2.*(8.*BesselI(1+k,b.*yn).*((\
+-1).*k.*BesselK(k,yn)+yn.*BesselK(1+k,yn))+b.*BesselI(k,b.*yn).*(3.*(4.*k+ \
+...\\n  yn.^2).*BesselK((-1)+k,yn)+(-4).*yn.*((-2).*k.*BesselK(k,yn)+yn.*\
+BesselK(1+k,yn)))))))+(1/2).*exp(1).^(z.*Im(xn)).*R.*Im(yn.^(-2).*((-4).*yn.^\
+3.*BesselI(k,R.*yn).*((-1).*b.*yn.*BesselI((-2)+k,b.*yn).*BesselI(k,yn).*\
+BesselI(1+k,yn).*BesselK((-1)+k,yn)+2.*BesselI((-1)+k,b.*yn).*BesselI(k,yn).*\
+BesselI(1+k,yn).*(yn.*BesselK((-2)+k,yn)+(1+k).*BesselK((-1)+k,yn))+(-1).*yn.*\
+BesselI(k,yn).*BesselI(1+k,yn).*(3.*b.*BesselI(k,b.*yn).*BesselK((-1)+k,yn)+(-\
+2).*BesselI(1+k,b.*yn).*BesselK(k,yn))+2.*BesselI((-1)+k,yn).*(yn.*BesselI((-\
+1)+k,b.*yn).*(2.*BesselI(1+k,yn).*BesselK((-1)+k,yn)+BesselI(k,yn).*BesselK(k,\
+yn))+(-2).*b.*yn.*BesselI(k,b.*yn).*(2.*BesselI(1+k,yn).*BesselK(k,yn)+\
+BesselI(k,yn).*BesselK(1+k,yn))+BesselI(1+k,b.*yn).*(2.*yn.*BesselI(1+k,yn).*\
+BesselK(1+k,yn)+BesselI(k,yn).*(yn.*BesselK(k,yn)+2.*(2+k).*BesselK(1+k,yn))))\
+)+yn.^3.*(BesselI((-2)+k,R.*yn)+BesselI(k,R.*yn)).*((-1).*BesselI(k,yn).*\
+BesselI(1+k,yn).*(b.*yn.*(BesselI((-2)+k,b.*yn)+3.*BesselI(k,b.*yn)).*BesselK(\
+(-1)+k,yn)+BesselI(( ...\\n  \
+-1)+k,b.*yn).*((-2).*yn.*BesselK((-2)+k,yn)+(-2).*(1+k).*BesselK((-1)+k,yn))+(\
+-2).*yn.*BesselI(1+k,b.*yn).*BesselK(k,yn))+yn.^2.*((BesselI((-2)+k,yn)+\
+BesselI(k,yn)).*BesselI(1+k,yn)+BesselI((-1)+k,yn).*(BesselI(k,yn)+BesselI(2+\
+k,yn))).*(BesselI((-1)+k,b.*yn).*BesselK((-1)+k,yn)+(-2).*b.*BesselI(k,b.*yn).\
+*BesselK(k,yn)+BesselI(1+k,b.*yn).*BesselK(1+k,yn))+(-1).*(yn.*BesselI((-1)+k,\
+yn)+BesselI(k,yn)+(-1).*k.*BesselI(k,yn)).*(BesselI(1+k,yn).*(b.*yn.*(BesselI(\
+(-2)+k,b.*yn)+3.*BesselI(k,b.*yn)).*BesselK((-1)+k,yn)+BesselI((-1)+k,b.*yn).*\
+((-2).*yn.*BesselK((-2)+k,yn)+(-2).*(1+k).*BesselK((-1)+k,yn))+(-2).*yn.*\
+BesselI(1+k,b.*yn).*BesselK(k,yn))+2.*BesselI((-1)+k,yn).*((-1).*yn.*(BesselI(\
+(-1)+k,b.*yn)+BesselI(1+k,b.*yn)).*BesselK(k,yn)+2.*(b.*yn.*BesselI(k,b.*yn)+(\
+-1).*(2+k).*BesselI(1+k,b.*yn)).*BesselK(1+k,yn)))+2.*BesselI((-1)+k,yn).*(yn.\
+*BesselI((-1)+k,b.*yn).*(2.*BesselI(1+k,yn).*BesselK((-1)+k,yn)+BesselI(k,yn).\
+*BesselK(k,yn))+(-2).*b.*yn.*BesselI(k,b.*yn).*(2.*BesselI(1+k,yn).*BesselK( \
+...\\n  k,yn)+BesselI(k,yn).*BesselK(1+k,yn))+BesselI(1+k,b.*yn).*(2.*yn.*\
+BesselI(1+k,yn).*BesselK(1+k,yn)+BesselI(k,yn).*(yn.*BesselK(k,yn)+2.*(2+k).*\
+BesselK(1+k,yn)))))+2.*R.^(-2).*BesselI(k,R.*yn).*(BesselI((-1)+k,b.*yn).*(k.*\
+yn.^3.*BesselI((-2)+k,yn).*BesselI(1+k,yn).*BesselK((-1)+k,yn)+yn.*BesselI(k,\
+yn).*BesselI(1+k,yn).*(2.*(2.*k.*yn+R.^2.*yn.^3).*BesselK((-2)+k,yn)+(4.*k.^2+\
+2.*R.^2.*yn.^2+k.*(4+yn.^2+2.*R.^2.*yn.^2)).*BesselK((-1)+k,yn))+2.*k.*\
+BesselI(k,yn).^2.*((4.*k.*yn+yn.^3).*BesselK((-2)+k,yn)+(4.*k+4.*k.^2+yn.^2+3.\
+*k.*yn.^2).*BesselK((-1)+k,yn)+(-1).*yn.^3.*BesselK(k,yn)))+k.*yn.^2.*BesselI(\
+(-1)+k,yn).^2.*(b.*yn.*BesselI((-2)+k,b.*yn).*BesselK((-1)+k,yn)+3.*b.*yn.*\
+BesselI(k,b.*yn).*BesselK((-1)+k,yn)+8.*b.*k.*BesselI(k,b.*yn).*BesselK(k,yn)+\
+2.*yn.*BesselI(1+k,b.*yn).*BesselK(k,yn)+(-2).*BesselI((-1)+k,b.*yn).*(yn.*\
+BesselK((-2)+k,yn)+(1+3.*k).*BesselK((-1)+k,yn)+(-2).*yn.*BesselK(k,yn))+(-8).\
+*b.*yn.*BesselI(k,b.*yn).*BesselK(1+k,yn)+16.*BesselI(1+k,b.*yn).*BesselK(1+k,\
+yn)+4.*k.* ...\\n  \
+BesselI(1+k,b.*yn).*BesselK(1+k,yn))+yn.*BesselI((-1)+k,yn).*(6.*b.*k.*yn.*\
+BesselI(k,yn).*BesselI(k,b.*yn).*BesselK((-1)+k,yn)+(-6).*b.*k.^2.*yn.*\
+BesselI(k,yn).*BesselI(k,b.*yn).*BesselK((-1)+k,yn)+(-3).*b.*k.*yn.^2.*\
+BesselI(k,b.*yn).*BesselI(1+k,yn).*BesselK((-1)+k,yn)+(-1).*b.*k.*yn.*BesselI(\
+(-2)+k,b.*yn).*(2.*((-1)+k).*BesselI(k,yn)+yn.*BesselI(1+k,yn)).*BesselK((-1)+\
+k,yn)+(-16).*b.*k.^3.*BesselI(k,yn).*BesselI(k,b.*yn).*BesselK(k,yn)+(-2).*b.*\
+k.*yn.^2.*BesselI(k,yn).*BesselI(k,b.*yn).*BesselK(k,yn)+(-8).*b.*k.*yn.*\
+BesselI(k,b.*yn).*BesselI(1+k,yn).*BesselK(k,yn)+(-8).*b.*k.^2.*yn.*BesselI(k,\
+b.*yn).*BesselI(1+k,yn).*BesselK(k,yn)+(-8).*b.*R.^2.*yn.^3.*BesselI(k,b.*yn).\
+*BesselI(1+k,yn).*BesselK(k,yn)+4.*k.*yn.*BesselI(k,yn).*BesselI(1+k,b.*yn).*\
+BesselK(k,yn)+2.*R.^2.*yn.^3.*BesselI(k,yn).*BesselI(1+k,b.*yn).*BesselK(k,yn)\
++2.*k.*yn.^2.*BesselI(1+k,yn).*BesselI(1+k,b.*yn).*BesselK(k,yn)+(-2).*b.*k.*\
+yn.^2.*BesselI(k,b.*yn).*BesselI(2+k,yn).*BesselK(k,yn)+BesselI((-1)+k,b.*yn).\
+*(yn.*(k.* ...\\n  \
+yn.*BesselI(2+k,yn).*BesselK((-1)+k,yn)+2.*BesselI(1+k,yn).*(k.*yn.*BesselK((-\
+2)+k,yn)+(3.*k+3.*k.^2+2.*R.^2.*yn.^2).*BesselK((-1)+k,yn)))+BesselI(k,yn).*(\
+4.*((-1)+k).*k.*yn.*BesselK((-2)+k,yn)+k.*((-4)+12.*k.^2+yn.^2).*BesselK((-1)+\
+k,yn)+2.*yn.*(4.*k+(-2).*k.^2+R.^2.*yn.^2).*BesselK(k,yn)))+(-16).*b.*k.*yn.*\
+BesselI(k,yn).*BesselI(k,b.*yn).*BesselK(1+k,yn)+8.*b.*k.^2.*yn.*BesselI(k,yn)\
+.*BesselI(k,b.*yn).*BesselK(1+k,yn)+(-4).*b.*R.^2.*yn.^3.*BesselI(k,yn).*\
+BesselI(k,b.*yn).*BesselK(1+k,yn)+32.*k.*BesselI(k,yn).*BesselI(1+k,b.*yn).*\
+BesselK(1+k,yn)+k.*yn.^2.*BesselI(k,yn).*BesselI(1+k,b.*yn).*BesselK(1+k,yn)+\
+8.*R.^2.*yn.^2.*BesselI(k,yn).*BesselI(1+k,b.*yn).*BesselK(1+k,yn)+4.*k.*R.^2.\
+*yn.^2.*BesselI(k,yn).*BesselI(1+k,b.*yn).*BesselK(1+k,yn)+4.*k.*yn.*BesselI(\
+1+k,yn).*BesselI(1+k,b.*yn).*BesselK(1+k,yn)+4.*k.^2.*yn.*BesselI(1+k,yn).*\
+BesselI(1+k,b.*yn).*BesselK(1+k,yn)+4.*R.^2.*yn.^3.*BesselI(1+k,yn).*BesselI(\
+1+k,b.*yn).*BesselK(1+k,yn)+k.*yn.^2.*BesselI(1+k,b.*yn).*BesselI(2+k,yn).* \
+...\\n  BesselK(1+k,yn))+(-1).*yn.*(b.*BesselI((-2)+k,b.*yn).*BesselI(k,yn).*(\
+k.*(4.*k+yn.^2).*BesselI(k,yn)+yn.*(2.*k+R.^2.*yn.^2).*BesselI(1+k,yn)).*\
+BesselK((-1)+k,yn)+k.*yn.^2.*BesselI((-2)+k,yn).*BesselI(1+k,yn).*(2.*b.*\
+BesselI(k,b.*yn).*BesselK(k,yn)+(-1).*BesselI(1+k,b.*yn).*BesselK(1+k,yn))+yn.\
+*BesselI(k,yn).*BesselI(1+k,yn).*(b.*BesselI(k,b.*yn).*(3.*(2.*k+R.^2.*yn.^2).\
+*BesselK((-1)+k,yn)+2.*k.*yn.*BesselK(k,yn))+(-1).*BesselI(1+k,b.*yn).*(2.*(2.\
+*k+R.^2.*yn.^2).*BesselK(k,yn)+k.*yn.*BesselK(1+k,yn)))+k.*BesselI(k,yn).^2.*(\
+8.*BesselI(1+k,b.*yn).*((-1).*k.*BesselK(k,yn)+yn.*BesselK(1+k,yn))+b.*\
+BesselI(k,b.*yn).*(3.*(4.*k+yn.^2).*BesselK((-1)+k,yn)+(-4).*yn.*((-2).*k.*\
+BesselK(k,yn)+yn.*BesselK(1+k,yn))))))+(-1).*R.^(-1).*yn.*(BesselI((-1)+k,R.*\
+yn)+BesselI(1+k,R.*yn)).*(BesselI((-1)+k,b.*yn).*(k.*yn.^3.*BesselI((-2)+k,yn)\
+.*BesselI(1+k,yn).*BesselK((-1)+k,yn)+yn.*BesselI(k,yn).*BesselI(1+k,yn).*(2.*\
+(2.*k.*yn+R.^2.*yn.^3).*BesselK((-2)+k,yn)+(4.*k.^2+2.*R.^2.*yn.^2+k.*(4+yn.^\
+2+2.*R.^2.* ...\\n  \
+yn.^2)).*BesselK((-1)+k,yn))+2.*k.*BesselI(k,yn).^2.*((4.*k.*yn+yn.^3).*\
+BesselK((-2)+k,yn)+(4.*k+4.*k.^2+yn.^2+3.*k.*yn.^2).*BesselK((-1)+k,yn)+(-1).*\
+yn.^3.*BesselK(k,yn)))+k.*yn.^2.*BesselI((-1)+k,yn).^2.*(b.*yn.*BesselI((-2)+\
+k,b.*yn).*BesselK((-1)+k,yn)+3.*b.*yn.*BesselI(k,b.*yn).*BesselK((-1)+k,yn)+8.\
+*b.*k.*BesselI(k,b.*yn).*BesselK(k,yn)+2.*yn.*BesselI(1+k,b.*yn).*BesselK(k,\
+yn)+(-2).*BesselI((-1)+k,b.*yn).*(yn.*BesselK((-2)+k,yn)+(1+3.*k).*BesselK((-\
+1)+k,yn)+(-2).*yn.*BesselK(k,yn))+(-8).*b.*yn.*BesselI(k,b.*yn).*BesselK(1+k,\
+yn)+16.*BesselI(1+k,b.*yn).*BesselK(1+k,yn)+4.*k.*BesselI(1+k,b.*yn).*BesselK(\
+1+k,yn))+yn.*BesselI((-1)+k,yn).*(6.*b.*k.*yn.*BesselI(k,yn).*BesselI(k,b.*yn)\
+.*BesselK((-1)+k,yn)+(-6).*b.*k.^2.*yn.*BesselI(k,yn).*BesselI(k,b.*yn).*\
+BesselK((-1)+k,yn)+(-3).*b.*k.*yn.^2.*BesselI(k,b.*yn).*BesselI(1+k,yn).*\
+BesselK((-1)+k,yn)+(-1).*b.*k.*yn.*BesselI((-2)+k,b.*yn).*(2.*((-1)+k).*\
+BesselI(k,yn)+yn.*BesselI(1+k,yn)).*BesselK((-1)+k,yn)+(-16).*b.*k.^3.*\
+BesselI(k,yn).* ...\\n  \
+BesselI(k,b.*yn).*BesselK(k,yn)+(-2).*b.*k.*yn.^2.*BesselI(k,yn).*BesselI(k,b.\
+*yn).*BesselK(k,yn)+(-8).*b.*k.*yn.*BesselI(k,b.*yn).*BesselI(1+k,yn).*\
+BesselK(k,yn)+(-8).*b.*k.^2.*yn.*BesselI(k,b.*yn).*BesselI(1+k,yn).*BesselK(k,\
+yn)+(-8).*b.*R.^2.*yn.^3.*BesselI(k,b.*yn).*BesselI(1+k,yn).*BesselK(k,yn)+4.*\
+k.*yn.*BesselI(k,yn).*BesselI(1+k,b.*yn).*BesselK(k,yn)+2.*R.^2.*yn.^3.*\
+BesselI(k,yn).*BesselI(1+k,b.*yn).*BesselK(k,yn)+2.*k.*yn.^2.*BesselI(1+k,yn).\
+*BesselI(1+k,b.*yn).*BesselK(k,yn)+(-2).*b.*k.*yn.^2.*BesselI(k,b.*yn).*\
+BesselI(2+k,yn).*BesselK(k,yn)+BesselI((-1)+k,b.*yn).*(yn.*(k.*yn.*BesselI(2+\
+k,yn).*BesselK((-1)+k,yn)+2.*BesselI(1+k,yn).*(k.*yn.*BesselK((-2)+k,yn)+(3.*\
+k+3.*k.^2+2.*R.^2.*yn.^2).*BesselK((-1)+k,yn)))+BesselI(k,yn).*(4.*((-1)+k).*\
+k.*yn.*BesselK((-2)+k,yn)+k.*((-4)+12.*k.^2+yn.^2).*BesselK((-1)+k,yn)+2.*yn.*\
+(4.*k+(-2).*k.^2+R.^2.*yn.^2).*BesselK(k,yn)))+(-16).*b.*k.*yn.*BesselI(k,yn).\
+*BesselI(k,b.*yn).*BesselK(1+k,yn)+8.*b.*k.^2.*yn.*BesselI(k,yn).*BesselI(k,b.\
+*yn).* ...\\n  \
+BesselK(1+k,yn)+(-4).*b.*R.^2.*yn.^3.*BesselI(k,yn).*BesselI(k,b.*yn).*\
+BesselK(1+k,yn)+32.*k.*BesselI(k,yn).*BesselI(1+k,b.*yn).*BesselK(1+k,yn)+k.*\
+yn.^2.*BesselI(k,yn).*BesselI(1+k,b.*yn).*BesselK(1+k,yn)+8.*R.^2.*yn.^2.*\
+BesselI(k,yn).*BesselI(1+k,b.*yn).*BesselK(1+k,yn)+4.*k.*R.^2.*yn.^2.*BesselI(\
+k,yn).*BesselI(1+k,b.*yn).*BesselK(1+k,yn)+4.*k.*yn.*BesselI(1+k,yn).*BesselI(\
+1+k,b.*yn).*BesselK(1+k,yn)+4.*k.^2.*yn.*BesselI(1+k,yn).*BesselI(1+k,b.*yn).*\
+BesselK(1+k,yn)+4.*R.^2.*yn.^3.*BesselI(1+k,yn).*BesselI(1+k,b.*yn).*BesselK(\
+1+k,yn)+k.*yn.^2.*BesselI(1+k,b.*yn).*BesselI(2+k,yn).*BesselK(1+k,yn))+(-1).*\
+yn.*(b.*BesselI((-2)+k,b.*yn).*BesselI(k,yn).*(k.*(4.*k+yn.^2).*BesselI(k,yn)+\
+yn.*(2.*k+R.^2.*yn.^2).*BesselI(1+k,yn)).*BesselK((-1)+k,yn)+k.*yn.^2.*\
+BesselI((-2)+k,yn).*BesselI(1+k,yn).*(2.*b.*BesselI(k,b.*yn).*BesselK(k,yn)+(-\
+1).*BesselI(1+k,b.*yn).*BesselK(1+k,yn))+yn.*BesselI(k,yn).*BesselI(1+k,yn).*(\
+b.*BesselI(k,b.*yn).*(3.*(2.*k+R.^2.*yn.^2).*BesselK((-1)+k,yn)+2.*k.*yn.*\
+BesselK(k, ...\\n  \
+yn))+(-1).*BesselI(1+k,b.*yn).*(2.*(2.*k+R.^2.*yn.^2).*BesselK(k,yn)+k.*yn.*\
+BesselK(1+k,yn)))+k.*BesselI(k,yn).^2.*(8.*BesselI(1+k,b.*yn).*((-1).*k.*\
+BesselK(k,yn)+yn.*BesselK(1+k,yn))+b.*BesselI(k,b.*yn).*(3.*(4.*k+yn.^2).*\
+BesselK((-1)+k,yn)+(-4).*yn.*((-2).*k.*BesselK(k,yn)+yn.*BesselK(1+k,yn)))))))\
+)+exp(1).^(z.*Im(xn)).*k.*Im(yn.^(-2).*((-1).*k.*R.^(-1).*BesselI(k,R.*yn).*(\
+BesselI((-1)+k,b.*yn).*(yn.^3.*BesselI((-2)+k,yn).*BesselI(1+k,yn).*BesselK((-\
+1)+k,yn)+yn.*BesselI(k,yn).*BesselI(1+k,yn).*(4.*yn.*BesselK((-2)+k,yn)+(4+4.*\
+k+yn.^2).*BesselK((-1)+k,yn))+2.*BesselI(k,yn).^2.*((4.*k.*yn+yn.^3).*BesselK(\
+(-2)+k,yn)+(4.*k+4.*k.^2+yn.^2+3.*k.*yn.^2).*BesselK((-1)+k,yn)+(-1).*yn.^3.*\
+BesselK(k,yn)))+yn.^2.*BesselI((-1)+k,yn).^2.*(b.*yn.*BesselI((-2)+k,b.*yn).*\
+BesselK((-1)+k,yn)+3.*b.*yn.*BesselI(k,b.*yn).*BesselK((-1)+k,yn)+8.*b.*k.*\
+BesselI(k,b.*yn).*BesselK(k,yn)+2.*yn.*BesselI(1+k,b.*yn).*BesselK(k,yn)+(-2).\
+*BesselI((-1)+k,b.*yn).*(yn.*BesselK((-2)+k,yn)+(1+3.*k).*BesselK((-1)+k,yn)+(\
+-2) ...\\n  \
+.*yn.*BesselK(k,yn))+(-8).*b.*yn.*BesselI(k,b.*yn).*BesselK(1+k,yn)+16.*\
+BesselI(1+k,b.*yn).*BesselK(1+k,yn)+4.*k.*BesselI(1+k,b.*yn).*BesselK(1+k,yn))\
++yn.*BesselI((-1)+k,yn).*(6.*b.*yn.*BesselI(k,yn).*BesselI(k,b.*yn).*BesselK((\
+-1)+k,yn)+(-6).*b.*k.*yn.*BesselI(k,yn).*BesselI(k,b.*yn).*BesselK((-1)+k,yn)+\
+(-3).*b.*yn.^2.*BesselI(k,b.*yn).*BesselI(1+k,yn).*BesselK((-1)+k,yn)+(-1).*b.\
+*yn.*BesselI((-2)+k,b.*yn).*(2.*((-1)+k).*BesselI(k,yn)+yn.*BesselI(1+k,yn)).*\
+BesselK((-1)+k,yn)+(-16).*b.*k.^2.*BesselI(k,yn).*BesselI(k,b.*yn).*BesselK(k,\
+yn)+(-2).*b.*yn.^2.*BesselI(k,yn).*BesselI(k,b.*yn).*BesselK(k,yn)+(-8).*b.*\
+yn.*BesselI(k,b.*yn).*BesselI(1+k,yn).*BesselK(k,yn)+(-8).*b.*k.*yn.*BesselI(\
+k,b.*yn).*BesselI(1+k,yn).*BesselK(k,yn)+4.*yn.*BesselI(k,yn).*BesselI(1+k,b.*\
+yn).*BesselK(k,yn)+2.*yn.^2.*BesselI(1+k,yn).*BesselI(1+k,b.*yn).*BesselK(k,\
+yn)+(-2).*b.*yn.^2.*BesselI(k,b.*yn).*BesselI(2+k,yn).*BesselK(k,yn)+BesselI((\
+-1)+k,b.*yn).*(yn.*(yn.*BesselI(2+k,yn).*BesselK((-1)+k,yn)+2.*BesselI(1+k, \
+...\\n  yn).*(yn.*BesselK((-2)+k,yn)+3.*(1+k).*BesselK((-1)+k,yn)))+BesselI(k,\
+yn).*(4.*((-1)+k).*yn.*BesselK((-2)+k,yn)+((-4)+12.*k.^2+yn.^2).*BesselK((-1)+\
+k,yn)+(-4).*((-2)+k).*yn.*BesselK(k,yn)))+(-16).*b.*yn.*BesselI(k,yn).*\
+BesselI(k,b.*yn).*BesselK(1+k,yn)+8.*b.*k.*yn.*BesselI(k,yn).*BesselI(k,b.*yn)\
+.*BesselK(1+k,yn)+32.*BesselI(k,yn).*BesselI(1+k,b.*yn).*BesselK(1+k,yn)+yn.^\
+2.*BesselI(k,yn).*BesselI(1+k,b.*yn).*BesselK(1+k,yn)+4.*yn.*BesselI(1+k,yn).*\
+BesselI(1+k,b.*yn).*BesselK(1+k,yn)+4.*k.*yn.*BesselI(1+k,yn).*BesselI(1+k,b.*\
+yn).*BesselK(1+k,yn)+yn.^2.*BesselI(1+k,b.*yn).*BesselI(2+k,yn).*BesselK(1+k,\
+yn))+(-1).*yn.*(b.*BesselI((-2)+k,b.*yn).*BesselI(k,yn).*((4.*k+yn.^2).*\
+BesselI(k,yn)+2.*yn.*BesselI(1+k,yn)).*BesselK((-1)+k,yn)+yn.^2.*BesselI((-2)+\
+k,yn).*BesselI(1+k,yn).*(2.*b.*BesselI(k,b.*yn).*BesselK(k,yn)+(-1).*BesselI(\
+1+k,b.*yn).*BesselK(1+k,yn))+yn.*BesselI(k,yn).*BesselI(1+k,yn).*(2.*b.*\
+BesselI(k,b.*yn).*(3.*BesselK((-1)+k,yn)+yn.*BesselK(k,yn))+(-1).*BesselI(1+k,\
+b.*yn).*(4.* ...\\n  \
+BesselK(k,yn)+yn.*BesselK(1+k,yn)))+BesselI(k,yn).^2.*(8.*BesselI(1+k,b.*yn).*\
+((-1).*k.*BesselK(k,yn)+yn.*BesselK(1+k,yn))+b.*BesselI(k,b.*yn).*(3.*(4.*k+\
+yn.^2).*BesselK((-1)+k,yn)+(-4).*yn.*((-2).*k.*BesselK(k,yn)+yn.*BesselK(1+k,\
+yn))))))+yn.*BesselI((-1)+k,R.*yn).*(yn.^2.*BesselI((-1)+k,yn).^2.*(b.*yn.*\
+BesselI((-2)+k,b.*yn).*BesselK((-1)+k,yn)+3.*b.*yn.*BesselI(k,b.*yn).*BesselK(\
+(-1)+k,yn)+8.*b.*k.*BesselI(k,b.*yn).*BesselK(k,yn)+(-2).*BesselI((-1)+k,b.*\
+yn).*(yn.*BesselK((-2)+k,yn)+(1+3.*k).*BesselK((-1)+k,yn)+(-1).*yn.*BesselK(k,\
+yn))+(-4).*b.*yn.*BesselI(k,b.*yn).*BesselK(1+k,yn)+8.*BesselI(1+k,b.*yn).*\
+BesselK(1+k,yn))+2.*yn.*BesselI((-1)+k,yn).*((-1).*b.*((-1)+k).*yn.*BesselI((-\
+2)+k,b.*yn).*BesselI(k,yn).*BesselK((-1)+k,yn)+3.*b.*yn.*BesselI(k,yn).*\
+BesselI(k,b.*yn).*BesselK((-1)+k,yn)+(-3).*b.*k.*yn.*BesselI(k,yn).*BesselI(k,\
+b.*yn).*BesselK((-1)+k,yn)+(-8).*b.*k.^2.*BesselI(k,yn).*BesselI(k,b.*yn).*\
+BesselK(k,yn)+(-4).*b.*k.*yn.*BesselI(k,b.*yn).*BesselI(1+k,yn).*BesselK(k,yn)\
++k.* ...\\n  \
+yn.*BesselI(k,yn).*BesselI(1+k,b.*yn).*BesselK(k,yn)+BesselI((-1)+k,b.*yn).*(\
+2.*k.*yn.*BesselI(1+k,yn).*BesselK((-1)+k,yn)+BesselI(k,yn).*(2.*((-1)+k).*yn.\
+*BesselK((-2)+k,yn)+((-2)+6.*k.^2).*BesselK((-1)+k,yn)+(-1).*((-2)+k).*yn.*\
+BesselK(k,yn)))+(-4).*b.*yn.*BesselI(k,yn).*BesselI(k,b.*yn).*BesselK(1+k,yn)+\
+2.*b.*k.*yn.*BesselI(k,yn).*BesselI(k,b.*yn).*BesselK(1+k,yn)+8.*BesselI(k,yn)\
+.*BesselI(1+k,b.*yn).*BesselK(1+k,yn)+2.*k.^2.*BesselI(k,yn).*BesselI(1+k,b.*\
+yn).*BesselK(1+k,yn)+2.*k.*yn.*BesselI(1+k,yn).*BesselI(1+k,b.*yn).*BesselK(1+\
+k,yn))+BesselI(k,yn).*(2.*BesselI((-1)+k,b.*yn).*(k.*yn.*BesselI(1+k,yn).*(yn.\
+*BesselK((-2)+k,yn)+(1+k).*BesselK((-1)+k,yn))+BesselI(k,yn).*((4.*k.*yn+yn.^\
+3).*BesselK((-2)+k,yn)+(4.*k+4.*k.^2+yn.^2+3.*k.*yn.^2).*BesselK((-1)+k,yn)+(-\
+1).*yn.^3.*BesselK(k,yn)))+(-1).*yn.*(b.*BesselI((-2)+k,b.*yn).*((4.*k+yn.^2).\
+*BesselI(k,yn)+k.*yn.*BesselI(1+k,yn)).*BesselK((-1)+k,yn)+k.*yn.*BesselI(1+k,\
+yn).*(3.*b.*BesselI(k,b.*yn).*BesselK((-1)+k,yn)+(-2).*BesselI(1+k,b.* ...\\n \
+ yn).*BesselK(k,yn))+BesselI(k,yn).*(8.*BesselI(1+k,b.*yn).*((-1).*k.*BesselK(\
+k,yn)+yn.*BesselK(1+k,yn))+b.*BesselI(k,b.*yn).*(3.*(4.*k+yn.^2).*BesselK((-1)\
++k,yn)+(-4).*yn.*((-2).*k.*BesselK(k,yn)+yn.*BesselK(1+k,yn)))))))))+2.*exp(1)\
+.^(z.*Im(yn)).*R.*Im(exp(1).^(sqrt(-1).*z.*Re(xn)).*xn.*((-1).*BesselI(k,R.*\
+xn).*(xn.*(BesselI((-2)+k,xn)+BesselI(k,xn)).*BesselI(1+k,xn).*(BesselI((-1)+\
+k,b.*xn).*BesselK((-1)+k,xn)+(-2).*b.*BesselI(k,b.*xn).*BesselK(k,xn)+BesselI(\
+1+k,b.*xn).*BesselK(1+k,xn))+BesselI((-1)+k,xn).*((-1).*b.*xn.*BesselI((-2)+k,\
+b.*xn).*BesselI(1+k,xn).*BesselK((-1)+k,xn)+(-3).*b.*xn.*BesselI(k,b.*xn).*\
+BesselI(1+k,xn).*BesselK((-1)+k,xn)+BesselI((-1)+k,b.*xn).*(xn.*(BesselI(k,xn)\
++BesselI(2+k,xn)).*BesselK((-1)+k,xn)+2.*BesselI(1+k,xn).*(xn.*BesselK((-2)+k,\
+xn)+((-1)+3.*k).*BesselK((-1)+k,xn)))+(-2).*b.*xn.*BesselI(k,xn).*BesselI(k,b.\
+*xn).*BesselK(k,xn)+8.*b.*BesselI(k,b.*xn).*BesselI(1+k,xn).*BesselK(k,xn)+(-\
+8).*b.*k.*BesselI(k,b.*xn).*BesselI(1+k,xn).*BesselK(k,xn)+2.*xn.* ...\\n  \
+BesselI(1+k,xn).*BesselI(1+k,b.*xn).*BesselK(k,xn)+(-2).*b.*xn.*BesselI(k,b.*\
+xn).*BesselI(2+k,xn).*BesselK(k,xn)+xn.*BesselI(k,xn).*BesselI(1+k,b.*xn).*\
+BesselK(1+k,xn)+(-4).*BesselI(1+k,xn).*BesselI(1+k,b.*xn).*BesselK(1+k,xn)+4.*\
+k.*BesselI(1+k,xn).*BesselI(1+k,b.*xn).*BesselK(1+k,xn)+xn.*BesselI(1+k,b.*xn)\
+.*BesselI(2+k,xn).*BesselK(1+k,xn))+2.*BesselI((-1)+k,xn).^2.*(xn.*BesselI((-\
+1)+k,b.*xn).*BesselK(k,xn)+(-2).*b.*xn.*BesselI(k,b.*xn).*BesselK(1+k,xn)+\
+BesselI(1+k,b.*xn).*(xn.*BesselK(k,xn)+2.*(2+k).*BesselK(1+k,xn))))+(-1).*R.*\
+BesselI((-1)+k,R.*xn).*(BesselI(k,xn).*BesselI(1+k,xn).*(b.*xn.*(BesselI((-2)+\
+k,b.*xn)+3.*BesselI(k,b.*xn)).*BesselK((-1)+k,xn)+BesselI((-1)+k,b.*xn).*((-2)\
+.*xn.*BesselK((-2)+k,xn)+(-2).*(1+k).*BesselK((-1)+k,xn))+(-2).*xn.*BesselI(1+\
+k,b.*xn).*BesselK(k,xn))+(-2).*BesselI((-1)+k,xn).*(xn.*BesselI((-1)+k,b.*xn).\
+*(2.*BesselI(1+k,xn).*BesselK((-1)+k,xn)+BesselI(k,xn).*BesselK(k,xn))+(-2).*\
+b.*xn.*BesselI(k,b.*xn).*(2.*BesselI(1+k,xn).*BesselK(k,xn)+BesselI(k,xn).* \
+...\\n  BesselK(1+k,xn))+BesselI(1+k,b.*xn).*(2.*xn.*BesselI(1+k,xn).*BesselK(\
+1+k,xn)+BesselI(k,xn).*(xn.*BesselK(k,xn)+2.*(2+k).*BesselK(1+k,xn)))))).*Re(\
+xn))+2.*exp(1).^(z.*Im(yn)).*R.*Im(xn).*Re(exp(1).^(sqrt(-1).*z.*Re(xn)).*xn.*\
+((-1).*BesselI(k,R.*xn).*(xn.*(BesselI((-2)+k,xn)+BesselI(k,xn)).*BesselI(1+k,\
+xn).*(BesselI((-1)+k,b.*xn).*BesselK((-1)+k,xn)+(-2).*b.*BesselI(k,b.*xn).*\
+BesselK(k,xn)+BesselI(1+k,b.*xn).*BesselK(1+k,xn))+BesselI((-1)+k,xn).*((-1).*\
+b.*xn.*BesselI((-2)+k,b.*xn).*BesselI(1+k,xn).*BesselK((-1)+k,xn)+(-3).*b.*xn.\
+*BesselI(k,b.*xn).*BesselI(1+k,xn).*BesselK((-1)+k,xn)+BesselI((-1)+k,b.*xn).*\
+(xn.*(BesselI(k,xn)+BesselI(2+k,xn)).*BesselK((-1)+k,xn)+2.*BesselI(1+k,xn).*(\
+xn.*BesselK((-2)+k,xn)+((-1)+3.*k).*BesselK((-1)+k,xn)))+(-2).*b.*xn.*BesselI(\
+k,xn).*BesselI(k,b.*xn).*BesselK(k,xn)+8.*b.*BesselI(k,b.*xn).*BesselI(1+k,xn)\
+.*BesselK(k,xn)+(-8).*b.*k.*BesselI(k,b.*xn).*BesselI(1+k,xn).*BesselK(k,xn)+\
+2.*xn.*BesselI(1+k,xn).*BesselI(1+k,b.*xn).*BesselK(k,xn)+(-2).*b.*xn.* \
+...\\n  BesselI(k,b.*xn).*BesselI(2+k,xn).*BesselK(k,xn)+xn.*BesselI(k,xn).*\
+BesselI(1+k,b.*xn).*BesselK(1+k,xn)+(-4).*BesselI(1+k,xn).*BesselI(1+k,b.*xn).\
+*BesselK(1+k,xn)+4.*k.*BesselI(1+k,xn).*BesselI(1+k,b.*xn).*BesselK(1+k,xn)+\
+xn.*BesselI(1+k,b.*xn).*BesselI(2+k,xn).*BesselK(1+k,xn))+2.*BesselI((-1)+k,\
+xn).^2.*(xn.*BesselI((-1)+k,b.*xn).*BesselK(k,xn)+(-2).*b.*xn.*BesselI(k,b.*\
+xn).*BesselK(1+k,xn)+BesselI(1+k,b.*xn).*(xn.*BesselK(k,xn)+2.*(2+k).*BesselK(\
+1+k,xn))))+(-1).*R.*BesselI((-1)+k,R.*xn).*(BesselI(k,xn).*BesselI(1+k,xn).*(\
+b.*xn.*(BesselI((-2)+k,b.*xn)+3.*BesselI(k,b.*xn)).*BesselK((-1)+k,xn)+\
+BesselI((-1)+k,b.*xn).*((-2).*xn.*BesselK((-2)+k,xn)+(-2).*(1+k).*BesselK((-1)\
++k,xn))+(-2).*xn.*BesselI(1+k,b.*xn).*BesselK(k,xn))+(-2).*BesselI((-1)+k,xn).\
+*(xn.*BesselI((-1)+k,b.*xn).*(2.*BesselI(1+k,xn).*BesselK((-1)+k,xn)+BesselI(\
+k,xn).*BesselK(k,xn))+(-2).*b.*xn.*BesselI(k,b.*xn).*(2.*BesselI(1+k,xn).*\
+BesselK(k,xn)+BesselI(k,xn).*BesselK(1+k,xn))+BesselI(1+k,b.*xn).*(2.*xn.*\
+BesselI(1+k,xn).* ...\\n  \
+BesselK(1+k,xn)+BesselI(k,xn).*(xn.*BesselK(k,xn)+2.*(2+k).*BesselK(1+k,xn))))\
+)))+exp(1).^(z.*Im(xn)).*R.*Im(yn).*Re(yn.*((-1).*BesselI(k,R.*yn).*(yn.*(\
+BesselI((-2)+k,yn)+BesselI(k,yn)).*BesselI(1+k,yn).*(BesselI((-1)+k,b.*yn).*\
+BesselK((-1)+k,yn)+(-2).*b.*BesselI(k,b.*yn).*BesselK(k,yn)+BesselI(1+k,b.*yn)\
+.*BesselK(1+k,yn))+BesselI((-1)+k,yn).*((-1).*b.*yn.*BesselI((-2)+k,b.*yn).*\
+BesselI(1+k,yn).*BesselK((-1)+k,yn)+(-3).*b.*yn.*BesselI(k,b.*yn).*BesselI(1+\
+k,yn).*BesselK((-1)+k,yn)+BesselI((-1)+k,b.*yn).*(yn.*(BesselI(k,yn)+BesselI(\
+2+k,yn)).*BesselK((-1)+k,yn)+2.*BesselI(1+k,yn).*(yn.*BesselK((-2)+k,yn)+((-1)\
++3.*k).*BesselK((-1)+k,yn)))+(-2).*b.*yn.*BesselI(k,yn).*BesselI(k,b.*yn).*\
+BesselK(k,yn)+8.*b.*BesselI(k,b.*yn).*BesselI(1+k,yn).*BesselK(k,yn)+(-8).*b.*\
+k.*BesselI(k,b.*yn).*BesselI(1+k,yn).*BesselK(k,yn)+2.*yn.*BesselI(1+k,yn).*\
+BesselI(1+k,b.*yn).*BesselK(k,yn)+(-2).*b.*yn.*BesselI(k,b.*yn).*BesselI(2+k,\
+yn).*BesselK(k,yn)+yn.*BesselI(k,yn).*BesselI(1+k,b.*yn).*BesselK(1+k,yn)+(-4)\
+.* ...\\n  \
+BesselI(1+k,yn).*BesselI(1+k,b.*yn).*BesselK(1+k,yn)+4.*k.*BesselI(1+k,yn).*\
+BesselI(1+k,b.*yn).*BesselK(1+k,yn)+yn.*BesselI(1+k,b.*yn).*BesselI(2+k,yn).*\
+BesselK(1+k,yn))+2.*BesselI((-1)+k,yn).^2.*(yn.*BesselI((-1)+k,b.*yn).*\
+BesselK(k,yn)+(-2).*b.*yn.*BesselI(k,b.*yn).*BesselK(1+k,yn)+BesselI(1+k,b.*\
+yn).*(yn.*BesselK(k,yn)+2.*(2+k).*BesselK(1+k,yn))))+(-1).*R.*BesselI((-1)+k,\
+R.*yn).*(BesselI(k,yn).*BesselI(1+k,yn).*(b.*yn.*(BesselI((-2)+k,b.*yn)+3.*\
+BesselI(k,b.*yn)).*BesselK((-1)+k,yn)+BesselI((-1)+k,b.*yn).*((-2).*yn.*\
+BesselK((-2)+k,yn)+(-2).*(1+k).*BesselK((-1)+k,yn))+(-2).*yn.*BesselI(1+k,b.*\
+yn).*BesselK(k,yn))+(-2).*BesselI((-1)+k,yn).*(yn.*BesselI((-1)+k,b.*yn).*(2.*\
+BesselI(1+k,yn).*BesselK((-1)+k,yn)+BesselI(k,yn).*BesselK(k,yn))+(-2).*b.*yn.\
+*BesselI(k,b.*yn).*(2.*BesselI(1+k,yn).*BesselK(k,yn)+BesselI(k,yn).*BesselK(\
+1+k,yn))+BesselI(1+k,b.*yn).*(2.*yn.*BesselI(1+k,yn).*BesselK(1+k,yn)+BesselI(\
+k,yn).*(yn.*BesselK(k,yn)+2.*(2+k).*BesselK(1+k,yn))))))));\\n\"\>"], "Print",
+ CellChangeTimes->{{3.698443056486916*^9, 3.698443075899067*^9}, 
+   3.6984431843277082`*^9, 
+   3.6984433460719547`*^9},ExpressionUUID->"d925321c-150a-4a82-afb2-\
+ae40bf58e19a"],
+
+Cell[BoxData["$Aborted"], "Output",
+ CellChangeTimes->{
+  3.69847659807127*^9},ExpressionUUID->"aca487f8-a7cf-4cf4-9302-5b0635eeb667"]
+}, Open  ]]
+},
+WindowSize->{1450, 821},
+WindowMargins->{{-8, Automatic}, {Automatic, -8}},
+Magnification:>1.4 Inherited,
+FrontEndVersion->"11.3 for Microsoft Windows (64-bit) (March 6, 2018)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[400, 13, 3197, 101, 265, "Input",ExpressionUUID->"ffcdd764-d575-4feb-a4ac-e4845e9048f8"],
+Cell[CellGroupData[{
+Cell[3622, 118, 1518, 30, 153, "Input",ExpressionUUID->"a1b60eb8-59da-4988-834e-a8986a8f4215"],
+Cell[5143, 150, 491, 11, 65, "Output",ExpressionUUID->"189c28b8-0fc4-4c25-a583-7d5234d4d4f4"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[5671, 166, 4410, 136, 265, "Input",ExpressionUUID->"aa667ad1-6b74-42ca-b9a3-337ff6b105e0"],
+Cell[10084, 304, 1797, 58, 99, "Output",ExpressionUUID->"c6cee56f-8139-4584-9501-212231981b86"],
+Cell[11884, 364, 1588, 49, 105, "Output",ExpressionUUID->"ddbce4e7-26a5-4881-a6ee-80699983ba73"],
+Cell[13475, 415, 777, 23, 46, "Output",ExpressionUUID->"a0ba1311-19a6-430d-9504-c369ed4e2a7d"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[14289, 443, 864, 22, 153, "Input",ExpressionUUID->"37c5f586-c2df-415e-9605-976cc31bc44e"],
+Cell[15156, 467, 283, 7, 65, "Output",ExpressionUUID->"b4a6efc1-5fe5-4e10-a2e7-618ed0813513"]
+}, Open  ]],
+Cell[15454, 477, 10943, 333, 573, "Input",ExpressionUUID->"b2073096-be20-4f08-b9da-ca7200eee9f0"],
+Cell[CellGroupData[{
+Cell[26422, 814, 4411, 124, 265, "Input",ExpressionUUID->"e49e4001-9428-4b75-8224-cd073aaeb2f3"],
+Cell[30836, 940, 5820, 171, 220, "Output",ExpressionUUID->"6ced6c5d-1986-4db7-954b-b3873238abb0"],
+Cell[36659, 1113, 4564, 135, 301, "Output",ExpressionUUID->"189c46da-772e-4c03-81c1-c7bbcbe91795"],
+Cell[41226, 1250, 4702, 137, 189, "Output",ExpressionUUID->"e4fa2f00-11b4-4c92-9e3f-ec08e141343c"],
+Cell[45931, 1389, 3929, 121, 325, "Output",ExpressionUUID->"87a7284c-6c66-4856-9b7e-4a21d4b41146"],
+Cell[49863, 1512, 3635, 112, 272, "Output",ExpressionUUID->"2b234c4a-85ec-409c-9e74-4b8470486127"],
+Cell[53501, 1626, 2821, 85, 262, "Output",ExpressionUUID->"78e1474f-a75c-4573-8dc2-2d36fc828b43"],
+Cell[56325, 1713, 4099, 122, 315, "Output",ExpressionUUID->"f5dab423-d4dd-4d96-90c9-95be26ce1c9a"],
+Cell[60427, 1837, 815, 25, 148, "Output",ExpressionUUID->"e8bcf8bc-85ba-49d2-9dca-da658a6a2d7c"],
+Cell[61245, 1864, 3118, 93, 315, "Output",ExpressionUUID->"ac50f8db-4127-4b35-9637-69d760e4dcf6"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[64400, 1962, 558, 11, 76, "Input",ExpressionUUID->"42d2944f-8205-463b-93aa-0817c68e5d8b"],
+Cell[64961, 1975, 592, 8, 213, "Print",ExpressionUUID->"b79f10dd-f73c-4a8a-ad02-e00ae1de0baf"]
+}, Open  ]],
+Cell[65568, 1986, 2867, 85, 327, "Input",ExpressionUUID->"bdc573a4-690f-428c-aee0-0b7b13ee3642"],
+Cell[68438, 2073, 4936, 136, 501, "Input",ExpressionUUID->"6f4f90dd-1929-4aca-9e83-c6d4513a7cdd"],
+Cell[CellGroupData[{
+Cell[73399, 2213, 730, 21, 131, "Input",ExpressionUUID->"23a08b4a-03b1-4cd1-ac84-b559ed99d225"],
+Cell[74132, 2236, 920, 30, 274, "Output",ExpressionUUID->"5eda0b2e-c566-46d2-b688-de585c8212fe"]
+}, Open  ]],
+Cell[75067, 2269, 273, 6, 219, "Input",ExpressionUUID->"724ef9c6-c40b-47e2-a699-6dbfbc681797"],
+Cell[75343, 2277, 9081, 263, 1828, "Input",ExpressionUUID->"225dd9b5-c2e0-4ab3-8ea3-29d1d620a0a9"],
+Cell[84427, 2542, 3779, 112, 848, "Input",ExpressionUUID->"2e3bc5dd-0d7f-4481-a86a-49e3bc22ae60"],
+Cell[CellGroupData[{
+Cell[88231, 2658, 5423, 156, 848, "Input",ExpressionUUID->"017d93d7-920c-4f80-b923-f2f24fe1f161"],
+Cell[93657, 2816, 4659, 67, 597, "Message",ExpressionUUID->"7ac023e0-8b90-43e8-9091-c776e5210935"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[98353, 2888, 367, 7, 131, "Input",ExpressionUUID->"18ac2486-3f9a-4dd2-986c-486edac3d23a"],
+Cell[98723, 2897, 45706, 604, 33494, "Print",ExpressionUUID->"d925321c-150a-4a82-afb2-ae40bf58e19a"],
+Cell[144432, 3503, 134, 2, 152, "Output",ExpressionUUID->"aca487f8-a7cf-4cf4-9302-5b0635eeb667"]
+}, Open  ]]
+}
+]
+*)
+

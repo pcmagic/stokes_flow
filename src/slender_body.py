@@ -31,7 +31,11 @@ class SlenderBodyProblem(sf.StokesFlowProblem):
         m_petsc.assemble()
         return True
 
-# class _GivenFlowForceFreeProblem
+# class SlenderBodyObj(sf.StokesFlowObj):
+#     def move(self, displacement):
+#         super().move(displacement)
+#
+#         return True
 
 class StrainRateBaseForceFreeProblem(SlenderBodyProblem,
                                      sf.StrainRateBaseProblem,

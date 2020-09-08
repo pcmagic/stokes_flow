@@ -1,0 +1,134 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 11.3' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      3914,        126]
+NotebookOptionsPosition[      3331,        106]
+NotebookOutlinePosition[      3704,        122]
+CellTagsIndexPosition[      3661,        119]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell["geometrical parameters.", "Subchapter",
+ CellChangeTimes->{{3.789037502807025*^9, 
+  3.789037521432327*^9}},ExpressionUUID->"b413e80f-ac5d-4f81-b4fd-\
+8fd00b6a8f5f"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{"Clear", "[", "\"\<Global`*\>\"", "]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"$Assumptions", "=", 
+   RowBox[{
+    RowBox[{"And", "@@", 
+     RowBox[{"Thread", "[", 
+      RowBox[{
+       RowBox[{"{", 
+        RowBox[{"a", ",", "xi", ",", "rho"}], "}"}], ">", "0"}], "]"}]}], "&&", 
+    RowBox[{"Element", "[", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"a", ",", "xi", ",", "rho", ",", "theta", ",", "kappa"}], 
+       "}"}], ",", "Reals"}], "]"}]}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"R", "=", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{
+      RowBox[{
+       RowBox[{"-", "a"}], "*", "xi"}], "+", 
+      RowBox[{"rho", "*", 
+       RowBox[{"Sin", "[", "theta", "]"}]}]}], ",", 
+     RowBox[{
+      RowBox[{
+       RowBox[{"-", 
+        RowBox[{"a", "^", "2"}]}], "*", 
+       RowBox[{"xi", "^", "2"}], "*", 
+       RowBox[{"kappa", "/", "2"}]}], "+", 
+      RowBox[{"rho", "*", 
+       RowBox[{"Cos", "[", "theta", "]"}]}]}]}], "}"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"r", "=", 
+   RowBox[{"FullSimplify", "[", 
+    RowBox[{"Sqrt", "[", 
+     RowBox[{"Total", "[", 
+      RowBox[{"R", "^", "2"}], "]"}], "]"}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{"FullSimplify", "[", 
+  RowBox[{"r", "^", 
+   RowBox[{"-", "1"}]}], "]"}]}], "Input",
+ CellChangeTimes->{{3.789037524741478*^9, 3.7890375337763577`*^9}, {
+  3.7890375829529552`*^9, 3.7890375920419025`*^9}, {3.789037775369744*^9, 
+  3.789037906458356*^9}, {3.789037946155654*^9, 3.789037961740546*^9}, {
+  3.789037996397627*^9, 3.789038004845295*^9}, {3.78903804225846*^9, 
+  3.78903804328275*^9}},
+ CellLabel->"In[19]:=",ExpressionUUID->"fcc1145a-a971-407a-817f-a9812c561532"],
+
+Cell[BoxData[
+ FractionBox["1", 
+  SqrtBox[
+   RowBox[{
+    SuperscriptBox[
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"-", 
+         FractionBox["1", "2"]}], " ", 
+        SuperscriptBox["a", "2"], " ", "kappa", " ", 
+        SuperscriptBox["xi", "2"]}], "+", 
+       RowBox[{"rho", " ", 
+        RowBox[{"Cos", "[", "theta", "]"}]}]}], ")"}], "2"], "+", 
+    SuperscriptBox[
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"a", " ", "xi"}], "-", 
+       RowBox[{"rho", " ", 
+        RowBox[{"Sin", "[", "theta", "]"}]}]}], ")"}], "2"]}]]]], "Output",
+ CellChangeTimes->{
+  3.7890378873787165`*^9, 3.789037962980255*^9, {3.7890379976480403`*^9, 
+   3.789038005910431*^9}, 3.7890380442940536`*^9},
+ CellLabel->"Out[23]=",ExpressionUUID->"910eb47c-bf9d-40cd-b3fb-b08834963704"]
+}, Open  ]]
+}, Open  ]]
+},
+WindowSize->{1450, 821},
+WindowMargins->{{-8, Automatic}, {Automatic, -8}},
+Magnification:>1.5 Inherited,
+FrontEndVersion->"11.3 for Microsoft Windows (64-bit) (March 6, 2018)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[580, 22, 171, 3, 94, "Subchapter",ExpressionUUID->"b413e80f-ac5d-4f81-b4fd-8fd00b6a8f5f"],
+Cell[CellGroupData[{
+Cell[776, 29, 1724, 48, 160, "Input",ExpressionUUID->"fcc1145a-a971-407a-817f-a9812c561532"],
+Cell[2503, 79, 800, 23, 145, "Output",ExpressionUUID->"910eb47c-bf9d-40cd-b3fb-b08834963704"]
+}, Open  ]]
+}, Open  ]]
+}
+]
+*)
+

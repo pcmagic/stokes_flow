@@ -71,7 +71,7 @@ def print_case_info(caseIntro='-->(some introduce here)', **problem_kwargs):
     slb_limit = problem_kwargs['slb_limit']
     PETSc.Sys.Print('  %s, n_segment %d' %
                     (slb_geo_fun, n_segment))
-    PETSc.Sys.Print('  slb_epsabs %e, n_segment %e, n_segment %d' %
+    PETSc.Sys.Print('  slb_epsabs %e, slb_epsrel %e, slb_limit %d' %
                     (slb_epsabs, slb_epsrel, slb_limit))
     return True
 

@@ -946,6 +946,69 @@ class JefferyObj:
         assert np.isclose(np.dot(P, P2), 0), err_msg
         return True
 
+    def _theta_phi_psi_v1(self, P, P2):
+        t_theta_all = np.arccos(P[:, 2] / np.linalg.norm(P, axis=1))
+        t_phi_all = np.arctan2(P[:, 1], P[:, 0])
+        t_phi_all = np.hstack([t1 + 2 * np.pi if t1 < 0 else t1
+                               for t1 in t_phi_all])  # (-pi,pi) -> (0, 2pi)
+
+        t_psi_all = []
+        ini_lateral_norm2 = self._ini_lateral_norm2
+        for t_lateral_norm, t_theta, t_phi in zip(P2, t_theta_all, t_phi_all):
+            t_lateral_norm = vector_rotation_norm(t_lateral_norm, norm=np.array((0, 0, 1)),
+                                                  theta=-t_phi)
+            t_lateral_norm = vector_rotation_norm(t_lateral_norm, norm=np.array((0, 1, 0)),
+                                                  theta=- t_theta)
+            sign = np.sign(np.dot(np.array((0, 0, 1)), np.cross(ini_lateral_norm2, t_lateral_norm)))
+            t_psi = sign * np.arccos(np.clip(np.dot(ini_lateral_norm2, t_lateral_norm)
+                                             / np.linalg.norm(t_lateral_norm)
+                                             / np.linalg.norm(ini_lateral_norm2),
+                                             -1, 1))
+            tfct = np.zeros_like(t_psi)
+            tfct[t_psi < 0] = 2
+            t_psi = t_psi + tfct * np.pi  # (-pi,pi) -> (0, 2pi)
+            t_psi_all.append(t_psi)
+        t_psi_all = np.hstack(t_psi_all)
+        return t_theta_all, t_phi_all, t_psi_all
+
+    def _P2_psi(self, t_theta, t_phi, tP2):
+        if np.isclose(t_theta, np.pi / 2):
+            cos_psi = -1 * tP2[2] / np.sin(t_theta)
+            if np.isclose(t_phi, np.pi / 2):
+                sin_psi = -1 * (tP2[0] - np.cos(t_phi) * np.cos(t_theta) * cos_psi) / np.sin(t_phi)
+            else:
+                sin_psi = +1 * (tP2[1] - np.sin(t_phi) * np.cos(t_theta) * cos_psi) / np.cos(t_phi)
+        else:
+            tA = np.array(((-1 * np.sin(t_phi), np.cos(t_theta) * np.cos(t_phi)),
+                           (+1 * np.cos(t_phi), np.cos(t_theta) * np.sin(t_phi))))
+            tb = np.array((tP2[0], tP2[1]))
+            sin_psi, cos_psi = np.linalg.solve(tA, tb)
+        t_psi = np.arctan2(sin_psi, cos_psi)
+        t_psi = t_psi + 2 * np.pi if t_psi < 0 else t_psi  # (-pi,pi) -> (0, 2pi)
+        return t_psi
+
+    def _theta_phi_psi_v2(self, P1, P2):
+        t_theta_all = np.arccos(P1[:, 2] / np.linalg.norm(P1, axis=1))
+        t_phi_all = np.arctan2(P1[:, 1], P1[:, 0])
+        t_phi_all = np.hstack([t1 + 2 * np.pi if t1 < 0 else t1
+                               for t1 in t_phi_all])  # (-pi,pi) -> (0, 2pi)
+
+        t_psi_all = []
+        for t_theta, t_phi, tP2 in zip(t_theta_all, t_phi_all, P2):
+            t_psi = self._P2_psi(t_theta, t_phi, tP2)
+            t_psi_all.append(t_psi)
+        t_psi_all = np.hstack(t_psi_all)
+        return t_theta_all, t_phi_all, t_psi_all
+
+    def _theta_phi_psi(self, P1, P2):
+        return self._theta_phi_psi_v2(P1, P2)
+
+    @property
+    def theta_phi_psi(self):
+        t_theta_all, t_phi_all, t_psi_all = self._theta_phi_psi(np.vstack(self.norm_hist),
+                                                                np.vstack(self.lateral_norm_hist))
+        return t_theta_all, t_phi_all, t_psi_all
+
     @property
     def speed(self):
         return self._speed
@@ -1187,69 +1250,6 @@ class TableObj(JefferyObj):
     @property
     def ini_lateral_norm(self):
         return self._ini_lateral_norm
-
-    def _theta_phi_psi_v1(self, P, P2):
-        t_theta_all = np.arccos(P[:, 2] / np.linalg.norm(P, axis=1))
-        t_phi_all = np.arctan2(P[:, 1], P[:, 0])
-        t_phi_all = np.hstack([t1 + 2 * np.pi if t1 < 0 else t1
-                               for t1 in t_phi_all])  # (-pi,pi) -> (0, 2pi)
-
-        t_psi_all = []
-        ini_lateral_norm2 = self._ini_lateral_norm2
-        for t_lateral_norm, t_theta, t_phi in zip(P2, t_theta_all, t_phi_all):
-            t_lateral_norm = vector_rotation_norm(t_lateral_norm, norm=np.array((0, 0, 1)),
-                                                  theta=-t_phi)
-            t_lateral_norm = vector_rotation_norm(t_lateral_norm, norm=np.array((0, 1, 0)),
-                                                  theta=- t_theta)
-            sign = np.sign(np.dot(np.array((0, 0, 1)), np.cross(ini_lateral_norm2, t_lateral_norm)))
-            t_psi = sign * np.arccos(np.clip(np.dot(ini_lateral_norm2, t_lateral_norm)
-                                             / np.linalg.norm(t_lateral_norm)
-                                             / np.linalg.norm(ini_lateral_norm2),
-                                             -1, 1))
-            tfct = np.zeros_like(t_psi)
-            tfct[t_psi < 0] = 2
-            t_psi = t_psi + tfct * np.pi  # (-pi,pi) -> (0, 2pi)
-            t_psi_all.append(t_psi)
-        t_psi_all = np.hstack(t_psi_all)
-        return t_theta_all, t_phi_all, t_psi_all
-
-    def _P2_psi(self, t_theta, t_phi, tP2):
-        if np.isclose(t_theta, np.pi / 2):
-            cos_psi = -1 * tP2[2] / np.sin(t_theta)
-            if np.isclose(t_phi, np.pi / 2):
-                sin_psi = -1 * (tP2[0] - np.cos(t_phi) * np.cos(t_theta) * cos_psi) / np.sin(t_phi)
-            else:
-                sin_psi = +1 * (tP2[1] - np.sin(t_phi) * np.cos(t_theta) * cos_psi) / np.cos(t_phi)
-        else:
-            tA = np.array(((-1 * np.sin(t_phi), np.cos(t_theta) * np.cos(t_phi)),
-                           (+1 * np.cos(t_phi), np.cos(t_theta) * np.sin(t_phi))))
-            tb = np.array((tP2[0], tP2[1]))
-            sin_psi, cos_psi = np.linalg.solve(tA, tb)
-        t_psi = np.arctan2(sin_psi, cos_psi)
-        t_psi = t_psi + 2 * np.pi if t_psi < 0 else t_psi  # (-pi,pi) -> (0, 2pi)
-        return t_psi
-
-    def _theta_phi_psi_v2(self, P1, P2):
-        t_theta_all = np.arccos(P1[:, 2] / np.linalg.norm(P1, axis=1))
-        t_phi_all = np.arctan2(P1[:, 1], P1[:, 0])
-        t_phi_all = np.hstack([t1 + 2 * np.pi if t1 < 0 else t1
-                               for t1 in t_phi_all])  # (-pi,pi) -> (0, 2pi)
-
-        t_psi_all = []
-        for t_theta, t_phi, tP2 in zip(t_theta_all, t_phi_all, P2):
-            t_psi = self._P2_psi(t_theta, t_phi, tP2)
-            t_psi_all.append(t_psi)
-        t_psi_all = np.hstack(t_psi_all)
-        return t_theta_all, t_phi_all, t_psi_all
-
-    def _theta_phi_psi(self, P1, P2):
-        return self._theta_phi_psi_v2(P1, P2)
-
-    @property
-    def theta_phi_psi(self):
-        t_theta_all, t_phi_all, t_psi_all = self._theta_phi_psi(np.vstack(self.norm_hist),
-                                                                np.vstack(self.lateral_norm_hist))
-        return t_theta_all, t_phi_all, t_psi_all
 
     @property
     def intp_psi_list(self):
@@ -1552,7 +1552,7 @@ class TableRk4nObj(TableRkObj):
 
     def _get_q(self, P, P2):
         e0 = np.vstack((np.cross(P2, P), P2, P)).T
-        tq1 = spR.from_dcm(e0).as_quat()
+        tq1 = spR.from_matrix(e0).as_quat()
         q = Quaternion()
         q.set_wxyz(tq1[3], tq1[0], tq1[1], tq1[2])
         return q

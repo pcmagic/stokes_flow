@@ -70,6 +70,8 @@ class StokesFlowProblem:
             'pf_stokesletsRing':                  StokesFlowMethod.point_force_ring_3d_petsc,
             'pf_selfRepeat':                      StokesFlowMethod.self_repeat_3d_petsc,
             'pf_selfRotate':                      StokesFlowMethod.self_rotate_3d_petsc,
+            'rs_selfRotate':                      StokesFlowMethod.self_rotate_3d_petsc,
+            'lg_rs_selfRotate':                   StokesFlowMethod.self_rotate_3d_petsc,
         }
         self._check_args_dict = {
             'rs':                                 StokesFlowMethod.check_regularized_stokeslets_matrix_3d,
@@ -87,7 +89,9 @@ class StokesFlowProblem:
             'pf_stokesletsRingInPipeProblemSymz': StokesFlowMethod.check_point_force_matrix_3d_petsc,
             'pf_stokesletsRing':                  StokesFlowMethod.check_point_force_matrix_3d_petsc,
             'pf_selfRepeat':                      StokesFlowMethod.check_point_force_matrix_3d_petsc,
-            'pf_selfRotate':                      StokesFlowMethod.check_point_force_matrix_3d_petsc,
+            'pf_selfRotate':                      StokesFlowMethod.check_self_rotate_3d_petsc,
+            'rs_selfRotate':                      StokesFlowMethod.check_self_rotate_3d_petsc,
+            'lg_rs_selfRotate':                   StokesFlowMethod.check_self_rotate_3d_petsc,
         }
 
     def _check_add_obj(self, obj):
@@ -1108,8 +1112,8 @@ class StokesFlowObj:
     def set_velocity(self, velocity: np.array):
         return self.get_u_geo().set_velocity(velocity)
 
-    def set_rigid_velocity(self, U, center=None):
-        return self.get_u_geo().set_rigid_velocity(U, center)
+    def set_rigid_velocity(self, *args, **kwargs):
+        return self.get_u_geo().set_rigid_velocity(*args, **kwargs)
 
     def get_problem(self) -> StokesFlowProblem:
         return self._problem
@@ -1147,18 +1151,20 @@ class StokesFlowObj:
             obj2.get_u_geo().set_dmda()
         return obj2
 
-    def combine(self, obj_list: uniqueList, set_re_u=False, set_force=False):
+    def combine(self, obj_list: uniqueList, set_re_u=False, set_force=False,
+                geo_fun=base_geo):
         obj_list = list(tube_flatten((obj_list,)))
         fgeo_list = uniqueList()
         ugeo_list = uniqueList()
         for obj0 in obj_list:
-            err_msg = 'one or more objects in obj_list are not StokesFlowObj object. '
+            err_msg = 'some object(s) in obj_list are not StokesFlowObj object. %s' % \
+                      type(obj0)
             assert isinstance(obj0, StokesFlowObj), err_msg
             fgeo_list.append(obj0.get_f_geo())
             ugeo_list.append(obj0.get_u_geo())
 
-        fgeo = base_geo()
-        ugeo = base_geo()
+        fgeo = geo_fun()
+        ugeo = geo_fun()
         fgeo.combine(fgeo_list)
         ugeo.combine(ugeo_list)
         self.set_data(fgeo, ugeo, name=self.get_name())
@@ -2563,11 +2569,12 @@ class SelfRepeatObj(StokesFlowObj):
 
     def get_total_force(self, center=None):
         repeat_n = self.get_f_geo().repeat_n
-        f_t = super(SelfRepeatObj, self).get_total_force(center=center)
+        f_t = super().get_total_force(center=center)
         return f_t * repeat_n
 
 
-class SelfRepeatProblem(StokesFlowProblem):
+class SelfRepeatHlxProblem(StokesFlowProblem):
+    # Todo: check the directions of the geometry and the rigid body velocity.
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._full_obj_list = []
@@ -2578,18 +2585,93 @@ class SelfRepeatProblem(StokesFlowProblem):
 
     def add_obj(self, obj_pair):
         part_obj, full_obj = obj_pair
+        assert isinstance(part_obj, SelfRepeatObj)
+
         ugeo = full_obj.get_u_geo()
         fgeo = full_obj.get_f_geo()
         assert isinstance(ugeo, SelfRepeat_FatHelix)
         assert isinstance(fgeo, SelfRepeat_FatHelix)
+
         self._full_obj_list.append(full_obj)
         return super().add_obj(part_obj)
 
 
-# class SelfRotateProblem(StokesFlowProblem):
-#     def __init__(self, **kwargs):
-#         super().__init__(**kwargs)
-#         self._n_tail = kwargs['n_tail']
+class SelfRotateObj(StokesFlowObj):
+    def set_data(self, *args, **kwargs):
+        super().set_data(*args, **kwargs)
+        self._type = 'self rotate obj'
+        return True
+
+    def get_total_force(self, center=None):
+        f_t = super().get_total_force(center=center)
+        f = f_t[:3]
+        t = f_t[3:]
+        problem_n_copy = self.get_problem().get_kwargs()['problem_n_copy']
+        problem_norm = self.get_problem().get_kwargs()['problem_norm']
+
+        F, T = 0, 0
+        for thetai in np.linspace(0, 2 * np.pi, problem_n_copy, endpoint=False):
+            rot_M = get_rot_matrix(problem_norm, thetai)
+            # PETSc.Sys.Print(np.dot(rot_M, f))
+            F = F + np.dot(rot_M, f)
+            T = T + np.dot(rot_M, t)
+        return np.hstack((F, T))
+
+
+class SelfRotateProblem(StokesFlowProblem):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._problem_center = kwargs['problem_center']
+        self._problem_norm = kwargs['problem_norm']
+        self._problem_n_copy = kwargs['problem_n_copy']
+
+    def set_rigid_velocity(self, u, w):
+        problem_norm = self.get_kwargs()['problem_norm']
+        problem_center = self.get_kwargs()['problem_center']
+        U = np.hstack((u * problem_norm, w * problem_norm))
+        for tobj in self.get_obj_list():
+            tobj.set_rigid_velocity(U, problem_center)
+        return True
+
+    def add_obj(self, obj):
+        assert isinstance(obj, SelfRotateObj)
+        return super().add_obj(obj)
+
+    def show_all_u_nodes(self, linestyle='-'):
+        problem_norm = self.get_kwargs()['problem_norm']
+        problem_n_copy = self.get_kwargs()['problem_n_copy']
+        problem_center = self.get_kwargs()['problem_center']
+
+        geo_list = uniqueList()
+        for obj1 in self.get_all_obj_list():
+            tugeo = obj1.get_u_geo()
+            if isinstance(obj1, SelfRotateObj):
+                for thetai in np.linspace(0, 2 * np.pi, problem_n_copy, endpoint=False):
+                    tugeo2 = tugeo.copy()
+                    tugeo2.node_rotation(problem_norm, thetai, problem_center)
+                    geo_list.append(tugeo2)
+            else:
+                geo_list.append(tugeo)
+        temp_geo = base_geo()
+        temp_geo.combine(geo_list)
+        temp_geo.show_nodes(linestyle)
+        return True
+
+    # def show_f_nodes(self, linestyle='-'):
+    #     err_msg='not finish yet'
+    #     assert 1==2, err_msg
+    #
+    # def show_f_u_nodes(self, linestyle='-'):
+    #     err_msg='not finish yet'
+    #     assert 1==2, err_msg
+    #
+    # def show_force(self, length_factor=1, show_nodes=True):
+    #     err_msg='not finish yet'
+    #     assert 1==2, err_msg
+    #
+    # def show_velocity(self, length_factor=1, show_nodes=True):
+    #     err_msg='not finish yet'
+    #     assert 1==2, err_msg
 
 
 class ForceFreeComposite:
@@ -4036,11 +4118,11 @@ class ForceFreeIterateProblem(ForceFreeProblem):
 class ForceFree1DInfProblem(ForceFreeProblem):
     def _init_kwargs(self, axis='z', **kwargs):
         # axis: symmetrical axis
-        if axis is 'x':
+        if axis == 'x':
             ffweightF = kwargs['ffweightx'] / kwargs['zoom_factor']
-        elif axis is 'y':
+        elif axis == 'y':
             ffweightF = kwargs['ffweighty'] / kwargs['zoom_factor']
-        elif axis is 'z':
+        elif axis == 'z':
             ffweightF = kwargs['ffweightz'] / kwargs['zoom_factor']
         else:
             err_msg = 'wrong symmetrical axis, it should be one of (x, y, z). '
@@ -4123,15 +4205,15 @@ class ForceFree1DInfProblem(ForceFreeProblem):
                     r_u = sub_obj.get_u_geo().get_nodes() - center
                     r_f = sub_obj.get_f_geo().get_nodes() - center
                     axis = self.get_axis()
-                    if axis is 'x':
+                    if axis == 'x':
                         t_I = np.array((-ffweight[0], 0, 0))
                         tmu2 = np.vstack([(0, -ri[2], ri[1]) for ri in r_u]) * ffweight[1]
                         tmf2 = np.hstack([(0, -ri[2], ri[1]) for ri in r_f]) * ffweight[1]
-                    elif axis is 'y':
+                    elif axis == 'y':
                         t_I = np.array((0, -ffweight[0], 0))
                         tmu2 = np.vstack([(ri[2], 0, -ri[0]) for ri in r_u]) * ffweight[1]
                         tmf2 = np.hstack([(ri[2], 0, -ri[0]) for ri in r_f]) * ffweight[1]
-                    elif axis is 'z':
+                    elif axis == 'z':
                         t_I = np.array((0, 0, -ffweight[0]))
                         tmu2 = np.vstack([(-ri[1], ri[0], 0) for ri in r_u]) * ffweight[1]
                         tmf2 = np.hstack([(-ri[1], ri[0], 0) for ri in r_f]) * ffweight[1]
@@ -4201,11 +4283,11 @@ class ForceFree1DInfProblem(ForceFreeProblem):
                     tmp.append(t_force[f_glbIdx_all])
                 _, f_glbIdx_all = obj0.get_f_glbIdx()
                 ref_U = t_force[f_glbIdx_all] * ffweight
-                if axis is 'x':
+                if axis == 'x':
                     ref_U = np.array([ref_U[0], 0, 0, ref_U[1], 0, 0])
-                elif axis is 'y':
+                elif axis == 'y':
                     ref_U = np.array([0, ref_U[0], 0, 0, ref_U[1], 0])
-                elif axis is 'z':
+                elif axis == 'z':
                     ref_U = np.array([0, 0, ref_U[0], 0, 0, ref_U[1]])
                 obj0.set_ref_U(ref_U)
                 # absolute speed
@@ -4241,11 +4323,11 @@ class ForceFree1DInfProblem(ForceFreeProblem):
                     sub_obj.set_re_velocity(re_abs_U)
                 # _, u_glbIdx_all = obj0.get_u_glbIdx()
                 # re_sum = self._re_velocity[u_glbIdx_all] * [-1, 1] / ffweight
-                # if axis is 'x':
+                # if axis == 'x':
                 #     re_sum = np.array([re_sum[0], 0, 0, re_sum[1], 0, 0])
-                # elif axis is 'y':
+                # elif axis == 'y':
                 #     re_sum = np.array([0, re_sum[0], 0, 0, re_sum[1], 0])
-                # elif axis is 'z':
+                # elif axis == 'z':
                 #     re_sum = np.array([0, 0, re_sum[0], 0, 0, re_sum[1]])
                 # obj0.set_total_force(re_sum)  # force free, analytically they are zero.
             else:
@@ -4311,11 +4393,11 @@ class givenForce1DInfPoblem(ForceFree1DInfProblem, GivenForceProblem):
                         [-1] * 3 + [1] * 3)  # sum(-1*F)=-F_give, sum(r*F)=T_give
                 axis = self.get_axis()
                 if rank == 0:
-                    if axis is 'x':
+                    if axis == 'x':
                         velocity[u_glbIdx_all] = givenF[[0, 3]] * ffweight
-                    elif axis is 'y':
+                    elif axis == 'y':
                         velocity[u_glbIdx_all] = givenF[[1, 4]] * ffweight
-                    elif axis is 'z':
+                    elif axis == 'z':
                         velocity[u_glbIdx_all] = givenF[[2, 5]] * ffweight
             else:
                 u0 = obj0.get_velocity()
@@ -4886,23 +4968,23 @@ class GivenTorqueIterateVelocity1DProblem(StokesFlowProblem):
     def solve_sumForce(self, U, W=1, center=np.zeros(3)):
         axis = self._axis  # type: str
         # assert 1 == 2, 'check center of the tobj.set_rigid_velocity()'
-        if axis is 'x':
+        if axis == 'x':
             for tobj in self._iterObj:
                 tobj.set_rigid_velocity((U, 0, 0, W, 0, 0))
-        elif axis is 'y':
+        elif axis == 'y':
             for tobj in self._iterObj:
                 tobj.set_rigid_velocity((0, U, 0, 0, W, 0))
-        elif axis is 'z':
+        elif axis == 'z':
             for tobj in self._iterObj:
                 tobj.set_rigid_velocity((0, 0, U, 0, 0, W))
         self.create_F_U()
         self.solve()
         sum_force = np.sum([tobj.get_total_force(center=center) for tobj in self._iterObj], axis=0)
-        if axis is 'x':
+        if axis == 'x':
             tf = sum_force[0]
-        elif axis is 'y':
+        elif axis == 'y':
             tf = sum_force[1]
-        elif axis is 'z':
+        elif axis == 'z':
             tf = sum_force[2]
         return tf
 
@@ -5138,8 +5220,10 @@ problem_dic = {
     'pf_stokesletsInPipeforcefree': StokesletsInPipeforcefreeProblem,
     'pf_stokesletsTwoPlane':        StokesletsTwoPlaneProblem,
     'pf_infhelix':                  StokesFlowProblem,
-    'pf_selfRepeat':                SelfRepeatProblem,
-    'pf_selfRotate':                StokesFlowProblem,
+    'pf_selfRepeat':                SelfRepeatHlxProblem,
+    'pf_selfRotate':                SelfRotateProblem,
+    'rs_selfRotate':                SelfRotateProblem,
+    'lg_rs_selfRotate':             SelfRotateProblem,
 }
 
 obj_dic = {
@@ -5155,8 +5239,10 @@ obj_dic = {
     'pf_stokesletsTwoPlane':        StokesFlowObj,
     'pf_infhelix':                  StokesFlowObj,
     'pf_stokesletsRingInPipe':      StokesFlowRingObj,
-    'pf_selfRepeat':                StokesFlowObj,
-    'pf_selfRotate':                StokesFlowObj,
+    'pf_selfRepeat':                SelfRepeatObj,
+    'pf_selfRotate':                SelfRotateObj,
+    'rs_selfRotate':                SelfRotateObj,
+    'lg_rs_selfRotate':             SelfRotateObj,
     'KRJ_slb':                      StokesFlowObj,
     'lightill_slb':                 StokesFlowObj,
 }

@@ -28,8 +28,8 @@ def get_problem_kwargs(**main_kwargs):
     OptDB.setValue('f', fileHandle)
     problem_kwargs['fileHandle'] = fileHandle
 
-    kwargs_list = (get_shearFlow_kwargs(), get_freeVortex_kwargs(),
-                   get_ecoli_kwargs(), get_one_ellipse_kwargs(), get_forcefree_kwargs(), main_kwargs,)
+    kwargs_list = (get_shearFlow_kwargs(), get_freeVortex_kwargs(), get_ecoli_kwargs(),
+                   get_one_ellipse_kwargs(), get_forcefree_kwargs(), main_kwargs,)
     for t_kwargs in kwargs_list:
         for key in t_kwargs:
             problem_kwargs[key] = t_kwargs[key]
@@ -68,13 +68,15 @@ def main_fun_noIter(**main_kwargs):
     spheroid0.move(rc1)
     spheroid0_norm = spheroid0.get_u_geo().get_geo_norm()
     rot_norm = np.cross(nc1, spheroid0_norm)
-    rot_theta = np.arccos(np.dot(nc1, spheroid0_norm) / np.linalg.norm(nc1) / np.linalg.norm(spheroid0_norm))
+    rot_theta = np.arccos(
+        np.dot(nc1, spheroid0_norm) / np.linalg.norm(nc1) / np.linalg.norm(spheroid0_norm))
     spheroid0.node_rotation(rot_norm, rot_theta)
     spheroid1 = spheroid0.copy()
     spheroid1.node_rotation(np.array((0, 0, 1)), 2 * np.pi / 3, rotation_origin=np.zeros(3))
     spheroid2 = spheroid0.copy()
     spheroid2.node_rotation(np.array((0, 0, 1)), 4 * np.pi / 3, rotation_origin=np.zeros(3))
-    spheroid_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((0, 0, 1)), name='spheroid_comp')
+    spheroid_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((0, 0, 1)),
+                                          name='spheroid_comp')
     spheroid_comp.add_obj(obj=spheroid0, rel_U=np.zeros(6))
     spheroid_comp.add_obj(obj=spheroid1, rel_U=np.zeros(6))
     spheroid_comp.add_obj(obj=spheroid2, rel_U=np.zeros(6))
@@ -126,14 +128,16 @@ def main_fun_fix(**main_kwargs):
     spheroid0.move(rc1)
     spheroid0_norm = spheroid0.get_u_geo().get_geo_norm()
     rot_norm = np.cross(nc1, spheroid0_norm)
-    rot_theta = np.arccos(np.dot(nc1, spheroid0_norm) / np.linalg.norm(nc1) / np.linalg.norm(spheroid0_norm))
+    rot_theta = np.arccos(
+        np.dot(nc1, spheroid0_norm) / np.linalg.norm(nc1) / np.linalg.norm(spheroid0_norm))
     spheroid0.node_rotation(rot_norm, rot_theta)
     spheroid0.set_rigid_velocity(np.zeros(6))
     spheroid1 = spheroid0.copy()
     spheroid1.node_rotation(np.array((0, 0, 1)), 2 * np.pi / 3, rotation_origin=np.zeros(3))
     spheroid2 = spheroid0.copy()
     spheroid2.node_rotation(np.array((0, 0, 1)), 4 * np.pi / 3, rotation_origin=np.zeros(3))
-    spheroid_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((0, 0, 1)), name='spheroid_comp')
+    spheroid_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((0, 0, 1)),
+                                          name='spheroid_comp')
     spheroid_comp.add_obj(obj=spheroid0, rel_U=np.zeros(6))
     spheroid_comp.add_obj(obj=spheroid1, rel_U=np.zeros(6))
     spheroid_comp.add_obj(obj=spheroid2, rel_U=np.zeros(6))
@@ -183,20 +187,23 @@ def main_fun(**main_kwargs):
     spheroid0.move(rc1)
     spheroid0_norm = spheroid0.get_u_geo().get_geo_norm()
     rot_norm = np.cross(nc1, spheroid0_norm)
-    rot_theta = np.arccos(np.dot(nc1, spheroid0_norm) / np.linalg.norm(nc1) / np.linalg.norm(spheroid0_norm))
+    rot_theta = np.arccos(
+        np.dot(nc1, spheroid0_norm) / np.linalg.norm(nc1) / np.linalg.norm(spheroid0_norm))
     spheroid0.node_rotation(rot_norm, rot_theta)
     spheroid1 = spheroid0.copy()
     spheroid1.node_rotation(np.array((0, 0, 1)), 2 * np.pi / 3, rotation_origin=np.zeros(3))
     spheroid2 = spheroid0.copy()
     spheroid2.node_rotation(np.array((0, 0, 1)), 4 * np.pi / 3, rotation_origin=np.zeros(3))
-    spheroid_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((0, 0, 1)), name='spheroid_comp')
+    spheroid_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((0, 0, 1)),
+                                          name='spheroid_comp')
     spheroid_comp.add_obj(obj=spheroid0, rel_U=np.zeros(6))
     spheroid_comp.add_obj(obj=spheroid1, rel_U=np.zeros(6))
     spheroid_comp.add_obj(obj=spheroid2, rel_U=np.zeros(6))
 
     # dbg
     tail_list = create_ecoli_tail(np.zeros(3), **problem_kwargs)
-    spheroid_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((0, 0, 1)), name='spheroid_comp')
+    spheroid_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((0, 0, 1)),
+                                          name='spheroid_comp')
     for tobj in tail_list:
         spheroid_comp.add_obj(obj=tobj, rel_U=np.zeros(6))
     spheroid_comp.show_u_nodes()

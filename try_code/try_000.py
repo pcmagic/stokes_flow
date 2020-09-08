@@ -1,13 +1,1 @@
-def _plot_fft(use_t, ty, f2, Pxx_den, figsize=np.array((16, 9)) * 0.5, dpi=100, ):
-    fig, axs = plt.subplots(1, 2, figsize=figsize, dpi=dpi)
-    axi = axs[0]
-    axi.plot(use_t, ty, '.-')
-    axi = axs[1]
-    axi.loglog(f2, Pxx_den, '.')
-    tpk = signal.find_peaks(Pxx_den)[0]
-    fft_abs_pk = Pxx_den[tpk]
-    freq_pk = f2[tpk]
-    tidx = np.argsort(fft_abs_pk)[-show_prim_freq:]
-    axi.loglog(freq_pk[tidx], fft_abs_pk[tidx], '*')
-    t1 = 'starred freq: \n' + '\n'.join(['$%.5f$' % freq_pk[ti] for ti in tidx])
-    axi.text(axi.get_xlim()[0] * 1.1, axi.get_ylim()[0] * 2, t1)
+-pickProblem 0 -save_singleEcoli_vtk 0 -rh1 1 -rh2 0.1 -ch 1 -nth 10 -eh -1 -ph 6.283 -hfct 1 -with_cover 2 -left_hand 0 -rs1 0.35 -rs2 0.35 -ls 8 -ds 0.1 -es -1 -with_T_geo 0 -dist_hs 0.5 -ksp_max_it 2 -plot_geo 0 -rel_wsz 0 -rel_whz 1 -ffweight 2 -forcepipe dbg -sm pf_stokesletsInPipe -ch 0.5 -zoom_factor 0.7 -f AlineEcoliInPipe_dbg

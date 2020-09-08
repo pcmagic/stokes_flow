@@ -11,11 +11,14 @@ __all__ = ['createEcoli_ellipse', 'createEcoliComp_ellipse', 'createEcoli_2tails
            'create_rotlets_tail_2part', 'create_selfRepeat_tail',
            'create_ecoli_2part_at', 'create_ecoli_dualTail_at',
            'get_tail_nodes_split_at', 'get_ecoli_nodes_split_at',
+           'create_diskVane_tail',
            'create_capsule',
            'create_rod',
            'create_infHelix',
            'create_helicoid_list', 'create_helicoid_comp',
-           'obj2helicoid_list', 'obj2helicoid_comp',
+           'creat_helicoid_dumb', 'creat_helicoid_dumb_selfRotate',
+           'obj2helicoid_list', 'obj2helicoid_list_v2', 'obj2helicoid_list_v3',
+           'obj2helicoid_comp', 'obj2helicoid_list_selfRotate',
            'create_sphere', 'create_move_single_sphere', 'create_one_ellipse']
 
 
@@ -32,10 +35,10 @@ def create_capsule(rs1, rs2, ls, ds, node_dof=3):
     vsgeo2 = vsgeo1.copy()
     vsgeo1.node_rotation(norm=np.array((0, 1, 0)), theta=-np.pi / 2)
     vsgeo1.node_rotation(norm=np.array((0, 0, 1)), theta=-np.pi / 2)
-    vsgeo1.move((0, 0, -lvs3 / 2))
+    vsgeo1.move((0, 0, +lvs3 / 2))
     vsgeo2.node_rotation(norm=np.array((0, 1, 0)), theta=+np.pi / 2)
     vsgeo2.node_rotation(norm=np.array((0, 0, 1)), theta=+np.pi / 2 - dth)
-    vsgeo2.move((0, 0, +lvs3 / 2))
+    vsgeo2.move((0, 0, -lvs3 / 2))
     vsgeo2.set_nodes(np.flipud(vsgeo2.get_nodes()), deltalength=vsgeo2.get_deltaLength())
     if lvs3 > ds:
         vsgeo3 = tunnel_geo()
@@ -148,6 +151,46 @@ def create_ecoli_tail_bck(moveh, **kwargs):
         tail_list.append(vhobj1)
 
     return tail_list
+
+
+def create_diskVane_tail(moveh, **kwargs):
+    r1 = kwargs['diskVane_r1']
+    r2 = kwargs['diskVane_r2']
+    rz = kwargs['diskVane_rz']
+    th_loc = kwargs['diskVane_th_loc']
+    # ph_loc = kwargs['diskVane_ph_loc']
+    ds = kwargs['diskVane_ds']
+    nr = kwargs['diskVane_nr']
+    nz = kwargs['diskVane_nz']
+
+    tgeo = regularizeDisk()
+    tgeo.create_ds(ds, r2)
+    tgeo.node_rotation(norm=np.array([1, 0, 0]), theta=np.pi / 2, rotation_origin=np.zeros(3))
+    tgeo.node_rotation(norm=np.array([0, 0, 1]), theta=th_loc, rotation_origin=np.zeros(3))
+    tgeo.move(np.array((r1, 0, moveh)))
+
+    tgeo_list0 = []
+    trot = 2 * np.pi / nr
+    for i0 in range(nr):
+        th = trot * i0
+        tgeo2 = tgeo.copy()
+        tgeo2.node_rotation(norm=np.array((0, 0, 1)), theta=th, rotation_origin=np.zeros(3))
+        tgeo_list0.append(tgeo2)
+
+    if np.isclose(nz, 1):
+        tgeo_list = tgeo_list0
+    else:
+        tgeo_list = []
+        tz = rz / (nz - 1)
+        for i0 in range(nz):
+            tmove = tz * i0
+            th = np.pi * i0
+            for tgeoi in tgeo_list0:
+                tgeoj = tgeoi.copy()
+                tgeoj.move(np.array((0, 0, tmove)))
+                tgeoj.node_rotation(norm=np.array((0, 0, 1)), theta=th, rotation_origin=np.zeros(3))
+                tgeo_list.append(tgeoj)
+    return tgeo_list
 
 
 def create_selfRepeat_tail(moveh, **kwargs):
@@ -523,9 +566,9 @@ def get_ecoli_nodes_split_at(theta, phi, psi_tail, now_center=np.zeros(3), **pro
     n_tail = problem_kwargs['n_tail']
     t0 = np.split(tail_obj.get_u_nodes(), 2 * n_tail)
     t1 = np.vstack(t0[1::2])
-    t1 = np.vstack((ecoli_comp.get_obj_list()[0].get_u_nodes(), t1))
     t2 = np.vstack(t0[0::2])
-    return t1, t2
+    t3 = ecoli_comp.get_obj_list()[0].get_u_nodes()
+    return t1, t2, t3
 
 
 def create_ecoli_dualTail(**problem_kwargs):
@@ -708,6 +751,7 @@ def create_helicoid_list(namehandle='helicoid', **problem_kwargs):
     ndsk_each = problem_kwargs['helicoid_ndsk_each']
     matrix_method = problem_kwargs['matrix_method']
     assert matrix_method in ('rs', 'lg_rs')
+    assert ndsk_each == 4
 
     tgeo = regularizeDisk()
     tgeo.create_ds(ds, r2)
@@ -718,7 +762,8 @@ def create_helicoid_list(namehandle='helicoid', **problem_kwargs):
     tgeo_list = []
     rot_dth = 2 * np.pi / ndsk_each
     for i0 in range(ndsk_each):
-        rot_th = i0 * rot_dth + rot_dth / 2
+        rot_th = i0 * rot_dth + np.pi / 4
+        # rot_th = i0 * rot_dth
         tgeo21 = tgeo.copy()
         tgeo21.node_rotation(norm=np.array([0, 0, 1]), theta=rot_th, rotation_origin=np.zeros(3))
         tgeo22 = tgeo21.copy()
@@ -745,7 +790,7 @@ def create_helicoid_comp(*args, **kwargs):
     update_order = kwargs['update_order'] if 'update_order' in kwargs.keys() else 1
     update_fun = kwargs['update_fun'] if 'update_fun' in kwargs.keys() else Adams_Bashforth_Methods
     helicoid_list = create_helicoid_list(*args, **kwargs)
-    helicoid_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((1, 0, 0)),
+    helicoid_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((0, 0, 1)),
                                           name='helicoid_comp')
     for tobj in helicoid_list:
         # print(tobj)
@@ -756,8 +801,10 @@ def create_helicoid_comp(*args, **kwargs):
 
 
 def obj2helicoid_list(tobj0, **problem_kwargs):
+    # assert 1 == 2
     helicoid_r = problem_kwargs['helicoid_r']
     ndsk_each = problem_kwargs['helicoid_ndsk_each']
+    assert ndsk_each == 4
 
     tobj = tobj0.copy()
     tobj.move(np.array((helicoid_r, 0, 0)))
@@ -766,30 +813,175 @@ def obj2helicoid_list(tobj0, **problem_kwargs):
     rot_dth = 2 * np.pi / ndsk_each
     namehandle = tobj.get_name()
     for i0 in range(ndsk_each):
-        rot_th = i0 * rot_dth + rot_dth / 2
+        rot_th = i0 * rot_dth + np.pi / 4
+        # rot_th = i0 * rot_dth
         tobj21 = tobj.copy()
         tobj21.set_name('%s_%02d_%01d' % (namehandle, i0, 1))
         tobj21.node_rotation(norm=np.array([0, 0, 1]), theta=rot_th, rotation_origin=np.zeros(3))
         tobj_list.append(tobj21)
         tobj22 = tobj21.copy()
-        tobj21.set_name('%s_%02d_%01d' % (namehandle, i0, 2))
+        tobj22.set_name('%s_%02d_%01d' % (namehandle, i0, 2))
         tobj22.node_rotation(norm=np.array([1, 0, 0]), theta=np.pi / 2, rotation_origin=np.zeros(3))
         tobj_list.append(tobj22)
         tobj23 = tobj21.copy()
-        tobj21.set_name('%s_%02d_%01d' % (namehandle, i0, 3))
+        tobj23.set_name('%s_%02d_%01d' % (namehandle, i0, 3))
         tobj23.node_rotation(norm=np.array([0, 1, 0]), theta=np.pi / 2, rotation_origin=np.zeros(3))
         tobj_list.append(tobj23)
     return tobj_list
 
 
-def obj2helicoid_comp(tobj0, *args, **kwargs):
+def obj2helicoid_list_v2(tobj0, **problem_kwargs):
+    helicoid_r = problem_kwargs['helicoid_r']
+    ndsk_each = problem_kwargs['helicoid_ndsk_each']
+    assert ndsk_each == 4
+    helicoid_th0 = problem_kwargs['helicoid_th0'] if 'helicoid_th0' in problem_kwargs.keys() else 0
+    assert np.isclose(np.linalg.norm(tobj0.get_u_geo().get_center()), 0)
+
+    namehandle = tobj0.get_name()
+    t1 = helicoid_r / np.sqrt(2)
+    tobj0.move((t1, t1, 0))
+    tobj1 = tobj0.copy()
+    tobj1.node_rotation(np.array((1, 0, 0)), np.pi / 2, rotation_origin=np.zeros(3))
+    tobj2 = tobj0.copy()
+    tobj2.node_rotation(np.array((1, 0, 0)), -np.pi / 2, rotation_origin=np.zeros(3))
+
+    tobj_list = []
+    rot_dth = 2 * np.pi / ndsk_each
+    for i0 in range(ndsk_each):
+        rot_th = i0 * rot_dth + helicoid_th0
+        for i1, tobji in enumerate((tobj0, tobj1, tobj2)):
+            tobji_i0 = tobji.copy()
+            tobji_i0.set_name('%s_%02d_%01d' % (namehandle, i0, i1))
+            tobji_i0.node_rotation(np.array((0, 0, 1)), rot_th, rotation_origin=np.zeros(3))
+            tobj_list.append(tobji_i0)
+    return tobj_list
+
+
+def obj2helicoid_list_v3(tobj, **problem_kwargs):
+    helicoid_r = problem_kwargs['helicoid_r']
+    ndsk_each = problem_kwargs['helicoid_ndsk_each']
+    assert ndsk_each == 4
+    helicoid_th0 = problem_kwargs['helicoid_th0'] if 'helicoid_th0' in problem_kwargs.keys() else 0
+    assert np.isclose(np.linalg.norm(tobj.get_u_geo().get_center()), 0)
+
+    namehandle = tobj.get_name()
+    rot_dth = 2 * np.pi / ndsk_each
+    tobj.move((helicoid_r, 0, 0))
+    tobj0 = tobj.copy()
+    tobj0.node_rotation(np.array((0, 0, 1)), -rot_dth / 2, rotation_origin=np.zeros(3))
+    tobj1 = tobj.copy()
+    tobj1.node_rotation(np.array((1, 0, 0)), -np.pi / 2, rotation_origin=np.zeros(3))
+    tobj1.node_rotation(np.array((0, 1, 0)), rot_dth / 2, rotation_origin=np.zeros(3))
+    tobj2 = tobj.copy()
+    tobj2.node_rotation(np.array((1, 0, 0)), -np.pi / 2, rotation_origin=np.zeros(3))
+    tobj2.node_rotation(np.array((0, 1, 0)), -rot_dth / 2, rotation_origin=np.zeros(3))
+
+    tobj_list = []
+    for i0 in range(ndsk_each):
+        rot_th = i0 * rot_dth + helicoid_th0
+        for i1, tobji in enumerate((tobj0, tobj1, tobj2)):
+            tobji_i0 = tobji.copy()
+            tobji_i0.set_name('%s_%02d_%01d' % (namehandle, i0, i1))
+            tobji_i0.node_rotation(np.array((0, 0, 1)), rot_th, rotation_origin=np.zeros(3))
+            tobj_list.append(tobji_i0)
+    return tobj_list
+
+
+def obj2helicoid_list_selfRotate(tobj, **problem_kwargs):
+    helicoid_r = problem_kwargs['helicoid_r']
+    ndsk_each = problem_kwargs['helicoid_ndsk_each']
+    assert ndsk_each == 4
+    # helicoid_th0 = problem_kwargs['helicoid_th0'] if 'helicoid_th0' in problem_kwargs.keys() else 0
+    assert np.isclose(np.linalg.norm(tobj.get_u_geo().get_center()), 0)
+
+    # namehandle = tobj.get_name()
+    rot_dth = 2 * np.pi / ndsk_each
+    tobj.move((helicoid_r, 0, 0))
+    tobj0 = tobj.copy()
+    tobj0.node_rotation(np.array((0, 0, 1)), -rot_dth / 2, rotation_origin=np.zeros(3))
+    tobj1 = tobj.copy()
+    tobj1.node_rotation(np.array((1, 0, 0)), -np.pi / 2, rotation_origin=np.zeros(3))
+    tobj1.node_rotation(np.array((0, 1, 0)), rot_dth / 2, rotation_origin=np.zeros(3))
+    tobj2 = tobj.copy()
+    tobj2.node_rotation(np.array((1, 0, 0)), -np.pi / 2, rotation_origin=np.zeros(3))
+    tobj2.node_rotation(np.array((0, 1, 0)), -rot_dth / 2, rotation_origin=np.zeros(3))
+
+    tobj_list = [tobj0, tobj1, tobj2]
+    return tobj_list
+
+
+def obj2helicoid_comp(tobj0, **kwargs):
     update_order = kwargs['update_order'] if 'update_order' in kwargs.keys() else 1
     update_fun = kwargs['update_fun'] if 'update_fun' in kwargs.keys() else Adams_Bashforth_Methods
-    helicoid_list = obj2helicoid_list(tobj0, *args, **kwargs)
-    helicoid_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((1, 0, 0)),
+    # helicoid_list = obj2helicoid_list(tobj0, *args, **kwargs)
+    helicoid_list = obj2helicoid_list_v3(tobj0, **kwargs)
+    helicoid_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((0, 0, 1)),
                                           name='helicoid_comp')
     for tobj in helicoid_list:
         helicoid_comp.add_obj(obj=tobj, rel_U=np.zeros(6))
     helicoid_comp.set_update_para(fix_x=False, fix_y=False, fix_z=False,
                                   update_fun=update_fun, update_order=update_order)
+    return helicoid_comp
+
+
+def obj2helicoid_comp_selfRotate(tobj0, **kwargs):
+    update_order = kwargs['update_order'] if 'update_order' in kwargs.keys() else 1
+    update_fun = kwargs['update_fun'] if 'update_fun' in kwargs.keys() else Adams_Bashforth_Methods
+    # helicoid_list = obj2helicoid_list(tobj0, *args, **kwargs)
+    helicoid_list = obj2helicoid_list_selfRotate(tobj0, **kwargs)
+    helicoid_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((0, 0, 1)),
+                                          name='helicoid_comp')
+    for tobj in helicoid_list:
+        helicoid_comp.add_obj(obj=tobj, rel_U=np.zeros(6))
+    helicoid_comp.set_update_para(fix_x=False, fix_y=False, fix_z=False,
+                                  update_fun=update_fun, update_order=update_order)
+    return helicoid_comp
+
+
+def creat_helicoid_dumb(**problem_kwargs):
+    dumb_d = problem_kwargs['dumb_d']
+    dumb_theta = problem_kwargs['dumb_theta']
+    ds = problem_kwargs['ds']
+    rs = problem_kwargs['rs']
+    sphere_geo0 = sphere_geo()
+    sphere_geo0.create_delta(ds, rs)
+    sphere_geo1 = sphere_geo0.copy()
+    sphere_geo0.move(np.array((0, 0, dumb_d / 2)))
+    sphere_geo1.move(np.array((0, 0, -dumb_d / 2)))
+    dumb_geo = base_geo()
+    dumb_geo.combine([sphere_geo0, sphere_geo1], origin=np.zeros(3), geo_norm=np.array((0, 0, 1)))
+    dumb_geo.node_rotation(norm=np.array((1, 0, 0)), theta=dumb_theta)
+    tobj = sf.StokesFlowObj()
+    tobj.set_data(dumb_geo, dumb_geo, 'helicoid_dumb')
+    helicoid_comp = obj2helicoid_comp(tobj, **problem_kwargs)
+    return helicoid_comp
+
+
+def creat_helicoid_dumb_selfRotate(**problem_kwargs):
+    matrix_method = problem_kwargs['matrix_method']
+    dumb_d = problem_kwargs['dumb_d']
+    dumb_theta = problem_kwargs['dumb_theta']
+    ds = problem_kwargs['ds']
+    rs = problem_kwargs['rs']
+    es = problem_kwargs['es']
+
+    sphere_geo0 = sphere_geo()
+    sphere_geo0.create_delta(ds, rs)
+    sphere_geo0f = sphere_geo0.copy()
+    sphere_geo0f.node_zoom(1 + ds * es / rs)
+    sphere_geo1 = sphere_geo0.copy()
+    sphere_geo1f = sphere_geo0f.copy()
+    sphere_geo0.move(np.array((0, 0, dumb_d / 2)))
+    sphere_geo1.move(np.array((0, 0, -dumb_d / 2)))
+    sphere_geo0f.move(np.array((0, 0, dumb_d / 2)))
+    sphere_geo1f.move(np.array((0, 0, -dumb_d / 2)))
+    dumb_geo = base_geo()
+    dumb_geo.combine([sphere_geo0, sphere_geo1], origin=np.zeros(3), geo_norm=np.array((0, 0, 1)))
+    dumb_geo.node_rotation(norm=np.array((1, 0, 0)), theta=dumb_theta)
+    dumb_geof = base_geo()
+    dumb_geof.combine([sphere_geo0f, sphere_geo1f], origin=np.zeros(3), geo_norm=np.array((0, 0, 1)))
+    dumb_geof.node_rotation(norm=np.array((1, 0, 0)), theta=dumb_theta)
+    tobj = sf.obj_dic[matrix_method]()
+    tobj.set_data(dumb_geof, dumb_geo, name='helicoid_dumb')
+    helicoid_comp = obj2helicoid_comp_selfRotate(tobj, **problem_kwargs)
     return helicoid_comp

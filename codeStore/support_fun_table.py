@@ -49,6 +49,7 @@ import re
 from codeStore import support_fun as spf
 import shutil
 import multiprocessing
+import warnings
 
 markerstyle_list = ['^', 'v', 'o', 's', 'p', 'd', 'H',
                     '1', '2', '3', '4', '8', 'P', '*',
@@ -548,6 +549,95 @@ def core_show_table_theta_phi_list(theta_phi_list, job_dir, Table_t_range=(-np.i
 
 def show_table_theta_phi_list(*args, **kwargs):
     core_show_table_theta_phi_list(*args, **kwargs)
+    return True
+
+
+def core_show_pickle_theta_phi_list(pickle_path_list, Table_t_range=(-np.inf, np.inf),
+                                    figsize=np.array((20, 20)), dpi=100, fast_mode=0,
+                                    markersize=3, linewidth=1, alpha=0.5):
+    cmap_list = ['Greys', 'Purples', 'Blues', 'Greens', 'Oranges', 'Reds',
+                 'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu',
+                 'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn']
+
+    # cmap_list = ['jet'] * len(pickle_path_list)
+
+    def _get_ax():
+        fig, ax1 = plt.subplots(1, 1, figsize=np.ones(2) * np.min(figsize), dpi=dpi,
+                                subplot_kw=dict(polar=True))
+        plt.sca(ax1)
+        ax1.set_ylim(0, np.pi)
+        # ax1.xaxis.set_ticklabels(['$\dfrac{%d}{8}2\pi$' % i0 for i0 in np.arange(8)])
+        ax1.yaxis.set_ticklabels([])
+        return fig, ax1
+
+    if fast_mode:
+        fig, ax1 = _get_ax()
+        fig2, ax2 = _get_ax()
+        fig3, ax3 = plt.subplots(1, 1, figsize=figsize, dpi=dpi)
+        # fig3.patch.set_facecolor('white')
+        for pickle_path in pickle_path_list:
+            with open(pickle_path, 'rb') as handle:
+                tpick = pickle.load(handle)
+            Table_t = tpick['Table_t']
+            # Table_dt = tpick['Table_dt']
+            # Table_X = tpick['Table_X']
+            # Table_P = tpick['Table_P']
+            # Table_P2 = tpick['Table_P2']
+            Table_theta = tpick['Table_theta']
+            Table_phi = tpick['Table_phi']
+            Table_psi = tpick['Table_psi']
+            # Table_eta = tpick['Table_eta']
+
+            idx = np.logical_and(Table_t >= Table_t_range[0], Table_t <= Table_t_range[1])
+            if not np.any(idx):
+                continue
+            ax1.plot(Table_phi[idx], Table_theta[idx], '-', markersize=0.1, alpha=0.5)
+            ax1.scatter(Table_phi[idx][0], Table_theta[idx][0], c='k', marker='*', s=markersize)
+            ax2.plot(Table_psi[idx], Table_theta[idx], '-', markersize=0.1, alpha=0.5)
+            ax2.scatter(Table_psi[idx][0], Table_theta[idx][0], c='k', marker='*', s=markersize)
+            # tidx = Table_phi > 1.5 * np.pi
+            tidx = Table_phi > 15 * np.pi
+            t1 = Table_phi.copy()
+            t1[tidx] = Table_phi[tidx] - 2 * np.pi
+            ax3.plot(t1[idx] / np.pi, Table_psi[idx] / np.pi, '-', markersize=0.1, alpha=0.5)
+            ax3.scatter(t1[idx][0] / np.pi, Table_psi[idx][0] / np.pi, c='k', marker='*',
+                        s=markersize)
+        fig.suptitle('$\\theta - \\phi$')
+        fig2.suptitle('$\\theta - \\psi$')
+        ax3.set_xlabel('$\\phi / \\pi$')
+        ax3.set_ylabel('$\\psi / \\pi$')
+        fig.tight_layout(rect=[0, 0, 1, 0.95])
+        fig2.tight_layout(rect=[0, 0, 1, 0.95])
+        fig3.tight_layout()
+    else:
+        fig, ax1 = _get_ax()
+        start_list = []
+        for pickle_path, cmap in zip(pickle_path_list, cmap_list):
+            with open(pickle_path, 'rb') as handle:
+                tpick = pickle.load(handle)
+            Table_t = tpick['Table_t']
+            # Table_dt = tpick['Table_dt']
+            # Table_X = tpick['Table_X']
+            # Table_P = tpick['Table_P']
+            # Table_P2 = tpick['Table_P2']
+            Table_theta = tpick['Table_theta']
+            Table_phi = tpick['Table_phi']
+            # Table_psi = tpick['Table_psi']
+            # Table_eta = tpick['Table_eta']
+
+            idx = np.logical_and(Table_t >= Table_t_range[0], Table_t <= Table_t_range[1])
+            t1 = Table_t[idx].max() - Table_t[idx].min()
+            norm = plt.Normalize(Table_t[idx].min() - 0.3 * t1, Table_t[idx].max())
+            spf.colorline(Table_phi[idx], Table_theta[idx], z=Table_t[idx], cmap=plt.get_cmap(cmap),
+                          norm=norm, linewidth=linewidth, alpha=alpha, ax=ax1)
+            start_list.append((Table_phi[idx][0], Table_theta[idx][0]))
+        for tx, ty in start_list:
+            ax1.scatter(tx, ty, c='k', marker='*', s=markersize)
+    return fig
+
+
+def show_pickle_theta_phi_list(*args, **kwargs):
+    core_show_pickle_theta_phi_list(*args, **kwargs)
     return True
 
 
@@ -1051,7 +1141,7 @@ def save_theta_phi(filename, Table_t, Table_dt, Table_X, Table_P, Table_P2,
 
 def core_light_show_theta_phi(Table_t, Table_dt, Table_X, Table_P, Table_P2,
                               Table_theta, Table_phi, Table_psi, Table_eta,
-                              fig=None, show_colorbar=True):
+                              fig=None, show_colorbar=True, title=''):
     fontsize = 30
     if fig is None:
         fig = plt.figure(figsize=(10, 10), dpi=200)
@@ -1088,6 +1178,8 @@ def core_light_show_theta_phi(Table_t, Table_dt, Table_X, Table_P, Table_P2,
     else:
         ax1.scatter(Table_phi, Table_theta, cmap=cmap, norm=norm, s=fontsize * 0.2)
     # plt.sca(ax1)
+    # plt.tight_layout()
+    ax1.set_title(title, y=1.1, size=fontsize * 0.6)
     # plt.tight_layout()
     return fig
 
@@ -1340,22 +1432,38 @@ def save_center_X(filename, Table_t, Table_dt, Table_X, Table_P, Table_P2,
     return fig
 
 
-def get_continue_angle(tx, ty1, t_use=None):
+def get_increase_angle(ty1):
     ty = ty1.copy()
-    if t_use is None:
-        t_use = np.linspace(tx.min(), tx.max(), 2 * tx.size)
-    if np.array(t_use).size == 1:
-        t_use = np.linspace(tx.min(), tx.max(), t_use * tx.size)
-
     for i0, dt in enumerate(np.diff(ty)):
         if dt > np.pi:
             ty[i0 + 1:] = ty[i0 + 1:] - 2 * np.pi
         elif dt < -np.pi:
             ty[i0 + 1:] = ty[i0 + 1:] + 2 * np.pi
+    return ty
 
+
+def get_continue_angle(tx, ty1, t_use=None):
+    if t_use is None:
+        t_use = np.linspace(tx.min(), tx.max(), 2 * tx.size)
+    if np.array(t_use).size == 1:
+        t_use = np.linspace(tx.min(), tx.max(), t_use * tx.size)
+
+    ty = get_increase_angle(ty1)
     intp_fun1d = interpolate.interp1d(tx, ty, kind='quadratic', copy=False, axis=0,
                                       bounds_error=True)
     return intp_fun1d(t_use) % (2 * np.pi)
+
+
+def separate_angle_idx(ty):
+    # separate to small components to avoid the jump between 0 and 2pi.
+    idx_list = []
+    dty = np.diff(ty)
+    idx_list.append(np.argwhere(dty > np.pi).flatten())
+    idx_list.append(np.argwhere(dty < -np.pi).flatten())
+    idx_list.append(-1)  # first idx is 0, but later will plus 1.
+    idx_list.append(ty.size - 1)  # last idx is (size-1).
+    t1 = np.sort(np.hstack(idx_list))
+    return np.vstack((t1[:-1] + 1, t1[1:])).T
 
 
 def get_major_fre(tx, ty1, fft_full_mode=False):
@@ -1461,20 +1569,8 @@ def get_primary_autocorrelate_fft_fre_v2(tx, ty1, continue_angle=True, fft_full_
     return pk_fre, pk_fft
 
 
-def separate_angle_idx(ty):
-    # separate to small components to avoid the jump between 0 and 2pi.
-    idx_list = []
-    dty = np.diff(ty)
-    idx_list.append(np.argwhere(dty > np.pi).flatten())
-    idx_list.append(np.argwhere(dty < -np.pi).flatten())
-    idx_list.append(-1)  # first idx is 0, but later will plus 1.
-    idx_list.append(ty.size - 1)  # last idx is (size-1).
-    t1 = np.sort(np.hstack(idx_list))
-    return np.vstack((t1[:-1] + 1, t1[1:])).T
-
-
-def resampling_data(Table_t, Table_dt, Table_X, Table_P, Table_P2,
-                    Table_theta, Table_phi, Table_psi, Table_eta, resampling_fct=2):
+def resampling_data(Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi,
+                    Table_psi, Table_eta, resampling_fct=2, t_use=None):
     def intp_fun(ty):
         intp_fun1d = interpolate.interp1d(Table_t, ty, kind='quadratic', copy=False, axis=0,
                                           bounds_error=True)
@@ -1482,7 +1578,11 @@ def resampling_data(Table_t, Table_dt, Table_X, Table_P, Table_P2,
 
     # resampling the date to a uniform distance
     # noinspection PyTypeChecker
-    t_use = np.linspace(Table_t.min(), Table_t.max(), np.around(Table_t.size * resampling_fct))
+    if t_use is None:
+        t_use = np.linspace(Table_t.min(), Table_t.max(), np.around(Table_t.size * resampling_fct))
+    else:
+        war_msg = 'size of t_use is %d, resampling_fct is IGNORED' % t_use.size
+        warnings.warn(war_msg)
     Table_X = intp_fun(Table_X)
     Table_P = intp_fun(Table_P)
     Table_P2 = intp_fun(Table_P2)
@@ -1589,17 +1689,17 @@ def make_table_video(Table_t, Table_X, Table_P, Table_P2,
     tticks = np.around(np.linspace(tmid[0] - trange, tmid[0] + trange, 21), decimals=2)[1::6]
     ax0.set_xticks(tticks)
     ax0.set_xticklabels(tticks)
-    ax0.set_xlabel('X')
+    ax0.set_xlabel('$X_1$')
     ax0.set_ylim3d([tmid[1] - trange, tmid[1] + trange])
     tticks = np.around(np.linspace(tmid[1] - trange, tmid[1] + trange, 21), decimals=2)[1::6]
     ax0.set_xticks(tticks)
     ax0.set_xticklabels(tticks)
-    ax0.set_ylabel('Y')
+    ax0.set_ylabel('$X_2$')
     ax0.set_zlim3d([tmid[2] - trange, tmid[2] + trange])
     tticks = np.around(np.linspace(tmid[2] - trange, tmid[2] + trange, 21), decimals=2)[1::6]
     ax0.set_xticks(tticks)
     ax0.set_xticklabels(tticks)
-    ax0.set_zlabel('Z')
+    ax0.set_zlabel('$X_3$')
 
     # right part, standard part
     # theta-phi
@@ -1613,7 +1713,7 @@ def make_table_video(Table_t, Table_X, Table_P, Table_P2,
     # other variables
     for axi, ty, axyi in zip((ax3, ax4, ax5, ax6),
                              (Table_psi / np.pi, Table_X[:, 0], Table_X[:, 1], Table_X[:, 2]),
-                             ('$\\psi / \pi$', '$X$', '$Y$', '$Z$')):
+                             ('$\\psi / \pi$', '$X_1$', '$X_2$', '$X_3$')):
         plt.sca(axi)
         axi.plot(Table_t, ty, '-.', label='Table')
         axi.set_ylabel('%s' % axyi, size=fontsize * 0.7)
@@ -1637,9 +1737,9 @@ def make_table_video(Table_t, Table_X, Table_P, Table_P2,
     Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi, Table_eta \
         = resampling_data(Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi,
                           Table_psi, Table_eta, resampling_fct)
-    video_length = Table_t.size // stp
-    tqdm_fun = tqdm_notebook(total=video_length + 2)
-    anim = animation.FuncAnimation(fig, update_fun, video_length, interval=interval, blit=False,
+    frames = Table_t.size // stp
+    tqdm_fun = tqdm_notebook(total=frames + 2)
+    anim = animation.FuncAnimation(fig, update_fun, frames, interval=interval, blit=False,
                                    fargs=(tmp_line1, tmp_line2, tmp_line3, scs,
                                           Table_t, Table_X, Table_P, Table_P2,
                                           Table_theta, Table_phi, Table_psi, Table_eta,
@@ -1651,9 +1751,10 @@ def make_table_video_geo(Table_t, Table_X, Table_P, Table_P2,
                          Table_theta, Table_phi, Table_psi, Table_eta, move_z=False,
                          zm_fct=1, stp=1, interval=50, trange_geo=None, trange_trj=None,
                          create_obj_at_fun=get_tail_nodes_split_at, resampling_fct=2,
+                         dbg_mode=False, figsize=np.array((8, 6)), dpi=100,
                          **problem_kwargs):
-    fontsize = 35
-    figsize = (25, 15)
+    assert figsize[0] > figsize[1]
+    assert Table_t.size > 3
     if move_z:
         z_mean = np.mean(Table_X[:, 2])
         Table_X[:, 2] = Table_X[:, 2] - z_mean
@@ -1662,7 +1763,7 @@ def make_table_video_geo(Table_t, Table_X, Table_P, Table_P2,
         Xz_mean = (Table_t - Table_t[0]) * ux_shear
         Table_X[:, 0] = Table_X[:, 0] - Xz_mean
 
-    def update_fun(num, tmp_line1, tmp_line2, tmp_trj, scs, Table_t, Table_X, Table_P, Table_P2,
+    def update_fun(num, tmp_line, tmp_trj, scs, Table_t, Table_X, Table_P, Table_P2,
                    Table_theta, Table_phi, Table_psi, Table_eta, zm_fct):
         num = num * stp
         tqdm_fun.update(1)
@@ -1672,12 +1773,10 @@ def make_table_video_geo(Table_t, Table_X, Table_P, Table_P2,
         ttheta = Table_theta[num]
         tphi = Table_phi[num]
         tpsi = Table_psi[num]
-        tnode1, tnode2 = create_obj_at_fun(ttheta, tphi, tpsi, now_center=np.zeros(3),
-                                           **problem_kwargs)
-        tmp_line1.set_data(tnode1[:, 0], tnode1[:, 1])
-        tmp_line1.set_3d_properties(tnode1[:, 2])
-        tmp_line2.set_data(tnode2[:, 0], tnode2[:, 1])
-        tmp_line2.set_3d_properties(tnode2[:, 2])
+        tnodes = create_obj_at_fun(ttheta, tphi, tpsi, now_center=np.zeros(3), **problem_kwargs)
+        for tnodei, tmp_linei in zip(tnodes, tmp_line):
+            tmp_linei.set_data(tnodei[:, 0], tnodei[:, 1])
+            tmp_linei.set_3d_properties(tnodei[:, 2])
         # left, 3d trajectory
         tX = Table_X[num]
         tmp_trj.set_data(tX[0], tX[1])
@@ -1692,13 +1791,13 @@ def make_table_video_geo(Table_t, Table_X, Table_P, Table_P2,
             sci.set_data(Table_t[num], ty[num])
         # return tmp_line, tmp_trj, scs
 
-    fig = plt.figure(figsize=figsize)
+    fig = plt.figure(figsize=figsize, dpi=dpi)
     fig.patch.set_facecolor('white')
     ax0 = plt.subplot2grid((6, 8), (0, 0), rowspan=6, colspan=6, projection='3d')
-    axtrj = fig.add_axes((0, 0.6, 0.25, 0.35), projection='3d')
+    axtrj = fig.add_axes((0, 0.7, 0.3 * figsize[1] / figsize[0], 0.3), projection='3d', )
     ax6 = plt.subplot2grid((6, 8), (5, 6), colspan=2)  # Table_X[:, 2]
     axth_ph = plt.subplot2grid((6, 8), (0, 6), rowspan=2, colspan=2,
-                               projection='polar')  # Table_theta-#Table_phi
+                               projection='polar')  # theta-phi
     ax3 = plt.subplot2grid((6, 8), (2, 6), colspan=2, sharex=ax6)  # Table_psi
     ax4 = plt.subplot2grid((6, 8), (3, 6), colspan=2, sharex=ax6)  # Table_X[:, 0]
     ax5 = plt.subplot2grid((6, 8), (4, 6), colspan=2, sharex=ax6)  # Table_X[:, 1]
@@ -1713,11 +1812,12 @@ def make_table_video_geo(Table_t, Table_X, Table_P, Table_P2,
     ttheta = Table_theta[0]
     tphi = Table_phi[0]
     tpsi = Table_psi[0]
-    tnode1, tnode2 = create_obj_at_fun(ttheta, tphi, tpsi, now_center=np.zeros(3), **problem_kwargs)
-    tmp_line1 = ax0.plot(tnode1[:, 0], tnode1[:, 1], tnode1[:, 2])[0]
-    tmp_line2 = ax0.plot(tnode2[:, 0], tnode2[:, 1], tnode2[:, 2])[0]
+    tnodes = create_obj_at_fun(ttheta, tphi, tpsi, now_center=np.zeros(3), **problem_kwargs)
+    tmp_line = []
+    for tnodei in tnodes:
+        tmp_line.append(ax0.plot(tnodei[:, 0], tnodei[:, 1], tnodei[:, 2])[0])
     if trange_geo is None:
-        tnode = np.vstack((tnode1, tnode2))
+        tnode = np.vstack(tnodes)
         trange_geo = np.linalg.norm(tnode.max(axis=0) - tnode.min(axis=0))
     print('trange_geo=', trange_geo)
     tmid = np.zeros(3)
@@ -1726,23 +1826,23 @@ def make_table_video_geo(Table_t, Table_X, Table_P, Table_P2,
                        decimals=2)[1::6]
     ax0.set_xticks(tticks)
     ax0.set_xticklabels(tticks)
-    ax0.set_xlabel('X')
+    ax0.set_xlabel('$X_1$')
     ax0.set_ylim3d([tmid[1] - trange_geo, tmid[1] + trange_geo])
     tticks = np.around(np.linspace(tmid[1] - trange_geo, tmid[1] + trange_geo, 21),
                        decimals=2)[1::6]
     ax0.set_yticks(tticks)
     ax0.set_yticklabels(tticks)
-    ax0.set_ylabel('Y')
+    ax0.set_ylabel('$X_2$')
     ax0.set_zlim3d([tmid[2] - trange_geo, tmid[2] + trange_geo])
     tticks = np.around(np.linspace(tmid[2] - trange_geo, tmid[2] + trange_geo, 21),
                        decimals=2)[1::6]
     ax0.set_zticks(tticks)
     ax0.set_zticklabels(tticks)
-    ax0.set_zlabel('Z')
+    ax0.set_zlabel('$X_3$')
     # object trajectory
     tX = Table_X[0]
     axtrj.plot(Table_X[:, 0], Table_X[:, 1], Table_X[:, 2], '-.')  # stable part
-    tmp_trj = axtrj.plot((tX[0],), (tX[1],), (tX[2],), 'or', markersize=fontsize * 0.3)[0]
+    tmp_trj = axtrj.plot((tX[0],), (tX[1],), (tX[2],), 'or')[0]
     if trange_trj is None:
         trange_trj = np.max(Table_X.max(axis=0) - Table_X.min(axis=0))
     print('trange_trj=', trange_trj)
@@ -1752,62 +1852,283 @@ def make_table_video_geo(Table_t, Table_X, Table_P, Table_P2,
                        decimals=2)[[1, -2]]
     axtrj.set_xticks(tticks)
     axtrj.set_xticklabels(tticks)
-    axtrj.set_xlabel('X')
+    # axtrj.set_xlabel('$X_1$')
     axtrj.set_ylim3d([tmid[1] - trange_trj, tmid[1] + trange_trj])
     tticks = np.around(np.linspace(tmid[1] - trange_trj, tmid[1] + trange_trj, 8),
                        decimals=2)[[1, -2]]
     axtrj.set_yticks(tticks)
     axtrj.set_yticklabels(tticks)
-    axtrj.set_ylabel('Y')
+    # axtrj.set_ylabel('$X_2$')
     axtrj.set_zlim3d([tmid[2] - trange_trj, tmid[2] + trange_trj])
     tticks = np.around(np.linspace(tmid[2] - trange_trj, tmid[2] + trange_trj, 8),
                        decimals=2)[[1, -2]]
     axtrj.set_zticks(tticks)
     axtrj.set_zticklabels(tticks)
-    axtrj.set_zlabel('Z')
+    # axtrj.set_zlabel('$X_3$')
 
     # right part, standard part
     # theta-phi
     plt.sca(axth_ph)
     axth_ph.plot(Table_phi, Table_theta, '-.', alpha=0.5)
     axth_ph.set_ylim(0, np.pi)
-    plt.xticks(fontsize=fontsize * 0.5)
-    plt.yticks(fontsize=fontsize * 0.5)
     xticks = np.around(np.linspace(Table_t.min(), Table_t.max(), 8), decimals=2)[1::6]
     # other variables
     for axi, ty, axyi in zip((ax3, ax4, ax5, ax6),
                              (Table_psi / np.pi, Table_X[:, 0], Table_X[:, 1], Table_X[:, 2]),
-                             ('$\\psi / \pi$', '$X$', '$Y$', '$Z$')):
+                             ('$\\psi / \pi$', '$X_1$', '$X_2$', '$X_3$')):
         plt.sca(axi)
         axi.plot(Table_t, ty, '-.', label='Table')
-        axi.set_ylabel('%s' % axyi, size=fontsize * 0.7)
+        axi.set_ylabel('%s' % axyi)
         axi.set_xticks(xticks)
         axi.set_xticklabels(xticks)
-        plt.xticks(fontsize=fontsize * 0.5)
-        plt.yticks(fontsize=fontsize * 0.5)
-        for axi in (ax6,):
-            axi.set_xlabel('t', size=fontsize * 0.7)
-        plt.tight_layout()
+    ax6.set_xlabel('t')
 
     # right part, point indicates the time.
     scs = []
-    scs.append(axth_ph.plot(Table_phi[0], Table_theta[0], 'or', markersize=fontsize * 0.3)[0])
+    scs.append(axth_ph.plot(Table_phi[0], Table_theta[0], 'or')[0])
     for axi, ty, in zip((ax3, ax4, ax5, ax6),
                         (Table_psi / np.pi, Table_X[:, 0], Table_X[:, 1], Table_X[:, 2])):
         plt.sca(axi)
-        scs.append(axi.plot(Table_t[0], ty[0], 'or', markersize=fontsize * 0.3)[0])
+        scs.append(axi.plot(Table_t[0], ty[0], 'or')[0])
+    plt.tight_layout()
 
     Table_dt = np.hstack((np.diff(Table_t), 0))
     Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi, Table_eta \
         = resampling_data(Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi,
                           Table_psi, Table_eta, resampling_fct)
-    video_length = Table_t.size // stp
-    tqdm_fun = tqdm_notebook(total=video_length + 2)
-    fargs = (tmp_line1, tmp_line2, tmp_trj, scs, Table_t, Table_X, Table_P, Table_P2,
+    fargs = (tmp_line, tmp_trj, scs, Table_t, Table_X, Table_P, Table_P2,
              Table_theta, Table_phi, Table_psi, Table_eta, zm_fct)
-    anim = animation.FuncAnimation(fig, update_fun, video_length, interval=interval, blit=False,
-                                   fargs=fargs, )
+
+    if dbg_mode:
+        tqdm_fun = tqdm_notebook(total=3)
+        anim = animation.FuncAnimation(fig, update_fun, 1, interval=interval,
+                                       blit=False, fargs=fargs, )
+    else:
+        frames = Table_t.size // stp
+        tqdm_fun = tqdm_notebook(total=frames + 2)
+        anim = animation.FuncAnimation(fig, update_fun, frames, interval=interval,
+                                       blit=False, fargs=fargs, )
     return anim
+
+
+def ext_simple_shear_flow(axi, n_arrow=6, taus=1, **problem_kwargs):
+    # background simple shear flow.
+    xmin, xmax = axi.get_xlim3d()
+    ymin, ymax = axi.get_ylim3d()
+    zmin, zmax = axi.get_zlim3d()
+    xmean = np.mean((xmin, xmax))
+    zmean = np.mean((zmin, zmax))
+    x = np.zeros(n_arrow)
+    y = np.ones(n_arrow) * ymax
+    z = np.linspace(zmin, zmax, n_arrow)
+    dx = (z - zmean) * taus
+    dy = np.zeros(n_arrow)
+    dz = np.zeros(n_arrow)
+    axi.plot((xmean + dx.min(), xmean + dx.max()), (ymax, ymax), (zmin, zmax), '-k')
+    axi.plot((xmean, xmean), (ymax, ymax), (zmin, zmax), '-k')
+    for tx, ty, tz, tdx, tdy, tdz in zip(x, y, z, dx, dy, dz):
+        axi.arrow3D(tx, ty, tz, tdx, tdy, tdz, arrowstyle="->", linestyle='dashed',
+                    mutation_scale=10, )
+    return True
+
+
+def ext_simple_shear_flow_2D(axi, n_arrow=6, taus=1, **problem_kwargs):
+    # background simple shear flow.
+    xmin, xmax = axi.get_xlim()
+    ymin, ymax = axi.get_ylim()
+    xmean = np.mean((xmin, xmax))
+    ymean = np.mean((ymin, ymax))
+    x = np.zeros(n_arrow)
+    y = np.linspace(ymin, ymax, n_arrow)
+    dx = (y - ymean) * taus
+    dy = np.zeros(n_arrow)
+    axi.plot((xmean + dx.min(), xmean + dx.max()), (ymin, ymax), '-k')
+    axi.plot((xmean, xmean), (ymin, ymax), '-k')
+    for tx, ty, tdx, tdy, in zip(x, y, dx, dy):
+        axi.arrow(tx, ty, tdx, tdy, linestyle='dashed', width=0.003)
+    return True
+
+
+def make_table_video_geo_v2(Table_t, Table_X, Table_P, Table_P2,
+                            Table_theta, Table_phi, Table_psi, Table_eta, move_z=False,
+                            stp=1, interval=50, trange_geo=None,
+                            create_obj_at_fun=get_tail_nodes_split_at, resampling_fct=2,
+                            dbg_mode=False, figsize=np.array((16, 9)) * 0.5, dpi=100,
+                            suptitle='', extFlow=ext_simple_shear_flow,
+                            video_duration=None, total_frame=None, head_center=False,
+                            add_info=False, **problem_kwargs):
+    assert figsize[0] > figsize[1]
+    assert Table_t.size > 3
+
+    def update_fun(num, tmp_geo, scs, Table_t, Table_X, Table_P, Table_P2,
+                   Table_theta, Table_phi, Table_psi, Table_eta):
+        num = num * stp
+        tqdm_fun.update(1)
+
+        # orientation
+        ttheta = Table_theta[num]
+        tphi = Table_phi[num]
+        tpsi = Table_psi[num]
+        tnodes = create_obj_at_fun(ttheta, tphi, tpsi, now_center=np.zeros(3), **problem_kwargs)
+        for tnodei, tmp_geoi in zip(tnodes, tmp_geo):
+            tmp_geoi.set_data(tnodei[:, 0], tnodei[:, 1])
+            tmp_geoi.set_3d_properties(tnodei[:, 2])
+
+        # other variables
+        scs[0].set_data(Table_phi[num], Table_theta[num])
+        scs[1].set_data(Table_X[num, 1], Table_X[num, 2])
+        for axi, ty, sci in zip((axeta, ax_x1, axpsi),
+                                (Table_X[:, 0], Table_eta / np.pi, Table_psi / np.pi,),
+                                scs[2:]):
+            sci.set_data(Table_t[num], ty[num])
+
+    setattr(spf.Axes3D, 'arrow3D', spf._arrow3D)
+    if move_z:
+        z_mean = np.mean(Table_X[:, 2])
+        Table_X[:, 2] = Table_X[:, 2] - z_mean
+        planeShearRate = problem_kwargs['planeShearRate'][0]
+        ux_shear = z_mean * planeShearRate[0]
+        Xz_mean = (Table_t - Table_t[0]) * ux_shear
+        Table_X[:, 0] = Table_X[:, 0] - Xz_mean
+    if head_center:
+        dc = (problem_kwargs['dist_hs'] + problem_kwargs['ch'] * problem_kwargs['ph']) / 2
+        Table_X = Table_X + dc * Table_P
+    Table_dt = np.hstack((np.diff(Table_t), 0))
+    if total_frame is None:
+        Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi, Table_eta \
+            = resampling_data(Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi,
+                              Table_psi, Table_eta, resampling_fct)
+    else:
+        war_msg = 'total_frame is %d, resampling_fct is IGNORED' % total_frame
+        warnings.warn(war_msg)
+        t_use = np.linspace(Table_t.min(), Table_t.max(), total_frame)
+        Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi, Table_eta \
+            = resampling_data(Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi,
+                              Table_psi, Table_eta, t_use=t_use)
+
+    fig = plt.figure(figsize=figsize, dpi=dpi)
+    fig.patch.set_facecolor('white')
+    nrow_ncol = (9, 17)
+    axorin = plt.subplot2grid(nrow_ncol, (1, 0), rowspan=5, colspan=5,
+                              projection='3d')  # 3D orientation
+    axx2x3 = plt.subplot2grid(nrow_ncol, (1, 6), rowspan=4, colspan=5)  # x_2 x_3
+    axthph = plt.subplot2grid(nrow_ncol, (1, 12), rowspan=5, colspan=5,
+                              projection='polar')  # theta - phi
+    axeta = plt.subplot2grid(nrow_ncol, (6, 0), rowspan=3, colspan=5)  # Table_eta
+    ax_x1 = plt.subplot2grid(nrow_ncol, (6, 6), rowspan=3, colspan=5)  # Table_X[:, 0]
+    axpsi = plt.subplot2grid(nrow_ncol, (6, 12), rowspan=3, colspan=5)  # Table_psi
+    for spine in axorin.spines.values():
+        spine.set_visible(False)
+    axorin.set_xlabel('$\\textbf{X}_1$')
+    axorin.set_ylabel('$\\textbf{X}_2$')
+    axorin.set_zlabel('$\\textbf{X}_3$')
+    axx2x3.set_xlabel('$x_2$')
+    axx2x3.set_ylabel('$x_3$')
+    # axthph.set_xlabel('$\\phi$')
+    # axthph.set_ylabel('$\\theta$')
+    axeta.set_xlabel('$t$')
+    axeta.set_ylabel('$\\eta / \\pi$')
+    ax_x1.set_xlabel('$t$')
+    ax_x1.set_ylabel('$x_1$')
+    axpsi.set_xlabel('$t$')
+    axpsi.set_ylabel('$\\psi\' / \\pi$')
+    axthph.set_title('$\\theta$ (radial coordinate) $-$ $\\phi$ (angular coordinate)', y=1.1)
+    fig.suptitle(suptitle, fontsize='xx-large')
+    # axx2x3.set_title(suptitle, fontsize='xx-large')
+    # axorin.grid(False)
+    axorin.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+    axorin.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+    axorin.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+    plt.tight_layout()
+
+    # object orientation
+    ttheta = Table_theta[0]
+    tphi = Table_phi[0]
+    tpsi = Table_psi[0]
+    tnodes = create_obj_at_fun(ttheta, tphi, tpsi, now_center=np.zeros(3), **problem_kwargs)
+    if trange_geo is None:
+        tnode = np.vstack(tnodes)
+        trange_geo = np.linalg.norm(tnode.max(axis=0) - tnode.min(axis=0)) * 0.4
+    print('trange_geo=', trange_geo)
+    tmid = np.zeros(3)
+    axorin.set_xlim3d([tmid[0] - trange_geo, tmid[0] + trange_geo])
+    tticks = np.around(np.linspace(tmid[0] - trange_geo, tmid[0] + trange_geo, 21),
+                       decimals=2)[1::6]
+    axorin.set_xticks(tticks)
+    axorin.set_xticklabels(tticks)
+    axorin.set_ylim3d([tmid[1] - trange_geo, tmid[1] + trange_geo])
+    tticks = np.around(np.linspace(tmid[1] - trange_geo, tmid[1] + trange_geo, 21),
+                       decimals=2)[1::6]
+    axorin.set_yticks(tticks)
+    axorin.set_yticklabels(tticks)
+    axorin.set_zlim3d([tmid[2] - trange_geo, tmid[2] + trange_geo])
+    tticks = np.around(np.linspace(tmid[2] - trange_geo, tmid[2] + trange_geo, 21),
+                       decimals=2)[1::6]
+    axorin.set_zticks(tticks)
+    axorin.set_zticklabels(tticks)
+    extFlow(axorin, trange_geo=trange_geo, **problem_kwargs)
+    tmp_geo = []
+    for tnodei in tnodes:
+        tmp_geo.append(axorin.plot(tnodei[:, 0], tnodei[:, 1], tnodei[:, 2])[0])
+
+    # Jeffery sphere
+    u, v = np.mgrid[0:2 * np.pi:100j, 0:np.pi:100j]
+    tr = np.linalg.norm(np.vstack(tnodes), axis=-1).max()
+    x = np.cos(u) * np.sin(v) * tr
+    y = np.sin(u) * np.sin(v) * tr
+    z = np.cos(v) * tr
+    color1 = plt.get_cmap('gray')(np.linspace(0.2, 0.8, 256))
+    cmap = mcolors.LinearSegmentedColormap.from_list('my_colormap', color1)
+    axorin.plot_surface(x, y, z, rstride=1, cstride=1, cmap=cmap, edgecolor='none', alpha=0.1)
+    axorin.plot(Table_P[:, 0] * tr, Table_P[:, 1] * tr, Table_P[:, 2] * tr, 'k')
+
+    # other variables
+    scs = []
+    axthph.plot(Table_phi, Table_theta, '-')
+    axthph.set_ylim(0, np.pi)
+    axthph.set_yticklabels([])
+    scs.append(axthph.plot(Table_phi[0], Table_theta[0], 'or')[0])
+    axx2x3.plot(Table_X[:, 1], Table_X[:, 2], '-')
+    scs.append(axx2x3.plot(Table_X[0, 1], Table_X[0, 2], 'or')[0])
+    ax_x1.plot(Table_t, Table_X[:, 0], '-', color='#1f77b4')
+    scs.append(ax_x1.plot(Table_t[0], Table_X[0, 0], 'or')[0])
+    for axi, ty, in zip((axeta, axpsi),
+                        (Table_eta, Table_psi)):
+        for i0, i1 in separate_angle_idx(ty):
+            axi.plot(Table_t[i0:i1], ty[i0:i1] / np.pi, '-', color='#1f77b4')
+        scs.append(axi.plot(Table_t[0], ty[0] / np.pi, 'or')[0])
+
+    # make movie
+    fargs = (tmp_geo, scs, Table_t, Table_X, Table_P, Table_P2,
+             Table_theta, Table_phi, Table_psi, Table_eta,)
+    frames = Table_t.size // stp
+    if total_frame is not None:
+        assert Table_t.size == total_frame
+        stp = 1
+        war_msg = 'size of Table_t is %d, total_frame is %d, stp is set to %d' % \
+                  (Table_t.size, total_frame, stp)
+        warnings.warn(war_msg)
+        frames = total_frame
+    if video_duration is not None:
+        interval = video_duration / frames
+        war_msg = 'video_duration is %f, interval is set to %f' % (video_duration, interval)
+        warnings.warn(war_msg)
+    if np.isclose(dbg_mode, 1):
+        frames = 1
+        tqdm_fun = tqdm_notebook(total=frames + 1)
+        anim = animation.FuncAnimation(fig, update_fun, frames, interval=interval,
+                                       blit=False, fargs=fargs, )
+    elif np.isclose(dbg_mode, 2):
+        anim = None
+    else:
+        tqdm_fun = tqdm_notebook(total=frames + 1)
+        anim = animation.FuncAnimation(fig, update_fun, frames, interval=interval,
+                                       blit=False, fargs=fargs, )
+    if add_info:
+        t1 = (frames,)
+        return anim, t1
+    else:
+        return anim
 
 
 def load_problem_kwargs(pickle_name):
@@ -2052,6 +2373,47 @@ def load_rand_data_pickle_dir_v2(t_dir, t_headle='(.*?).pickle', n_load=None, ra
     return ini_theta_list, ini_phi_list, ini_psi_list, std_eta_list, psi_max_phi_list, \
            theta_autocorrelate_fre_list, phi_autocorrelate_fre_list, psi_autocorrelate_fre_list, \
            eta_autocorrelate_fre_list, dx_list, dy_list, dz_list, pickle_path_list
+
+
+def load_rand_data_pickle_dir_instant(t_dir, t_headle='(.*?).pickle', n_load=None, rand_mode=False,
+                                      t_start=0, t_stop=None, t_step=1):
+    t_path = os.listdir(t_dir)
+    filename_list = [filename for filename in t_path if re.match(t_headle, filename) is not None]
+    n_load = len(filename_list) if n_load is None else n_load
+    assert n_load <= len(filename_list)
+    if rand_mode:
+        tidx = np.random.choice(len(filename_list), n_load, replace=False)
+    else:
+        tidx = np.arange(n_load)
+    use_filename_list = np.array(filename_list)[tidx]
+    if t_stop is None:
+        tname = use_filename_list[0]
+        tpath = os.path.join(t_dir, tname)
+        with open(tpath, 'rb') as handle:
+            tpick = pickle.load(handle)
+        Table_t = tpick['Table_t'][1:]
+        t_stop = Table_t.max()
+
+    pickle_path_list = []
+    idx_list = []
+    intp_X_list = []
+    intp_t = np.arange(t_start, t_stop, t_step)
+    for i0, tname in enumerate(tqdm_notebook(use_filename_list)):
+        tpath = os.path.join(t_dir, tname)
+        with open(tpath, 'rb') as handle:
+            tpick = pickle.load(handle)
+        pickle_path_list.append(tpath)
+        idx_list.append(i0)
+
+        Table_t = tpick['Table_t'][1:]
+        Table_X = tpick['Table_X'][1:]
+        int_fun_X = interpolate.interp1d(Table_t, Table_X, kind='quadratic', axis=0)
+        intp_X = int_fun_X(intp_t)
+        intp_X_list.append(intp_X)
+    pickle_path_list = np.array(pickle_path_list)
+    idx_list = np.hstack(idx_list)
+    intp_X_list = np.dstack(intp_X_list)  # (time, coord, caseid)
+    return pickle_path_list, idx_list, intp_t, intp_X_list
 
 
 def load_lookup_table_pickle(pickle_name):
@@ -2299,15 +2661,13 @@ def show_traj_phase_map_fre(tuse):
 
 
 # show phase map of final trajectory in theta-phi space, using prepared type.
-def show_traj_phase_map_type(tuse):
-    fontsize = 40
-    fig = plt.figure(figsize=(20, 12))
+def show_traj_phase_map_type(tuse, ticklabels=None, figsize=(12, 12), dpi=100, n_xticks=32):
+    fig = plt.figure(figsize=figsize, dpi=dpi)
     fig.patch.set_facecolor('white')
     ax0 = fig.add_subplot(111, polar=True)
-    n_xticks = 32
-    xticks = np.arange(n_xticks)
-    ax0.set_xticks(xticks / n_xticks * 2 * np.pi)
-    ax0.set_xticklabels(['$\dfrac{%d}{%d}2\pi$' % (i0, n_xticks) for i0 in xticks])
+    # xticks = np.arange(n_xticks)
+    # ax0.set_xticks(xticks / n_xticks * 2 * np.pi)
+    # ax0.set_xticklabels(['$\dfrac{%d}{%d}2\pi$' % (i0, n_xticks) for i0 in xticks])
     ax0.set_yticklabels([])
     ax0.set_ylim(0, np.pi)
     tdata = tuse.values
@@ -2315,7 +2675,13 @@ def show_traj_phase_map_type(tuse):
                     cmap=plt.get_cmap('tab20', int(np.nanmax(tdata)) + 1),
                     vmin=np.nanmin(tdata) - .5, vmax=np.nanmax(tdata) + .5)
     ticks = np.arange(np.nanmin(tdata), np.nanmax(tdata) + 1)
-    fig.colorbar(im, ax=ax0, orientation='vertical', ticks=ticks).ax.tick_params(labelsize=fontsize)
+    if ticklabels is None:
+        ticklabels = np.arange(np.nanmin(tdata), np.nanmax(tdata) + 1)
+    cbar = fig.colorbar(im, ax=ax0, orientation='vertical')
+    # cbar.ax.tick_params(labelsize=fontsize)
+    cbar.set_ticks(ticks)
+    cbar.ax.set_yticklabels(ticklabels)
+    plt.tight_layout()
     return True
 
 

@@ -107,9 +107,9 @@ def main_fun_Iter(**main_kwargs):
 
 if __name__ == '__main__':
     OptDB = PETSc.Options()
-if OptDB.getBool('main_fun_Iter', False):
-    OptDB.setValue('main_fun', False)
-    main_fun_Iter()
+    if OptDB.getBool('main_fun_Iter', False):
+        OptDB.setValue('main_fun', False)
+        main_fun_Iter()
 
-if OptDB.getBool('main_fun', True):
-    main_fun()
+    if OptDB.getBool('main_fun', True):
+        main_fun()

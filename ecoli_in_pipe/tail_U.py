@@ -176,16 +176,18 @@ def self_rotate_tail(**main_kwargs):
     if not problem_kwargs['restart']:
         print_case_info(**problem_kwargs)
         tail_obj_list = create_ecoli_tail(moveh=np.zeros(3), **problem_kwargs)
+        tail_obj = tail_obj_list[0]
+        problem_kwargs['problem_center'] = tail_obj.get_u_geo().get_center()
+        problem_kwargs['problem_norm'] = tail_obj.get_u_geo().get_geo_norm()
+        problem_kwargs['problem_n_copy'] = n_tail
 
         problem = problem_dic[matrix_method](**problem_kwargs)
-        if 'stokesletsInPipe' in matrix_method:
-            forcepipe = problem_kwargs['forcepipe']
-            problem.set_prepare(forcepipe)
-        problem.add_obj(tail_obj_list[0])
+        problem.add_obj(tail_obj)
 
         # # dbg
         # problem.show_u_nodes()
-        # assert 1 == 2
+        # err_msg = 'self_rotate_3d_petsc function is modified. '
+        # assert 1 == 2, err_msg
 
         if pickProblem:
             problem.pickmyself('%s_tran' % fileHandle, ifcheck=True)
@@ -193,27 +195,23 @@ def self_rotate_tail(**main_kwargs):
         problem.create_matrix()
 
         # 1. translation
-        for tobj in tail_obj_list:
-            tobj.set_rigid_velocity(np.array((0, 0, 1, 0, 0, 0)))
+        problem.set_rigid_velocity(1, 0)
         problem.create_F_U()
         problem.solve()
         if problem_kwargs['pickProblem']:
             problem.pickmyself('%s_tran' % fileHandle, pick_M=False, mat_destroy=False)
-        print_single_ecoli_force_result(problem, part='tail', prefix='tran', self_rotate_fct=n_tail,
-                                        **problem_kwargs)
+        print_single_ecoli_force_result(problem, part='tail', prefix='tran', **problem_kwargs)
         problem.vtk_self('%s_tran' % fileHandle)
         if save_vtk:
             problem.vtk_velocity('%s_tran' % fileHandle)
 
         # 2. rotation
-        for tobj in tail_obj_list:
-            tobj.set_rigid_velocity(np.array((0, 0, 0, 0, 0, 1)))
+        problem.set_rigid_velocity(0, 1)
         problem.create_F_U()
         problem.solve()
         if problem_kwargs['pickProblem']:
             problem.pickmyself('%s_rota' % fileHandle, pick_M=False, mat_destroy=False)
-        print_single_ecoli_force_result(problem, part='tail', prefix='rota', self_rotate_fct=n_tail,
-                                        **problem_kwargs)
+        print_single_ecoli_force_result(problem, part='tail', prefix='rota', **problem_kwargs)
         problem.vtk_self('%s_rota' % fileHandle)
         if save_vtk:
             problem.vtk_velocity('%s_rota' % fileHandle)
@@ -241,10 +239,11 @@ if __name__ == '__main__':
     #     main_fun()
 
     matrix_method = OptDB.getString('sm', 'rs_stokeslets')
-    assert matrix_method in ('pf', 'pf_selfRepeat', 'pf_selfRotate')
+    assert matrix_method in ('pf', 'pf_selfRepeat',
+                             'pf_selfRotate', 'rs_selfRotate', 'lg_rs_selfRotate')
     if matrix_method == 'pf_selfRepeat':
         self_repeat_tail()
-    if matrix_method == 'pf_selfRotate':
+    if matrix_method in ('pf_selfRotate', 'rs_selfRotate', 'lg_rs_selfRotate'):
         self_rotate_tail()
     elif matrix_method == 'pf':
         main_fun()

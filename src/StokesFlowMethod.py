@@ -106,11 +106,11 @@ def regularized_stokeslets_matrix_3d(vnodes: np.ndarray,  # nodes contain veloci
 
 def light_stokeslets_matrix_3d(u_nodes: np.ndarray, f_nodes: np.ndarray) -> np.ndarray:
     # from src.geo import geo
-    # temp_geo1 = geo()  # velocity nodes
+    # temp_geo1 = geo() # velocity nodes
     # temp_geo1.set_nodes(u_nodes, deltalength=0)
     # temp_obj1 = sf.StokesFlowObj()
     # temp_obj1.set_data(temp_geo1, temp_geo1, np.zeros(u_nodes.size))
-    # temp_geo2 = geo()  # force nodes
+    # temp_geo2 = geo() # force nodes
     # temp_geo2.set_nodes(f_nodes, deltalength=0)
     # temp_obj2 = sf.StokesFlowObj()
     # temp_obj2.set_data(temp_geo2, temp_geo2, np.zeros(3))
@@ -187,28 +187,28 @@ def stokeslets_matrix_3d_mij(u_node, f_nodes, i1):
 
 
 # def stokeslets_matrix_3d_mij2(myinput):
-#     u_node, f_nodes, i1 = myinput
-#     t_m = np.ones((3, f_nodes.size))
-#     mypi = np.pi
-#     dxi = (u_node - f_nodes).T
-#     dx0 = dxi[0]
-#     dx1 = dxi[1]
-#     dx2 = dxi[2]
-#     dr2 = np.sum(dxi ** 2, axis=0)
-#     dr1 = np.sqrt(dr2)
-#     dr3 = dr1 * dr2
-#     temp1 = 1 / (dr1 * (8 * mypi))  # 1/r^1
-#     temp2 = 1 / (dr3 * (8 * mypi))  # 1/r^3
-#     t_m[0, 0::3] = temp2 * dx0 * dx0 + temp1
-#     t_m[0, 1::3] = temp2 * dx0 * dx1
-#     t_m[0, 2::3] = temp2 * dx0 * dx2
-#     t_m[1, 0::3] = temp2 * dx1 * dx0
-#     t_m[1, 1::3] = temp2 * dx1 * dx1 + temp1
-#     t_m[1, 2::3] = temp2 * dx1 * dx2
-#     t_m[2, 0::3] = temp2 * dx2 * dx0
-#     t_m[2, 1::3] = temp2 * dx2 * dx1
-#     t_m[2, 2::3] = temp2 * dx2 * dx2 + temp1
-#     return t_m, i1
+#   u_node, f_nodes, i1 = myinput
+#   t_m = np.ones((3, f_nodes.size))
+#   mypi = np.pi
+#   dxi = (u_node - f_nodes).T
+#   dx0 = dxi[0]
+#   dx1 = dxi[1]
+#   dx2 = dxi[2]
+#   dr2 = np.sum(dxi ** 2, axis=0)
+#   dr1 = np.sqrt(dr2)
+#   dr3 = dr1 * dr2
+#   temp1 = 1 / (dr1 * (8 * mypi)) # 1/r^1
+#   temp2 = 1 / (dr3 * (8 * mypi)) # 1/r^3
+#   t_m[0, 0::3] = temp2 * dx0 * dx0 + temp1
+#   t_m[0, 1::3] = temp2 * dx0 * dx1
+#   t_m[0, 2::3] = temp2 * dx0 * dx2
+#   t_m[1, 0::3] = temp2 * dx1 * dx0
+#   t_m[1, 1::3] = temp2 * dx1 * dx1 + temp1
+#   t_m[1, 2::3] = temp2 * dx1 * dx2
+#   t_m[2, 0::3] = temp2 * dx2 * dx0
+#   t_m[2, 1::3] = temp2 * dx2 * dx1
+#   t_m[2, 2::3] = temp2 * dx2 * dx2 + temp1
+#   return t_m, i1
 
 
 def stokeslets_matrix_3d_set(m, t_m, i1):
@@ -231,35 +231,35 @@ def stokeslets_matrix_3d(obj1: 'sf.StokesFlowObj',  # object contain velocity in
     m = np.ones((n_unode * n_unknown, n_fnode * n_unknown))
 
     # def stokeslets_matrix_3d_mij(input, output):
-    #     for u_node, f_nodes, i1, m in iter(input.get, 'STOP'):
-    #         t_m = np.ones((3, f_nodes.size))
-    #         mypi = np.pi
-    #         dxi = (u_node - f_nodes).T
-    #         dx0 = dxi[0]
-    #         dx1 = dxi[1]
-    #         dx2 = dxi[2]
-    #         dr2 = np.sum(dxi ** 2, axis=0)
-    #         dr1 = np.sqrt(dr2)
-    #         dr3 = dr1 * dr2
-    #         temp1 = 1 / (dr1 * (8 * mypi))  # 1/r^1
-    #         temp2 = 1 / (dr3 * (8 * mypi))  # 1/r^3
-    #         t_m[0, 0::3] = temp2 * dx0 * dx0 + temp1
-    #         t_m[0, 1::3] = temp2 * dx0 * dx1
-    #         t_m[0, 2::3] = temp2 * dx0 * dx2
-    #         t_m[1, 0::3] = temp2 * dx1 * dx0
-    #         t_m[1, 1::3] = temp2 * dx1 * dx1 + temp1
-    #         t_m[1, 2::3] = temp2 * dx1 * dx2
-    #         t_m[2, 0::3] = temp2 * dx2 * dx0
-    #         t_m[2, 1::3] = temp2 * dx2 * dx1
-    #         t_m[2, 2::3] = temp2 * dx2 * dx2 + temp1
-    #         output.put((t_m, i1))
-    #     output.put('STOP')
-    #     return True
+    #   for u_node, f_nodes, i1, m in iter(input.get, 'STOP'):
+    #     t_m = np.ones((3, f_nodes.size))
+    #     mypi = np.pi
+    #     dxi = (u_node - f_nodes).T
+    #     dx0 = dxi[0]
+    #     dx1 = dxi[1]
+    #     dx2 = dxi[2]
+    #     dr2 = np.sum(dxi ** 2, axis=0)
+    #     dr1 = np.sqrt(dr2)
+    #     dr3 = dr1 * dr2
+    #     temp1 = 1 / (dr1 * (8 * mypi)) # 1/r^1
+    #     temp2 = 1 / (dr3 * (8 * mypi)) # 1/r^3
+    #     t_m[0, 0::3] = temp2 * dx0 * dx0 + temp1
+    #     t_m[0, 1::3] = temp2 * dx0 * dx1
+    #     t_m[0, 2::3] = temp2 * dx0 * dx2
+    #     t_m[1, 0::3] = temp2 * dx1 * dx0
+    #     t_m[1, 1::3] = temp2 * dx1 * dx1 + temp1
+    #     t_m[1, 2::3] = temp2 * dx1 * dx2
+    #     t_m[2, 0::3] = temp2 * dx2 * dx0
+    #     t_m[2, 1::3] = temp2 * dx2 * dx1
+    #     t_m[2, 2::3] = temp2 * dx2 * dx2 + temp1
+    #     output.put((t_m, i1))
+    #   output.put('STOP')
+    #   return True
     # def stokeslets_matrix_3d_set(input, m):
-    #     for t_m, i1 in iter(input.get, 'STOP'):
-    #         i2 = i1 * 3
-    #         m[i2:i2 + 3, :] = t_m[:]
-    #     return True
+    #   for t_m, i1 in iter(input.get, 'STOP'):
+    #     i2 = i1 * 3
+    #     m[i2:i2 + 3, :] = t_m[:]
+    #   return True
     #
     # from multiprocessing import Process, Queue, current_process, cpu_count
     # NUMBER_OF_PROCESSES = cpu_count() - 1
@@ -268,35 +268,35 @@ def stokeslets_matrix_3d(obj1: 'sf.StokesFlowObj',  # object contain velocity in
     # # set_p = Process(target=stokeslets_matrix_3d_set, args=((set_queue, m)))
     # # set_p.start()
     # for i0 in range(n_unode):
-    #     mij_queue.put((u_nodes[i0], f_nodes, i0, m))
+    #   mij_queue.put((u_nodes[i0], f_nodes, i0, m))
     # for i in range(NUMBER_OF_PROCESSES):
-    #     Process(target=stokeslets_matrix_3d_mij, args=(mij_queue, set_queue)).start()
+    #   Process(target=stokeslets_matrix_3d_mij, args=(mij_queue, set_queue)).start()
     # for i0 in range(n_unode):
-    #     t_m, i1 = set_queue.get()
-    #     i2 = i1 * 3
-    #     m[i2:i2 + 3, :] = t_m[:]
+    #   t_m, i1 = set_queue.get()
+    #   i2 = i1 * 3
+    #   m[i2:i2 + 3, :] = t_m[:]
     # for i in range(NUMBER_OF_PROCESSES):
-    #     mij_queue.put('STOP')
+    #   mij_queue.put('STOP')
     # # set_p.join()
 
     # mij_args = [(u_nodes[i0], f_nodes, i0) for i0 in range(n_unode)]
     # with Pool(1) as pool:
-    #     mij_list = pool.imap_unordered(stokeslets_matrix_3d_mij2, mij_args)
-    #     for t_m, i1 in mij_list:
-    #         i2 = i1 * 3
-    #         m[i2:i2 + 3, :] = t_m[:]
+    #   mij_list = pool.imap_unordered(stokeslets_matrix_3d_mij2, mij_args)
+    #   for t_m, i1 in mij_list:
+    #     i2 = i1 * 3
+    #     m[i2:i2 + 3, :] = t_m[:]
 
     # pass
     # mij_args = [(u_nodes[i0], f_nodes, i0) for i0 in range(n_unode)]
     # with Pool() as pool:
-    #     for t_m, i1 in pool.starmap(stokeslets_matrix_3d_mij, mij_args):
-    #         i2 = i1 * 3
-    #         m[i2:i2+3, :] = t_m[:]
-
-    # for i0, u_node in enumerate(u_nodes):
-    #     t_m, i1 = stokeslets_matrix_3d_mij(u_node, f_nodes, i0)
+    #   for t_m, i1 in pool.starmap(stokeslets_matrix_3d_mij, mij_args):
     #     i2 = i1 * 3
     #     m[i2:i2+3, :] = t_m[:]
+
+    # for i0, u_node in enumerate(u_nodes):
+    #   t_m, i1 = stokeslets_matrix_3d_mij(u_node, f_nodes, i0)
+    #   i2 = i1 * 3
+    #   m[i2:i2+3, :] = t_m[:]
     mypi = np.pi
     for i0, u_node in enumerate(u_nodes):
         dxi = (u_node - f_nodes).T
@@ -431,14 +431,14 @@ def regularized_stokeslets_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',
         m.setValues(u_glb + 2, f_glbIdx_all[1::3], m21, addv=False)
         m.setValues(u_glb + 2, f_glbIdx_all[2::3], m22, addv=False)
         # if i0 % 1000==0:
-        #     m.assemble()
+        #   m.assemble()
     m.assemble()
 
-    return m  # ' regularized Stokeslets  matrix, U = M * F '
+    return m  # ' regularized Stokeslets matrix, U = M * F '
 
 
 def check_regularized_stokeslets_matrix_3d(**kwargs):
-    err_msg = 'the reguralized Stokeslets  method needs parameter, epsilon. '
+    err_msg = 'the reguralized Stokeslets method needs parameter, epsilon. '
     assert 'epsilon' in kwargs, err_msg
 
 
@@ -494,7 +494,7 @@ def regularized_stokeslets_plane_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # ve
                   -dz * H2k - dy ** 2 * dz * dH2k / rk)  # Myy
     # # PETSc.Sys.Print('DBG version')
     # m11 = H1sk + dy * dy * H2sk - H1k - dy * dy * H2k - zwall * zwall * (-D1k - dy ** 2 * D2k) - 2 * zwall * (
-    #     dH1k / rk + H2k) * zwall + 2 * zwall * (-dz * H2k - dy ** 2 * dz * dH2k / rk)  # Myy
+    #   dH1k / rk + H2k) * zwall + 2 * zwall * (-dz * H2k - dy ** 2 * dz * dH2k / rk) # Myy
     m00 = m00 / (8 * np.pi)
     m01 = m01 / (8 * np.pi)
     m02 = m02 / (8 * np.pi)
@@ -507,69 +507,69 @@ def regularized_stokeslets_plane_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # ve
     return m00, m01, m02, m10, m11, m12, m20, m21, m22, i0
 
 
-# def regularized_stokeslets_plane_matrix_3d_petsc_mij(t_u_node: np.ndarray,  # velocity node
-#                                                      f_nodes: np.ndarray,  # force nodes
-#                                                      e2,  # e2 = e^2
-#                                                      i0, **kwargs):
-#     # Ding version
-#     xgridb = t_u_node[0]
-#     ygridb = t_u_node[1]
-#     zgridb = t_u_node[2]
-#     xwall = f_nodes[:, 0]
-#     ywall = f_nodes[:, 1]
-#     zwall = f_nodes[:, 2]
+# def regularized_stokeslets_plane_matrix_3d_petsc_mij(t_u_node: np.ndarray, # velocity node
+#                           f_nodes: np.ndarray, # force nodes
+#                           e2, # e2 = e^2
+#                           i0, **kwargs):
+#   # Ding version
+#   xgridb = t_u_node[0]
+#   ygridb = t_u_node[1]
+#   zgridb = t_u_node[2]
+#   xwall = f_nodes[:, 0]
+#   ywall = f_nodes[:, 1]
+#   zwall = f_nodes[:, 2]
 #
-#     dx = xgridb - xwall
-#     dys = ygridb - ywall
-#     dy = ygridb + ywall
-#     dz = zgridb - zwall
+#   dx = xgridb - xwall
+#   dys = ygridb - ywall
+#   dy = ygridb + ywall
+#   dz = zgridb - zwall
 #
-#     r2sk = dx ** 2 + dys ** 2 + dz ** 2  # r squared
-#     # rsk = r2sk ** 0.5
-#     rske = (r2sk + e2) ** 0.5
-#     H2sk = 1 / (rske ** 3)
-#     H1sk = 1 / rske + e2 * H2sk
-#     D2sk = -6 / (rske ** 5)
-#     # D1sk = 2 / (rske ** 3) + e2 * D2sk
+#   r2sk = dx ** 2 + dys ** 2 + dz ** 2 # r squared
+#   # rsk = r2sk ** 0.5
+#   rske = (r2sk + e2) ** 0.5
+#   H2sk = 1 / (rske ** 3)
+#   H1sk = 1 / rske + e2 * H2sk
+#   D2sk = -6 / (rske ** 5)
+#   # D1sk = 2 / (rske ** 3) + e2 * D2sk
 #
-#     r2k = dx ** 2 + dy ** 2 + dz ** 2
-#     rk = r2k ** 0.5
-#     rke = (r2k + e2) ** 0.5
-#     H2k = 1 / (rke ** 3)
-#     H1k = 1 / rke + e2 * H2k
-#     D2k = -6 / (rke ** 5)
-#     D1k = 2 / (rke ** 3) + e2 * D2k
-#     dH2k = -3 * rk / (rke ** 5)
-#     dH1k = -rk / (rke ** 3) + e2 * dH2k
+#   r2k = dx ** 2 + dy ** 2 + dz ** 2
+#   rk = r2k ** 0.5
+#   rke = (r2k + e2) ** 0.5
+#   H2k = 1 / (rke ** 3)
+#   H1k = 1 / rke + e2 * H2k
+#   D2k = -6 / (rke ** 5)
+#   D1k = 2 / (rke ** 3) + e2 * D2k
+#   dH2k = -3 * rk / (rke ** 5)
+#   dH1k = -rk / (rke ** 3) + e2 * dH2k
 #
-#     m00 = H1sk + dx ** 2 * H2sk - H1k - dx ** 2 * H2k - ywall * ywall * (-1 * D1k - dx ** 2 * D2k) - 2 * ywall * (
-#         dH1k / rk + H2k) * dy + 2 * ywall * (-dy * H2k - dy * dx ** 2 * dH2k / rk)
-#     m10 = dx * dys * H2sk - dx * dy * H2k - ywall * ywall * (-dy * dx * D2k) + 2 * ywall * (
-#         dH1k / rk + H2k) * dx + 2 * ywall * (-dx * dH1k / rk - dx * dy ** 2 * dH2k / rk)
-#     m01 = dx * dys * H2sk - dx * dy * H2k - ywall * ywall * (dx * dy * D2k) + 2 * ywall * (
-#         dx * H2k + dy ** 2 * dx * dH2k / rk)
-#     m11 = H1sk + dys ** 2 * H2sk - H1k - dy ** 2 * H2k - ywall * ywall * (1 * D1k + dy ** 2 * D2k) + 2 * ywall * (
-#         dy * H2k + dy * H2k + dy * dH1k / rk + dy ** 3 * dH2k / rk)
-#     m02 = dx * dz * H2sk - dx * dz * H2k - ywall * ywall * (-dx * dz * D2k) + 2 * ywall * (
-#         -dy * dx * dz * dH2k / rk)
-#     m12 = dys * dz * H2sk - dy * dz * H2k - ywall * ywall * (-dy * dz * D2k) + 2 * ywall * (
-#         dH1k / rk + H2k) * dz + 2 * ywall * (-dz * dH1k / rk - dy * dz * dy * dH2k / rk)
-#     m20 = dx * dz * H2sk - dx * dz * H2k - ywall * ywall * (-dx * dz * D2k) + 2 * ywall * (
-#         -dx * dz * dy * dH2k / rk)
-#     m21 = dys * dz * H2sk - dy * dz * H2k - ywall * ywall * (dz * dy * D2k) + 2 * ywall * (
-#         dz * H2k + dz * dy * dy * dH2k / rk)
-#     m22 = H1sk + dz * dz * H2sk - H1k - dz * dz * H2k - ywall * ywall * (-D1k - dz ** 2 * D2k) - 2 * ywall * (
-#         dH1k / rk + H2k) * dy + 2 * ywall * (-dy * H2k - dz ** 2 * dy * dH2k / rk)
-#     m00 = m00 / (8 * np.pi)
-#     m01 = m01 / (8 * np.pi)
-#     m02 = m02 / (8 * np.pi)
-#     m10 = m10 / (8 * np.pi)
-#     m11 = m11 / (8 * np.pi)
-#     m12 = m12 / (8 * np.pi)
-#     m20 = m20 / (8 * np.pi)
-#     m21 = m21 / (8 * np.pi)
-#     m22 = m22 / (8 * np.pi)
-#     return m00, m01, m02, m10, m11, m12, m20, m21, m22, i0
+#   m00 = H1sk + dx ** 2 * H2sk - H1k - dx ** 2 * H2k - ywall * ywall * (-1 * D1k - dx ** 2 * D2k) - 2 * ywall * (
+#     dH1k / rk + H2k) * dy + 2 * ywall * (-dy * H2k - dy * dx ** 2 * dH2k / rk)
+#   m10 = dx * dys * H2sk - dx * dy * H2k - ywall * ywall * (-dy * dx * D2k) + 2 * ywall * (
+#     dH1k / rk + H2k) * dx + 2 * ywall * (-dx * dH1k / rk - dx * dy ** 2 * dH2k / rk)
+#   m01 = dx * dys * H2sk - dx * dy * H2k - ywall * ywall * (dx * dy * D2k) + 2 * ywall * (
+#     dx * H2k + dy ** 2 * dx * dH2k / rk)
+#   m11 = H1sk + dys ** 2 * H2sk - H1k - dy ** 2 * H2k - ywall * ywall * (1 * D1k + dy ** 2 * D2k) + 2 * ywall * (
+#     dy * H2k + dy * H2k + dy * dH1k / rk + dy ** 3 * dH2k / rk)
+#   m02 = dx * dz * H2sk - dx * dz * H2k - ywall * ywall * (-dx * dz * D2k) + 2 * ywall * (
+#     -dy * dx * dz * dH2k / rk)
+#   m12 = dys * dz * H2sk - dy * dz * H2k - ywall * ywall * (-dy * dz * D2k) + 2 * ywall * (
+#     dH1k / rk + H2k) * dz + 2 * ywall * (-dz * dH1k / rk - dy * dz * dy * dH2k / rk)
+#   m20 = dx * dz * H2sk - dx * dz * H2k - ywall * ywall * (-dx * dz * D2k) + 2 * ywall * (
+#     -dx * dz * dy * dH2k / rk)
+#   m21 = dys * dz * H2sk - dy * dz * H2k - ywall * ywall * (dz * dy * D2k) + 2 * ywall * (
+#     dz * H2k + dz * dy * dy * dH2k / rk)
+#   m22 = H1sk + dz * dz * H2sk - H1k - dz * dz * H2k - ywall * ywall * (-D1k - dz ** 2 * D2k) - 2 * ywall * (
+#     dH1k / rk + H2k) * dy + 2 * ywall * (-dy * H2k - dz ** 2 * dy * dH2k / rk)
+#   m00 = m00 / (8 * np.pi)
+#   m01 = m01 / (8 * np.pi)
+#   m02 = m02 / (8 * np.pi)
+#   m10 = m10 / (8 * np.pi)
+#   m11 = m11 / (8 * np.pi)
+#   m12 = m12 / (8 * np.pi)
+#   m20 = m20 / (8 * np.pi)
+#   m21 = m21 / (8 * np.pi)
+#   m22 = m22 / (8 * np.pi)
+#   return m00, m01, m02, m10, m11, m12, m20, m21, m22, i0
 
 
 def regularized_stokeslets_plane_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',
@@ -577,7 +577,7 @@ def regularized_stokeslets_plane_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',
                                                  obj2: 'sf.StokesFlowObj',
                                                  # object contain force information
                                                  m, **kwargs):
-    # Solve m matrix using regularized Stokeslets  method
+    # Solve m matrix using regularized Stokeslets method
     # U = M * F.
     # Cortez R. The method of regularized Stokeslets [J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
     delta_2 = kwargs['delta'] ** 2  # correction factor
@@ -602,11 +602,11 @@ def regularized_stokeslets_plane_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',
         m.setValues(u_glb + 2, f_glbIdx_all[2::3], m22, addv=False)
     m.assemble()
 
-    return m  # ' regularized Stokeslets  matrix, U = M * F '
+    return m  # ' regularized Stokeslets matrix, U = M * F '
 
 
 def check_regularized_stokeslets_plane_matrix_3d(**kwargs):
-    err_msg = 'the reguralized Stokeslets  method needs parameter, delta. '
+    err_msg = 'the reguralized Stokeslets method needs parameter, delta. '
     assert 'delta' in kwargs, err_msg
 
 
@@ -836,18 +836,18 @@ def legendre_regularized_stokeslets_matrix_3d(obj1: 'sf.StokesFlowObj',
         m.setValues(u_glb + 2, f_glbIdx_all[1::3], m21, addv=False)
         m.setValues(u_glb + 2, f_glbIdx_all[2::3], m22, addv=False)
         # if i0 % 1000==0:
-        #     m.assemble()
+        #   m.assemble()
     m.assemble()
 
-    return m  # ' regularized Stokeslets  matrix, U = M * F '
+    return m  # ' regularized Stokeslets matrix, U = M * F '
 
 
 def check_legendre_regularized_stokeslets_matrix_3d(**kwargs):
-    err_msg = 'the regularized Stokeslets  method needs parameter, epsilon. '
+    err_msg = 'the regularized Stokeslets method needs parameter, epsilon. '
     assert 'epsilon' in kwargs, err_msg
-    err_msg = 'the regularized Stokeslets  method needs parameter, Legendre_m. '
+    err_msg = 'the regularized Stokeslets method needs parameter, Legendre_m. '
     assert 'legendre_m' in kwargs, err_msg
-    err_msg = 'the regularized Stokeslets  method needs parameter, Legendre_k. '
+    err_msg = 'the regularized Stokeslets method needs parameter, Legendre_k. '
     assert 'legendre_k' in kwargs, err_msg
     return True
 
@@ -858,7 +858,7 @@ def two_para_regularized_stokeslets_matrix_3d(obj1: 'sf.StokesFlowObj',
                                               obj2: 'sf.StokesFlowObj',
                                               # object contain force information
                                               **kwargs):
-    # Solve m matrix using regularized Stokeslets  method
+    # Solve m matrix using regularized Stokeslets method
     # U = M * F.
     # Cortez R. The method of regularized Stokeslets [J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
     # Ong, Benjamin, Andrew Christlieb, and Bryan Quaife. "A New Family of Regularized Kernels for the Harmonic Oscillator." arXiv preprint arXiv:1407.1108 (2014).
@@ -935,20 +935,20 @@ def two_para_regularized_stokeslets_matrix_3d(obj1: 'sf.StokesFlowObj',
                     delta_r, e)
     m.assemble()
 
-    return m  # ' regularized Stokeslets  matrix, U = M * F '
+    return m  # ' regularized Stokeslets matrix, U = M * F '
 
 
 def check_two_para_regularized_stokeslets_matrix_3d(**kwargs):
-    err_msg = 'the regularized Stokeslets  method needs parameter, delta. '
+    err_msg = 'the regularized Stokeslets method needs parameter, delta. '
     assert 'delta' in kwargs, err_msg
-    err_msg = 'the regularized Stokeslets  method needs parameter, twoPara_n. '
+    err_msg = 'the regularized Stokeslets method needs parameter, twoPara_n. '
     assert 'twoPara_n' in kwargs, err_msg
 
 
 def surf_force_matrix_3d_debug(obj1: 'sf.surf_forceObj',  # object contain velocity information
                                obj2: 'sf.surf_forceObj',  # object contain force information
                                **kwargs):
-    # Solve m matrix using regularized Stokeslets  method
+    # Solve m matrix using regularized Stokeslets method
     # U = M * F.
     # Cortez R. The method of regularized Stokeslets [J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
 
@@ -1017,7 +1017,7 @@ def surf_force_matrix_3d_debug(obj1: 'sf.surf_forceObj',  # object contain veloc
                         8 * np.pi * d_radia)  # Myz
                 m[i0, i0 + 0] = (1 / 2 * (5 - np.cos(2 * norm[1]))) / (8 * np.pi * d_radia)  # Mzz
     m.assemble()
-    return m  # ' regularized Stokeslets  matrix, U = M * F '
+    return m  # ' regularized Stokeslets matrix, U = M * F '
 
 
 def surf_force_matrix_3d(obj1: 'sf.surf_forceObj',  # object contain velocity information
@@ -1100,7 +1100,7 @@ def surf_force_matrix_3d(obj1: 'sf.surf_forceObj',  # object contain velocity in
     # cax = ax.matshow(M, origin='lower')
     # fig.colorbar(cax)
     # plt.show()
-    return m  # ' regularized Stokeslets  matrix, U = M * F '
+    return m  # ' regularized Stokeslets matrix, U = M * F '
 
 
 def check_surf_force_matrix_3d(**kwargs):
@@ -1112,7 +1112,7 @@ def check_surf_force_matrix_3d(**kwargs):
 def point_source_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity information
                                  obj2: 'sf.StokesFlowObj',  # object contain force information
                                  **kwargs):
-    # Solve m matrix using regularized Stokeslets  method
+    # Solve m matrix using regularized Stokeslets method
     # U = M * F.
     # Cortez R. The method of regularized Stokeslets[J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
 
@@ -1247,7 +1247,7 @@ def point_force_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velo
 
     for i0 in range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1]):
         m00, m01, m02, m10, m11, m12, m20, m21, m22, i1 = point_force_matrix_3d_petsc_mij(
-                u_nodes[i0], f_nodes, i0)
+                u_nodes[i0], f_nodes, i0, **kwargs)
         u_glb = u_glbIdx_all[i1 * 3]
         m.setValues(u_glb + 0, f_glbIdx_all[0::3], m00, addv=False)
         m.setValues(u_glb + 0, f_glbIdx_all[1::3], m01, addv=False)
@@ -1428,8 +1428,8 @@ def pf_infhelix_3d_petsc_mij(t_u_node, f_geo: 'geo.infgeo_1d', i0):
         tm21 = temp2 * dx2 * dx1
         tm22 = temp2 * dx2 * dx2 + temp1
         # return np.dstack((np.vstack((tm00, tm01, tm02)).T,
-        #                   np.vstack((tm10, tm11, tm12)).T,
-        #                   np.vstack((tm20, tm21, tm22)).T))
+        #          np.vstack((tm10, tm11, tm12)).T,
+        #          np.vstack((tm20, tm21, tm22)).T))
         # return np.dstack(((tm00, tm01, tm02),(tm10, tm11, tm12),(tm20, tm21, tm22)))
         return (tm00, tm01, tm02), (tm10, tm11, tm12), (tm20, tm21, tm22)
 
@@ -1499,7 +1499,7 @@ def check_pf_infhelix_3d_petsc(**kwargs):
 
 
 # rotational symmetric stokeslets matrix in bulk fluid.
-#   assert the geometric symmetric along z axis, and the slice of nodes are at XY plate.
+#  assert the geometric symmetric along z axis, and the slice of nodes are at XY plate.
 def point_force_ring_3d_petsc_int(obj1: 'sf.StokesFlowObj',  # contain velocity information
                                   obj2: 'sf.StokesFlowObj',  # contain force information
                                   m, int_epsabs=1e-20, int_epsrel=1e-05,
@@ -1780,9 +1780,9 @@ def self_repeat_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity in
     return True  # ' point_force_matrix, U = M * F '
 
 
-def self_rotate_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity information
-                         obj2: 'sf.StokesFlowObj',  # object contain force information
-                         m, **kwargs):
+def self_rotate_3d_petsc_old(obj1: 'sf.StokesFlowObj',  # object contain velocity information
+                             obj2: 'sf.StokesFlowObj',  # object contain force information
+                             m, **kwargs):
     n_tail = kwargs['n_tail']
 
     u_nodes = obj1.get_u_nodes()
@@ -1821,4 +1821,109 @@ def self_rotate_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity in
             t1 = m20 * rot_M[0][2] + m21 * rot_M[1][2] + m22 * rot_M[2][2]
             m.setValues(u_glb + 2, f_glbIdx_all[2::3], t1, addv=True)
     m.assemble()
+    return True
+
+
+def self_rotate_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity information
+                         obj2: 'sf.StokesFlowObj',  # object contain force information
+                         m, **kwargs):
+    # _mij_dict = {
+    #     'rs_selfRotate':    regularized_stokeslets_matrix_3d_petsc_mij,
+    #     'lg_rs_selfRotate': legendre_regularized_stokeslets_matrix_3d_mij,
+    #     'pf_selfRotate':    point_force_matrix_3d_petsc_mij,
+    # }
+
+    def _wapper_regularized_stokeslets_matrix_3d_petsc_mij(u_nodes, f_nodes, i0, **kwargs):
+        kwargs['i0'] = i0
+        t1 = regularized_stokeslets_matrix_3d_petsc_mij(u_nodes, f_nodes, **kwargs)
+        return t1
+
+    def _wapper_legendre_regularized_stokeslets_matrix_3d_mij(u_nodes, f_nodes, i0, **kwargs):
+        kwargs['i0'] = i0
+        t1 = legendre_regularized_stokeslets_matrix_3d_mij(u_nodes, f_nodes, **kwargs)
+        [m00, m01, m02, m10, m11, m12, m20, m21, m22], i1 = t1
+        return m00, m01, m02, m10, m11, m12, m20, m21, m22, i1
+
+    def _wapper_point_force_matrix_3d_petsc_mij(u_nodes, f_nodes, i0, **kwargs):
+        kwargs['i0'] = i0
+        t1 = point_force_matrix_3d_petsc_mij(u_nodes, f_nodes, **kwargs)
+        return t1
+
+    problem_norm = kwargs['problem_norm']
+    problem_n_copy = kwargs['problem_n_copy']
+    problem_center = kwargs['problem_center']
+    matrix_method = kwargs['matrix_method']
+
+    u_nodes = obj1.get_u_nodes()
+    f_geo = obj2.get_f_geo()
+    _, u_glbIdx_all = obj1.get_u_geo().get_glbIdx()
+    _, f_glbIdx_all = obj2.get_f_geo().get_glbIdx()
+    u_dmda = obj1.get_u_geo().get_dmda()
+    delta_rot = 2 * np.pi / problem_n_copy
+    tf_geo = f_geo.copy()
+    tf_geo.node_rotation(problem_norm, -1 * delta_rot, rotation_origin=problem_center)
+
+    if matrix_method == 'rs_selfRotate':
+        epsilon = kwargs['epsilon']
+        delta = epsilon * obj2.get_f_geo().get_deltaLength()
+        delta_2 = delta ** 2  # correction factor
+        kwargs['delta_2'] = delta_2
+        mij_fun = _wapper_regularized_stokeslets_matrix_3d_petsc_mij
+    elif matrix_method == 'lg_rs_selfRotate':
+        f_ds = obj2.get_f_geo().get_deltaLength()
+        if np.array(f_ds).size == 1:
+            f_ds = f_ds * np.ones(obj2.get_n_f_node())
+        kwargs['f_ds'] = f_ds
+        mij_fun = _wapper_legendre_regularized_stokeslets_matrix_3d_mij
+    elif matrix_method == 'pf_selfRotate':
+        mij_fun = _wapper_point_force_matrix_3d_petsc_mij
+    else:
+        raise Exception('matrix_method do NOT sufficient self_rotate_3d_petsc function. ')
+
+    for i0 in range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1]):
+        u_glb = u_glbIdx_all[i0 * 3]
+        for thetai in np.linspace(0, 2 * np.pi, problem_n_copy, endpoint=False):
+            rot_M = get_rot_matrix(problem_norm, thetai)
+            tf_geo.node_rotation(problem_norm, delta_rot, rotation_origin=problem_center)
+            f_nodes = tf_geo.get_nodes()
+            m00, m01, m02, m10, m11, m12, m20, m21, m22, i1 = \
+                mij_fun(u_nodes[i0], f_nodes, i0, **kwargs)
+            t1 = m00 * rot_M[0][0] + m01 * rot_M[1][0] + m02 * rot_M[2][0]
+            m.setValues(u_glb + 0, f_glbIdx_all[0::3], t1, addv=True)
+            t1 = m00 * rot_M[0][1] + m01 * rot_M[1][1] + m02 * rot_M[2][1]
+            m.setValues(u_glb + 0, f_glbIdx_all[1::3], t1, addv=True)
+            t1 = m00 * rot_M[0][2] + m01 * rot_M[1][2] + m02 * rot_M[2][2]
+            m.setValues(u_glb + 0, f_glbIdx_all[2::3], t1, addv=True)
+            t1 = m10 * rot_M[0][0] + m11 * rot_M[1][0] + m12 * rot_M[2][0]
+            m.setValues(u_glb + 1, f_glbIdx_all[0::3], t1, addv=True)
+            t1 = m10 * rot_M[0][1] + m11 * rot_M[1][1] + m12 * rot_M[2][1]
+            m.setValues(u_glb + 1, f_glbIdx_all[1::3], t1, addv=True)
+            t1 = m10 * rot_M[0][2] + m11 * rot_M[1][2] + m12 * rot_M[2][2]
+            m.setValues(u_glb + 1, f_glbIdx_all[2::3], t1, addv=True)
+            t1 = m20 * rot_M[0][0] + m21 * rot_M[1][0] + m22 * rot_M[2][0]
+            m.setValues(u_glb + 2, f_glbIdx_all[0::3], t1, addv=True)
+            t1 = m20 * rot_M[0][1] + m21 * rot_M[1][1] + m22 * rot_M[2][1]
+            m.setValues(u_glb + 2, f_glbIdx_all[1::3], t1, addv=True)
+            t1 = m20 * rot_M[0][2] + m21 * rot_M[1][2] + m22 * rot_M[2][2]
+            m.setValues(u_glb + 2, f_glbIdx_all[2::3], t1, addv=True)
+    m.assemble()
+    return True
+
+
+def check_self_rotate_3d_petsc(**kwargs):
+    err_msg = 'the self_rotate method needs parameter, problem_norm. '
+    assert 'problem_norm' in kwargs, err_msg
+    err_msg = 'the self_rotate method needs parameter, problem_n_copy. '
+    assert 'problem_n_copy' in kwargs, err_msg
+
+    matrix_method = kwargs['matrix_method']
+    if matrix_method == 'rs_selfRotate':
+        check_regularized_stokeslets_matrix_3d(**kwargs)
+    elif matrix_method == 'lg_rs_selfRotate':
+        check_legendre_regularized_stokeslets_matrix_3d(**kwargs)
+    elif matrix_method == 'pf_selfRotate':
+        check_point_force_matrix_3d_petsc(**kwargs)
+    else:
+        raise Exception('matrix_method do NOT sufficient self_rotate_3d_petsc function. ')
+
     return True

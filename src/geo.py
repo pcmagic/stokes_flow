@@ -12,13 +12,16 @@ import abc
 from scipy.special import hyp2f1
 from scipy import interpolate, integrate, optimize, sparse
 from itertools import compress
+from scipy.spatial.transform import Rotation as spR
+from src.support_class import *
 
-__all__ = ['base_geo', 'sphere_geo', 'ellipse_base_geo', 'geoComposit',
+__all__ = ['base_geo', 'sphere_geo', 'ellipse_base_geo', 'ellipse_3d_geo',
+           'geoComposit',
            'tunnel_geo', 'pipe_cover_geo', 'supHelix', 'FatHelix',
            'lineOnFatHelix', 'ThickLine_base_geo',
            'SelfRepeat_body_geo', 'SelfRepeat_FatHelix',
            'infgeo_1d', 'infHelix', 'infPipe',
-           'slb_helix', 'Johnson_helix', 'expJohnson_helix',
+           'slb_geo', 'slb_helix', 'Johnson_helix', 'expJohnson_helix',
            'regularizeDisk', 'helicoid',
            '_revolve_geo', 'revolve_pipe', 'revolve_ellipse',
            'region', 'set_axes_equal']
@@ -109,10 +112,8 @@ class base_geo():
         rotation = get_rot_matrix(norm, theta)
         self._nodes = np.dot(rotation, (self._nodes - rotation_origin).T).T + \
                       rotation_origin  # The rotation is counterclockwise
-        t_origin = self._origin
         self._origin = np.dot(rotation, (self._origin - rotation_origin)) + rotation_origin
-        self._geo_norm = np.dot(rotation, (self._geo_norm + t_origin - rotation_origin)) \
-                         + rotation_origin - self._origin
+        self._geo_norm = np.dot(rotation, self._geo_norm)
         self._geo_norm = self._geo_norm / np.linalg.norm(self._geo_norm)
         return True
 
@@ -269,7 +270,7 @@ class base_geo():
         self._u = velocity.flatten()
         return True
 
-    def set_rigid_velocity(self, U=np.array((0, 0, 0, 0, 0, 0)), center=None):
+    def set_rigid_velocity(self, U=np.zeros(6), center=None):
         """
         :type U: np.array
         :param U: [u1, u2, u3, w1, w2, w3], velocity and angular velocity.
@@ -392,9 +393,9 @@ class base_geo():
             ax.set_xlim(mid_x - max_range, mid_x + max_range)
             ax.set_ylim(mid_y - max_range, mid_y + max_range)
             ax.set_zlim(mid_z - max_range, mid_z + max_range)
-            ax.set_xlabel('x', size='xx-large')
-            ax.set_ylabel('y', size='xx-large')
-            ax.set_zlabel('z', size='xx-large')
+            ax.set_xlabel('$x_1$', size='xx-large')
+            ax.set_ylabel('$x_2$', size='xx-large')
+            ax.set_zlabel('$x_3$', size='xx-large')
         else:
             fig = None
         return fig
@@ -433,9 +434,9 @@ class base_geo():
             ax.set_xlim(mid_x - max_range, mid_x + max_range)
             ax.set_ylim(mid_y - max_range, mid_y + max_range)
             ax.set_zlim(mid_z - max_range, mid_z + max_range)
-            ax.set_xlabel('x', size='xx-large')
-            ax.set_ylabel('y', size='xx-large')
-            ax.set_zlabel('z', size='xx-large')
+            ax.set_xlabel('$x_1$', size='xx-large')
+            ax.set_ylabel('$x_2$', size='xx-large')
+            ax.set_zlabel('$x_3$', size='xx-large')
         else:
             fig = None
         return fig
@@ -575,9 +576,9 @@ class geoComposit(uniqueList):
             ax.set_xlim(np.nanmin(xlim_list), np.nanmax(xlim_list))
             ax.set_ylim(np.nanmin(ylim_list), np.nanmax(ylim_list))
             ax.set_zlim(np.nanmin(zlim_list), np.nanmax(zlim_list))
-            ax.set_xlabel('x', size='xx-large')
-            ax.set_ylabel('y', size='xx-large')
-            ax.set_zlabel('z', size='xx-large')
+            ax.set_xlabel('$x_1$', size='xx-large')
+            ax.set_ylabel('$x_2$', size='xx-large')
+            ax.set_zlabel('$x_3$', size='xx-large')
         else:
             fig = None
         return fig
@@ -758,6 +759,7 @@ class ThickLine_base_geo(base_geo):
             fgeo_nodes.append(tf_nodes)
             self._body_pretreatment(t_nodes)
             self._node_axisNode_idx.append(np.ones(ai.size) * i0)
+        self._body_idx_list = np.array(self._body_idx_list)
 
         # cover at end
         if with_cover == 1:
@@ -1077,6 +1079,28 @@ class ellipse_base_geo(base_geo):
         self.set_dmda()
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
+        return True
+
+
+class ellipse_3d_geo(base_geo):
+    def __init__(self):
+        super().__init__()
+        self._type = 'ellipse_3d_geo'  # geo type
+
+    def create_delta(self, ds: float,  # length of the mesh
+                     a: float,  # axis1 = 2*a
+                     b1: float, b2: float):  # axis2 = 2*b
+        tgeo = ellipse_base_geo()
+        tgeo.create_delta(ds, a, b1)
+        tnode = tgeo.get_nodes()
+        tnode[:, 2] = tnode[:, 2] / b1 * b2
+
+        self._deltaLength = ds
+        self._nodes = tnode
+        self.set_dmda()
+        self._u = np.zeros(self._nodes.size)
+        self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
+        self._geo_norm = np.array((1, 0, 0))
         return True
 
 
@@ -2837,6 +2861,9 @@ class slb_geo(base_geo):
         super().__init__()
         self._rt2 = rt2
         self._s_list = np.ones(0)
+        tq1 = spR.from_matrix(np.eye(3)).as_quat()
+        self._orintation = Quaternion()
+        self._orintation.set_wxyz(tq1[3], tq1[0], tq1[1], tq1[2])
 
     @property
     def rt2(self):
@@ -2846,9 +2873,20 @@ class slb_geo(base_geo):
     def s_list(self):
         return self._s_list
 
-    @abc.abstractmethod
+    @property
+    def orintation(self):
+        return self._orintation
+
     # xc = xc(s), the center line function of slender body.
     def xc_fun(self, s):
+        xc = self._base_xc_fun(s)
+        rotation = self.orintation.get_R()
+        xc = np.dot(rotation, xc.T).T
+        xc += self.get_center()
+        return xc
+
+    @abc.abstractmethod
+    def _base_xc_fun(self, s):
         return
 
     @abc.abstractmethod
@@ -2893,6 +2931,14 @@ class slb_geo(base_geo):
         nc = self.rt2 * self.rho_r(s) * np.sqrt(np.e) / 2
         return nc
 
+    def node_rotation(self, norm=np.array([0, 0, 1]), theta=0, rotation_origin=None):
+        super().node_rotation(norm=norm, theta=theta, rotation_origin=rotation_origin)
+        tq2 = spR.from_rotvec(norm * theta).as_quat()
+        quat2 = Quaternion()
+        quat2.set_wxyz(tq2[3], tq2[0], tq2[1], tq2[2])
+        self._orintation = quat2.mul(self.orintation)
+        return True
+
 
 class slb_helix(slb_geo):
     def __init__(self, ph, ch, rt1, rt2, theta0=0):
@@ -2920,7 +2966,7 @@ class slb_helix(slb_geo):
     def theta0(self):
         return self._s0 * 2 * np.pi / self.arclength(0)
 
-    def xc_fun(self, s):
+    def _base_xc_fun(self, s):
         ph = self.ph
         rt1 = self.rt1
         theta = s * 2 * np.pi / self.arclength(0)
@@ -3026,6 +3072,7 @@ class expJohnson_helix(Johnson_helix):
 
 
 class regularizeDisk(base_geo):
+    # geo_norm = np.array((0, 0, 1))
     def __init__(self):
         super().__init__()
         self._type = 'regularizeDisk'  # geo type
@@ -3323,22 +3370,5 @@ class region:
 
 
 def set_axes_equal(ax):
-    '''Make axes of 3D plot have equal scale so that spheres appear as spheres,
-    cubes as cubes, etc..  This is one possible solution to Matplotlib's
-    ax.set_aspect('equal') and ax.axis('equal') not working for 3D.
-
-    Input
-      ax: a matplotlib axis, e.g., as output from plt.gca().
-    '''
-
-    limits = np.array([
-        ax.get_xlim3d(),
-        ax.get_ylim3d(),
-        ax.get_zlim3d(),
-    ])
-
-    origin = np.mean(limits, axis=1)
-    radius = 0.5 * np.max(np.abs(limits[:, 1] - limits[:, 0]))
-    ax.set_xlim3d([origin[0] - radius, origin[0] + radius])
-    ax.set_ylim3d([origin[1] - radius, origin[1] + radius])
-    ax.set_zlim3d([origin[2] - radius, origin[2] + radius])
+    from codeStore import support_fun as spf
+    return spf.set_axes_equal(ax)

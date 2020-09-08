@@ -12,6 +12,7 @@ petsc4py.init(sys.argv)
 from src.myio import *
 from src.objComposite import *
 from src.StokesFlowMethod import *
+from codeStore.helix_common import AtBtCt_full
 
 
 def get_problem_kwargs(**main_kwargs):
@@ -110,6 +111,8 @@ def main_resistanceMatrix(**main_kwargs):
         problem.pickmyself('%s_tran' % fileHandle, ifcheck=True)
     problem.print_info()
     problem.create_matrix()
+    AtBtCt_full(problem, save_vtk=False, pick_M=False,
+                center=helicoid_center, save_name=fileHandle)
 
     # 1. translation
     for tobj in helicoid_obj_list:
@@ -131,51 +134,52 @@ def main_resistanceMatrix(**main_kwargs):
         problem.pickmyself('%s_rota' % fileHandle, pick_M=False, mat_destroy=False)
     total_force = problem.get_total_force()
     PETSc.Sys.Print('rotation total_force', total_force)
+
+    problem.vtk_self('%s_rota' % fileHandle)
+
+    # 1. translation
+    for tobj in helicoid_obj_list:
+        tobj.set_rigid_velocity(np.array((0, 1, 0, 0, 0, 0)), center=helicoid_center)
+    problem.create_F_U()
+    problem.solve()
+    if problem_kwargs['pickProblem']:
+        problem.pickmyself('%s_tran' % fileHandle, pick_M=False, mat_destroy=False)
+    total_force = problem.get_total_force()
+    PETSc.Sys.Print('translation total_force', total_force)
+    # problem.vtk_self('%s_tran' % fileHandle)
+
+    # 2. rotation
+    for tobj in helicoid_obj_list:
+        tobj.set_rigid_velocity(np.array((0, 0, 0, 0, 1, 0)), center=helicoid_center)
+    problem.create_F_U()
+    problem.solve()
+    if problem_kwargs['pickProblem']:
+        problem.pickmyself('%s_rota' % fileHandle, pick_M=False, mat_destroy=False)
+    total_force = problem.get_total_force()
+    PETSc.Sys.Print('rotation total_force', total_force)
     # problem.vtk_self('%s_rota' % fileHandle)
 
-    # # 1. translation
-    # for tobj in helicoid_obj_list:
-    #     tobj.set_rigid_velocity(np.array((0, 1, 0, 0, 0, 0)), center=helicoid_center)
-    # problem.create_F_U()
-    # problem.solve()
-    # if problem_kwargs['pickProblem']:
-    #     problem.pickmyself('%s_tran' % fileHandle, pick_M=False, mat_destroy=False)
-    # total_force = problem.get_total_force()
-    # PETSc.Sys.Print('translation total_force', total_force)
-    # # problem.vtk_self('%s_tran' % fileHandle)
-    #
-    # # 2. rotation
-    # for tobj in helicoid_obj_list:
-    #     tobj.set_rigid_velocity(np.array((0, 0, 0, 0, 1, 0)), center=helicoid_center)
-    # problem.create_F_U()
-    # problem.solve()
-    # if problem_kwargs['pickProblem']:
-    #     problem.pickmyself('%s_rota' % fileHandle, pick_M=False, mat_destroy=False)
-    # total_force = problem.get_total_force()
-    # PETSc.Sys.Print('rotation total_force', total_force)
-    # # problem.vtk_self('%s_rota' % fileHandle)
-    #
-    # # 1. translation
-    # for tobj in helicoid_obj_list:
-    #     tobj.set_rigid_velocity(np.array((1, 0, 0, 0, 0, 0)), center=helicoid_center)
-    # problem.create_F_U()
-    # problem.solve()
-    # if problem_kwargs['pickProblem']:
-    #     problem.pickmyself('%s_tran' % fileHandle, pick_M=False, mat_destroy=False)
-    # total_force = problem.get_total_force()
-    # PETSc.Sys.Print('translation total_force', total_force)
-    # # problem.vtk_self('%s_tran' % fileHandle)
-    #
-    # # 2. rotation
-    # for tobj in helicoid_obj_list:
-    #     tobj.set_rigid_velocity(np.array((0, 0, 0, 1, 0, 0)), center=helicoid_center)
-    # problem.create_F_U()
-    # problem.solve()
-    # if problem_kwargs['pickProblem']:
-    #     problem.pickmyself('%s_rota' % fileHandle, pick_M=False, mat_destroy=False)
-    # total_force = problem.get_total_force()
-    # PETSc.Sys.Print('rotation total_force', total_force)
-    # # problem.vtk_self('%s_rota' % fileHandle)
+    # 1. translation
+    for tobj in helicoid_obj_list:
+        tobj.set_rigid_velocity(np.array((1, 0, 0, 0, 0, 0)), center=helicoid_center)
+    problem.create_F_U()
+    problem.solve()
+    if problem_kwargs['pickProblem']:
+        problem.pickmyself('%s_tran' % fileHandle, pick_M=False, mat_destroy=False)
+    total_force = problem.get_total_force()
+    PETSc.Sys.Print('translation total_force', total_force)
+    # problem.vtk_self('%s_tran' % fileHandle)
+
+    # 2. rotation
+    for tobj in helicoid_obj_list:
+        tobj.set_rigid_velocity(np.array((0, 0, 0, 1, 0, 0)), center=helicoid_center)
+    problem.create_F_U()
+    problem.solve()
+    if problem_kwargs['pickProblem']:
+        problem.pickmyself('%s_rota' % fileHandle, pick_M=False, mat_destroy=False)
+    total_force = problem.get_total_force()
+    PETSc.Sys.Print('rotation total_force', total_force)
+    # problem.vtk_self('%s_rota' % fileHandle)
     return True
 
 
