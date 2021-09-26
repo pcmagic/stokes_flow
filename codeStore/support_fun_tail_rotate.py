@@ -64,8 +64,8 @@ def load_case_data(fileHandle, foldername):
     fVTUname = '%s_Prb_force_t00000.vtu' % fileHandle
     uVTUname = '%s_Prb_velocity_t00000.vtu' % fileHandle
     picklename = '%s_pick.bin' % fileHandle
-    txtname = '%s.txt' % fileHandle[:-5] if fileHandle[-5:] in (
-        '_rota', '_tran') else '%s.txt' % fileHandle
+    txtname = '%s.txt' % fileHandle[:-5] if fileHandle[-5:] in ('_rota', '_tran') \
+        else '%s.txt' % fileHandle
 
     tname = os.path.join(foldername, txtname)
     tAt, tBt, tCt, tn_nodes = AtBtCt_txt(tname)
@@ -96,16 +96,43 @@ def load_case_data(fileHandle, foldername):
     return tAt, tBt, tCt, tn_nodes, f_geo, x_fgeo, u_geo, x_ugeo, problem_kwargs
 
 
-def generate_geo(problem_kwargs, x_ugeo, plot_geo=True):
+def generate_geo(problem_kwargs, x_ugeo, plot_geo=True, rot_theta=None):
     center = problem_kwargs['center']
     ph = problem_kwargs['ph']
     ch = problem_kwargs['ch']
     rt1 = problem_kwargs['rh11']
     rt2 = problem_kwargs['rh2']
 
+    # def fun_theta(theta, tgeo, x_ugeo):
+    #     tgeo1 = tgeo.copy()
+    #     tgeo1.node_rotation(norm=np.array((0, 0, 1)), theta=theta, rotation_origin=center)
+
+    #     tnorm = np.linalg.norm(tgeo1.get_nodes() - x_ugeo)
+    #     # print(theta, tnorm)
+    #     return tnorm
+
+    def fun_theta(theta, tgeo0, x_ugeo):
+        tgeo1 = tgeo0.copy()
+        tgeo1.node_rotation(norm=np.array((0, 0, 1)), theta=theta, rotation_origin=center)
+
+        mid_idx = len(tgeo1.body_idx_list) // 2
+        tT = tgeo1.frenetFrame[0][mid_idx]
+        tN = tgeo1.frenetFrame[1][mid_idx]
+        tB = tgeo1.frenetFrame[2][mid_idx]
+        tfnodes = x_ugeo[tgeo1.body_idx_list[mid_idx]]
+        tnode_line = tfnodes.mean(axis=0)
+        tfnodes_local = np.dot((tfnodes - tnode_line), np.vstack((tN, tB, tT)).T)
+        return tfnodes_local[:, 2].max()
+
     tail_obj_list = create_ecoli_tail(moveh=np.zeros(3), **problem_kwargs)
-    theta = 0 if np.allclose(tail_obj_list[0].get_u_geo().get_nodes()[0], x_ugeo[0]) \
-        else (np.pi / 4 - ch * np.pi) % (2 * np.pi)
+    if rot_theta is None:
+        tge0 = tail_obj_list[0].get_u_geo()
+        assert tge0.get_n_nodes() == x_ugeo.shape[0]
+        theta = optimize.minimize(fun_theta, np.zeros(1),
+                                  args=(tge0, x_ugeo)).x
+        print('optimize minimize theta: %.15f' % theta)
+    else:
+        theta = rot_theta
     for ti in tail_obj_list:
         ti.node_rotation(norm=np.array((0, 0, 1)), theta=theta, rotation_origin=center)
     uobj0 = tail_obj_list[0]
@@ -113,18 +140,18 @@ def generate_geo(problem_kwargs, x_ugeo, plot_geo=True):
     # uobj0 = tail_obj_list[1]
     # use_idx0 = tail_obj_list[0].get_u_geo().get_n_nodes()
     ugeo0 = uobj0.get_u_geo()
-    fgeo0 = uobj0.get_f_geo()
-    ugeo0_nodes = ugeo0.get_nodes()
-    fgeo0_nodes = fgeo0.get_nodes()
     ds = np.mean(np.linalg.norm(ugeo0.axisNodes[:-1] - ugeo0.axisNodes[1:], axis=-1))
 
     if plot_geo:
         # check, make sure the generated geos are correct.
+        ugeo0_nodes = ugeo0.get_nodes()
+        ugeo0_axisNodes = uobj0.get_f_geo().axisNodes
         fig = plt.figure(figsize=(8, 8), dpi=200)
         fig.patch.set_facecolor('white')
         ax0 = fig.add_subplot(1, 1, 1, projection='3d')
         ax0.plot(*x_ugeo.T)
         ax0.plot(*ugeo0_nodes.T)
+        ax0.plot(*ugeo0_axisNodes.T)
         ax0.set_title('$\\lambda=%.2f, n_1=%.2f, r_{t1}=%.2f, r_{t2}=%.2f$' % (ph, ch, rt1, rt2))
         spf.set_axes_equal(ax0)
     return uobj0, ds

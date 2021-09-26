@@ -1,9 +1,11 @@
 # by myself
+*.idea/
 *.dat
 *.mat
 *.fig
 *.png
 *.csv
+*.xlsx
 *.vtu
 *.vtk
 *.vts
@@ -36,6 +38,16 @@ tube+sphere/
 *.mp4
 *.jpg
 *.pickle
+
+*_out.*
+*.zip
+*.bak
+*.bck
+*.csh
+*.pdf
+
+*dbg/
+*dbg/*
 pkgs/*
 bck/*
 head_Force/loop_table/*/
@@ -47,6 +59,15 @@ infhelix/tail2/*
 try_code/persistence*
 ecoli_in_pipe/free_space_varinghead/*/
 baseFlow/rheotaxis*
+*/helicoid_dumb/*/*
+*/database/*/*
+*/free_space_varinghead/*/*
+*/HomotopyAnalysis/*
+*/fplanck/*
+*/loop_table/*/*
+lis_wrapper*
+sphereNearPlane/*/*
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

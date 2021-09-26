@@ -1,1 +1,0 @@
--pickProblem 0 -save_singleEcoli_vtk 0 -rh1 1 -rh2 0.1 -ch 1 -nth 10 -eh -1 -ph 6.283 -hfct 1 -with_cover 2 -left_hand 0 -rs1 0.35 -rs2 0.35 -ls 8 -ds 0.1 -es -1 -with_T_geo 0 -dist_hs 0.5 -ksp_max_it 2 -plot_geo 0 -rel_wsz 0 -rel_whz 1 -ffweight 2 -forcepipe dbg -sm pf_stokesletsInPipe -ch 0.5 -zoom_factor 0.7 -f AlineEcoliInPipe_dbg

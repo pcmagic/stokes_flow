@@ -384,7 +384,7 @@ def KRJ_slenderBody_matrix_1hlx(ph, rt1, rt2, ch, nth=None,
         t = T_fun(th, ph, rt1, rt2)
         # rt2_use = rt2 * 4 / np.pi # This factor following Rodenborn2013
         rt2_use = rt2
-        Lsbt = np.log((-l_max * l_min + (l_max + l_min) * s0 - s0 ** 2) / rt2_use ** 2)
+        Lsbt = np.log(4 * (-l_max * l_min + (l_max + l_min) * s0 - s0 ** 2) / rt2_use ** 2)
         ta = np.eye(3)
         tb = np.outer(t, t)
         tc = ta + tb
@@ -637,7 +637,7 @@ def KRJ_slenderBody_matrix_nhlx(ph, rt1, rt2, ch, nth=None,
             t = T_fun(th, ph, rt1, rt2)
             # rt2_use = rt2 * 4 / np.pi # This factor following Rodenborn2013
             rt2_use = rt2
-            Lsbt = np.log((-s_max * s_min + (s_max + s_min) * th - th ** 2) / rt2_use ** 2)
+            Lsbt = np.log(4 * (-s_max * s_min + (s_max + s_min) * th - th ** 2) / rt2_use ** 2)
             ta = np.eye(3)
             tb = np.outer(t, t)
             tc = ta + tb
@@ -987,7 +987,7 @@ def asymtoticM_lighthill(ph, rt1, rt2, ch, sij_fun=sij_2hlx_fun,
                          use_doublets=False) -> np.ndarray:
     if use_doublets:
         err_msg = 'input sij_fun must be "sij_2hlx_fun". '
-        assert sij_fun is sij_2hlx_fun
+        assert sij_fun is sij_2hlx_fun, err_msg
     sij_warper = lambda theta: sij_fun(theta, ph, rt1)[0]
     tFij = Fn1Mat_fun(0, ph, rt1, np.nan)
     maxtheta = ch * np.pi  # (2 \pi n_1) / 2
@@ -1114,6 +1114,7 @@ def iterate_fit_c22c33c23_v2(ph, rt1, tpsi2, tpsi3, tpsi6, chmin=10, chmax=np.in
         return 2 * S * rt1 ** 2 * tx / np.pi * tp30 * tp31 + tq3
 
     def psi_tx_ty(tpsi):
+        # print(tpsi)
         tx = tpsi.index.values * np.pi
         ty = tpsi.values
         idxi = np.isfinite(tx) & np.isfinite(ty) & (chmin * np.pi <= tx) & (tx <= chmax * np.pi)
@@ -1123,8 +1124,11 @@ def iterate_fit_c22c33c23_v2(ph, rt1, tpsi2, tpsi3, tpsi6, chmin=10, chmax=np.in
 
     S = np.sqrt(4 * np.pi ** 2 * rt1 ** 2 + ph ** 2)
     txAt, tyAt = psi_tx_ty(tpsi2)
+    # print(txAt.shape, tyAt.shape)
     txCt, tyCt = psi_tx_ty(tpsi3)
+    # print(txCt.shape, tyCt.shape)
     txBt, tyBt = psi_tx_ty(tpsi6)
+    # print(txBt.shape, txBt.shape)
     assert np.logical_or(np.all(tyBt < 0), np.all(tyBt > 0), )
     tyBt = np.abs(tyBt)
 

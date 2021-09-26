@@ -21,7 +21,7 @@ __all__ = ['base_geo', 'sphere_geo', 'ellipse_base_geo', 'ellipse_3d_geo',
            'lineOnFatHelix', 'ThickLine_base_geo',
            'SelfRepeat_body_geo', 'SelfRepeat_FatHelix',
            'infgeo_1d', 'infHelix', 'infPipe',
-           'slb_geo', 'slb_helix', 'Johnson_helix', 'expJohnson_helix',
+           'slb_geo', 'slb_helix', 'Johnson_helix', 'expJohnson_helix', 'sphereEnd_helix',
            'regularizeDisk', 'helicoid',
            '_revolve_geo', 'revolve_pipe', 'revolve_ellipse',
            'region', 'set_axes_equal']
@@ -44,6 +44,9 @@ class base_geo():
         self._selfIdx = np.array([])  # indices of _glbIdx in _glbIdx_all
         self._dof = 3  # degrees of freedom pre node.
         self._type = 'general_geo'  # geo type
+
+    def __str__(self):
+        return "%s(%r)" % (self.get_type(), id(self))
 
     def mat_nodes(self, filename: str = '..',
                   mat_handle: str = 'nodes'):
@@ -103,18 +106,20 @@ class base_geo():
         return True
 
     def node_rotation(self, norm=np.array([0, 0, 1]), theta=0, rotation_origin=None):
+        rotM = get_rot_matrix(norm, theta)
+        return self.node_rotM(rotM=rotM, rotation_origin=rotation_origin)
+
+    def node_rotM(self, rotM, rotation_origin=None):
         # The rotation is counterclockwise
         if rotation_origin is None:
             rotation_origin = self.get_origin()
         else:
             rotation_origin = np.array(rotation_origin).reshape((3,))
 
-        rotation = get_rot_matrix(norm, theta)
-        self._nodes = np.dot(rotation, (self._nodes - rotation_origin).T).T + \
+        self._nodes = np.dot(rotM, (self._nodes - rotation_origin).T).T + \
                       rotation_origin  # The rotation is counterclockwise
-        self._origin = np.dot(rotation, (self._origin - rotation_origin)) + rotation_origin
-        self._geo_norm = np.dot(rotation, self._geo_norm)
-        self._geo_norm = self._geo_norm / np.linalg.norm(self._geo_norm)
+        self._origin = np.dot(rotM, (self._origin - rotation_origin)) + rotation_origin
+        self._geo_norm = np.dot(rotM, self._geo_norm) / np.linalg.norm(self._geo_norm)
         return True
 
     def coord_rotation(self, norm=np.array([0, 0, 1]), theta=0):
@@ -364,8 +369,8 @@ class base_geo():
         rank = comm.Get_rank()
         if rank == 0:
             fig = plt.figure()
-            ax = fig.gca(projection='3d')
-            ax.set_aspect('equal')
+            ax = fig.add_subplot(111, projection='3d')
+            # ax.set_aspect('equal')
             # Be careful. the axis using in matplotlib is a left-handed coordinate system
             if show_nodes:
                 ax.plot(self.get_nodes_x(), self.get_nodes_y(), self.get_nodes_z(),
@@ -415,8 +420,8 @@ class base_geo():
         rank = comm.Get_rank()
         if rank == 0:
             fig = plt.figure()
-            ax = fig.gca(projection='3d')
-            ax.set_aspect('equal')
+            ax = fig.add_subplot(111, projection='3d')
+            # ax.set_aspect('equal')
             ax.plot(self.get_nodes_x(), self.get_nodes_y(), self.get_nodes_z(),
                     linestyle=linestyle,
                     color='b',
@@ -521,7 +526,9 @@ class base_geo():
         return self._type
 
     def print_info(self):
-        pass
+        PETSc.Sys.Print('    %s: norm %s, center %s' %
+                        (str(self), str(self.get_geo_norm()), str(self.get_center())))
+        return True
 
     def pickmyself_prepare(self):
         if not self._dmda is None:
@@ -530,11 +537,11 @@ class base_geo():
 
 
 class geoComposit(uniqueList):
-    def __init__(self, geo_list=[]):
+    def __init__(self, liste=[]):
         acceptType = base_geo
-        super().__init__(acceptType)
-        geo_list = list(tube_flatten((geo_list,)))
-        for geoi in geo_list:
+        super().__init__(acceptType=acceptType)
+        liste = list(tube_flatten((liste,)))
+        for geoi in liste:
             self.append(geoi)
 
     def core_show_nodes(self, linestyle='-', marker='.'):
@@ -545,8 +552,8 @@ class geoComposit(uniqueList):
             return False
         if rank == 0:
             fig = plt.figure()
-            ax = fig.gca(projection='3d')
-            ax.set_aspect('equal')
+            ax = fig.add_subplot(111, projection='3d')
+            # ax.set_aspect('equal')
             xlim_list = np.zeros((len(self), 2))
             ylim_list = np.zeros((len(self), 2))
             zlim_list = np.zeros((len(self), 2))
@@ -579,6 +586,7 @@ class geoComposit(uniqueList):
             ax.set_xlabel('$x_1$', size='xx-large')
             ax.set_ylabel('$x_2$', size='xx-large')
             ax.set_zlabel('$x_3$', size='xx-large')
+            set_axes_equal(ax)
         else:
             fig = None
         return fig
@@ -691,6 +699,8 @@ class ThickLine_base_geo(base_geo):
         ai_para = 0
         t_node_idx = 0
         local_rot = self._local_rot
+        self._node_axisNode_idx = []
+        self._body_idx_list = []
 
         # cover at start
         if with_cover == 1:
@@ -874,24 +884,52 @@ class ThickLine_base_geo(base_geo):
     def node_axisNode_idx(self):
         return self._node_axisNode_idx
 
-    def node_rotation(self, norm=np.array([0, 0, 1]), theta=0, rotation_origin=None):
+    @property
+    def left_hand(self):
+        return self.left_hand
+
+    # def node_rotation(self, norm=np.array([0, 0, 1]), theta=0, rotation_origin=None):
+    #     # The rotation is counterclockwise
+    #     super().node_rotation(norm, theta, rotation_origin)
+    #
+    #     if rotation_origin is None:
+    #         rotation_origin = self.get_origin()
+    #     else:
+    #         rotation_origin = np.array(rotation_origin).reshape((3,))
+    #
+    #     rotation = get_rot_matrix(norm, theta)
+    #     t_axisNodes = self._axisNodes
+    #     self._axisNodes = np.dot(rotation, (self._axisNodes - rotation_origin).T).T + \
+    #                       rotation_origin  # The rotation is counterclockwise
+    #     t0 = []
+    #     for i0 in range(3):
+    #         t1 = []
+    #         for t2, taxis0, taxis in zip(self._frenetFrame[i0], t_axisNodes, self._axisNodes):
+    #             t2 = np.dot(rotation, (t2 + taxis0 - rotation_origin)) \
+    #                  + rotation_origin - taxis
+    #             t2 = t2 / np.linalg.norm(t2)
+    #             t1.append(t2)
+    #         t0.append(np.vstack(t1))
+    #     self._frenetFrame = t0
+    #     return True
+
+    def node_rotM(self, rotM, rotation_origin=None):
         # The rotation is counterclockwise
-        super().node_rotation(norm, theta, rotation_origin)
+        super().node_rotM(rotM, rotation_origin)
 
         if rotation_origin is None:
             rotation_origin = self.get_origin()
         else:
             rotation_origin = np.array(rotation_origin).reshape((3,))
 
-        rotation = get_rot_matrix(norm, theta)
         t_axisNodes = self._axisNodes
-        self._axisNodes = np.dot(rotation, (self._axisNodes - rotation_origin).T).T + \
+        self._axisNodes = np.dot(rotM, (self._axisNodes - rotation_origin).T).T + \
                           rotation_origin  # The rotation is counterclockwise
         t0 = []
         for i0 in range(3):
             t1 = []
             for t2, taxis0, taxis in zip(self._frenetFrame[i0], t_axisNodes, self._axisNodes):
-                t2 = np.dot(rotation, (t2 + taxis0 - rotation_origin)) \
+                t2 = np.dot(rotM, (t2 + taxis0 - rotation_origin)) \
                      + rotation_origin - taxis
                 t2 = t2 / np.linalg.norm(t2)
                 t1.append(t2)
@@ -1980,16 +2018,16 @@ class supHelix(ThickLine_base_geo):
 
 class FatHelix(ThickLine_base_geo):
     # here, s is a angle.
-    _helix_right_hand = lambda self, R1, R2, B, s: np.vstack((R1 * np.cos(s),
-                                                              R2 * np.sin(s),
-                                                              B * s)).T
-    _T_frame_right_hand = lambda self, R1, R2, B, s: np.vstack(
+    helix_right_hand = lambda self, R1, R2, B, s: np.vstack((R1 * np.cos(s),
+                                                             R2 * np.sin(s),
+                                                             B * s)).T
+    T_frame_right_hand = lambda self, R1, R2, B, s: np.vstack(
             (-((R1 * np.sin(s)) / np.sqrt(
                     B ** 2 + np.abs(R2 * np.cos(s)) ** 2 + np.abs(R1 * np.sin(s)) ** 2)),
              (R2 * np.cos(s)) / np.sqrt(
                      B ** 2 + np.abs(R2 * np.cos(s)) ** 2 + np.abs(R1 * np.sin(s)) ** 2),
              B / np.sqrt(B ** 2 + np.abs(R2 * np.cos(s)) ** 2 + np.abs(R1 * np.sin(s)) ** 2))).T
-    _N_frame_right_hand = lambda self, R1, R2, B, s: np.vstack(
+    N_frame_right_hand = lambda self, R1, R2, B, s: np.vstack(
             (-((np.sqrt(2) * R1 * (B ** 2 + R2 ** 2) * np.cos(s)) / np.sqrt(
                     (2 * R1 ** 2 * R2 ** 2 + B ** 2 * (
                             R1 ** 2 + R2 ** 2) + B ** 2 * (R1 - R2) * (R1 + R2) * np.cos(2 * s)) * (
@@ -2006,7 +2044,7 @@ class FatHelix(ThickLine_base_geo):
                              R1 + R2) * np.cos(
                              2 * s)) * (
                              B ** 2 + R2 ** 2 * np.cos(s) ** 2 + R1 ** 2 * np.sin(s) ** 2))))).T
-    _B_frame_right_hand = lambda self, R1, R2, B, s: np.vstack(
+    B_frame_right_hand = lambda self, R1, R2, B, s: np.vstack(
             ((np.sqrt(2) * B * R2 * np.sin(s)) / np.sqrt(
                     2 * R1 ** 2 * R2 ** 2 + B ** 2 * (R1 ** 2 + R2 ** 2) + B ** 2 * (R1 - R2) * (
                             R1 + R2) * np.cos(
@@ -2018,16 +2056,16 @@ class FatHelix(ThickLine_base_geo):
                      2 * R1 ** 2 * R2 ** 2 + B ** 2 * (R1 ** 2 + R2 ** 2) + B ** 2 * (R1 - R2) * (
                              R1 + R2) * np.cos(
                              2 * s)))).T
-    _helix_left_hand = lambda self, R1, R2, B, s: np.vstack((R1 * np.cos(s),
-                                                             R2 * -np.sin(s),
-                                                             B * s)).T
-    _T_frame_left_hand = lambda self, R1, R2, B, s: np.vstack(
+    helix_left_hand = lambda self, R1, R2, B, s: np.vstack((R1 * np.cos(s),
+                                                            R2 * -np.sin(s),
+                                                            B * s)).T
+    T_frame_left_hand = lambda self, R1, R2, B, s: np.vstack(
             (-((R1 * np.sin(s)) / np.sqrt(
                     B ** 2 + np.abs(R2 * np.cos(s)) ** 2 + np.abs(R1 * np.sin(s)) ** 2)),
              -((R2 * np.cos(s)) / np.sqrt(
                      B ** 2 + np.abs(R2 * np.cos(s)) ** 2 + np.abs(R1 * np.sin(s)) ** 2)),
              B / np.sqrt(B ** 2 + np.abs(R2 * np.cos(s)) ** 2 + np.abs(R1 * np.sin(s)) ** 2))).T
-    _N_frame_left_hand = lambda self, R1, R2, B, s: np.vstack(
+    N_frame_left_hand = lambda self, R1, R2, B, s: np.vstack(
             (-((np.sqrt(2) * R1 * (B ** 2 + R2 ** 2) * np.cos(s)) /
                np.sqrt((2 * R1 ** 2 * R2 ** 2 + B ** 2 * (R1 ** 2 + R2 ** 2) + B ** 2 * (
                        R1 - R2) * (R1 + R2) * np.cos(2 * s)) *
@@ -2041,7 +2079,7 @@ class FatHelix(ThickLine_base_geo):
                                     B ** 2 * (R1 - R2) * (R1 + R2) * np.cos(2 * s)) * (
                                            B ** 2 + R2 ** 2 * np.cos(s) ** 2 + R1 ** 2 * np.sin(
                                            s) ** 2))))).T
-    _B_frame_left_hand = lambda self, R1, R2, B, s: np.vstack(
+    B_frame_left_hand = lambda self, R1, R2, B, s: np.vstack(
             (-((np.sqrt(2) * B * R2 * np.sin(s)) /
                np.sqrt(2 * R1 ** 2 * R2 ** 2 + B ** 2 * (R1 ** 2 + R2 ** 2) + B ** 2 * (R1 - R2) * (
                        R1 + R2) * np.cos(2 * s))),
@@ -2053,10 +2091,10 @@ class FatHelix(ThickLine_base_geo):
                        R1 + R2) * np.cos(2 * s))))).T
 
     def dbg_frame_right_hand(self, R1, R2, B, s):
-        print(self._helix_right_hand(R1, R2, B, s))
-        print(self._T_frame_right_hand(R1, R2, B, s))
-        print(self._N_frame_right_hand(R1, R2, B, s))
-        print(self._B_frame_right_hand(R1, R2, B, s))
+        print(self.helix_right_hand(R1, R2, B, s))
+        print(self.T_frame_right_hand(R1, R2, B, s))
+        print(self.N_frame_right_hand(R1, R2, B, s))
+        print(self.B_frame_right_hand(R1, R2, B, s))
         # print(self._helix(R1, R2, B, s).shape)
         # print(self._T_frame(R1, R2, B, s).shape)
         # print(self._N_frame(R1, R2, B, s).shape)
@@ -2067,10 +2105,10 @@ class FatHelix(ThickLine_base_geo):
         print('N[B0[%f,%f,%f,%f]]' % (R1, R2, B, s))
 
     def dbg_frame_left_hand(self, R1, R2, B, s):
-        print(self._helix_left_hand(R1, R2, B, s))
-        print(self._T_frame_left_hand(R1, R2, B, s))
-        print(self._N_frame_left_hand(R1, R2, B, s))
-        print(self._B_frame_left_hand(R1, R2, B, s))
+        print(self.helix_left_hand(R1, R2, B, s))
+        print(self.T_frame_left_hand(R1, R2, B, s))
+        print(self.N_frame_left_hand(R1, R2, B, s))
+        print(self.B_frame_left_hand(R1, R2, B, s))
         print('N[r[%f,%f,%f,%f]]' % (R1, R2, B, s))
         print('N[T0[%f,%f,%f,%f]]' % (R1, R2, B, s))
         print('N[N0[%f,%f,%f,%f]]' % (R1, R2, B, s))
@@ -2156,17 +2194,18 @@ class FatHelix(ThickLine_base_geo):
         max_theta = 2 * np.pi * n_c
         s = self._factor_fun(nl, factor) * max_theta - max_theta / 2
         if left_hand:
-            self._frenetFrame = (self._T_frame_left_hand(R1, R2, B, s),
-                                 self._N_frame_left_hand(R1, R2, B, s),
-                                 self._B_frame_left_hand(R1, R2, B, s))
-            self._axisNodes = self._helix_left_hand(R1, R2, B, s)
+            self._frenetFrame = (self.T_frame_left_hand(R1, R2, B, s),
+                                 self.N_frame_left_hand(R1, R2, B, s),
+                                 self.B_frame_left_hand(R1, R2, B, s))
+            self._axisNodes = self.helix_left_hand(R1, R2, B, s)
         else:
-            self._frenetFrame = (self._T_frame_right_hand(R1, R2, B, s),
-                                 self._N_frame_right_hand(R1, R2, B, s),
-                                 self._B_frame_right_hand(R1, R2, B, s))
-            self._axisNodes = self._helix_right_hand(R1, R2, B, s)
+            self._frenetFrame = (self.T_frame_right_hand(R1, R2, B, s),
+                                 self.N_frame_right_hand(R1, R2, B, s),
+                                 self.B_frame_right_hand(R1, R2, B, s))
+            self._axisNodes = self.helix_right_hand(R1, R2, B, s)
         return self._axisNodes, self._frenetFrame[0], self._frenetFrame[1], self._frenetFrame[2]
 
+    # def
     def _get_fgeo_axis(self, epsilon):
         R1 = self._R1
         R2 = self._R2
@@ -2183,15 +2222,15 @@ class FatHelix(ThickLine_base_geo):
         max_theta = 2 * np.pi * n_c * (length - ds / 2) / length
         s = self._factor_fun(nl, factor) * max_theta - max_theta / 2
         if left_hand:
-            frenetFrame = (self._T_frame_left_hand(R1, R2, B, s),
-                           self._N_frame_left_hand(R1, R2, B, s),
-                           self._B_frame_left_hand(R1, R2, B, s))
-            axisNodes = self._helix_left_hand(R1, R2, B, s)
+            frenetFrame = (self.T_frame_left_hand(R1, R2, B, s),
+                           self.N_frame_left_hand(R1, R2, B, s),
+                           self.B_frame_left_hand(R1, R2, B, s))
+            axisNodes = self.helix_left_hand(R1, R2, B, s)
         else:
-            frenetFrame = (self._T_frame_right_hand(R1, R2, B, s),
-                           self._N_frame_right_hand(R1, R2, B, s),
-                           self._B_frame_right_hand(R1, R2, B, s))
-            axisNodes = self._helix_right_hand(R1, R2, B, s)
+            frenetFrame = (self.T_frame_right_hand(R1, R2, B, s),
+                           self.N_frame_right_hand(R1, R2, B, s),
+                           self.B_frame_right_hand(R1, R2, B, s))
+            axisNodes = self.helix_right_hand(R1, R2, B, s)
         return axisNodes, frenetFrame[0], frenetFrame[1], frenetFrame[2]
 
 
@@ -2931,9 +2970,17 @@ class slb_geo(base_geo):
         nc = self.rt2 * self.rho_r(s) * np.sqrt(np.e) / 2
         return nc
 
-    def node_rotation(self, norm=np.array([0, 0, 1]), theta=0, rotation_origin=None):
-        super().node_rotation(norm=norm, theta=theta, rotation_origin=rotation_origin)
-        tq2 = spR.from_rotvec(norm * theta).as_quat()
+    # def node_rotation(self, norm=np.array([0, 0, 1]), theta=0, rotation_origin=None):
+    #     super().node_rotation(norm=norm, theta=theta, rotation_origin=rotation_origin)
+    #     tq2 = spR.from_rotvec(norm * theta).as_quat()
+    #     quat2 = Quaternion()
+    #     quat2.set_wxyz(tq2[3], tq2[0], tq2[1], tq2[2])
+    #     self._orintation = quat2.mul(self.orintation)
+    #     return True
+
+    def node_rotM(self, rotM, rotation_origin=None):
+        super().node_rotM(rotM, rotation_origin)
+        tq2 = spR.from_matrix(rotM).as_quat()
         quat2 = Quaternion()
         quat2.set_wxyz(tq2[3], tq2[0], tq2[1], tq2[2])
         self._orintation = quat2.mul(self.orintation)
@@ -2945,6 +2992,8 @@ class slb_helix(slb_geo):
         super().__init__(rt2)
         self._ph = ph
         self._ch = ch
+        self._ch_min = np.nan
+        self._ch_max = np.nan
         self._rt1 = rt1
         self._arc_length = np.sqrt(ph ** 2 + 4 * np.pi ** 2 * rt1 ** 2)
         self._s0 = theta0 / (2 * np.pi) * self._arc_length
@@ -2957,6 +3006,14 @@ class slb_helix(slb_geo):
     @property
     def ch(self):
         return self._ch
+
+    @property
+    def ch_min(self):
+        return self._ch_min
+
+    @property
+    def ch_max(self):
+        return self._ch_max
 
     @property
     def rt1(self):
@@ -3020,9 +3077,11 @@ class slb_helix(slb_geo):
         ch = self.ch
         ch_min, ch_max = -1 * ch / 2, ch / 2
         # ch_min, ch_max = 0, ch
+        self._ch_min = ch_min
+        self._ch_max = ch_max
         ch_mid = (ch_min + ch_max) / 2
         s_mid = ch_mid * self.arclength(0)
-        self._s_list = np.array((ch_min, ch_max)) * self.arclength(s_mid)
+        # self._s_list = np.array((ch_min, ch_max)) * self.arclength(s_mid)
         max_n = np.floor(ch * self.arclength(s_mid) / (self.natu_cut(s_mid) * 2)).astype(int)
         if n is None:
             n = max_n
@@ -3054,8 +3113,8 @@ class Johnson_helix(slb_helix):
 
 class expJohnson_helix(Johnson_helix):
     def rho_r(self, s):
-        xfct = 10
-        xmove = 0.7
+        xfct, xmove = 10, 0.7
+        # xfct, xmove = 30, 0.9
 
         s_list = self.s_list
         ds = self.get_deltaLength()
@@ -3068,6 +3127,24 @@ class expJohnson_helix(Johnson_helix):
         rho_ra = (-l_max * l_min + 2 * l_mid * s - s ** 2) / (l_len / 2) ** 2
         rho_rb = np.ones_like(rho_ra)
         rho_r = rho_rb * fct + rho_ra * (1 - fct)
+        return rho_r
+
+
+class sphereEnd_helix(Johnson_helix):
+    def rho_r(self, s):
+        rt2 = self.rt2
+        ch_min, ch_max = self.ch_min, self.ch_max
+        th_min, th_max = 2 * np.pi * ch_min, 2 * np.pi * ch_max
+        l_min = th_min / (2 * np.pi) * self.arclength(0)
+        l_max = th_max / (2 * np.pi) * self.arclength(0)
+
+        idxa = s > l_max - rt2
+        idxb = s < l_min + rt2
+        rho_r = np.ones_like(s)
+        s1 = rt2 - (l_max - s[idxa])
+        rho_r[idxa] = np.sqrt(rt2 ** 2 - s1 ** 2) / rt2
+        s2 = rt2 - (s[idxb] - l_min)
+        rho_r[idxb] = np.sqrt(rt2 ** 2 - s2 ** 2) / rt2
         return rho_r
 
 
@@ -3189,7 +3266,8 @@ class infgeo_1d(base_geo):
         return t_geo.show_nodes(linestyle)
 
     def print_info(self):
-        PETSc.Sys.Print('    %s: # of Segment: %d' % (self.get_type(), self.get_nSegment()))
+        super().print_info()
+        PETSc.Sys.Print('    %s: # of Segment: %d' % (str(self), self.get_nSegment()))
         return True
 
 

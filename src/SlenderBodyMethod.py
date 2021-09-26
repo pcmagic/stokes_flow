@@ -96,6 +96,39 @@ def SLB_matrix_nonlocal_petsc(obj1: 'sf.StokesFlowObj',  # contain velocity info
     return m
 
 
+# Slender Body Theory, part 1, nonlocal part,
+#     version 3, locally integration of tsij, loop along j (force points).
+def mdf_SLB_matrix_nonlocal_petsc(obj1: 'sf.StokesFlowObj',  # contain velocity information
+                                  obj2: 'sf.StokesFlowObj',  # contain force information
+                                  m, slb_epsabs=1e-200, slb_epsrel=1e-08,
+                                  slb_limit=10000, **kwargs):
+    assert 1 == 2
+    u_nodes = obj1.get_u_nodes()
+    _, u_glbIdx_all = obj1.get_u_geo().get_glbIdx()
+    _, f_glbIdx_all = obj2.get_f_geo().get_glbIdx()
+    u_geo = obj1.get_u_geo()  # type: geo.slb_geo
+    f_geo = obj2.get_f_geo()  # type: geo.slb_geo
+    s_list = u_geo.s_list
+    ds = f_geo.get_deltaLength()
+    f_dmda = f_geo.get_dmda()
+    i0_fct = 1 if obj1 is obj2 else np.nan
+
+    warpper_mij2 = lambda s_f: stokeslets_matrix_mij2(u_nodes, s_f, i1, f_geo.xc_fun)
+    for i0 in range(f_dmda.getRanges()[0][0], f_dmda.getRanges()[0][1]):
+        i1 = i0_fct * i0
+        s0 = s_list[i0]
+        s_a = s0 - ds / 2
+        s_b = s0 + ds / 2
+        tsij = integrate.quad_vec(warpper_mij2, s_a, s_b, epsabs=slb_epsabs, epsrel=slb_epsrel,
+                                  limit=slb_limit, )[0]
+        f_glb = f_glbIdx_all[i0 * 3]
+        m.setValues(u_glbIdx_all, f_glb + 0, tsij[0], addv=False)
+        m.setValues(u_glbIdx_all, f_glb + 1, tsij[1], addv=False)
+        m.setValues(u_glbIdx_all, f_glb + 2, tsij[2], addv=False)
+    m.assemble()
+    return m
+
+
 # Lightill Slender Body Theory, this version assert mesh size > local part size.
 #     part 2, local part, version 3, locally integration of tsij.
 def Lightill_matrix_local_petsc(obj1: 'sf.StokesFlowObj',  # contain velocity information
@@ -156,14 +189,7 @@ def KRJ_matrix_local_petsc(obj1: 'sf.StokesFlowObj',  # contain velocity informa
         s_b = s0 + ds / 2
         t = u_geo.t_fun(s0)
         rt2_use = u_geo.rt2 * u_geo.rho_r(s0)
-        # Lsbt1 = np.log((l_max - l_min) ** 2 / rt2_use ** 2)
-        # Lsbt2 = np.log((-l_max * l_min + (l_max + l_min) * s0 - s0 ** 2) / rt2_use ** 2)
-        # Lsbt = Lsbt1 * dbg_Lsbt + Lsbt2 * (1 - dbg_Lsbt)
-        # tlsbt1 = (l_max - l_min) ** 2
-        # tlsbt2 = (-l_max * l_min + (l_max + l_min) * s0 - s0 ** 2)
-        # Lsbt = np.log((tlsbt1 * dbg_Lsbt + tlsbt2 * (1 - dbg_Lsbt)) / rt2_use ** 2)
-        Lsbt = np.log((-l_max * l_min + (l_max + l_min) * s0 - s0 ** 2) / rt2_use ** 2)
-        # Lsbt = np.log((l_max - l_min) ** 2 / rt2_use ** 2)
+        Lsbt = np.log(4 * (-l_max * l_min + (l_max + l_min) * s0 - s0 ** 2) / rt2_use ** 2)
         ta = np.eye(3)
         tb = np.outer(t, t)
         tc = ta + tb
@@ -179,58 +205,6 @@ def KRJ_matrix_local_petsc(obj1: 'sf.StokesFlowObj',  # contain velocity informa
         #                                limit=slb_limit, )[0]
         tint_self = 0
         m[u_glb, u_glb] = (t1 - tint - tint_self) / (8 * np.pi)
-    m.assemble()
-    return m
-
-
-# KRJ Slender Body Theory, part 2, local part.
-def KRJ_matrix_local_petsc_old(obj1: 'sf.StokesFlowObj',  # contain velocity information
-                               obj2: 'sf.StokesFlowObj',  # contain force information
-                               m, slb_epsabs=1e-200, slb_epsrel=1e-08,
-                               slb_limit=10000, **kwargs):
-    tfct = 100  # ignore local singularity of self part.
-
-    u_nodes = obj1.get_u_nodes()
-    _, u_glbIdx_all = obj1.get_u_geo().get_glbIdx()
-    # noinspection PyTypeChecker
-    u_geo = obj1.get_u_geo()  # type: geo.slb_geo
-    s_list = u_geo.s_list
-    ds = u_geo.get_deltaLength()
-    u_dmda = u_geo.get_dmda()
-
-    l_min = s_list[0] - ds / 2
-    l_max = s_list[-1] + ds / 2
-    l_all = l_max - l_min
-    warpper_mij_self = lambda s_f: - tc / np.abs(s0 - s_f) + 8 * np.pi \
-                                   * stokeslets_matrix_mij(u_node, s_f, u_geo.xc_fun)
-    for i0 in range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1]):
-        u_node = u_nodes[i0]
-        u_glb = u_glbIdx_all[i0 * 3] + np.array((0, 1, 2), dtype='int32')
-        s0 = s_list[i0]
-        s_a = s0 - ds / 2
-        s_b = s0 + ds / 2
-        t = u_geo.t_fun(s0)
-        rt2_use = u_geo.rt2 * u_geo.rho_r(s0)
-        Lsbt = np.log((-l_max * l_min + (l_max + l_min) * s0 - s0 ** 2) / rt2_use ** 2)
-        # Lsbt = np.log(l_all ** 2 / rt2_use ** 2)
-        ta = np.eye(3)
-        tb = np.outer(t, t)
-        tc = ta + tb
-        t1 = Lsbt * tc + ta - 3 * tb
-        t2 = np.log((l_min - s0) / (s_a - s0))
-        t3 = np.log((l_max - s0) / (s_b - s0))
-        tint = (t2 + t3) * tc
-        tint_self = integrate.quad_vec(warpper_mij_self, s_a, s0 - ds / tfct,
-                                       epsabs=slb_epsabs, epsrel=slb_epsrel,
-                                       limit=slb_limit, )[0] + \
-                    integrate.quad_vec(warpper_mij_self, s0 + ds / tfct, s_b,
-                                       epsabs=slb_epsabs, epsrel=slb_epsrel,
-                                       limit=slb_limit, )[0]
-        # tint_self = 0
-        m[u_glb, u_glb] = (t1 - tint - tint_self) / (8 * np.pi)
-
-    # KRJ_matrix_neighbor_petsc(obj1, obj2, m, slb_epsabs=slb_epsabs,
-    #                           slb_epsrel=slb_epsrel, slb_limit=slb_limit)
     m.assemble()
     return m
 

@@ -10,17 +10,6 @@ Created on Tue Sep 19 11:05:23 2017
 import matplotlib
 import subprocess
 import os
-
-devnull = open(os.devnull, 'w')
-latex_installed = not subprocess.call(['which', 'latex'], stdout=devnull, stderr=devnull)
-matplotlib.use('agg')
-font = {'size':   20,
-        'family': 'sans-serif'}
-# matplotlib.rc('font', **font)
-if latex_installed:
-    matplotlib.rc('text', usetex=True)
-# matplotlib.rc('text', usetex=True)
-
 import numpy as np
 import pandas as pd
 from scipy.io import loadmat
@@ -51,13 +40,25 @@ import shutil
 import multiprocessing
 import warnings
 
-markerstyle_list = ['^', 'v', 'o', 's', 'p', 'd', 'H',
-                    '1', '2', '3', '4', '8', 'P', '*',
-                    'h', '+', 'x', 'X', 'D', '|', '_', ]
+markerstyle_list = spf.markerstyle_list
 PWD = os.getcwd()
+
+devnull = open(os.devnull, 'w')
+latex_installed0 = not subprocess.call(['which', 'latex'], stdout=devnull, stderr=devnull)
+latex_installed1 = not subprocess.call(['which', 'dvipng'], stdout=devnull, stderr=devnull)
+latex_installed = latex_installed0 and latex_installed1 and False
+params = {'animation.html': 'html5',
+          'font.family':    'sans-serif'}
 if latex_installed:
-    params = {'text.latex.preamble': [r'\usepackage{bm}', r'\usepackage{amsmath}']}
-    plt.rcParams.update(params)
+    preamble = r' '
+    preamble = preamble + '\\usepackage{bm} '
+    preamble = preamble + '\\usepackage{amsmath} '
+    preamble = preamble + '\\usepackage{amssymb} '
+    preamble = preamble + '\\usepackage{mathrsfs} '
+    preamble = preamble + '\\DeclareMathOperator{\\Tr}{Tr} '
+    params['text.latex.preamble'] = preamble
+    params['text.usetex'] = True
+plt.rcParams.update(params)
 
 
 # params = {'text.latex.preamble': [r'\usepackage{bm}', r'\usepackage{amsmath}']}
@@ -116,7 +117,7 @@ def read_data_lookup_table(psi_dir, tcenter):
     ecoli_center000 = ecoli_center + n_u000
     using_U = ecoli_U
     omega_norm = np.array(
-            [np.dot(t1, t2) * t2 / np.dot(t2, t2) for t1, t2 in zip(using_U[:, 3:], ecoli_norm)])
+        [np.dot(t1, t2) * t2 / np.dot(t2, t2) for t1, t2 in zip(using_U[:, 3:], ecoli_norm)])
     omega_tang = using_U[:, 3:] - omega_norm
 
     return ecoli_U, ecoli_norm, ecoli_center, ecoli_lateral_norm, norm_tpp, \
@@ -162,7 +163,7 @@ def get_ecoli_table(tnorm, lateral_norm, tcenter, max_iter, eval_dt=0.001, updat
 
 
 def _do_calculate_prepare_v1(norm):
-    importlib.reload(jm)
+    # importlib.reload(jm)
     norm = norm / np.linalg.norm(norm)
     planeShearRate = np.array((1, 0, 0))
     tcenter = np.zeros(3)
@@ -181,7 +182,7 @@ def _do_calculate_prepare_v1(norm):
 
 
 def _do_calculate_prepare_v2(norm):
-    importlib.reload(jm)
+    # importlib.reload(jm)
     t_theta = np.arccos(norm[2] / np.linalg.norm(norm))
     t_phi = np.arctan2(norm[1], norm[0])
     tfct = 2 if t_phi < 0 else 0
@@ -199,6 +200,18 @@ def _do_calculate_prepare_v2(norm):
 
 def do_calculate_prepare(norm):
     return _do_calculate_prepare_v2(norm)
+
+
+def do_ShearFlowPetsc4nPsiObj_prepare(t_theta, t_phi, t_psi, flow_strength):
+    rotM = Rloc2glb(t_theta, t_phi, t_psi)
+    P0 = rotM[:, 2]
+    P20 = rotM[:, 1]
+
+    planeShearRate = np.array((1, 0, 0)) * flow_strength
+    tcenter = np.zeros(3)
+    fileHandle = 'ShearFlowPetsc4nPsiProblem'
+    problem = jm.ShearJefferyProblem(name=fileHandle, planeShearRate=planeShearRate)
+    return P0, P20, tcenter, problem
 
 
 def do_calculate(problem, obj, ini_t, max_t, update_fun, rtol, atol, eval_dt, save_every, tqdm_fun):
@@ -239,6 +252,23 @@ def do_ecoli_kwargs(tcenter, P0, P20, ini_psi, omega_tail, table_name,
                     'flow_strength': flow_strength,
                     'table_name':    table_name, }
     return ecoli_kwargs
+
+
+def do_obj_kwargs(tcenter, t_theta, t_phi, t_psi, omega_tail, table_name, name='obj'):
+    rotM = Rloc2glb(t_theta, t_phi, t_psi)
+    P0 = rotM[:, 2]
+    P20 = rotM[:, 1]
+    obj_kwargs = {'name':          name,
+                  'center':        tcenter,
+                  'norm':          P0,
+                  'lateral_norm':  P20,
+                  'speed':         np.nan,
+                  'lbd':           np.nan,
+                  'ini_psi':       0,  # ini_psi is set in rotM now.
+                  'omega_tail':    omega_tail,
+                  'flow_strength': np.nan,
+                  'table_name':    table_name, }
+    return obj_kwargs
 
 
 def do_ecoli_passive_kwargs(tcenter, P0, P20, ini_psi, table_name):
@@ -389,15 +419,40 @@ def do_ShearFlowPetsc4nPsiObj(norm, ini_psi, max_t, table_name, update_fun='3bs'
                Table_theta, Table_phi, Table_psi, Table_eta,
 
 
-def do_ShearFlowPetsc4nPsiObj_dbg(norm, ini_psi, max_t, table_name, update_fun='3bs',
-                                  rtol=1e-6, atol=1e-9, eval_dt=0.001, ini_t=0, save_every=1,
-                                  tqdm_fun=tqdm_notebook, omega_tail=0, flow_strength=0,
-                                  return_psi_body=False):
-    P0, P20, tcenter, problem = do_calculate_prepare(norm)
-    ecoli_kwargs = do_ecoli_kwargs(tcenter, P0, P20, ini_psi, omega_tail, table_name,
-                                   flow_strength=flow_strength, name='ShearFlowPetsc4nPsi')
-    obj = jm.ShearFlowPetsc4nPsiObj_dbg(**ecoli_kwargs)
+def do_ShearFlowPetsc4nPsiObj_v2(ini_theta, ini_phi, ini_psi, max_t, table_name, update_fun='3bs',
+                                 rtol=1e-6, atol=1e-9, eval_dt=0.001, ini_t=0, save_every=1,
+                                 tqdm_fun=tqdm_notebook, omega_tail=0, flow_strength=0,
+                                 return_psi_body=False):
+    P0, P20, tcenter, problem = do_ShearFlowPetsc4nPsiObj_prepare(ini_theta, ini_phi, ini_psi,
+                                                                  flow_strength)
+    ecoli_kwargs = do_ecoli_kwargs(tcenter, P0, P20, 0, omega_tail, table_name,
+                                   flow_strength=1, name='GivenFlowPetsc4nPsiObj')
+    obj = jm.GivenFlowPetsc4nPsiObj(**ecoli_kwargs)
+    obj.set_update_para(fix_x=False, fix_y=False, fix_z=False, update_fun=update_fun,
+                        rtol=rtol, atol=atol, save_every=save_every, tqdm_fun=tqdm_fun)
+    problem.add_obj(obj)
+    Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_psi = \
+        obj.update_self(t0=ini_t, t1=max_t, eval_dt=eval_dt)
+    Table_theta, Table_phi, Table_psib = obj.theta_phi_psi
+    Table_eta = np.arccos(np.sin(Table_theta) * np.sin(Table_phi))
+    if return_psi_body:
+        return Table_t, Table_dt, Table_X, Table_P, Table_P2, \
+               Table_theta, Table_phi, Table_psi, Table_eta, Table_psib,
+    else:
+        return Table_t, Table_dt, Table_X, Table_P, Table_P2, \
+               Table_theta, Table_phi, Table_psi, Table_eta,
 
+
+def do_GivenFlowPetsc4nPsiObj(ini_theta, ini_phi, ini_psi, max_t, table_name, update_fun='3bs',
+                              rtol=1e-6, atol=1e-9, eval_dt=0.001, ini_t=0, save_every=1,
+                              tqdm_fun=tqdm_notebook, omega_tail=0, return_psi_body=False,
+                              ini_center=np.zeros(3), fileHandle='ShearFlowPetsc4nPsiProblem',
+                              problemHandle=jm.ShearJefferyProblem, **kwargs):
+    problem = problemHandle(name=fileHandle, **kwargs)
+    obj_kwargs = do_obj_kwargs(ini_center, ini_theta, ini_phi, ini_psi,
+                               omega_tail=omega_tail, table_name=table_name,
+                               name='GivenFlowPetsc4nPsiObj')
+    obj = jm.GivenFlowPetsc4nPsiObj(**obj_kwargs)
     obj.set_update_para(fix_x=False, fix_y=False, fix_z=False, update_fun=update_fun,
                         rtol=rtol, atol=atol, save_every=save_every, tqdm_fun=tqdm_fun)
     problem.add_obj(obj)
@@ -918,6 +973,7 @@ def core_show_table_result_v2(Table_t, Table_dt, Table_X, Table_P, Table_P2,
     ax6 = plt.subplot2grid((19, 32), (6, 21), rowspan=3, colspan=12)
     ax7 = plt.subplot2grid((19, 32), (9, 21), rowspan=3, colspan=12)
     ax8 = plt.subplot2grid((19, 32), (12, 21), rowspan=3, colspan=12)
+    plt.tight_layout()
 
     _plot_polar(ax0, Table_phi, '$\\theta - \\phi$')
     _plot_polar(ax1, Table_psi, '$\\theta - \\psi$')
@@ -937,20 +993,28 @@ def core_show_table_result_v2(Table_t, Table_dt, Table_X, Table_P, Table_P2,
     lc = Line3DCollection(segments, cmap=cmap, norm=norm)
     lc.set_array(Table_t)
     ax3.add_collection3d(lc, zs=points[:, :, 2].flatten(), zdir='z')
-    ax3.set_xlim(points[:, :, 0].min(), points[:, :, 0].max())
-    ax3.set_ylim(points[:, :, 1].min(), points[:, :, 1].max())
-    ax3.set_zlim(points[:, :, 2].min(), points[:, :, 2].max())
-    spf.set_axes_equal(ax3)
+    # ax3.set_xlim(points[:, :, 0].min(), points[:, :, 0].max())
+    # ax3.set_ylim(points[:, :, 1].min(), points[:, :, 1].max())
+    # ax3.set_zlim(points[:, :, 2].min(), points[:, :, 2].max())
+    # spf.set_axes_equal(ax3)
+    ax3.set_xlim(-1, 1)
+    ax3.set_ylim(-1, 1)
+    ax3.set_zlim(-1, 1)
     ax3.plot(np.ones_like(points[:, :, 0].flatten()) * ax3.get_xlim()[0], points[:, :, 1].flatten(),
-             points[:, :, 2].flatten())
+             points[:, :, 2].flatten(), alpha=0.2)
     ax3.plot(points[:, :, 0].flatten(), np.ones_like(points[:, :, 1].flatten()) * ax3.get_ylim()[1],
-             points[:, :, 2].flatten())
+             points[:, :, 2].flatten(), alpha=0.2)
     ax3.plot(points[:, :, 0].flatten(), points[:, :, 1].flatten(),
-             np.ones_like(points[:, :, 2].flatten()) * ax3.get_zlim()[0])
+             np.ones_like(points[:, :, 2].flatten()) * ax3.get_zlim()[0], alpha=0.2)
     plt.sca(ax3)
-    ax3.set_xlabel('$x$', size=fontsize)
-    ax3.set_ylabel('$y$', size=fontsize)
-    ax3.set_zlabel('$z$', size=fontsize)
+    if latex_installed:
+        ax3.set_xlabel('$\\textbf{X}_1$', size=fontsize)
+        ax3.set_ylabel('$\\textbf{X}_2$', size=fontsize)
+        ax3.set_zlabel('$\\textbf{X}_3$', size=fontsize)
+    else:
+        ax3.set_xlabel('$X_1$', size=fontsize)
+        ax3.set_ylabel('$X_2$', size=fontsize)
+        ax3.set_zlabel('$X_3$', size=fontsize)
     plt.xticks(fontsize=fontsize * 0.8)
     plt.yticks(fontsize=fontsize * 0.8)
     for t in ax3.zaxis.get_major_ticks():
@@ -970,6 +1034,9 @@ def core_show_table_result_v2(Table_t, Table_dt, Table_X, Table_P, Table_P2,
                  ('$\\theta / \pi$', '$\\phi / \pi$', '$\\psi / \pi$'), ):
         (ax1, ax2), ty1, ty2, ylab1, txt1, ylab2 = _
         ax1.plot(Table_t, ty1 - np.mean(ty1), '-')
+        # print('dbg', txt1)
+        # print('dbg', ty1)
+        # print('dbg', np.mean(ty1))
         t1 = '$%s = %.2e$' % (txt1, np.mean(ty1))
         ax1.text(Table_t.min(), (ty1 - np.mean(ty1)).max() / 2, t1, fontsize=fontsize)
         for i0, i1 in separate_angle_idx(ty2):
@@ -984,7 +1051,6 @@ def core_show_table_result_v2(Table_t, Table_dt, Table_X, Table_P, Table_P2,
     plt.xticks(fontsize=fontsize * 0.8)
     plt.yticks(fontsize=fontsize * 0.8)
 
-    plt.tight_layout()
     return fig
 
 
@@ -994,7 +1060,6 @@ def show_table_result_v2(*args, **kwargs):
 
 
 def save_table_result_v2(filename, *args, dpi=100, **kwargs):
-    fig = core_show_table_result_v2(*args, **kwargs)
     fig.savefig(fname=filename, dpi=dpi)
     return fig
 
@@ -1106,9 +1171,14 @@ def core_show_theta_phi(Table_t, Table_dt, Table_X, Table_P, Table_P2,
     clb.ax.tick_params(labelsize=fontsize)
     clb.ax.set_title('Sim, time', size=fontsize)
     plt.sca(ax0)
-    ax0.set_xlabel('$x$', size=fontsize)
-    ax0.set_ylabel('$y$', size=fontsize)
-    ax0.set_zlabel('$z$', size=fontsize)
+    if latex_installed:
+        ax0.set_xlabel('$\\textbf{X}_1$', size=fontsize)
+        ax0.set_ylabel('$\\textbf{X}_2$', size=fontsize)
+        ax0.set_zlabel('$\\textbf{X}_3$', size=fontsize)
+    else:
+        ax0.set_xlabel('$X_1$', size=fontsize)
+        ax0.set_ylabel('$X_2$', size=fontsize)
+        ax0.set_zlabel('$X_3$', size=fontsize)
     plt.xticks(fontsize=fontsize * 0.8)
     plt.yticks(fontsize=fontsize * 0.8)
     for t in ax0.zaxis.get_major_ticks():
@@ -1153,9 +1223,6 @@ def core_light_show_theta_phi(Table_t, Table_dt, Table_X, Table_P, Table_P2,
     ax0.set_xlim(-np.pi * 1.1, np.pi * 1.1)
     ax0.set_ylim(-np.pi * 1.1, np.pi * 1.1)
     ax0.axis('off')
-    if show_colorbar:
-        cax0 = colorbar.make_axes(ax0, orientation='vertical', aspect=20, shrink=0.6)[0]
-    ax0.set_aspect('equal')
 
     # polar version of theta-phi
     ax1 = fig.add_axes(ax0.get_position(), projection='polar')
@@ -1171,6 +1238,7 @@ def core_light_show_theta_phi(Table_t, Table_dt, Table_X, Table_P, Table_P2,
     ax1.plot(Table_phi, Table_theta, '-', alpha=0.2)
     ax1.scatter(Table_phi[0], Table_theta[0], c='k', s=fontsize * 6, marker='*')
     if show_colorbar:
+        cax0 = colorbar.make_axes(ax0, orientation='vertical', aspect=20, shrink=0.6)[0]
         lc = ax1.scatter(Table_phi, Table_theta, c=Table_t, cmap=cmap, norm=norm, s=fontsize * 0.2)
         clb = fig.colorbar(lc, cax=cax0, orientation="vertical")
         clb.ax.tick_params(labelsize=fontsize * 0.6)
@@ -1179,6 +1247,7 @@ def core_light_show_theta_phi(Table_t, Table_dt, Table_X, Table_P, Table_P2,
         ax1.scatter(Table_phi, Table_theta, cmap=cmap, norm=norm, s=fontsize * 0.2)
     # plt.sca(ax1)
     # plt.tight_layout()
+    ax0.set_aspect('equal')
     ax1.set_title(title, y=1.1, size=fontsize * 0.6)
     # plt.tight_layout()
     return fig
@@ -1357,9 +1426,13 @@ def core_show_center_X(Table_t, Table_dt, Table_X, Table_P, Table_P2,
     fig.patch.set_facecolor('white')
     axs = fig.subplots(nrows=5, ncols=1)
     # center and velocity
-    for ax0, ty1, ty2, ylab1, ylab2 in zip(axs, Table_X.T, Table_dX_rel.T,
-                                           ('$x$', '$y$', '$z$'),
-                                           ('$u_x-u_{fx}$', '$u_y-u_{fy}$', '$u_z-u_{fz}$')):
+    xyz_label0 = ('$\\textbf{X}_1$', '$\\textbf{X}_2$', '$\\textbf{X}_3$')
+    xyz_label1 = ('$X_1$', '$X_2$', '$X_3$')
+    xyz_label = xyz_label0 if latex_installed else xyz_label1
+    for _ in zip(axs, Table_X.T, Table_dX_rel.T,
+                 xyz_label,
+                 ('$u_x-u_{fx}$', '$u_y-u_{fy}$', '$u_z-u_{fz}$')):
+        ax0, ty1, ty2, ylab1, ylab2 = _
         color = 'tab:red'
         ax0.plot(Table_t, ty1, '-', color=color)
         ax0.set_ylabel(ylab1, size=fontsize * 0.7, color=color)
@@ -1379,7 +1452,10 @@ def core_show_center_X(Table_t, Table_dt, Table_X, Table_P, Table_P2,
     ax0 = axs[3]
     color = 'tab:red'
     ax0.plot(Table_t, up_rel, '-', color=color)
-    ax0.set_ylabel('$\\bm{u}_p = \\bm{u} \\cdot \\bm{p}$', size=fontsize * 0.7, color=color)
+    if latex_installed:
+        ax0.set_ylabel('$\\bm{u}_p = \\bm{u} \\cdot \\bm{p}$', size=fontsize * 0.7, color=color)
+    else:
+        ax0.set_ylabel('$u_p = u * p$', size=fontsize * 0.7, color=color)
     ax0.tick_params(axis='y', labelcolor=color)
     plt.sca(ax0)
     plt.xticks(fontsize=fontsize * 0.5)
@@ -1387,15 +1463,22 @@ def core_show_center_X(Table_t, Table_dt, Table_X, Table_P, Table_P2,
     ax1 = ax0.twinx()
     color = 'tab:blue'
     ax1.plot(Table_t, wp_rel, '-', color=color)
-    ax1.set_ylabel('$\\bm{\omega}_{bp} = \\bm{\omega}_b \\cdot \\bm{p}$',
-                   size=fontsize * 0.7, color=color)
+    if latex_installed:
+        ax1.set_ylabel('$\\bm{\omega}_{bp} = \\bm{\omega}_b \\cdot \\bm{p}$',
+                       size=fontsize * 0.7, color=color)
+    else:
+        ax1.set_ylabel('$\\omega_{bp} = \\omega_b * p$',
+                       size=fontsize * 0.7, color=color)
     ax1.tick_params(axis='y', labelcolor=color)
     plt.sca(ax1)
     plt.xticks(fontsize=fontsize * 0.5)
     plt.yticks(fontsize=fontsize * 0.5)
     ax0 = axs[4]
     ax0.plot(Table_t, wp_rel / up_rel, '.')
-    ax0.set_ylabel('$\\bm{\omega}_{bp} / \\bm{u}_p$', size=fontsize * 0.7)
+    if latex_installed:
+        ax0.set_ylabel('$\\bm{\omega}_{bp} / \\bm{u}_p$', size=fontsize * 0.7)
+    else:
+        ax0.set_ylabel('$\\omega_{bp} / u_p$', size=fontsize * 0.7)
     ax0.set_yscale('symlog', linthreshy=0.01)
     t1 = np.max((1, ax0.get_yticks().size // 4))
     tticks = ax0.get_yticks()[::t1]
@@ -1571,13 +1654,24 @@ def get_primary_autocorrelate_fft_fre_v2(tx, ty1, continue_angle=True, fft_full_
 
 def resampling_data(Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi,
                     Table_psi, Table_eta, resampling_fct=2, t_use=None):
+    # resampling the date to a uniform distance
+    # noinspection PyTypeChecker
     def intp_fun(ty):
         intp_fun1d = interpolate.interp1d(Table_t, ty, kind='quadratic', copy=False, axis=0,
                                           bounds_error=True)
         return intp_fun1d(t_use)
 
-    # resampling the date to a uniform distance
-    # noinspection PyTypeChecker
+    if Table_t[0] == Table_t[1]:
+        Table_t = Table_t[1:]
+        Table_dt = Table_dt[1:]
+        Table_X = Table_X[1:]
+        Table_P = Table_P[1:]
+        Table_P2 = Table_P2[1:]
+        Table_theta = Table_theta[1:]
+        Table_phi = Table_phi[1:]
+        Table_psi = Table_psi[1:]
+        Table_eta = Table_eta[1:]
+
     if t_use is None:
         t_use = np.linspace(Table_t.min(), Table_t.max(), np.around(Table_t.size * resampling_fct))
     else:
@@ -1969,11 +2063,13 @@ def make_table_video_geo_v2(Table_t, Table_X, Table_P, Table_P2,
         ttheta = Table_theta[num]
         tphi = Table_phi[num]
         tpsi = Table_psi[num]
+        problem_kwargs['ti'] = Table_t[num]
         tnodes = create_obj_at_fun(ttheta, tphi, tpsi, now_center=np.zeros(3), **problem_kwargs)
+        # for tnodei, tmp_geoi in zip(tnodes, tmp_geo):
+        # tmp_geoi.set_data(tnodei[:, 0], tnodei[:, 1])
+        # tmp_geoi.set_3d_properties(tnodei[:, 2])
         for tnodei, tmp_geoi in zip(tnodes, tmp_geo):
-            tmp_geoi.set_data(tnodei[:, 0], tnodei[:, 1])
-            tmp_geoi.set_3d_properties(tnodei[:, 2])
-
+            tmp_geoi._offsets3d = (tnodei[:, 0], tnodei[:, 1], tnodei[:, 2])
         # other variables
         scs[0].set_data(Table_phi[num], Table_theta[num])
         scs[1].set_data(Table_X[num, 1], Table_X[num, 2])
@@ -1994,13 +2090,9 @@ def make_table_video_geo_v2(Table_t, Table_X, Table_P, Table_P2,
         dc = (problem_kwargs['dist_hs'] + problem_kwargs['ch'] * problem_kwargs['ph']) / 2
         Table_X = Table_X + dc * Table_P
     Table_dt = np.hstack((np.diff(Table_t), 0))
-    if total_frame is None:
-        Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi, Table_eta \
-            = resampling_data(Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi,
-                              Table_psi, Table_eta, resampling_fct)
-    else:
-        war_msg = 'total_frame is %d, resampling_fct is IGNORED' % total_frame
-        warnings.warn(war_msg)
+    if total_frame is not None:
+        # war_msg = 'total_frame is %d, resampling_fct is IGNORED' % total_frame
+        # warnings.warn(war_msg)
         t_use = np.linspace(Table_t.min(), Table_t.max(), total_frame)
         Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi, Table_eta \
             = resampling_data(Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi,
@@ -2019,9 +2111,14 @@ def make_table_video_geo_v2(Table_t, Table_X, Table_P, Table_P2,
     axpsi = plt.subplot2grid(nrow_ncol, (6, 12), rowspan=3, colspan=5)  # Table_psi
     for spine in axorin.spines.values():
         spine.set_visible(False)
-    axorin.set_xlabel('$\\textbf{X}_1$')
-    axorin.set_ylabel('$\\textbf{X}_2$')
-    axorin.set_zlabel('$\\textbf{X}_3$')
+    if latex_installed:
+        axorin.set_xlabel('$\\textbf{X}_1$')
+        axorin.set_ylabel('$\\textbf{X}_2$')
+        axorin.set_zlabel('$\\textbf{X}_3$')
+    else:
+        axorin.set_xlabel('$X_1$')
+        axorin.set_ylabel('$X_2$')
+        axorin.set_zlabel('$X_3$')
     axx2x3.set_xlabel('$x_2$')
     axx2x3.set_ylabel('$x_3$')
     # axthph.set_xlabel('$\\phi$')
@@ -2067,10 +2164,23 @@ def make_table_video_geo_v2(Table_t, Table_X, Table_P, Table_P2,
     axorin.set_zticks(tticks)
     axorin.set_zticklabels(tticks)
     extFlow(axorin, trange_geo=trange_geo, **problem_kwargs)
+    # tmp_geo = []
+    # for tnodei in tnodes:
+    #     tmp_geo.append(axorin.plot(tnodei[:, 0], tnodei[:, 1], tnodei[:, 2], 'dimgray')[0])
     tmp_geo = []
+    colors1 = plt.get_cmap('coolwarm')(np.linspace(0.3, 0.9, 128))
+    cmap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors1)
     for tnodei in tnodes:
-        tmp_geo.append(axorin.plot(tnodei[:, 0], tnodei[:, 1], tnodei[:, 2])[0])
+        c = np.zeros(tnodei.shape[0])
+        tidx = np.linalg.norm(tnodei - tnodei[tnodei.shape[0] // 2], axis=-1) < (trange_geo * 0.05)
+        c[tidx] = 1
+        tmp_geo.append(axorin.scatter(tnodei[:, 0], tnodei[:, 1], tnodei[:, 2],
+                                      c=c, s=0.1, cmap=cmap))
 
+    # plot lines in axes
+    Table_t2, _, Table_X2, Table_P2bb, _, Table_theta2, Table_phi2, Table_psi2, Table_eta2 \
+        = resampling_data(Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi,
+                          Table_psi, Table_eta, resampling_fct)
     # Jeffery sphere
     u, v = np.mgrid[0:2 * np.pi:100j, 0:np.pi:100j]
     tr = np.linalg.norm(np.vstack(tnodes), axis=-1).max()
@@ -2080,23 +2190,34 @@ def make_table_video_geo_v2(Table_t, Table_X, Table_P, Table_P2,
     color1 = plt.get_cmap('gray')(np.linspace(0.2, 0.8, 256))
     cmap = mcolors.LinearSegmentedColormap.from_list('my_colormap', color1)
     axorin.plot_surface(x, y, z, rstride=1, cstride=1, cmap=cmap, edgecolor='none', alpha=0.1)
-    axorin.plot(Table_P[:, 0] * tr, Table_P[:, 1] * tr, Table_P[:, 2] * tr, 'k')
+
+    # Create the 3D-line collection object
+    norm = plt.Normalize(Table_t2.min(), Table_t2.max())
+    cmap = plt.get_cmap('jet')
+    points = Table_P2bb.reshape(-1, 1, 3) * tr
+    segments = np.concatenate([points[:-1], points[1:]], axis=1)
+    lc = Line3DCollection(segments, cmap=cmap, norm=norm)
+    lc.set_array(Table_t2)
+    axorin.add_collection3d(lc, zs=points[:, :, 2].flatten(), zdir='z')
+    # axorin.plot(Table_P2bb[:, 0] * tr, Table_P2bb[:, 1] * tr, Table_P2bb[:, 2] * tr, 'k', alpha=0.3)
+    # axorin.scatter(Table_P2bb[:, 0] * tr, Table_P2bb[:, 1] * tr, Table_P2bb[:, 2] * tr,
+    #                c='k', s=0.001)
 
     # other variables
     scs = []
-    axthph.plot(Table_phi, Table_theta, '-')
+    axthph.plot(Table_phi2, Table_theta2, '-')
     axthph.set_ylim(0, np.pi)
     axthph.set_yticklabels([])
-    scs.append(axthph.plot(Table_phi[0], Table_theta[0], 'or')[0])
-    axx2x3.plot(Table_X[:, 1], Table_X[:, 2], '-')
-    scs.append(axx2x3.plot(Table_X[0, 1], Table_X[0, 2], 'or')[0])
-    ax_x1.plot(Table_t, Table_X[:, 0], '-', color='#1f77b4')
-    scs.append(ax_x1.plot(Table_t[0], Table_X[0, 0], 'or')[0])
+    scs.append(axthph.plot(Table_phi2[0], Table_theta2[0], 'or')[0])
+    axx2x3.plot(Table_X2[:, 1], Table_X2[:, 2], '-')
+    scs.append(axx2x3.plot(Table_X2[0, 1], Table_X2[0, 2], 'or')[0])
+    ax_x1.plot(Table_t2, Table_X2[:, 0], '-', color='#1f77b4')
+    scs.append(ax_x1.plot(Table_t2[0], Table_X2[0, 0], 'or')[0])
     for axi, ty, in zip((axeta, axpsi),
-                        (Table_eta, Table_psi)):
+                        (Table_eta2, Table_psi2)):
         for i0, i1 in separate_angle_idx(ty):
-            axi.plot(Table_t[i0:i1], ty[i0:i1] / np.pi, '-', color='#1f77b4')
-        scs.append(axi.plot(Table_t[0], ty[0] / np.pi, 'or')[0])
+            axi.plot(Table_t2[i0:i1], ty[i0:i1] / np.pi, '-', color='#1f77b4')
+        scs.append(axi.plot(Table_t2[0], ty[0] / np.pi, 'or')[0])
 
     # make movie
     fargs = (tmp_geo, scs, Table_t, Table_X, Table_P, Table_P2,
@@ -2342,13 +2463,13 @@ def load_rand_data_pickle_dir_v2(t_dir, t_headle='(.*?).pickle', n_load=None, ra
         #     psi_primary_fre_list.append(spf_tb.get_primary_fft_fre(tx[idx], tpick['Table_psi'][idx], cos_mode=True)[-10:])
         #     eta_primary_fre_list.append(spf_tb.get_primary_fft_fre(tx[idx], tpick['Table_eta'][idx], cos_mode=True)[-10:])
         theta_autocorrelate_fre_list.append(
-                _get_primary_autocorrelate_fft_fre_v2(tx[idx], tpick['Table_theta'][idx]))
+            _get_primary_autocorrelate_fft_fre_v2(tx[idx], tpick['Table_theta'][idx]))
         phi_autocorrelate_fre_list.append(
-                _get_primary_autocorrelate_fft_fre_v2(tx[idx], tpick['Table_phi'][idx]))
+            _get_primary_autocorrelate_fft_fre_v2(tx[idx], tpick['Table_phi'][idx]))
         psi_autocorrelate_fre_list.append(
-                _get_primary_autocorrelate_fft_fre_v2(tx[idx], tpick['Table_psi'][idx]))
+            _get_primary_autocorrelate_fft_fre_v2(tx[idx], tpick['Table_psi'][idx]))
         eta_autocorrelate_fre_list.append(
-                _get_primary_autocorrelate_fft_fre_v2(tx[idx], tpick['Table_eta'][idx]))
+            _get_primary_autocorrelate_fft_fre_v2(tx[idx], tpick['Table_eta'][idx]))
         std_eta_list.append((np.mean(tpick['Table_eta'][idx]), np.std(tpick['Table_eta'][idx])))
         for i0, tlist in enumerate((dx_list, dy_list, dz_list)):
             tpoly = np.polyfit(tx[idx], tpick['Table_X'][idx, i0], 1, w=np.blackman(idx.sum()))
@@ -3052,49 +3173,49 @@ def show_3dfft_major(tw, tktltj_list, ttheta, tphi, tpsi, dpi=100, polar=False):
 
 def Rloc2glb(theta, phi, psi):
     Rloc2glb = np.array(
-            ((np.cos(phi) * np.cos(psi) * np.cos(theta) - np.sin(phi) * np.sin(psi),
-              -(np.cos(psi) * np.sin(phi)) - np.cos(phi) * np.cos(theta) * np.sin(psi),
-              np.cos(phi) * np.sin(theta)),
-             (np.cos(psi) * np.cos(theta) * np.sin(phi) + np.cos(phi) * np.sin(psi),
-              np.cos(phi) * np.cos(psi) - np.cos(theta) * np.sin(phi) * np.sin(psi),
-              np.sin(phi) * np.sin(theta)),
-             (-(np.cos(psi) * np.sin(theta)),
-              np.sin(psi) * np.sin(theta),
-              np.cos(theta))))
+        ((np.cos(phi) * np.cos(psi) * np.cos(theta) - np.sin(phi) * np.sin(psi),
+          -(np.cos(psi) * np.sin(phi)) - np.cos(phi) * np.cos(theta) * np.sin(psi),
+          np.cos(phi) * np.sin(theta)),
+         (np.cos(psi) * np.cos(theta) * np.sin(phi) + np.cos(phi) * np.sin(psi),
+          np.cos(phi) * np.cos(psi) - np.cos(theta) * np.sin(phi) * np.sin(psi),
+          np.sin(phi) * np.sin(theta)),
+         (-(np.cos(psi) * np.sin(theta)),
+          np.sin(psi) * np.sin(theta),
+          np.cos(theta))))
     return Rloc2glb
 
 
 def Eij_loc(theta, phi, psi):
     Eij_loc = np.array(
-            ((np.cos(psi) * (-(np.cos(phi) * np.cos(psi) * np.cos(theta)) +
-                             np.sin(phi) * np.sin(psi)) * np.sin(theta),
-              (2 * np.cos(2 * psi) * np.sin(phi) * np.sin(theta) +
-               np.cos(phi) * np.sin(2 * psi) * np.sin(2 * theta)) / 4.,
-              (np.cos(phi) * np.cos(psi) * np.cos(2 * theta) -
-               np.cos(theta) * np.sin(phi) * np.sin(psi)) / 2.),
-             ((2 * np.cos(2 * psi) * np.sin(phi) * np.sin(theta) +
-               np.cos(phi) * np.sin(2 * psi) * np.sin(2 * theta)) / 4.,
-              -(np.sin(psi) * (np.cos(psi) * np.sin(phi) +
-                               np.cos(phi) * np.cos(theta) * np.sin(psi)) * np.sin(theta)),
-              (-(np.cos(psi) * np.cos(theta) * np.sin(phi)) -
-               np.cos(phi) * np.cos(2 * theta) * np.sin(psi)) / 2.),
-             ((np.cos(phi) * np.cos(psi) * np.cos(2 * theta) -
-               np.cos(theta) * np.sin(phi) * np.sin(psi)) / 2.,
-              (-(np.cos(psi) * np.cos(theta) * np.sin(phi)) -
-               np.cos(phi) * np.cos(2 * theta) * np.sin(psi)) / 2.,
-              np.cos(phi) * np.cos(theta) * np.sin(theta))))
+        ((np.cos(psi) * (-(np.cos(phi) * np.cos(psi) * np.cos(theta)) +
+                         np.sin(phi) * np.sin(psi)) * np.sin(theta),
+          (2 * np.cos(2 * psi) * np.sin(phi) * np.sin(theta) +
+           np.cos(phi) * np.sin(2 * psi) * np.sin(2 * theta)) / 4.,
+          (np.cos(phi) * np.cos(psi) * np.cos(2 * theta) -
+           np.cos(theta) * np.sin(phi) * np.sin(psi)) / 2.),
+         ((2 * np.cos(2 * psi) * np.sin(phi) * np.sin(theta) +
+           np.cos(phi) * np.sin(2 * psi) * np.sin(2 * theta)) / 4.,
+          -(np.sin(psi) * (np.cos(psi) * np.sin(phi) +
+                           np.cos(phi) * np.cos(theta) * np.sin(psi)) * np.sin(theta)),
+          (-(np.cos(psi) * np.cos(theta) * np.sin(phi)) -
+           np.cos(phi) * np.cos(2 * theta) * np.sin(psi)) / 2.),
+         ((np.cos(phi) * np.cos(psi) * np.cos(2 * theta) -
+           np.cos(theta) * np.sin(phi) * np.sin(psi)) / 2.,
+          (-(np.cos(psi) * np.cos(theta) * np.sin(phi)) -
+           np.cos(phi) * np.cos(2 * theta) * np.sin(psi)) / 2.,
+          np.cos(phi) * np.cos(theta) * np.sin(theta))))
     return Eij_loc
 
 
 def Sij_loc(theta, phi, psi):
     Sij_loc = np.array(
-            ((0,
-              -(np.sin(phi) * np.sin(theta)) / 2.,
-              (np.cos(phi) * np.cos(psi) - np.cos(theta) * np.sin(phi) * np.sin(psi)) / 2.),
-             ((np.sin(phi) * np.sin(theta)) / 2.,
-              0,
-              (-(np.cos(psi) * np.cos(theta) * np.sin(phi)) - np.cos(phi) * np.sin(psi)) / 2.),
-             ((-(np.cos(phi) * np.cos(psi)) + np.cos(theta) * np.sin(phi) * np.sin(psi)) / 2.,
-              (np.cos(psi) * np.cos(theta) * np.sin(phi) + np.cos(phi) * np.sin(psi)) / 2.,
-              0)))
+        ((0,
+          -(np.sin(phi) * np.sin(theta)) / 2.,
+          (np.cos(phi) * np.cos(psi) - np.cos(theta) * np.sin(phi) * np.sin(psi)) / 2.),
+         ((np.sin(phi) * np.sin(theta)) / 2.,
+          0,
+          (-(np.cos(psi) * np.cos(theta) * np.sin(phi)) - np.cos(phi) * np.sin(psi)) / 2.),
+         ((-(np.cos(phi) * np.cos(psi)) + np.cos(theta) * np.sin(phi) * np.sin(psi)) / 2.,
+          (np.cos(psi) * np.cos(theta) * np.sin(phi) + np.cos(phi) * np.sin(psi)) / 2.,
+          0)))
     return Sij_loc

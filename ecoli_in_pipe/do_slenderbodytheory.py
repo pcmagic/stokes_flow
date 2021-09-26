@@ -104,14 +104,16 @@ def do_KRJ_1helix(ph, rt1, rt2, ch, n_segment, slb_epsabs=1e-200, slb_epsrel=1e-
 
 
 def do_KRJ_nhelix(ph, rt1, rt2, ch, n_segment, n_hlx=1, slb_epsabs=1e-200, slb_epsrel=1e-08,
-                  slb_limit=10000, fileHandle='KRJ_slb', slb_geo_fun=slb_helix, **kwargs):
+                  slb_limit=10000, fileHandle='KRJ_slb',
+                  rt2_fct=1, slb_geo_fun=slb_helix, pick_M=False, save_vtk=False,
+                  **kwargs):
     matrix_method = 'KRJ_slb'
-    # # rt2_fct, slb_geo_fun = 1, slb_helix
+    # rt2_fct, slb_geo_fun = 1, slb_helix
     # rt2_fct, slb_geo_fun = 1, Johnson_helix
-    # # rt2_fct, slb_geo_fun = 4 / np.pi, slb_helix  # This factor following Rodenborn2013
-    # # rt2_fct, slb_geo_fun = 4 / np.pi, Johnson_helix  # This factor following Rodenborn2013
-    # # rt2_fct, slb_geo_fun = 1, expJohnson_helix
-    # rt2 = rt2 * rt2_fct
+    # rt2_fct, slb_geo_fun = 4 / np.pi, slb_helix  # This factor following Rodenborn2013
+    # rt2_fct, slb_geo_fun = 4 / np.pi, Johnson_helix  # This factor following Rodenborn2013
+    # rt2_fct, slb_geo_fun = 1, expJohnson_helix
+    rt2 = rt2 * rt2_fct
     problem_kwargs = get_problem_kwargs(ph=ph, ch=ch, rt1=rt1, rt2=rt2, n_segment=n_segment,
                                         matrix_method=matrix_method, fileHandle=fileHandle,
                                         slb_epsabs=slb_epsabs, slb_epsrel=slb_epsrel,
@@ -129,7 +131,7 @@ def do_KRJ_nhelix(ph, rt1, rt2, ch, n_segment, n_hlx=1, slb_epsabs=1e-200, slb_e
         problem.add_obj(hlx1_obj)
     problem.print_info()
     problem.create_matrix()
-    At, Bt, Ct, ftr_info, frt_info = AtBtCt(problem)
+    At, Bt, Ct, ftr_info, frt_info = AtBtCt(problem, pick_M=pick_M, save_vtk=save_vtk)
     # print(At, Bt, Ct)
     return At, Bt, Ct, ftr_info, frt_info
 
@@ -226,4 +228,4 @@ if __name__ == '__main__':
                                              slb_limit=slb_limit, fileHandle=fileHandle)
     tname = '%s.pickle' % fileHandle
     with open(tname, 'wb') as handle:
-        pickle.dump((At, Bt, Ct, ftr_info, frt_info), handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump((At, Bt, Ct, ftr_info, frt_info), handle, protocol=4)

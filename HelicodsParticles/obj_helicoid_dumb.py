@@ -145,7 +145,8 @@ def main_resistanceMatrix_dumb_sphere(**main_kwargs):
     print_case_info(**problem_kwargs)
     assert center_sphere_rs < (helicoid_r - rs)
 
-    helicoid_comp = creat_helicoid_dumb(**problem_kwargs)
+    # helicoid_comp = creat_helicoid_dumb(**problem_kwargs)
+    helicoid_comp = creat_helicoid_dumb_v2(**problem_kwargs)
     helicoid_obj_list = np.array(helicoid_comp.get_obj_list())
     helicoid_center = helicoid_comp.get_center()
     # helicoid_comp.show_f_u_nodes()
@@ -162,6 +163,63 @@ def main_resistanceMatrix_dumb_sphere(**main_kwargs):
         # f_geo = tobj.get_f_geo()
         # PETSc.Sys.Print(f_geo.get_deltaLength())
     problem.add_obj(center_obj)
+
+    # save the centers of the spheres, for dbg
+    comm = PETSc.COMM_WORLD.tompi4py()
+    rank = comm.Get_rank()
+    tcenter = np.vstack([tobj.get_f_geo().get_center() for tobj in problem.get_obj_list()])
+    if rank == 0:
+        # print(tcenter)
+        save_name = '%s_center.txt' % fileHandle
+        np.savetxt(save_name, tcenter)
+        print('save sphere centers to %s' % save_name)
+        import pickle
+        save_name = '%s_center.pickle' % fileHandle
+        with open(save_name, 'wb') as output:
+            pickle.dump(tcenter, output, protocol=4)
+        print('save sphere centers to %s' % save_name)
+
+    problem.print_info()
+    problem.create_matrix()
+    # PETSc.Sys.Print(problem.get_obj_list()[0].get_u_nodes()[:10])
+    # PETSc.Sys.Print(problem.get_M()[:5, :5])
+    # PETSc.Sys.Print(helicoid_center)
+    # u_use, w_use = 1, 1
+    u_use, w_use = 1, 1 / helicoid_r
+    At, Bt1, Bt2, Ct = AtBtCt_full(problem, save_vtk=False, pick_M=False, print_each=True,
+                                   center=helicoid_center, save_name=fileHandle,
+                                   u_use=u_use, w_use=w_use)
+    PETSc.Sys.Print('Tr(B1)', np.trace(Bt1), 'Tr(B2)', np.trace(Bt2))
+    return True
+
+
+def main_resistanceMatrix_dumb_image_sphere(**main_kwargs):
+    OptDB = PETSc.Options()
+    center_sphere_rs = OptDB.getReal('center_sphere_rs', 0.1)
+    center_sphere_ds = OptDB.getReal('center_sphere_ds', 0.02)
+    main_kwargs['center_sphere_rs'] = center_sphere_rs
+    main_kwargs['center_sphere_ds'] = center_sphere_ds
+    main_kwargs['zoom_factor'] = 1
+    problem_kwargs = get_problem_kwargs(**main_kwargs)
+    matrix_method = problem_kwargs['matrix_method']
+    fileHandle = problem_kwargs['fileHandle']
+    helicoid_r = problem_kwargs['helicoid_r']
+    rs = problem_kwargs['rs']
+    # pickProblem = problem_kwargs['pickProblem']
+    print_case_info(**problem_kwargs)
+    assert center_sphere_rs < (helicoid_r - rs)
+
+    helicoid_comp = creat_helicoid_dumb(**problem_kwargs)
+    helicoid_obj_list = np.array(helicoid_comp.get_obj_list())
+    helicoid_center = helicoid_comp.get_center()
+    # helicoid_comp.show_f_u_nodes()
+    # assert 1 == 2
+
+    problem = sf.problem_dic[matrix_method](**problem_kwargs)
+    for tobj in helicoid_obj_list:
+        problem.add_obj(tobj)
+        # f_geo = tobj.get_f_geo()
+        # PETSc.Sys.Print(f_geo.get_deltaLength())
     problem.print_info()
     problem.create_matrix()
     # PETSc.Sys.Print(problem.get_obj_list()[0].get_u_nodes()[:10])
@@ -172,7 +230,7 @@ def main_resistanceMatrix_dumb_sphere(**main_kwargs):
     At, Bt1, Bt2, Ct = AtBtCt_full(problem, save_vtk=False, pick_M=False, print_each=False,
                                    center=helicoid_center, save_name=fileHandle,
                                    u_use=u_use, w_use=w_use)
-    PETSc.Sys.Print(np.trace(Bt1), np.trace(Bt2))
+    PETSc.Sys.Print('Tr(B1)', np.trace(Bt1), 'Tr(B2)', np.trace(Bt2))
     return True
 
 
@@ -190,11 +248,16 @@ if __name__ == '__main__':
         OptDB.setValue('main_fun', False)
         main_resistanceMatrix_dumb()
 
-
     if OptDB.getBool('main_resistanceMatrix_dumb_sphere', False):
         assert '_selfRotate' not in matrix_method
         OptDB.setValue('main_fun', False)
         main_resistanceMatrix_dumb_sphere()
+
+    if OptDB.getBool('main_resistanceMatrix_dumb_image_sphere', False):
+        # assert '_selfRotate' not in matrix_method
+        assert matrix_method == 'pf_sphere'
+        OptDB.setValue('main_fun', False)
+        main_resistanceMatrix_dumb_image_sphere()
 
     if OptDB.getBool('main_resistanceMatrix_selfRotate', False):
         assert '_selfRotate' in matrix_method

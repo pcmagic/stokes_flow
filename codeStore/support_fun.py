@@ -245,8 +245,16 @@ def write_pbs_head_newturb(fpbs, job_name, nodes=1):
     return True
 
 
+def write_pbs_head_haiguang(fpbs, job_name, nodes=1):
+    fpbs.write('#!/bin/sh\n')
+    fpbs.write('# run the job in the main node directly. ')
+    fpbs.write('\n')
+    return True
+
+
 def _write_main_run_top(frun, main_hostname='ln0'):
-    frun.write('t_dir=$PWD \n\n')
+    frun.write('t_dir=$PWD \n')
+    frun.write('bash_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )" \n\n')
 
     # check if the script run on the main node.
     frun.write('if [ $(hostname) == \'%s\' ]; then\n' % main_hostname)
@@ -308,24 +316,38 @@ def write_main_run_comm_list(comm_list, txt_list, use_node, njob_node, job_dir,
     with open(t_name0, 'w') as fcomm:
         for i0, ts, f in zip(range(n_case), comm_list, txt_list):
             fcomm.write('%s > %s.txt 2> %s.err \n' % (ts, f, f))
-            fcomm.write('echo \'%d / %d, %s finished.\'  \n\n' % (i0 + 1, n_case, f))
+            fcomm.write('echo \'%d / %d, %s start.\'  \n\n' % (i0 + 1, n_case, f))
 
     assert callable(write_pbs_head000)
     if write_pbs_head000 is write_pbs_head:
         main_hostname = 'ln0'
         _parallel_pbs_use = _parallel_pbs_ln0
-    elif write_pbs_head000 is write_pbs_head_q03:
-        main_hostname = 'ln0'
-        _parallel_pbs_use = _parallel_pbs_ln0
+        run_fun = 'qsub %s\n\n'
+    # elif write_pbs_head000 is write_pbs_head_q03:
+    #     main_hostname = 'ln0'
+    #     _parallel_pbs_use = _parallel_pbs_ln0
+    #     run_fun = 'qsub %s\n\n'
     elif write_pbs_head000 is write_pbs_head_dbg:
         main_hostname = 'ln0'
         _parallel_pbs_use = _parallel_pbs_ln0
+        run_fun = 'qsub %s\n\n'
+    elif write_pbs_head000 is write_pbs_head_q03:
+        main_hostname = 'ln0'
+        _parallel_pbs_use = _parallel_pbs_ln0
+        run_fun = 'qsub %s\n\n'
     elif write_pbs_head000 is write_pbs_head_serial:
         main_hostname = 'ln0'
         _parallel_pbs_use = _parallel_pbs_ln0
+        run_fun = 'qsub %s\n\n'
     elif write_pbs_head000 is write_pbs_head_newturb:
         main_hostname = 'newturb'
         _parallel_pbs_use = _parallel_pbs_newturb
+        run_fun = 'qsub %s\n\n'
+        assert np.isclose(use_node, 1)
+    elif write_pbs_head000 is write_pbs_head_haiguang:
+        main_hostname = 'bogon'
+        _parallel_pbs_use = _parallel_pbs_newturb
+        run_fun = 'cd $bash_dir \nnohup bash %s &\ncd $t_dir\n\n'
         assert np.isclose(use_node, 1)
     else:
         raise ValueError('wrong write_pbs_head000')
@@ -364,11 +386,12 @@ def write_main_run_comm_list(comm_list, txt_list, use_node, njob_node, job_dir,
                 fcsh.write(t2)
                 fcsh.write('echo ${comm_list[$1]} \'>\' ${txt_list[$1]}.txt'
                            ' \'2>\' ${txt_list[$1]}.err \n')
+                fcsh.write('echo $(expr $1 + 1) / %d, ${txt_list[$1]} start.  \n' % n_case)
                 fcsh.write('echo \n')
                 fcsh.write('if [ ${2:-false} = true ]; then \n')
                 fcsh.write('    ${comm_list[$1]} > ${txt_list[$1]}.txt 2> ${txt_list[$1]}.err \n')
                 fcsh.write('fi \n\n')
-            frun.write('qsub %s\n\n' % pbs_name)
+            frun.write(run_fun % pbs_name)
         frun.write('\n')
     print('input %d cases.' % n_case)
     print('generate %d pbs files in total.' % n_pbs)
@@ -376,7 +399,7 @@ def write_main_run_comm_list(comm_list, txt_list, use_node, njob_node, job_dir,
         print(' --->>random order mode is ON. ')
     print('Command of first case is:')
     print(comm_list[0])
-    return True
+    return True 
 
 
 def write_myscript(job_name_list, job_dir):
@@ -393,7 +416,7 @@ def write_myscript(job_name_list, job_dir):
     return True
 
 
-def set_axes_equal(ax):
+def set_axes_equal(ax, rad_fct=0.5):
     figsize = ax.figure.get_size_inches()
     l1, l2 = ax.get_position().bounds[2:] * figsize
     lmax = np.max((l1, l2))
@@ -414,7 +437,7 @@ def set_axes_equal(ax):
         ])
 
         origin = np.mean(limits, axis=1)
-        radius = 0.4 * np.max(np.abs(limits[:, 1] - limits[:, 0]))
+        radius = rad_fct * np.max(np.abs(limits[:, 1] - limits[:, 0]))
         radius_x = l1 / lmax * radius
         radius_y = l1 / lmax * radius
         radius_z = l2 / lmax * radius
@@ -428,7 +451,7 @@ def set_axes_equal(ax):
         ])
 
         origin = np.mean(limits, axis=1)
-        radius = 0.5 * np.max(np.abs(limits[:, 1] - limits[:, 0]))
+        radius = rad_fct * np.max(np.abs(limits[:, 1] - limits[:, 0]))
         radius_x = l1 / lmax * radius
         radius_y = l2 / lmax * radius
         ax.set_xlim([origin[0] - radius_x, origin[0] + radius_x])
@@ -497,7 +520,8 @@ def colorline(x, y, z=None, cmap=plt.get_cmap('copper'), ax=None, norm=plt.Norma
 
 
 def colorline3d(tnodes, tcl, quiver_length_fct=None, clb_title='', show_project=False, tu=None,
-                nu_show=50, return_fig=False, ax0=None, tcl_lim=None, tcl_fontsize=10):
+                nu_show=50, return_fig=False, ax0=None, tcl_lim=None, tcl_fontsize=10,
+                cmap=plt.get_cmap('jet')):
     if ax0 is None:
         fig = plt.figure(figsize=(8, 8), dpi=100)
         fig.patch.set_facecolor('white')
@@ -509,10 +533,10 @@ def colorline3d(tnodes, tcl, quiver_length_fct=None, clb_title='', show_project=
     if tcl_lim is None:
         tcl_lim = (tcl.min(), tcl.max())
     ax0.plot(tnodes[:, 0], tnodes[:, 1], tnodes[:, 2]).pop(0).remove()
-    cax1 = inset_axes(ax0, width="100%", height="5%", bbox_to_anchor=(0, 0.1, 1, 1),
-                      loc=1, bbox_transform=ax0.transAxes, borderpad=0, )
+    cax1 = inset_axes(ax0, width="80%", height="5%", bbox_to_anchor=(0.1, 0.1, 0.8, 1),
+                      loc=9, bbox_transform=ax0.transAxes, borderpad=0, )
     norm = plt.Normalize(*tcl_lim)
-    cmap = plt.get_cmap('jet')
+    cmap = cmap
     # Create the 3D-line collection object
     points = tnodes.reshape(-1, 1, 3)
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
@@ -527,15 +551,22 @@ def colorline3d(tnodes, tcl, quiver_length_fct=None, clb_title='', show_project=
     clb.ax.set_yticklabels(clb_ticks)
     set_axes_equal(ax0)
     if show_project:
-        ax0.plot(np.ones_like(tnodes[:, 0]) * ax0.get_xlim()[0], tnodes[:, 1], tnodes[:, 2], '--k')
-        ax0.plot(tnodes[:, 0], np.ones_like(tnodes[:, 1]) * ax0.get_ylim()[1], tnodes[:, 2], '--k')
-        ax0.plot(tnodes[:, 0], tnodes[:, 1], np.ones_like(tnodes[:, 0]) * ax0.get_zlim()[0], '--k')
+        ax0.plot(np.ones_like(tnodes[:, 0]) * ax0.get_xlim()[0], tnodes[:, 1], tnodes[:, 2], '--k',
+                 alpha=0.2)
+        ax0.plot(tnodes[:, 0], np.ones_like(tnodes[:, 1]) * ax0.get_ylim()[1], tnodes[:, 2], '--k',
+                 alpha=0.2)
+        ax0.plot(tnodes[:, 0], tnodes[:, 1], np.ones_like(tnodes[:, 0]) * ax0.get_zlim()[0], '--k',
+                 alpha=0.2)
     if not tu is None:
         assert not quiver_length_fct is None
         t_stp = np.max((1, tu.shape[0] // nu_show))
         color_len = tnodes[::t_stp, 0].size
         quiver_length = np.max(tnodes.max(axis=0) - tnodes.min(axis=0)) * quiver_length_fct
-        colors = [cmap(1.0 * i / color_len) for i in range(color_len)]
+        # colors = [cmap(1.0 * i / color_len) for i in range(color_len)]
+        # ax0.quiver(tnodes[::t_stp, 0], tnodes[::t_stp, 1], tnodes[::t_stp, 2],
+        #            tu[::t_stp, 0], tu[::t_stp, 1], tu[::t_stp, 2],
+        #            length=quiver_length, arrow_length_ratio=0.2, pivot='tail', normalize=False,
+        #            colors=colors)
         ax0.quiver(tnodes[::t_stp, 0], tnodes[::t_stp, 1], tnodes[::t_stp, 2],
                    tu[::t_stp, 0], tu[::t_stp, 1], tu[::t_stp, 2],
                    length=quiver_length, arrow_length_ratio=0.2, pivot='tail', normalize=False,
@@ -677,31 +708,98 @@ class midPowerNorm(Normalize):
                                      mask=mask)
             resdat = result.data
             tidx1 = resdat < midpoint
+            tidx2 = np.logical_not(tidx1)
             resdat1 = np.log(resdat[tidx1]) / np.log(gamma)
             v1 = np.log(vmin) / np.log(gamma)
             tx, ty = [v1, logmid], [0, 0.5]
             #             print(resdat1, tx, ty)
             tuse1 = np.interp(resdat1, tx, ty)
-            resdat2 = np.log(resdat[np.logical_not(tidx1)]) / np.log(gamma)
+            resdat2 = np.log(resdat[tidx2]) / np.log(gamma)
             v2 = np.log(vmax) / np.log(gamma)
             tx, ty = [logmid, v2], [0.5, 1]
             tuse2 = np.interp(resdat2, tx, ty)
-            result = np.ma.array(np.hstack((tuse1, tuse2)), mask=result.mask, copy=False)
+            resdat[tidx1] = tuse1
+            resdat[tidx2] = tuse2
+            result = np.ma.array(resdat, mask=result.mask, copy=False)
         return result
+
+
+# class zeroPowerNorm(Normalize):
+#     def __init__(self, gamma=10, linthresh=1, linscale=1, vmin=None, vmax=None, clip=False):
+#         Normalize.__init__(self, vmin, vmax, clip)
+#         assert gamma > 1
+#         self.gamma = gamma
+#         self.midpoint = 0
+#         assert vmin < 0
+#         assert vmax > 0
+#         self.linthresh = linthresh
+#         self.linscale = linscale
+#
+#     def __call__(self, value, clip=None):
+#         if clip is None:
+#             clip = self.clip
+#         result, is_scalar = self.process_value(value)
+#
+#         self.autoscale_None(result)
+#         gamma = self.gamma
+#         midpoint = self.midpoint
+#         linthresh = self.linthresh
+#         linscale = self.linscale
+#         vmin, vmax = self.vmin, self.vmax
+#
+#         if clip:
+#             mask = np.ma.getmask(result)
+#             result = np.ma.array(np.clip(result.filled(vmax), vmin, vmax),
+#                                  mask=mask)
+#         assert result.max() > 0
+#         assert result.min() < 0
+#
+#         mag0 = np.log(result.max()) / np.log(linthresh)
+#         mag2 = np.log(-result.min()) / np.log(linthresh)
+#         mag1 = linscale / (linscale + mag0 + mag2)
+#         b0 = mag0 / (mag0 + mag1 + mag2)
+#         b1 = (mag0 + mag1) / (mag0 + mag1 + mag2)
+#
+#         resdat = result.data
+#         tidx0 = (resdat > -np.inf) * (resdat <= -linthresh)
+#         tidx1 = (resdat > -linthresh) * (resdat <= linthresh)
+#         tidx2 = (resdat > linthresh) * (resdat <= np.inf)
+#         resdat0 = np.log(-resdat[tidx0]) / np.log(gamma)
+#         resdat1 = resdat[tidx1]
+#         resdat2 = np.log(resdat[tidx2]) / np.log(gamma)
+#         #
+#         tx, ty = [np.log(-vmin) / np.log(gamma), np.log(linthresh) / np.log(gamma)], [0, b0]
+#         tuse0 = np.interp(resdat0, tx, ty)
+#         #
+#         tx, ty = [-linthresh, linthresh], [b0, b1]
+#         tuse1 = np.interp(resdat1, tx, ty)
+#
+#         tx, ty = [v1, logmid], [0, 0.5]
+#         #             print(resdat1, tx, ty)
+#         tuse1 = np.interp(resdat1, tx, ty)
+#         resdat2 = np.log(resdat[tidx2]) / np.log(gamma)
+#         v2 = np.log(vmax) / np.log(gamma)
+#         tx, ty = [logmid, v2], [0.5, 1]
+#         tuse2 = np.interp(resdat2, tx, ty)
+#         resdat[tidx1] = tuse1
+#         resdat[tidx2] = tuse2
+#         result = np.ma.array(resdat, mask=result.mask, copy=False)
+#         return result
 
 
 # user define color norm
 class midLinearNorm(Normalize):
     def __init__(self, midpoint=1, vmin=None, vmax=None, clip=False):
         # clip: see np.clip, Clip (limit) the values in an array.
+        # assert 1 == 2
         Normalize.__init__(self, vmin, vmax, clip)
         self.midpoint = midpoint
 
     def __call__(self, value, clip=None):
         if clip is None:
             clip = self.clip
-
         result, is_scalar = self.process_value(value)
+        # print(type(result))
 
         self.autoscale_None(result)
         midpoint = self.midpoint
@@ -713,23 +811,96 @@ class midLinearNorm(Normalize):
         else:
             if clip:
                 mask = np.ma.getmask(result)
-                result = np.ma.array(np.clip(result.filled(vmax), vmin, vmax),
-                                     mask=mask)
+                result = np.ma.array(np.clip(result.filled(vmax), vmin, vmax), mask=mask)
             resdat = result.data
             tidx1 = resdat < midpoint
+            tidx2 = np.logical_not(tidx1)
             resdat1 = resdat[tidx1]
             if vmin < midpoint:
                 tx, ty = [vmin, midpoint], [0, 0.5]
                 tuse1 = np.interp(resdat1, tx, ty)
             else:
                 tuse1 = np.zeros_like(resdat1)
-            resdat2 = resdat[np.logical_not(tidx1)]
+            resdat2 = resdat[tidx2]
             if vmax > midpoint:
                 tx, ty = [midpoint, vmax], [0.5, 1]
                 tuse2 = np.interp(resdat2, tx, ty)
             else:
                 tuse2 = np.zeros_like(resdat2)
-            result = np.ma.array(np.hstack((tuse1, tuse2)), mask=result.mask, copy=False)
+            resdat[tidx1] = tuse1
+            resdat[tidx2] = tuse2
+            result = np.ma.array(resdat, mask=result.mask, copy=False)
+        return result
+
+
+class TwoSlopeNorm(Normalize):
+    # noinspection PyMissingConstructor
+    def __init__(self, vcenter, vmin=None, vmax=None):
+        """
+        Normalize data with a set center.
+
+        Useful when mapping data with an unequal rates of change around a
+        conceptual center, e.g., data that range from -2 to 4, with 0 as
+        the midpoint.
+
+        Parameters
+        ----------
+        vcenter : float
+            The data value that defines ``0.5`` in the normalization.
+        vmin : float, optional
+            The data value that defines ``0.0`` in the normalization.
+            Defaults to the min value of the dataset.
+        vmax : float, optional
+            The data value that defines ``1.0`` in the normalization.
+            Defaults to the the max value of the dataset.
+
+        Examples
+        --------
+        This maps data value -4000 to 0., 0 to 0.5, and +10000 to 1.0; data
+        between is linearly interpolated::
+
+            >>> import matplotlib.colors as mcolors
+            >>> offset = mcolors.TwoSlopeNorm(vmin=-4000.,
+                                              vcenter=0., vmax=10000)
+            >>> data = [-4000., -2000., 0., 2500., 5000., 7500., 10000.]
+            >>> offset(data)
+            array([0., 0.25, 0.5, 0.625, 0.75, 0.875, 1.0])
+        """
+
+        self.vcenter = vcenter
+        self.vmin = vmin
+        self.vmax = vmax
+        if vcenter is not None and vmax is not None and vcenter >= vmax:
+            raise ValueError('vmin, vcenter, and vmax must be in '
+                             'ascending order')
+        if vcenter is not None and vmin is not None and vcenter <= vmin:
+            raise ValueError('vmin, vcenter, and vmax must be in '
+                             'ascending order')
+
+    def autoscale_None(self, A):
+        """
+        Get vmin and vmax, and then clip at vcenter
+        """
+        super().autoscale_None(A)
+        if self.vmin > self.vcenter:
+            self.vmin = self.vcenter
+        if self.vmax < self.vcenter:
+            self.vmax = self.vcenter
+
+    def __call__(self, value, clip=None):
+        """
+        Map value to the interval [0, 1]. The clip argument is unused.
+        """
+        result, is_scalar = self.process_value(value)
+        self.autoscale_None(result)  # sets self.vmin, self.vmax if None
+
+        if not self.vmin <= self.vcenter <= self.vmax:
+            raise ValueError("vmin, vcenter, vmax must increase monotonically")
+        result = np.ma.masked_array(
+                np.interp(result, [self.vmin, self.vcenter, self.vmax],
+                          [0, 0.5, 1.]), mask=np.ma.getmask(result))
+        if is_scalar:
+            result = np.atleast_1d(result)[0]
         return result
 
 

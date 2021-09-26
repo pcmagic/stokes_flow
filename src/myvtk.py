@@ -46,6 +46,8 @@ def save_singleEcoli_vtk(problem: sf.StokesFlowProblem, createHandle=createEcoli
     check_kwargs['Tfct'] = 1
     ecoli_comp_check = createHandle(**check_kwargs)
     ecoli_comp_check.set_ref_U(ref_U)
+    ecoli_comp_check.set_problem(problem)
+    # ecoli_comp_check.set_name('%s_check' % fileHandle)
     # # dbg
     # for obj in ecoli_comp_check.get_obj_list():
     #     filename = fileHandle + '_check_' + str(obj)

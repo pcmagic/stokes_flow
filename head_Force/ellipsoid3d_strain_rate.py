@@ -130,7 +130,7 @@ def main_fun(**main_kwargs):
                        'uw_Base_list':    uw_Base_list,
                        'sumFT_Base_list': sumFT_Base_list, }
         with open('%s.pickle' % fileHandle, 'wb') as handle:
-            pickle.dump(pickle_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(pickle_dict, handle, protocol=4)
         PETSc.Sys.Print('save table_data to %s.pickle' % fileHandle)
     return True
 
@@ -224,7 +224,7 @@ def main_fun(**main_kwargs):
 #                        'uw_Base_list':    uw_Base_list,
 #                        'sumFT_Base_list': sumFT_Base_list, }
 #         with open('%s.pickle' % fileHandle, 'wb') as handle:
-#             pickle.dump(pickle_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+#             pickle.dump(pickle_dict, handle, protocol=4)
 #         PETSc.Sys.Print('save table_data to %s.pickle' % fileHandle)
 #     return True
 #
@@ -280,7 +280,7 @@ def main_fun(**main_kwargs):
 #                        'uw_Base_list':    uw_Base_list,
 #                        'sumFT_Base_list': sumFT_Base_list, }
 #         with open('%s.pickle' % fileHandle, 'wb') as handle:
-#             pickle.dump(pickle_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+#             pickle.dump(pickle_dict, handle, protocol=4)
 #         PETSc.Sys.Print('save table_data to %s.pickle' % fileHandle)
 #         # print_single_ecoli_force_result(problem, part='tail', prefix='tran', **problem_kwargs)
 #     return True

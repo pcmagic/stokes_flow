@@ -746,37 +746,42 @@ class AhChAtBtCt_fit_intp():
         return tx * c
 
     def fun_psi00(self, tx, c):
-        return 2 * np.pi * tx / (np.log(tx) - 1) + c
+        return 2 * np.pi * tx / (np.log(tx) + np.log(2) - 3 / 2) + c
 
     def func_psi0(self, x, a0, a1):
         y = a0 + a1 * x
         return y
 
     def func_psi1(self, x, a0, a1):
-        y = a0 * 0 + a1 * x
+        # y = a0 * 0 + a1 * x
+        y = a0 + a1 * x
         return y
 
     def func_psi2(self, x, a0, a1):
-        y = a0 * 0 + a1 * x
+        y = a0 + a1 * x
         return y
 
     def func_psi3(self, x, a0, a1):
-        y = a0 * 0 + a1 * x
+        y = a0 + a1 * x
         return y
 
     def func_psi6(self, x, a0, a1):
-        y = a0 * 0 + a1 * x
+        y = a0 + a1 * x
         return y
 
-    def cal_fit_psi_pipe_list(self, data, fit_fun, x_min=50):
+    def cal_fit_psi_pipe_list(self, data, fit_fun, x_min=50, x_max=np.inf):
         tx = data.index
         fit_psi_list = []
         for zfi in data.columns:
             if np.isclose(zfi, 0):
                 continue
             ty = data[zfi]
-            idxi = np.isfinite(tx) & np.isfinite(ty) & np.array(tx >= x_min)
+            idxi = np.isfinite(tx) & np.isfinite(ty) & \
+                   np.array(tx >= x_min) & np.array(tx <= x_max)
             fit_psii, _ = curve_fit(fit_fun, tx[idxi], ty[idxi], maxfev=10000)
+            # print(zfi)
+            # print(tx[idxi], ty[idxi])
+            # print(_)
             fit_psi_list.append(fit_psii)
         fit_psi_list = np.vstack(fit_psi_list)
         return fit_psi_list
@@ -819,12 +824,21 @@ class AhChAtBtCt_fit_intp():
         self._tail0_fit_info = tfit_info
 
         # A_h, C_h, A_t, B_t, C_t
+        # print('fit_psi0_info')
         self._fit_psi0_info = self.cal_fit_psi_pipe_list(self._psi0, self.func_psi0, x_min=lh_min)
+        # print(self._fit_psi0_info)
+        # print()
+        # print('fit_psi1_info')
         self._fit_psi1_info = self.cal_fit_psi_pipe_list(self._psi1, self.func_psi1, x_min=lh_min)
+        # print(self._fit_psi1_info)
+        # print()
+        # print('fit_psi2_info')
         self._fit_psi2_info = self.cal_fit_psi_pipe_list(self._psi2.loc[ph], self.func_psi2,
                                                          x_min=ch_min)
+        # print('fit_psi3_info')
         self._fit_psi3_info = self.cal_fit_psi_pipe_list(self._psi3.loc[ph], self.func_psi3,
                                                          x_min=ch_min)
+        # print('fit_psi6_info')
         self._fit_psi6_info = self.cal_fit_psi_pipe_list(self._psi6.loc[ph], self.func_psi6,
                                                          x_min=ch_min)
         return True
@@ -851,7 +865,7 @@ class AhChAtBtCt_fit_intp():
         self._int_psi3_info = self.cal_int_psi_list(self._psi30.loc[ph], self._psi3.loc[ph], kind)
         self._int_psi6_info = self.cal_int_psi_list(self._psi60.loc[ph], self._psi6.loc[ph], kind)
 
-    def get_head(self, lh, zf):
+    def get_head(self, lh, zf, kind='quadratic'):
         lh = np.array((lh))
         psi0_list = []
         zfi = 0
@@ -873,7 +887,7 @@ class AhChAtBtCt_fit_intp():
             t2[tidxb] = int_psi0_info(lh[tidxb])
             psi0_list.append(t2)
         tx = self._psi0.columns.values
-        t_psi0 = interpolate.interp1d(tx, np.vstack(psi0_list).T)(zf)
+        t_psi0 = interpolate.interp1d(tx, np.vstack(psi0_list).T, kind=kind)(zf)
 
         psi1_list = []
         zfi = 0
@@ -895,10 +909,36 @@ class AhChAtBtCt_fit_intp():
             t2[tidxb] = int_psi1_info(lh[tidxb])
             psi1_list.append(t2)
         tx = self._psi1.columns.values
-        t_psi1 = interpolate.interp1d(tx, np.vstack(psi1_list).T)(zf)
+        t_psi1 = interpolate.interp1d(tx, np.vstack(psi1_list).T, kind=kind)(zf)
         return t_psi0, t_psi1
 
-    def get_tail(self, ch, zf, AtBtCt_fun=slb.fit_AtBtCt_c22c23c33_v2):
+    def get_head_v2(self, kappa, zf):
+        # here we assume rh = 1, R = rh / zf (or zf = rh / R).
+        kappa = np.hstack((kappa,))
+        # assert np.all(kappa > 99)
+
+        fun_ah = lambda zf: 2 * np.pi * (4 * zf ** 4 * np.log(zf)
+                                         - 3 * zf ** 4 + 4 * zf ** 2 - 1) \
+                            / (-zf ** 4 * np.log(zf) + zf ** 4 - 2 * zf ** 2
+                               + np.log(zf) + 1)
+        fun_ahinf = lambda kappa: 2 * np.pi / (np.log(kappa) + (np.log(2) - 3 / 2))
+        if np.any(zf == 0):
+            t_psi0 = fun_ahinf(kappa) * kappa
+        elif np.all(zf > 0):
+            t_psi0 = fun_ah(zf) * kappa
+        else:
+            raise ValueError('wrong zf')
+
+        fun_ch = lambda zf: 4 * np.pi / (1 - (zf) ** 2)
+        if np.any(zf == 0):
+            t_psi1 = 4 * np.pi * kappa
+        elif np.all(zf > 0):
+            t_psi1 = fun_ch(zf) * kappa
+        else:
+            raise ValueError('wrong zf')
+        return t_psi0, t_psi1
+
+    def get_tail(self, ch, zf, AtBtCt_fun=slb.fit_AtBtCt_c22c23c33_v2, kind='quadratic'):
         ch = np.hstack(ch)
         ph = self._ph
         rt1 = self._rt1
@@ -907,7 +947,7 @@ class AhChAtBtCt_fit_intp():
         psi2_list = []
         psi3_list = []
         psi6_list = []
-        zfi = 0
+
         t1 = self._psi20.loc[ph].index.values[np.isfinite(self._psi20.loc[ph].values)].max()
         tidxa = ch >= t1
         tidxb = np.logical_not(tidxa)
@@ -950,7 +990,7 @@ class AhChAtBtCt_fit_intp():
             t2[tidxb] = int_psi2_info(ch[tidxb])
             psi2_list.append(t2)
         tx = self._psi2.columns.values
-        t_psi2 = interpolate.interp1d(tx, np.vstack(psi2_list).T)(zf)
+        t_psi2 = interpolate.interp1d(tx, np.vstack(psi2_list).T, kind=kind)(zf)
 
         for fit_psi3_info, int_psi3_info, zfi in zip(self._fit_psi3_info,
                                                      self._int_psi3_info[1:],
@@ -964,7 +1004,7 @@ class AhChAtBtCt_fit_intp():
             t2[tidxb] = int_psi3_info(ch[tidxb])
             psi3_list.append(t2)
         tx = self._psi3.columns.values
-        t_psi3 = interpolate.interp1d(tx, np.vstack(psi3_list).T)(zf)
+        t_psi3 = interpolate.interp1d(tx, np.vstack(psi3_list).T, kind=kind)(zf)
 
         for fit_psi6_info, int_psi6_info, zfi in zip(self._fit_psi6_info,
                                                      self._int_psi6_info[1:],
@@ -978,5 +1018,29 @@ class AhChAtBtCt_fit_intp():
             t2[tidxb] = int_psi6_info(ch[tidxb])
             psi6_list.append(t2)
         tx = self._psi6.columns.values
-        t_psi6 = interpolate.interp1d(tx, np.vstack(psi6_list).T)(zf)
+        t_psi6 = interpolate.interp1d(tx, np.vstack(psi6_list).T, kind=kind)(zf)
         return t_psi2, t_psi3, t_psi6
+
+    def at(self, zf):
+        assert zf in self._psi2.columns.values
+        assert zf > 0
+        # print(self._psi2.columns.values)
+        # print(np.where(self._psi2.columns.values == zf)[0][0])
+        # print(self._fit_psi2_info)
+        t1 = self._fit_psi2_info[np.where(self._psi2.columns.values == zf)[0][0] - 1]
+        return t1[1]
+
+    def bt(self, zf):
+        assert zf in self._psi6.columns.values
+        assert zf > 0
+        t1 = self._fit_psi6_info[np.where(self._psi6.columns.values == zf)[0][0] - 1]
+        return t1[1]
+
+    def ct(self, zf):
+        assert zf in self._psi3.columns.values
+        assert zf > 0
+        t1 = self._fit_psi3_info[np.where(self._psi3.columns.values == zf)[0][0] - 1]
+        return t1[1]
+
+    def tail0_fit_info(self):
+        return self._tail0_fit_info

@@ -5,11 +5,11 @@ from petsc4py import PETSc
 from src import stokes_flow as sf
 from src import geo
 from tqdm import tqdm
-from scipy import interpolate, integrate, optimize, sparse
-from time import time
+from scipy import integrate
 from src.support_class import *
 
-
+# from scipy import interpolate, optimize, sparse
+# from time import time
 # from multiprocessing import cpu_count, Pool
 # from numba import jit
 # import numexpr as ne
@@ -580,7 +580,10 @@ def regularized_stokeslets_plane_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',
     # Solve m matrix using regularized Stokeslets method
     # U = M * F.
     # Cortez R. The method of regularized Stokeslets [J]. SIAM Journal on Scientific Computing, 2001, 23(4): 1204-1225.
-    delta_2 = kwargs['delta'] ** 2  # correction factor
+    # delta_2 = kwargs['delta'] ** 2  # correction factor
+    epsilon = kwargs['epsilon']
+    delta = epsilon * obj2.get_f_geo().get_deltaLength()
+    delta_2 = delta ** 2
     u_nodes = obj1.get_u_nodes()
     f_nodes = obj2.get_f_nodes()
     _, u_glbIdx_all = obj1.get_u_geo().get_glbIdx()
@@ -606,8 +609,10 @@ def regularized_stokeslets_plane_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',
 
 
 def check_regularized_stokeslets_plane_matrix_3d(**kwargs):
-    err_msg = 'the reguralized Stokeslets method needs parameter, delta. '
-    assert 'delta' in kwargs, err_msg
+    # err_msg = 'the reguralized Stokeslets method needs parameter, delta. '
+    # assert 'delta' in kwargs, err_msg
+    err_msg = 'delta is been droped in current version. '
+    assert 'delta' not in kwargs, err_msg
 
 
 def legendre_regularized_stokeslets_matrix_3d_mij(t_u_node: np.ndarray,  # velocity node
@@ -1080,6 +1085,7 @@ def surf_force_matrix_3d(obj1: 'sf.surf_forceObj',  # object contain velocity in
                         8 * np.pi * d_radia)  # Mxz
             elif i0 % 3 == 1:  # y axis
                 m[i0, i0 - 1] = (np.cos(norm[0]) * np.sin(norm[0]) * np.sin(norm[1]) ** 2) / (
+
                         8 * np.pi * d_radia)  # Mxy
                 m[i0, i0 + 0] = (1 / 8 * (
                         22 - 2 * np.cos(2 * norm[0]) + np.cos(2 * (norm[0] - norm[1])) + 2 * np.cos(
@@ -1263,6 +1269,280 @@ def point_force_matrix_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velo
 
 
 def check_point_force_matrix_3d_petsc(**kwargs):
+    return True
+
+
+def pf_sphere_image_petsc_mij(t_u_node: np.ndarray,  # velocity node
+                              f_nodes: np.ndarray,  # force nodes
+                              i0, **kwargs):
+    Ra = kwargs['pf_sphere_image_Ra']
+    img_f_nodes = (f_nodes.T * (Ra / np.linalg.norm(f_nodes, axis=-1)) ** 2).T
+    dxi = (t_u_node - f_nodes).T
+    disx = dxi[0]
+    disy = dxi[1]
+    disz = dxi[2]
+    r2sk = disx ** 2 + disy ** 2 + disz ** 2
+    rsk = r2sk ** 0.5
+    r3sk = r2sk ** 1.5
+
+    H1sk = 1.0 / r3sk
+    MSxx = (r2sk + disx ** 2) * H1sk
+    MSyx = disy * disx * H1sk
+    MSxy = MSyx
+    MSyy = (r2sk + disy ** 2) * H1sk
+    MSxz = disx * disz * H1sk
+    MSyz = disy * disz * H1sk
+    MSzx = MSxz
+    MSzy = MSyz
+    MSzz = (r2sk + disz ** 2) * H1sk
+
+    img_dxi = (t_u_node - img_f_nodes).T
+    disxi = img_dxi[0]
+    disyi = img_dxi[1]
+    diszi = img_dxi[2]
+    r2ski = disxi ** 2 + disyi ** 2 + diszi ** 2
+    rski = r2ski ** 0.5
+    r3ski = r2ski ** 1.5
+    r5ski = r2ski ** 2.5
+    H1ski = 1 / rski
+    H2ski = 1 / r2ski
+    H3ski = 1 / r3ski
+    H5ski = 1 / r5ski
+
+    Xf = np.linalg.norm(f_nodes, axis=1)
+    Xfi = np.linalg.norm(img_f_nodes, axis=1)
+    xf = np.linalg.norm(t_u_node)
+    Dx1 = np.sum(img_dxi.T * img_f_nodes, axis=1)
+    Dx2 = np.sum(t_u_node * img_f_nodes, axis=1)
+
+    A = 0.5 * (Xf ** 2 - Ra ** 2) / Xf ** 3
+    B = r2ski * (rski - Xfi) * Xfi
+    C = 3 * Ra / Xfi
+    Det = 1 / (Xfi * (Xfi * rski + Dx2 - Xfi ** 2))
+    E = 1 / (xf * Xfi * (xf * Xfi + Dx2))
+    A1 = (Xf ** 2 - Ra ** 2) / Xf
+    A2 = xf ** 2 - Ra ** 2.5
+
+    Pxx = A * (-3 * f_nodes[:, 0] * disxi * H3ski / Ra + Ra * H3ski - 3 * Ra * disxi ** 2 * H5ski
+               - 2 * f_nodes[:, 0] * img_f_nodes[:, 0] * H3ski / Ra
+               + 6 * f_nodes[:, 0] * H5ski * disxi * Dx1 / Ra
+               + C * (img_f_nodes[:, 0] * disxi * r2ski + disxi ** 2 * Xfi ** 2 + B)
+               * H3ski * Det - C * H2ski * Det ** 2 * Xfi * (Xfi * disxi + img_f_nodes[:, 0] * rski)
+               * (img_f_nodes[:, 0] * r2ski - disxi * Xfi ** 2 + (
+                    t_u_node[0] - 2 * img_f_nodes[:, 0])
+                  * rski * Xfi) - C * E * (t_u_node[0] * img_f_nodes[:, 0] + xf * Xfi)
+               + C * E ** 2 * (Xfi * t_u_node[0] + xf * img_f_nodes[:, 0]) * (
+                       Xfi * t_u_node[0] + xf * img_f_nodes[:, 0]) * xf * Xfi)
+    Pyy = A * (-3 * f_nodes[:, 1] * disyi * H3ski / Ra + Ra * H3ski - 3 * Ra * disyi ** 2 * H5ski
+               - 2 * f_nodes[:, 1] * img_f_nodes[:, 1] * H3ski / Ra
+               + 6 * f_nodes[:, 1] * H5ski * disyi * Dx1 / Ra
+               + C * (img_f_nodes[:, 1] * disyi * r2ski + disyi ** 2 * Xfi ** 2 + B)
+               * H3ski * Det - C * H2ski * Det ** 2 * Xfi * (Xfi * disyi + img_f_nodes[:, 1] * rski)
+               * (img_f_nodes[:, 1] * r2ski - disyi * Xfi ** 2
+                  + (t_u_node[1] - 2 * img_f_nodes[:, 1]) * rski * Xfi) - C * E * (
+                       t_u_node[1] * img_f_nodes[:, 1] + xf * Xfi) + C * E ** 2 * (
+                       Xfi * t_u_node[1] + xf * img_f_nodes[:, 1]) * (
+                       Xfi * t_u_node[1] + xf * img_f_nodes[:, 1]) * xf * Xfi)
+    Pzz = A * (-3 * f_nodes[:,
+                    2] * diszi * H3ski / Ra + Ra * H3ski - 3 * Ra * diszi ** 2 * H5ski - 2 * f_nodes[
+                                                                                             :,
+                                                                                             2] * img_f_nodes[
+                                                                                                  :,
+                                                                                                  2] * H3ski / Ra + 6 * f_nodes[
+                                                                                                                        :,
+                                                                                                                        2] * H5ski * diszi * Dx1 / Ra + C * (
+                       img_f_nodes[:,
+                       2] * diszi * r2ski + diszi ** 2 * Xfi ** 2 + B) * H3ski * Det - C * H2ski * Det ** 2 * Xfi * (
+                       Xfi * diszi + img_f_nodes[:, 2] * rski) * (
+                       img_f_nodes[:, 2] * r2ski - diszi * Xfi ** 2 + (
+                       t_u_node[2] - 2 * img_f_nodes[:, 2]) * rski * Xfi) - C * E * (
+                       t_u_node[2] * img_f_nodes[:, 2] + xf * Xfi) + C * E ** 2 * (
+                       Xfi * t_u_node[2] + xf * img_f_nodes[:, 2]) * (
+                       Xfi * t_u_node[2] + xf * img_f_nodes[:, 2]) * xf * Xfi)
+
+    Pxy = A * (-3 * f_nodes[:,
+                    1] * disxi * H3ski / Ra - 3 * Ra * disxi * disyi * H5ski - 2 * f_nodes[:,
+                                                                                   1] * img_f_nodes[
+                                                                                        :,
+                                                                                        0] * H3ski / Ra + 6 * f_nodes[
+                                                                                                              :,
+                                                                                                              1] * H5ski * disxi * Dx1 / Ra + C * (
+                       img_f_nodes[:,
+                       1] * disxi * r2ski + disxi * disyi * Xfi ** 2) * H3ski * Det - C * H2ski * Det ** 2 * Xfi * (
+                       Xfi * disxi + img_f_nodes[:, 0] * rski) * (
+                       img_f_nodes[:, 1] * r2ski - disyi * Xfi ** 2 + (
+                       t_u_node[1] - 2 * img_f_nodes[:, 1]) * rski * Xfi) - C * E * (
+                       t_u_node[0] * img_f_nodes[:, 1]) + C * E ** 2 * (
+                       Xfi * t_u_node[0] + xf * img_f_nodes[:, 0]) * (
+                       Xfi * t_u_node[1] + xf * img_f_nodes[:, 1]) * xf * Xfi)
+    Pyx = A * (-3 * f_nodes[:,
+                    0] * disyi * H3ski / Ra - 3 * Ra * disxi * disyi * H5ski - 2 * f_nodes[:,
+                                                                                   1] * img_f_nodes[
+                                                                                        :,
+                                                                                        0] * H3ski / Ra + 6 * f_nodes[
+                                                                                                              :,
+                                                                                                              0] * H5ski * disyi * Dx1 / Ra + C * (
+                       img_f_nodes[:,
+                       0] * disyi * r2ski + disxi * disyi * Xfi ** 2) * H3ski * Det - C * H2ski * Det ** 2 * Xfi * (
+                       Xfi * disyi + img_f_nodes[:, 1] * rski) * (
+                       img_f_nodes[:, 0] * r2ski - disxi * Xfi ** 2 + (
+                       t_u_node[0] - 2 * img_f_nodes[:, 0]) * rski * Xfi) - C * E * (
+                       t_u_node[1] * img_f_nodes[:, 0]) + C * E ** 2 * (
+                       Xfi * t_u_node[0] + xf * img_f_nodes[:, 0]) * (
+                       Xfi * t_u_node[1] + xf * img_f_nodes[:, 1]) * xf * Xfi)
+
+    Pxz = A * (-3 * f_nodes[:,
+                    2] * disxi * H3ski / Ra - 3 * Ra * disxi * diszi * H5ski - 2 * f_nodes[:,
+                                                                                   2] * img_f_nodes[
+                                                                                        :,
+                                                                                        0] * H3ski / Ra + 6 * f_nodes[
+                                                                                                              :,
+                                                                                                              2] * H5ski * disxi * Dx1 / Ra + C * (
+                       img_f_nodes[:,
+                       2] * disxi * r2ski + disxi * diszi * Xfi ** 2) * H3ski * Det - C * H2ski * Det ** 2 * Xfi * (
+                       Xfi * disxi + img_f_nodes[:, 0] * rski) * (
+                       img_f_nodes[:, 2] * r2ski - diszi * Xfi ** 2 + (
+                       t_u_node[2] - 2 * img_f_nodes[:, 2]) * rski * Xfi) - C * E * (
+                       t_u_node[0] * img_f_nodes[:, 2]) + C * E ** 2 * (
+                       Xfi * t_u_node[0] + xf * img_f_nodes[:, 0]) * (
+                       Xfi * t_u_node[2] + xf * img_f_nodes[:, 2]) * xf * Xfi)
+    Pzx = A * (-3 * f_nodes[:,
+                    0] * diszi * H3ski / Ra - 3 * Ra * disxi * diszi * H5ski - 2 * f_nodes[:,
+                                                                                   2] * img_f_nodes[
+                                                                                        :,
+                                                                                        0] * H3ski / Ra + 6 * f_nodes[
+                                                                                                              :,
+                                                                                                              0] * H5ski * diszi * Dx1 / Ra + C * (
+                       img_f_nodes[:,
+                       0] * diszi * r2ski + disxi * diszi * Xfi ** 2) * H3ski * Det - C * H2ski * Det ** 2 * Xfi * (
+                       Xfi * diszi + img_f_nodes[:, 2] * rski) * (
+                       img_f_nodes[:, 0] * r2ski - disxi * Xfi ** 2 + (
+                       t_u_node[0] - 2 * img_f_nodes[:, 0]) * rski * Xfi) - C * E * (
+                       t_u_node[2] * img_f_nodes[:, 0]) + C * E ** 2 * (
+                       Xfi * t_u_node[0] + xf * img_f_nodes[:, 0]) * (
+                       Xfi * t_u_node[2] + xf * img_f_nodes[:, 2]) * xf * Xfi)
+
+    Pyz = A * (-3 * f_nodes[:,
+                    2] * disyi * H3ski / Ra - 3 * Ra * diszi * disyi * H5ski - 2 * f_nodes[:,
+                                                                                   1] * img_f_nodes[
+                                                                                        :,
+                                                                                        2] * H3ski / Ra + 6 * f_nodes[
+                                                                                                              :,
+                                                                                                              2] * H5ski * disyi * Dx1 / Ra + C * (
+                       img_f_nodes[:,
+                       2] * disyi * r2ski + diszi * disyi * Xfi ** 2) * H3ski * Det - C * H2ski * Det ** 2 * Xfi * (
+                       Xfi * disyi + img_f_nodes[:, 1] * rski) * (
+                       img_f_nodes[:, 2] * r2ski - diszi * Xfi ** 2 + (
+                       t_u_node[2] - 2 * img_f_nodes[:, 2]) * rski * Xfi) - C * E * (
+                       t_u_node[1] * img_f_nodes[:, 2]) + C * E ** 2 * (
+                       Xfi * t_u_node[2] + xf * img_f_nodes[:, 2]) * (
+                       Xfi * t_u_node[1] + xf * img_f_nodes[:, 1]) * xf * Xfi)
+    Pzy = A * (-3 * f_nodes[:,
+                    1] * diszi * H3ski / Ra - 3 * Ra * disyi * diszi * H5ski - 2 * f_nodes[:,
+                                                                                   2] * img_f_nodes[
+                                                                                        :,
+                                                                                        1] * H3ski / Ra + 6 * f_nodes[
+                                                                                                              :,
+                                                                                                              1] * H5ski * diszi * Dx1 / Ra + C * (
+                       img_f_nodes[:,
+                       1] * diszi * r2ski + disyi * diszi * Xfi ** 2) * H3ski * Det - C * H2ski * Det ** 2 * Xfi * (
+                       Xfi * diszi + img_f_nodes[:, 2] * rski) * (
+                       img_f_nodes[:, 1] * r2ski - disyi * Xfi ** 2 + (
+                       t_u_node[1] - 2 * img_f_nodes[:, 1]) * rski * Xfi) - C * E * (
+                       t_u_node[2] * img_f_nodes[:, 1]) + C * E ** 2 * (
+                       Xfi * t_u_node[1] + xf * img_f_nodes[:, 1]) * (
+                       Xfi * t_u_node[2] + xf * img_f_nodes[:, 2]) * xf * Xfi)
+
+    m00 = MSxx - Ra * H1ski / Xf - Ra ** 3 * disxi * disxi * H3ski / Xf ** 3 - A1 * (
+            img_f_nodes[:, 0] * img_f_nodes[:, 0] * H1ski / Ra ** 3 - Ra * H3ski * (
+            img_f_nodes[:, 0] * disxi + img_f_nodes[:, 0] * disxi) / Xf ** 2 + 2 * img_f_nodes[:,
+                                                                                   0] * img_f_nodes[
+                                                                                        :,
+                                                                                        0] * Dx1 * H3ski / Ra ** 3) - A2 * Pxx
+    m11 = MSyy - Ra * H1ski / Xf - Ra ** 3 * disyi * disyi * H3ski / Xf ** 3 - A1 * (
+            img_f_nodes[:, 1] * img_f_nodes[:, 1] * H1ski / Ra ** 3 - Ra * H3ski * (
+            img_f_nodes[:, 1] * disyi + img_f_nodes[:, 1] * disyi) / Xf ** 2 + 2 * img_f_nodes[:,
+                                                                                   1] * img_f_nodes[
+                                                                                        :,
+                                                                                        1] * Dx1 * H3ski / Ra ** 3) - A2 * Pyy
+    m22 = MSzz - Ra * H1ski / Xf - Ra ** 3 * diszi * diszi * H3ski / Xf ** 3 - A1 * (
+            img_f_nodes[:, 2] * img_f_nodes[:, 2] * H1ski / Ra ** 3 - Ra * H3ski * (
+            img_f_nodes[:, 2] * diszi + img_f_nodes[:, 2] * diszi) / Xf ** 2 + 2 * img_f_nodes[:,
+                                                                                   2] * img_f_nodes[
+                                                                                        :,
+                                                                                        2] * Dx1 * H3ski / Ra ** 3) - A2 * Pzz
+
+    m01 = MSxy - Ra ** 3 * disxi * disyi * H3ski / Xf ** 3 - A1 * (
+            img_f_nodes[:, 0] * img_f_nodes[:, 1] * H1ski / Ra ** 3 - Ra * H3ski * (
+            img_f_nodes[:, 0] * disyi + img_f_nodes[:, 1] * disxi) / Xf ** 2 + 2 * img_f_nodes[:,
+                                                                                   1] * img_f_nodes[
+                                                                                        :,
+                                                                                        0] * Dx1 * H3ski / Ra ** 3) - A2 * Pxy
+    m02 = MSxz - Ra ** 3 * disxi * diszi * H3ski / Xf ** 3 - A1 * (
+            img_f_nodes[:, 0] * img_f_nodes[:, 2] * H1ski / Ra ** 3 - Ra * H3ski * (
+            img_f_nodes[:, 0] * diszi + img_f_nodes[:, 2] * disxi) / Xf ** 2 + 2 * img_f_nodes[:,
+                                                                                   2] * img_f_nodes[
+                                                                                        :,
+                                                                                        0] * Dx1 * H3ski / Ra ** 3) - A2 * Pxz
+    m12 = MSyz - Ra ** 3 * disyi * diszi * H3ski / Xf ** 3 - A1 * (
+            img_f_nodes[:, 2] * img_f_nodes[:, 1] * H1ski / Ra ** 3 - Ra * H3ski * (
+            img_f_nodes[:, 2] * disyi + img_f_nodes[:, 1] * diszi) / Xf ** 2 + 2 * img_f_nodes[:,
+                                                                                   1] * img_f_nodes[
+                                                                                        :,
+                                                                                        2] * Dx1 * H3ski / Ra ** 3) - A2 * Pyz
+
+    m10 = MSyx - Ra ** 3 * disxi * disyi * H3ski / Xf ** 3 - A1 * (
+            img_f_nodes[:, 0] * img_f_nodes[:, 1] * H1ski / Ra ** 3 - Ra * H3ski * (
+            img_f_nodes[:, 0] * disyi + img_f_nodes[:, 1] * disxi) / Xf ** 2 + 2 * img_f_nodes[:,
+                                                                                   1] * img_f_nodes[
+                                                                                        :,
+                                                                                        0] * Dx1 * H3ski / Ra ** 3) - A2 * Pyx
+    m20 = MSzx - Ra ** 3 * disxi * diszi * H3ski / Xf ** 3 - A1 * (
+            img_f_nodes[:, 0] * img_f_nodes[:, 2] * H1ski / Ra ** 3 - Ra * H3ski * (
+            img_f_nodes[:, 0] * diszi + img_f_nodes[:, 2] * disxi) / Xf ** 2 + 2 * img_f_nodes[:,
+                                                                                   2] * img_f_nodes[
+                                                                                        :,
+                                                                                        0] * Dx1 * H3ski / Ra ** 3) - A2 * Pzx
+    m21 = MSzy - Ra ** 3 * disyi * diszi * H3ski / Xf ** 3 - A1 * (
+            img_f_nodes[:, 2] * img_f_nodes[:, 1] * H1ski / Ra ** 3 - Ra * H3ski * (
+            img_f_nodes[:, 2] * disyi + img_f_nodes[:, 1] * diszi) / Xf ** 2 + 2 * img_f_nodes[:,
+                                                                                   1] * img_f_nodes[
+                                                                                        :,
+                                                                                        2] * Dx1 * H3ski / Ra ** 3) - A2 * Pzy
+    return m00, m01, m02, m10, m11, m12, m20, m21, m22, i0
+
+
+def pf_sphere_image_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity information
+                          obj2: 'sf.StokesFlowObj',  # object contain force information
+                          m, **kwargs):
+    # Solve m matrix using point force Stokeslets method
+    # U = M * F.
+    u_nodes = obj1.get_u_nodes()
+    f_nodes = obj2.get_f_nodes()
+    _, u_glbIdx_all = obj1.get_u_geo().get_glbIdx()
+    _, f_glbIdx_all = obj2.get_f_geo().get_glbIdx()
+    u_dmda = obj1.get_u_geo().get_dmda()
+
+    for i0 in range(u_dmda.getRanges()[0][0], u_dmda.getRanges()[0][1]):
+        m00, m01, m02, m10, m11, m12, m20, m21, m22, i1 = point_force_matrix_3d_petsc_mij(
+                u_nodes[i0], f_nodes, i0, **kwargs)
+        u_glb = u_glbIdx_all[i1 * 3]
+        m.setValues(u_glb + 0, f_glbIdx_all[0::3], m00, addv=False)
+        m.setValues(u_glb + 0, f_glbIdx_all[1::3], m01, addv=False)
+        m.setValues(u_glb + 0, f_glbIdx_all[2::3], m02, addv=False)
+        m.setValues(u_glb + 1, f_glbIdx_all[0::3], m10, addv=False)
+        m.setValues(u_glb + 1, f_glbIdx_all[1::3], m11, addv=False)
+        m.setValues(u_glb + 1, f_glbIdx_all[2::3], m12, addv=False)
+        m.setValues(u_glb + 2, f_glbIdx_all[0::3], m20, addv=False)
+        m.setValues(u_glb + 2, f_glbIdx_all[1::3], m21, addv=False)
+        m.setValues(u_glb + 2, f_glbIdx_all[2::3], m22, addv=False)
+    m.assemble()
+    return True  # ' point_force_matrix, U = M * F '
+
+
+def check_pf_sphere_image_petsc(**kwargs):
+    err_msg = 'the image of Stokeslets outside sphere needs parameter, pf_sphere_image_Ra. '
+    assert 'pf_sphere_image_Ra' in kwargs, err_msg
     return True
 
 

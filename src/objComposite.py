@@ -11,15 +11,18 @@ __all__ = ['createEcoli_ellipse', 'createEcoliComp_ellipse', 'createEcoli_2tails
            'create_rotlets_tail_2part', 'create_selfRepeat_tail',
            'create_ecoli_2part_at', 'create_ecoli_dualTail_at',
            'get_tail_nodes_split_at', 'get_ecoli_nodes_split_at',
+           'get_ecoli_nodes_2part_at', 'get_tail_at', 'get_ellipsoid_at',
            'create_diskVane_tail',
            'create_capsule',
            'create_rod',
            'create_infHelix',
            'create_helicoid_list', 'create_helicoid_comp',
-           'creat_helicoid_dumb', 'creat_helicoid_dumb_selfRotate',
+           'creat_dumb_obj',
+           'creat_helicoid_dumb', 'creat_helicoid_dumb_v2', 'creat_helicoid_dumb_selfRotate',
            'obj2helicoid_list', 'obj2helicoid_list_v2', 'obj2helicoid_list_v3',
            'obj2helicoid_comp', 'obj2helicoid_list_selfRotate',
-           'create_sphere', 'create_move_single_sphere', 'create_one_ellipse']
+           'create_sphere', 'create_move_single_sphere',
+           'create_one_ellipse', 'create_one_ellipse_v2']
 
 
 def create_capsule(rs1, rs2, ls, ds, node_dof=3):
@@ -67,6 +70,9 @@ def create_ecoli_tail(moveh, **kwargs):
     matrix_method = kwargs['matrix_method']
     zoom_factor = kwargs['zoom_factor']
     obj_type = sf.obj_dic[matrix_method]
+    if 'rs' in matrix_method:
+        err_msg = 'the regularized family methods requires eh==0. '
+        assert np.isclose(eh, 0), err_msg
 
     # create helix
     vhobj0 = obj_type()
@@ -119,6 +125,9 @@ def create_ecoli_tail_bck(moveh, **kwargs):
     matrix_method = kwargs['matrix_method']
     zoom_factor = kwargs['zoom_factor']
     obj_type = sf.obj_dic[matrix_method]
+    if 'rs' in matrix_method:
+        err_msg = 'the regularized family methods requires eh==0. '
+        assert np.isclose(eh, 0), err_msg
 
     # create helix
     vhobj0 = obj_type()
@@ -212,6 +221,9 @@ def create_selfRepeat_tail(moveh, **kwargs):
     matrix_method = kwargs['matrix_method']
     zoom_factor = kwargs['zoom_factor']
     obj_type = sf.obj_dic[matrix_method]
+    if 'rs' in matrix_method:
+        err_msg = 'the regularized family methods requires eh==0. '
+        assert np.isclose(eh, 0), err_msg
 
     # create helix
     vhobj0 = obj_type()  # type: sf.StokesFlowObj
@@ -301,6 +313,19 @@ def get_tail_nodes_split_at(theta, phi, psi_tail, now_center=np.zeros(3), **prob
     return t1, t2
 
 
+def get_tail_at(theta, phi, psi_tail, now_center=np.zeros(3), **problem_kwargs):
+    tail_list = create_ecoli_tail(np.zeros(3), **problem_kwargs)
+    tail_obj = sf.StokesFlowObj()
+    tail_obj.set_name('tail_obj')
+    tail_obj.combine(tail_list)
+    tail_obj.node_rotation(np.array((0, 1, 0)), theta)
+    tail_obj.node_rotation(np.array((0, 0, 1)), phi)
+    tail_obj.node_rotation(tail_obj.get_u_geo().get_geo_norm(), psi_tail)
+    tail_obj.move(now_center)
+
+    return [tail_obj.get_u_nodes(), ]
+
+
 def createEcoli_ellipse(name='...', **kwargs):
     ch = kwargs['ch']
     ph = kwargs['ph']
@@ -319,6 +344,9 @@ def createEcoli_ellipse(name='...', **kwargs):
     moves = np.array((0, 0, movesz)) + center  # move distance of sphere
     moveh = np.array((0, 0, -movehz)) + center  # move distance of helix
     objtype = sf.obj_dic[matrix_method]
+    if 'rs' in matrix_method:
+        err_msg = 'the regularized family methods requires es==0. '
+        assert np.isclose(es, 0), err_msg
 
     # create tail
     tail_list = create_ecoli_tail(moveh, **kwargs)
@@ -326,7 +354,8 @@ def createEcoli_ellipse(name='...', **kwargs):
     # create head
     vsgeo = ellipse_base_geo()  # velocity node geo of sphere
     vsgeo.create_delta(ds, rs1, rs2)
-    vsgeo.node_rotation(norm=np.array((0, 1, 0)), theta=-np.pi / 2)
+    vsgeo.set_geo_norm(vsgeo.get_geo_norm() * -1)
+    vsgeo.node_rotation(norm=np.array((0, 1, 0)), theta=np.pi / 2)
     fsgeo = vsgeo.copy()  # force node geo of sphere
     fsgeo.node_zoom(1 + ds / (0.5 * (rs1 + rs2)) * es)
     vsobj = objtype()
@@ -350,6 +379,9 @@ def createEcoli_2tails(name='...', **kwargs):
     matrix_method = kwargs['matrix_method']
     lh = ph * ch  # length of helix
     objtype = sf.obj_dic[matrix_method]
+    if 'rs' in matrix_method:
+        err_msg = 'the regularized family methods requires es==0. '
+        assert np.isclose(es, 0), err_msg
 
     # create tail
     movez = np.array((0, 0, rs1 + dist_hs + lh / 2))
@@ -419,6 +451,11 @@ def createEcoli_tunnel(**kwargs):
     moveh = np.array((rT1 - rh1, 0, movehz)) + center  # move distance of helix
     lT = (rT1 + rh2) * 2
     objtype = sf.obj_dic[matrix_method]
+    if 'rs' in matrix_method:
+        err_msg = 'the regularized family methods requires es==0. '
+        assert np.isclose(es, 0), err_msg
+        err_msg = 'the regularized family methods requires eT==0. '
+        assert np.isclose(eT, 0), err_msg
 
     # create helix
     tail_list = create_ecoli_tail(moveh, **kwargs)
@@ -486,9 +523,10 @@ def create_ecoli_2part(**problem_kwargs):
     # create a ecoli contain two parts, one is head and one is tail.
     rel_Us = problem_kwargs['rel_Us']
     rel_Uh = problem_kwargs['rel_Uh']
+    center = problem_kwargs['center']
     update_order = problem_kwargs['update_order'] if 'update_order' in problem_kwargs.keys() else 1
-    update_fun = problem_kwargs[
-        'update_fun'] if 'update_fun' in problem_kwargs.keys() else Adams_Bashforth_Methods
+    update_fun = problem_kwargs['update_fun'] if 'update_fun' in problem_kwargs.keys() \
+        else Adams_Bashforth_Methods
     with_T_geo = problem_kwargs['with_T_geo']
     err_msg = 'currently, do not support with_T_geo for this kind of ecoli. '
     assert not with_T_geo, err_msg
@@ -500,8 +538,7 @@ def create_ecoli_2part(**problem_kwargs):
     tail_obj.combine(tail_obj_list)
     head_geo = head_obj.get_u_geo()
     # ecoli_comp = sf.ForceFreeComposite(center=head_geo.get_center(), norm=head_geo.get_geo_norm(), name='ecoli_0')
-    ecoli_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=head_geo.get_geo_norm(),
-                                       name='ecoli_0')
+    ecoli_comp = sf.ForceFreeComposite(center=center, norm=head_geo.get_geo_norm(), name='ecoli_0')
     ecoli_comp.add_obj(obj=head_obj, rel_U=rel_Us)
     ecoli_comp.add_obj(obj=tail_obj, rel_U=rel_Uh)
     ecoli_comp.set_update_para(fix_x=False, fix_y=False, fix_z=False,
@@ -546,29 +583,61 @@ def create_rotlets_tail_2part(rotlet_strength=0, **problem_kwargs):
 
 
 def create_ecoli_2part_at(theta, phi, psi_tail, now_center=np.zeros(3), **problem_kwargs):
+    ti = problem_kwargs['ti'] if 'ti' in problem_kwargs.keys() else 0
+    omega_tail = problem_kwargs['omega_tail'] if 'omega_tail' in problem_kwargs.keys() else 0
+
     ecoli_comp = create_ecoli_2part(**problem_kwargs)
     ecoli_comp.node_rotation(np.array((0, 1, 0)), theta)
     ecoli_comp.node_rotation(np.array((0, 0, 1)), phi)
+    head_obj = ecoli_comp.get_obj_list()[0]
     tail_obj = ecoli_comp.get_obj_list()[1]
+    head_obj.node_rotation(head_obj.get_u_geo().get_geo_norm(), psi_tail - omega_tail * ti)
     tail_obj.node_rotation(tail_obj.get_u_geo().get_geo_norm(), psi_tail)
     ecoli_comp.move(now_center)
     return ecoli_comp
 
 
+def get_ecoli_nodes_2part_at(*args, **kwargs):
+    ecoli_comp = create_ecoli_2part_at(*args, **kwargs)
+    return [i0.get_u_geo().get_nodes() for i0 in ecoli_comp.get_obj_list()]
+
+
 def get_ecoli_nodes_split_at(theta, phi, psi_tail, now_center=np.zeros(3), **problem_kwargs):
+    n_tail = problem_kwargs['n_tail']
+    ti = problem_kwargs['ti'] if 'ti' in problem_kwargs.keys() else 0
+    omega_tail = problem_kwargs['omega_tail'] if 'omega_tail' in problem_kwargs.keys() else 0
+
     ecoli_comp = create_ecoli_2part(**problem_kwargs)
     ecoli_comp.node_rotation(np.array((0, 1, 0)), theta)
     ecoli_comp.node_rotation(np.array((0, 0, 1)), phi)
+    head_obj = ecoli_comp.get_obj_list()[0]
     tail_obj = ecoli_comp.get_obj_list()[1]
+    head_obj.node_rotation(head_obj.get_u_geo().get_geo_norm(), psi_tail - omega_tail * ti)
     tail_obj.node_rotation(tail_obj.get_u_geo().get_geo_norm(), psi_tail)
     ecoli_comp.move(now_center)
 
-    n_tail = problem_kwargs['n_tail']
     t0 = np.split(tail_obj.get_u_nodes(), 2 * n_tail)
     t1 = np.vstack(t0[1::2])
     t2 = np.vstack(t0[0::2])
     t3 = ecoli_comp.get_obj_list()[0].get_u_nodes()
     return t1, t2, t3
+
+
+def get_ellipsoid_at(theta, phi, psi_tail, now_center=np.zeros(3), **problem_kwargs):
+    ds = problem_kwargs['ds']
+    rs1 = problem_kwargs['rs1']
+    rs2 = problem_kwargs['rs2']
+
+    vsgeo = ellipse_base_geo()
+    vsgeo.create_delta(ds, rs1, rs2)
+    vsgeo.set_geo_norm(vsgeo.get_geo_norm() * -1)
+    vsgeo.node_rotation(norm=np.array((0, 1, 0)), theta=np.pi / 2)
+    vsgeo.node_rotation(np.array((0, 1, 0)), theta)
+    vsgeo.node_rotation(np.array((0, 0, 1)), phi)
+    vsgeo.node_rotation(vsgeo.get_geo_norm(), psi_tail)
+    vsgeo.move(now_center - vsgeo.get_center())
+
+    return [vsgeo.get_nodes(), ]
 
 
 def create_ecoli_dualTail(**problem_kwargs):
@@ -623,6 +692,9 @@ def create_sphere(namehandle='sphereObj', **kwargs):
     es = kwargs['es']
     sphere_coord = kwargs['sphere_coord']
     objtype = sf.obj_dic[matrix_method]
+    if 'rs' in matrix_method:
+        err_msg = 'the regularized family methods requires es==0. '
+        assert np.isclose(es, 0), err_msg
 
     obj_sphere = objtype()
     sphere_geo0 = sphere_geo()  # force geo
@@ -644,7 +716,7 @@ def create_sphere(namehandle='sphereObj', **kwargs):
     return obj_list
 
 
-def create_one_ellipse(namehandle='sphereObj', **kwargs):
+def create_one_ellipse(namehandle='ellipseObj', **kwargs):
     matrix_method = kwargs['matrix_method']
     rs1 = kwargs['rs1']
     rs2 = kwargs['rs2']
@@ -653,6 +725,9 @@ def create_one_ellipse(namehandle='sphereObj', **kwargs):
     es = kwargs['es']
     sphere_coord = kwargs['sphere_coord']
     objtype = sf.obj_dic[matrix_method]
+    if 'rs' in matrix_method:
+        err_msg = 'the regularized family methods requires es==0. '
+        assert np.isclose(es, 0), err_msg
 
     obj_sphere = objtype()  # type: sf.StokesFlowObj
     sphere_geo0 = ellipse_base_geo()  # force geo
@@ -665,6 +740,34 @@ def create_one_ellipse(namehandle='sphereObj', **kwargs):
     obj_sphere.set_data(sphere_geo1, sphere_geo0, name=namehandle)
     obj_sphere.move(sphere_coord)
     return obj_sphere
+
+
+def create_one_ellipse_v2(namehandle='ellipseObj', **kwargs):
+    matrix_method = kwargs['matrix_method']
+    ellipse_rs1 = kwargs['ellipse_rs1']
+    ellipse_rs2 = kwargs['ellipse_rs2']
+    ellipse_rs3 = kwargs['ellipse_rs3']
+    ellipse_velocity = kwargs['ellipse_velocity']
+    ellipse_ds = kwargs['ellipse_ds']
+    ellipse_es = kwargs['ellipse_es']
+    ellipse_center = kwargs['ellipse_center']
+
+    if 'rs' in matrix_method:
+        err_msg = 'the regularized family methods requires ellipse_es==0. '
+        assert np.isclose(ellipse_es, 0), err_msg
+
+    obj_ellipse = sf.obj_dic[matrix_method]()  # type: sf.StokesFlowObj
+    sphere_geo0 = ellipse_3d_geo()  # force geo
+    sphere_geo0.set_dof(obj_ellipse.get_n_unknown())
+    sphere_geo0.create_delta(ellipse_ds, ellipse_rs1, ellipse_rs2, ellipse_rs3)
+    sphere_geo0.set_rigid_velocity(ellipse_velocity)
+    sphere_geo1 = sphere_geo0.copy()
+    if 'pf' in matrix_method:
+        t1 = np.mean((ellipse_rs1, ellipse_rs2, ellipse_rs3))
+        sphere_geo1.node_zoom(1 + ellipse_ds / t1 * ellipse_es)
+    obj_ellipse.set_data(sphere_geo1, sphere_geo0, name=namehandle)
+    obj_ellipse.move(ellipse_center)
+    return obj_ellipse
 
 
 def create_move_single_sphere(namehandle='sphereObj', **kwargs):
@@ -689,6 +792,9 @@ def create_rod(namehandle='rod_obj', **problem_kwargs):
     zoom_factor = problem_kwargs['zoom_factor']
     givenF = problem_kwargs['givenF']
     matrix_method = problem_kwargs['matrix_method']
+    if 'rs' in matrix_method:
+        err_msg = 'the regularized family methods requires eRod==0. '
+        assert np.isclose(eRod, 0), err_msg
 
     dth = 2 * np.pi / ntRod
     rod_geo = tunnel_geo()
@@ -725,6 +831,10 @@ def create_infHelix(namehandle='infhelix', normalize=False, **problem_kwargs):
     ph = problem_kwargs['ph']
     nth = problem_kwargs['nth']
     zoom_factor = problem_kwargs['zoom_factor']
+    matrix_method = problem_kwargs['matrix_method']
+    if 'rs' in matrix_method:
+        err_msg = 'the regularized family methods requires eh==0. '
+        assert np.isclose(eh, 0), err_msg
 
     if normalize:
         rh2 = rh2 * zoom_factor
@@ -862,7 +972,7 @@ def obj2helicoid_list_v3(tobj, **problem_kwargs):
     ndsk_each = problem_kwargs['helicoid_ndsk_each']
     assert ndsk_each == 4
     helicoid_th0 = problem_kwargs['helicoid_th0'] if 'helicoid_th0' in problem_kwargs.keys() else 0
-    assert np.isclose(np.linalg.norm(tobj.get_u_geo().get_center()), 0)
+    # assert np.isclose(np.linalg.norm(tobj.get_u_geo().get_center()), 0)
 
     namehandle = tobj.get_name()
     rot_dth = 2 * np.pi / ndsk_each
@@ -876,6 +986,12 @@ def obj2helicoid_list_v3(tobj, **problem_kwargs):
     tobj2.node_rotation(np.array((1, 0, 0)), -np.pi / 2, rotation_origin=np.zeros(3))
     tobj2.node_rotation(np.array((0, 1, 0)), -rot_dth / 2, rotation_origin=np.zeros(3))
 
+    # # dbg
+    # dbg_obj = sf.StokesFlowObj()
+    # dbg_obj.combine((tobj0, tobj1, tobj2))
+    # dbg_obj.show_u_nodes()
+    # assert 1 == 2
+    #
     tobj_list = []
     for i0 in range(ndsk_each):
         rot_th = i0 * rot_dth + helicoid_th0
@@ -938,32 +1054,16 @@ def obj2helicoid_comp_selfRotate(tobj0, **kwargs):
     return helicoid_comp
 
 
-def creat_helicoid_dumb(**problem_kwargs):
-    dumb_d = problem_kwargs['dumb_d']
-    dumb_theta = problem_kwargs['dumb_theta']
-    ds = problem_kwargs['ds']
-    rs = problem_kwargs['rs']
-    sphere_geo0 = sphere_geo()
-    sphere_geo0.create_delta(ds, rs)
-    sphere_geo1 = sphere_geo0.copy()
-    sphere_geo0.move(np.array((0, 0, dumb_d / 2)))
-    sphere_geo1.move(np.array((0, 0, -dumb_d / 2)))
-    dumb_geo = base_geo()
-    dumb_geo.combine([sphere_geo0, sphere_geo1], origin=np.zeros(3), geo_norm=np.array((0, 0, 1)))
-    dumb_geo.node_rotation(norm=np.array((1, 0, 0)), theta=dumb_theta)
-    tobj = sf.StokesFlowObj()
-    tobj.set_data(dumb_geo, dumb_geo, 'helicoid_dumb')
-    helicoid_comp = obj2helicoid_comp(tobj, **problem_kwargs)
-    return helicoid_comp
-
-
-def creat_helicoid_dumb_selfRotate(**problem_kwargs):
+def creat_dumb_obj(name='helicoid_dumb', **problem_kwargs):
     matrix_method = problem_kwargs['matrix_method']
     dumb_d = problem_kwargs['dumb_d']
     dumb_theta = problem_kwargs['dumb_theta']
     ds = problem_kwargs['ds']
     rs = problem_kwargs['rs']
     es = problem_kwargs['es']
+    if 'rs' in matrix_method:
+        err_msg = 'the regularized family methods requires es==0. '
+        assert np.isclose(es, 0), err_msg
 
     sphere_geo0 = sphere_geo()
     sphere_geo0.create_delta(ds, rs)
@@ -979,9 +1079,89 @@ def creat_helicoid_dumb_selfRotate(**problem_kwargs):
     dumb_geo.combine([sphere_geo0, sphere_geo1], origin=np.zeros(3), geo_norm=np.array((0, 0, 1)))
     dumb_geo.node_rotation(norm=np.array((1, 0, 0)), theta=dumb_theta)
     dumb_geof = base_geo()
-    dumb_geof.combine([sphere_geo0f, sphere_geo1f], origin=np.zeros(3), geo_norm=np.array((0, 0, 1)))
+    dumb_geof.combine([sphere_geo0f, sphere_geo1f], origin=np.zeros(3),
+                      geo_norm=np.array((0, 0, 1)))
     dumb_geof.node_rotation(norm=np.array((1, 0, 0)), theta=dumb_theta)
     tobj = sf.obj_dic[matrix_method]()
-    tobj.set_data(dumb_geof, dumb_geo, name='helicoid_dumb')
+    tobj.set_data(dumb_geof, dumb_geo, name=name)
+    return tobj
+
+
+def creat_dumb_obj_v2(name='helicoid_dumb', **problem_kwargs):
+    matrix_method = problem_kwargs['matrix_method']
+    dumb_d = problem_kwargs['dumb_d']
+    dumb_theta = problem_kwargs['dumb_theta']
+    ds = problem_kwargs['ds']
+    rs = problem_kwargs['rs']
+    es = problem_kwargs['es']
+    if 'rs' in matrix_method:
+        err_msg = 'the regularized family methods requires es==0. '
+        assert np.isclose(es, 0), err_msg
+
+    sphere_geo0 = sphere_geo()
+    sphere_geo0.create_delta(ds, rs)
+    sphere_geo0f = sphere_geo0.copy()
+    sphere_geo0f.node_zoom(1 + ds * es / rs)
+    sphere_geo1 = sphere_geo0.copy()
+    sphere_geo1f = sphere_geo0f.copy()
+    # sphere_geo0.move(np.array((0, 0, dumb_d / 2)))
+    # sphere_geo1.move(np.array((0, 0, -dumb_d / 2)))
+    # sphere_geo0f.move(np.array((0, 0, dumb_d / 2)))
+    # sphere_geo1f.move(np.array((0, 0, -dumb_d / 2)))
+    # dumb_geo = base_geo()
+    # dumb_geo.combine([sphere_geo0, sphere_geo1], origin=np.zeros(3), geo_norm=np.array((0, 0, 1)))
+    # dumb_geo.node_rotation(norm=np.array((1, 0, 0)), theta=dumb_theta)
+    # dumb_geof = base_geo()
+    # dumb_geof.combine([sphere_geo0f, sphere_geo1f], origin=np.zeros(3),
+    #                   geo_norm=np.array((0, 0, 1)))
+    # dumb_geof.node_rotation(norm=np.array((1, 0, 0)), theta=dumb_theta)
+
+    tobj0 = sf.obj_dic[matrix_method]()
+    tobj0.set_data(sphere_geo0f, sphere_geo0, name='%s_0' % name)
+    tobj0.move(np.array((0, 0, dumb_d / 2)))
+    tobj0.node_rotation(norm=np.array((1, 0, 0)), theta=dumb_theta, rotation_origin=np.zeros(3))
+    # tobj0.get_u_geo().set_center(np.zeros(3))
+    # tobj0.get_f_geo().set_center(np.zeros(3))
+    # tobj0.show_u_nodes()
+
+    tobj1 = sf.obj_dic[matrix_method]()
+    tobj1.set_data(sphere_geo1f, sphere_geo1, name='%s_1' % name)
+    tobj1.move(np.array((0, 0, -dumb_d / 2)))
+    tobj1.node_rotation(norm=np.array((1, 0, 0)), theta=dumb_theta, rotation_origin=np.zeros(3))
+    # tobj1.get_u_geo().set_center(np.zeros(3))
+    # tobj1.get_f_geo().set_center(np.zeros(3))
+    return tobj0, tobj1
+
+
+def creat_helicoid_dumb(**problem_kwargs):
+    tobj = creat_dumb_obj(**problem_kwargs)
+    helicoid_comp = obj2helicoid_comp(tobj, **problem_kwargs)
+    return helicoid_comp
+
+
+def creat_helicoid_dumb_v2(**problem_kwargs):
+    update_order = problem_kwargs['update_order'] if 'update_order' in problem_kwargs.keys() \
+        else 1
+    update_fun = problem_kwargs['update_fun'] if 'update_fun' in problem_kwargs.keys() \
+        else Adams_Bashforth_Methods
+    tobj0, tobj1 = creat_dumb_obj_v2(**problem_kwargs)
+    helicoid_comp0 = obj2helicoid_comp(tobj0, **problem_kwargs)
+    helicoid_comp1 = obj2helicoid_comp(tobj1, **problem_kwargs)
+    # helicoid_comp0.show_u_nodes()
+    # helicoid_comp1.show_u_nodes()
+
+    helicoid_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((0, 0, 1)),
+                                          name='helicoid_comp')
+    for tobj in helicoid_comp0.get_obj_list():
+        helicoid_comp.add_obj(obj=tobj, rel_U=np.zeros(6))
+    for tobj in helicoid_comp1.get_obj_list():
+        helicoid_comp.add_obj(obj=tobj, rel_U=np.zeros(6))
+    helicoid_comp.set_update_para(fix_x=False, fix_y=False, fix_z=False,
+                                  update_fun=update_fun, update_order=update_order)
+    return helicoid_comp
+
+
+def creat_helicoid_dumb_selfRotate(**problem_kwargs):
+    tobj = creat_dumb_obj(**problem_kwargs)
     helicoid_comp = obj2helicoid_comp_selfRotate(tobj, **problem_kwargs)
     return helicoid_comp

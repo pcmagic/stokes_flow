@@ -53,8 +53,18 @@ def get_simulate_data(eq_dir):
 
         text_headle = 'absolute ref U \['
         absU.append(read_array(text_headle, FILE_DATA, array_length=6))
+
         text_headle = '\] and \['
-        wm.append(read_array(text_headle, FILE_DATA, array_length=6))
+        t1 = read_array(text_headle, FILE_DATA, array_length=6)
+        if np.all(np.isfinite(t1)):
+            wm.append(read_array(text_headle, FILE_DATA, array_length=6))
+        else:
+            text_headle = 'sphere_0: relative velocity \['
+            t1 = read_array(text_headle, FILE_DATA, array_length=6)
+            text_headle = 'helix_0: relative velocity \['
+            t2 = read_array(text_headle, FILE_DATA, array_length=6)
+            t3 = t2 - t1
+            wm.append(t3)
         text_headle = 'head resultant is \['
         absF.append(read_array(text_headle, FILE_DATA, array_length=6))
         text_headle = ' geometry zoom factor is'
@@ -75,7 +85,8 @@ def get_simulate_data(eq_dir):
                          'zf': zf}).dropna(how='all').pivot_table(index='zf')
     Th = data.Th
     uz = data.uz
-    uz[uz < 0] = 0
+    # uz[uz < 0] = 0
+    uz[uz < 0] = np.abs(uz[uz < 0]) * 0.1
     wm = data.wm
     wh = data.wh
     return uz, wm, wh, Th

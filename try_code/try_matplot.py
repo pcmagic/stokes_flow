@@ -28,9 +28,9 @@ nodes[:, 2] = np.tile(z, n_a).reshape(n_a, -1).flatten(order='F')
 
 # mpl.rcParams['legend.fontsize'] = 10
 fig = plt.figure()
-ax = fig.gca(projection='3d')
+ax = fig.add_subplot(111, projection='3d')
 ax.plot(nodes[:, 0], nodes[:, 1], nodes[:, 2], linestyle='None', marker='.')
-ax.set_aspect('equal')
+# ax.set_aspect('equal')
 # plt.grid()
 # plt.get_current_fig_manager().window.showMaximized()
 plt.show()

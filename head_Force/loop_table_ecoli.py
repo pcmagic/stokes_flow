@@ -48,7 +48,7 @@ def get_problem_kwargs(**main_kwargs):
     # problem_kwargs['vtk_matname'] = vtk_matname
     pickle_name = '%s_kwargs.pickle' % fileHandle
     with open(pickle_name, 'wb') as handle:
-        pickle.dump(problem_kwargs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(problem_kwargs, handle, protocol=4)
     PETSc.Sys.Print('---->save kwargs to %s' % pickle_name)
     return problem_kwargs
 

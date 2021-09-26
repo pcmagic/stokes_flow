@@ -72,6 +72,7 @@ class StokesFlowProblem:
             'pf_selfRotate':                      StokesFlowMethod.self_rotate_3d_petsc,
             'rs_selfRotate':                      StokesFlowMethod.self_rotate_3d_petsc,
             'lg_rs_selfRotate':                   StokesFlowMethod.self_rotate_3d_petsc,
+            'pf_sphere':                          StokesFlowMethod.pf_sphere_image_petsc,
         }
         self._check_args_dict = {
             'rs':                                 StokesFlowMethod.check_regularized_stokeslets_matrix_3d,
@@ -92,6 +93,7 @@ class StokesFlowProblem:
             'pf_selfRotate':                      StokesFlowMethod.check_self_rotate_3d_petsc,
             'rs_selfRotate':                      StokesFlowMethod.check_self_rotate_3d_petsc,
             'lg_rs_selfRotate':                   StokesFlowMethod.check_self_rotate_3d_petsc,
+            'pf_sphere':                          StokesFlowMethod.check_pf_sphere_image_petsc,
         }
 
     def _check_add_obj(self, obj):
@@ -476,6 +478,7 @@ class StokesFlowProblem:
         errory = np.sqrt(np.sum((obj_u[1::3] - u_exact[1::3]) ** 2) / np.sum(u_exact[1::3] ** 2))
         errorz = np.sqrt(np.sum((obj_u[2::3] - u_exact[2::3]) ** 2) / np.sum(u_exact[2::3] ** 2))
         error = np.hstack((errorall, errorx, errory, errorz))
+
         return error
 
     def check_vtk_velocity(self):
@@ -878,16 +881,21 @@ class StokesFlowProblem:
         return True
 
     def print_info(self):
-        if self._kwargs['plot_geo']:
-            self.show_f_u_nodes(linestyle='-')
         OptDB = PETSc.Options()
-        if OptDB.getBool('plot_vel', 0):
-            length_factor = OptDB.getReal('vel_fct', 1)
-            self.show_velocity(length_factor=length_factor)
+        PETSc.Sys.Print()
+        PETSc.Sys.Print('Information about %s' % str(self))
+
         for obj in self.get_obj_list():
             obj.print_info()
         PETSc.Sys.Print('%s: force nodes: %d, velocity nodes: %d'
                         % (str(self), self.get_n_f_node(), self.get_n_u_node()))
+        if self._kwargs['plot_geo']:
+            # self.show_f_u_nodes(linestyle='-')
+            self.show_f_u_nodes(linestyle='')
+        if OptDB.getBool('plot_vel', 0):
+            length_factor = OptDB.getReal('vel_fct', 1)
+            self.show_velocity(length_factor=length_factor)
+        return True
 
     def get_M(self):
         err_msg = 'this method must be called before method vtk_velocity(), the latter one would destroy the M matrix. '
@@ -1055,7 +1063,7 @@ class StokesFlowObj:
         # the following properties store the location history of the composite.
         # current such kind of obj don't move.
         # fix the center at u_geo.center()
-        self.obj_norm_hist = []
+        self._obj_norm_hist = []
         # self._locomotion_fct = np.ones(3)
         # self._center_hist = []
         # self._U_hist = []   # (ux,uy,uz,wx,wy,wz)
@@ -1186,9 +1194,14 @@ class StokesFlowObj:
         return True
 
     def node_rotation(self, norm=np.array([0, 0, 1]), theta=0, rotation_origin=None):
-        self.get_f_geo().node_rotation(norm, theta, rotation_origin)
+        rotM = get_rot_matrix(norm, theta)
+        self.node_rotM(rotM=rotM, rotation_origin=rotation_origin)
+        return True
+
+    def node_rotM(self, rotM, rotation_origin=None):
+        self.get_f_geo().node_rotM(rotM, rotation_origin)
         if self.get_f_geo() is not self.get_u_geo():
-            self.get_u_geo().node_rotation(norm, theta, rotation_origin)
+            self.get_u_geo().node_rotM(rotM, rotation_origin)
         return True
 
     def zoom(self, factor, zoom_origin=None):
@@ -1375,11 +1388,11 @@ class StokesFlowObj:
         return True
 
     def update_location(self, eval_dt, print_handle=''):
-        self.obj_norm_hist.append(self.get_u_geo().get_geo_norm())
+        self._obj_norm_hist.append(self.get_u_geo().get_geo_norm())
         return True
 
     def get_obj_norm_hist(self):
-        return self.obj_norm_hist
+        return self._obj_norm_hist
 
 
 class StokesFlowRingObj(StokesFlowObj):
@@ -1948,9 +1961,9 @@ class StokesletsInPipeProblem(StokesFlowProblem):
             self._f1_list.append(problem_u1.get_force_petsc())
             self._f2_list.append(problem_u2.get_force_petsc())
             self._f3_list.append(problem_u3.get_force_petsc())
-            self._residualNorm_list.append(
-                    (problem_u1.get_residualNorm(), problem_u2.get_residualNorm(),
-                     problem_u3.get_residualNorm()))
+            self._residualNorm_list.append((problem_u1.get_residualNorm(),
+                                            problem_u2.get_residualNorm(),
+                                            problem_u3.get_residualNorm()))
             if kwargs['check_acc']:
                 self._check_f_accuracy(b, greenFun, waitBar, **kwargs)
         self._m_pipe.destroy()
@@ -2127,7 +2140,9 @@ class StokesletsInPipeProblem(StokesFlowProblem):
         from src.StokesFlowMethod import stokeslets_matrix_3d
         # 1 velocity at pipe
         iscover = pgeo.get_iscover()
-        uR1 = np.zeros(np.sum(~iscover))
+        # uR1 = np.zeros(np.sum(np.logical_not(iscover)))
+        # uR1 = np.zeros(np.sum(np.abs(iscover)).astype('int'))
+        uR1 = np.zeros(np.sum(np.isclose(iscover, 0)))
         uPhi1 = np.zeros_like(uR1)
         uz1 = np.zeros_like(uR1)
         uR2 = np.zeros_like(uR1)
@@ -2136,6 +2151,7 @@ class StokesletsInPipeProblem(StokesFlowProblem):
         uR3 = np.zeros_like(uR1)
         uPhi3 = np.zeros_like(uR1)
         uz3 = np.zeros_like(uR1)
+
         # 2 velocity at cover
         #  see Liron, N., and R. Shahar. "Stokes flow due to a Stokeslet in a pipe."
         #    Journal of Fluid Mechanics 86.04 (1978): 727-744.
@@ -2213,7 +2229,7 @@ class StokesletsInPipeProblem(StokesFlowProblem):
         uR3 = np.hstack((uR3, np.hstack(tuR3_list)))
         uPhi3 = np.hstack((uPhi3, np.hstack(tuPhi3_list)))
         uz3 = np.hstack((uz3, np.hstack(tuz3_list)))
-        assert n_cover_node == np.sum(iscover), 'something is wrong'
+        assert n_cover_node == np.sum(np.logical_not(np.isclose(iscover, 0))), 'something is wrong'
 
         pphi, _, _ = pgeo.get_polar_coord()
         ux1 = np.cos(pphi) * uR1 - np.sin(pphi) * uPhi1
@@ -2577,7 +2593,8 @@ class SelfRepeatHlxProblem(StokesFlowProblem):
     # Todo: check the directions of the geometry and the rigid body velocity.
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._full_obj_list = []
+        # self._full_obj_list = []
+        self._full_obj_list = uniqueList()
 
     @property
     def full_obj_list(self):
@@ -2678,6 +2695,7 @@ class ForceFreeComposite:
     def __init__(self, center: np.array, norm: np.array, name='...', *args):
         self._obj_list = uniqueList()
         self._rel_U_list = []  # (ux,uy,uz,wx,wy,wz)
+        # self._rel_U_list = uniqueList()  # (ux,uy,uz,wx,wy,wz)
         self._index = -1  # index of object
         self._problem = None
         self._center = None
@@ -2854,12 +2872,17 @@ class ForceFreeComposite:
     def clear_obj_list(self):
         self._obj_list = uniqueList()
         self._rel_U_list = []
+        # self._rel_U_list = uniqueList()
         return True
 
     def print_info(self):
         PETSc.Sys.Print('  %s: father %s, type %s, index %d, force nodes %d, velocity nodes %d'
                         % (self.get_name(), self._problem.get_name(), self._type, self.get_index(),
                            self.get_n_f_node(), self.get_n_u_node()))
+        PETSc.Sys.Print('  %s: norm %s, center %s' %
+                        (self.get_name(), str(self.get_norm()), str(self.get_center())))
+        for obj, rel_U in zip(self.get_obj_list(), self.get_rel_U_list()):
+            PETSc.Sys.Print('  %s: relative velocity %s' % (obj.get_name(), str(rel_U)))
         for obj in self._obj_list:
             obj.print_info()
         return True
@@ -2882,38 +2905,36 @@ class ForceFreeComposite:
         return True
 
     def node_rotation(self, norm=np.array([0, 0, 1]), theta=np.zeros(1), rotation_origin=None):
-        rotation_origin = self._center if rotation_origin is None else rotation_origin
-        for subobj, rel_U in zip(self.get_obj_list(), self.get_rel_U_list()):
-            subobj.node_rotation(norm=norm, theta=theta, rotation_origin=rotation_origin)
-            subobj.set_rigid_velocity(rel_U, self.get_center())
-
-        rotation = get_rot_matrix(norm, theta)
-        t_origin = self._center
-        t_norm = self._norm.copy()
-        self._center = np.dot(rotation, (self._center - rotation_origin)) + rotation_origin
-        self._norm = np.dot(rotation, (self._norm + t_origin - rotation_origin)) \
-                     + rotation_origin - self._center
-        self._norm = self._norm / np.linalg.norm(self._norm)
-
-        rel_U_list = []
-        for rel_U0 in self.get_rel_U_list():
-            tU = np.dot(rotation, (rel_U0[:3] + t_origin - rotation_origin)) \
-                 + rotation_origin - self._center
-            tW = np.dot(rotation, (rel_U0[3:] + t_origin - rotation_origin)) \
-                 + rotation_origin - self._center
-            rel_U_list.append(np.hstack((tU, tW)))
-        self._rel_U_list = rel_U_list
-
-        ref_U0 = self.get_ref_U()
-        tU = np.dot(rotation, (ref_U0[:3] + t_origin - rotation_origin)) \
-             + rotation_origin - self._center
-        tW = np.dot(rotation, (ref_U0[3:] + t_origin - rotation_origin)) \
-             + rotation_origin - self._center
-        self.set_ref_U(np.hstack((tU, tW)))
+        rotM = get_rot_matrix(norm, theta)
+        self.node_rotM(rotM=rotM, rotation_origin=rotation_origin)
 
         # dbg, current version have no effect.
-        self._psi = self._psi + np.dot(t_norm, norm) / (
-                np.linalg.norm(t_norm) * np.linalg.norm(norm)) * theta
+        t_norm = self._norm.copy()
+        t1 = np.dot(t_norm, norm) / (np.linalg.norm(t_norm) * np.linalg.norm(norm))
+        self._psi = t1 * theta + self._psi
+        return True
+
+    def node_rotM(self, rotM, rotation_origin=None):
+        rotation_origin = self._center if rotation_origin is None else rotation_origin
+        for subobj, rel_U in zip(self.get_obj_list(), self.get_rel_U_list()):
+            subobj.node_rotM(rotM=rotM, rotation_origin=rotation_origin)
+            subobj.set_rigid_velocity(rel_U, self.get_center())
+
+        t_origin = self._center
+        self._center = np.dot(rotM, (self._center - rotation_origin)) + rotation_origin
+        self._norm = np.dot(rotM, self._norm) / np.linalg.norm(self._norm)
+
+        t1 = []
+        for rel_U0 in self.get_rel_U_list():
+            tU = np.dot(rotM, rel_U0[:3])
+            tW = np.dot(rotM, rel_U0[3:])
+            t1.append(np.hstack((tU, tW)))
+        self._rel_U_list = t1
+
+        ref_U0 = self.get_ref_U()
+        tU = np.dot(rotM, ref_U0[:3])
+        tW = np.dot(rotM, ref_U0[3:])
+        self.set_ref_U(np.hstack((tU, tW)))
         return True
 
     def set_ref_U(self, U):
@@ -3149,6 +3170,15 @@ class ForceFreeComposite:
 
     def get_rotation_hist(self):
         return self._rotation_hist
+
+    def get_update_fun(self):
+        return self._update_fun
+
+    def get_update_order(self):
+        return self._update_order
+
+    def get_locomotion_fct(self):
+        return self._locomotion_fct
 
 
 class GivenTorqueComposite(ForceFreeComposite):
@@ -3504,7 +3534,7 @@ class ForceFreeProblem(StokesFlowProblem):
                                    ffweightT ** 2, ffweightT ** 2, ffweightT ** 2])
         assert self._ffweigth[3] == self._ffweigth[4] == self._ffweigth[5], \
             ' # IMPORTANT!!!   _ffweigth[3]==_ffweigth[4]==_ffweigth[5]'
-        PETSc.Sys.Print('-->absolute force free weight %s ' % self._ffweigth)
+        PETSc.Sys.Print('  absolute force free weight %s ' % self._ffweigth)
         return True
 
     def __init__(self, **kwargs):
@@ -3545,8 +3575,8 @@ class ForceFreeProblem(StokesFlowProblem):
         velocity.zeroEntries()
         for obj0 in self.get_obj_list():
             if isinstance(obj0, ForceFreeComposite):
-                center = obj0.get_center()
                 for sub_obj, rel_U in zip(obj0.get_obj_list(), obj0.get_rel_U_list()):
+                    center = sub_obj.get_u_geo().get_center()
                     sub_nodes = sub_obj.get_u_geo().get_nodes()
                     # sub_obj.show_velocity(length_factor=0.1, show_nodes=True)
                     r = sub_nodes - center
@@ -3652,6 +3682,11 @@ class ForceFreeProblem(StokesFlowProblem):
 
         t1 = time()
         PETSc.Sys.Print('  %s: create matrix use: %fs' % (str(self), (t1 - t0)))
+
+        # # dbg
+        # PETSc.Sys.Print('dbg code create_matrix')
+        # tM = self.get_M()
+        # tU = self.vec_scatter(self._velocity_petsc, destroy=False)
         return True
 
     def _solve_force(self, ksp):
@@ -3799,6 +3834,7 @@ class ForceFreeProblem(StokesFlowProblem):
     #     return True
 
     def vtk_check(self, filename: str, obj: "StokesFlowObj", ref_slt=None):
+        obj.print_info()
         obj_tube = list(tube_flatten((obj,)))
         err = []
         for obj in obj_tube:
@@ -3817,13 +3853,18 @@ class ForceFreeProblem(StokesFlowProblem):
     def _vtk_composite_check(self, filename: str, obj: "ForceFreeComposite"):
         error = []
         ref_U = obj.get_ref_U()
-        center = obj.get_center()
-        for subobj, rel_U in zip(obj.get_obj_list(), obj.get_rel_U_list()):
-            U = ref_U + rel_U
-            subobj.get_u_geo().set_rigid_velocity(U, center=center)
-            error.append(
-                    self._vtk_check(filename + '_' + str(subobj) + '_check', subobj,
-                                    INDEX=str(subobj)))
+        ref_center = obj.get_center()
+        for sub_obj, rel_U in zip(obj.get_obj_list(), obj.get_rel_U_list()):
+            rel_center = sub_obj.get_u_geo().get_center()
+            sub_nodes = sub_obj.get_u_geo().get_nodes()
+            rel_r = sub_nodes - rel_center
+            ref_r = sub_nodes - ref_center
+            rel_u = (rel_U[:3] + np.cross(rel_U[3:], rel_r)).flatten()
+            ref_u = (ref_U[:3] + np.cross(ref_U[3:], ref_r)).flatten()
+            tu = ref_u + rel_u
+            sub_obj.get_u_geo().set_velocity(tu)
+            error.append(self._vtk_check(filename + '_' + str(sub_obj) + '_check',
+                                         sub_obj, INDEX=str(sub_obj)))
         return tube_flatten((error,))
 
     def _save_M_mat_dict(self, M_dict, obj):
@@ -3856,7 +3897,7 @@ class ForceFreeProblem(StokesFlowProblem):
             ffweight = self.get_kwargs()['ffweight']
             self._ffweigth = np.array([ffweight, ffweight, ffweight,
                                        ffweight ** 2, ffweight ** 2, ffweight ** 2])
-            PETSc.Sys.Print('-->absolute force free weight %s ' % self._ffweigth)
+            PETSc.Sys.Print('  absolute force free weight %s ' % self._ffweigth)
         return True
 
     def update_location(self, eval_dt, print_handle=''):
@@ -3888,7 +3929,6 @@ class ForceFreeIterateProblem(ForceFreeProblem):
                 self._n_unode += sub_obj.get_n_u_node()
                 sub_obj.set_matrix_method(self.get_matrix_method())
         else:
-            self._all_obj_list.append(obj)
             super().add_obj(obj)
         return True
 
@@ -3993,9 +4033,8 @@ class ForceFreeIterateProblem(ForceFreeProblem):
         self.create_F_U()
         self.solve()
         center = self._iterComp.get_center()
-        sum_force = np.sum(
-                [tobj.get_total_force(center=center) for tobj in self._iterComp.get_obj_list()],
-                axis=0)
+        sum_force = np.sum([tobj.get_total_force(center=center)
+                            for tobj in self._iterComp.get_obj_list()], axis=0)
         tF = sum_force[:3]
         tT = sum_force[3:]
         return tF, tT
@@ -4129,8 +4168,8 @@ class ForceFree1DInfProblem(ForceFreeProblem):
             raise ValueError(err_msg)
         ffweightT = kwargs['ffweightT'] / kwargs['zoom_factor']
         self._ffweigth = np.array([ffweightF, ffweightT ** 2])
-        PETSc.Sys.Print(
-                '-->absolute force free weight of 1D symmetrical problem is %s ' % self._ffweigth)
+        PETSc.Sys.Print('  absolute force free weight of 1D symmetrical problem is %s ' %
+                        self._ffweigth)
         return True
 
     def __init__(self, axis='z', **kwargs):
@@ -4562,23 +4601,59 @@ class StrainRateBaseProblem(_GivenFlowProblem):
             u = np.vstack((np.zeros(n_nodes), np.zeros(n_nodes), np.zeros(n_nodes))).T.flatten()
             return u
 
-        # u=(0, 0, 0)
+        # u=(0, 1, 0)
         def base10(unodes):
             n_nodes = unodes.shape[0]
             u = np.vstack((np.zeros(n_nodes), np.ones(n_nodes), np.zeros(n_nodes))).T.flatten()
             return u
 
-        _base_fun = {0:  base0,
-                     1:  base1,
-                     2:  base2,
-                     3:  base3,
-                     4:  base4,
-                     5:  base5,
-                     6:  base6,
-                     7:  base7,
-                     8:  base8,
-                     9:  base9,
-                     10: base10, }
+        # ABC flow case, A = B = C = 1
+        def base_ABC(unodes):
+            A, B, C = 1, 1, 1
+            x, y, z = unodes[:, 0], unodes[:, 1], unodes[:, 2]
+            Ub = np.vstack((A * np.sin(z) + C * np.cos(y),
+                            B * np.sin(x) + A * np.cos(z),
+                            C * np.sin(y) + B * np.cos(x))).T.flatten()
+            return Ub
+
+        # ABC flow case, A = B = C = 1, D = E = F = changes, H = I = J = 0,
+        def base_ABCDEFHIJ(unodes):
+            OptDB = PETSc.Options()
+            A = OptDB.getReal('ABC_A', 1)
+            B = OptDB.getReal('ABC_B', 1)
+            C = OptDB.getReal('ABC_C', 1)
+            D = OptDB.getReal('ABC_D', 1)
+            E = OptDB.getReal('ABC_E', 1)
+            F = OptDB.getReal('ABC_F', 1)
+            G = OptDB.getReal('ABC_G', 0)
+            H = OptDB.getReal('ABC_H', 0)
+            I = OptDB.getReal('ABC_I', 0)
+            x, y, z = unodes[:, 0], unodes[:, 1], unodes[:, 2]
+            Ub = np.vstack((A * np.sin(D * z + G) + C * np.cos(F * y + I),
+                            B * np.sin(E * x + H) + A * np.cos(D * z + G),
+                            C * np.sin(F * y + I) + B * np.cos(E * x + H))).T.flatten()
+            return Ub
+
+        # u=(z, 0, 0)
+        def base_shear(unodes):
+            n_nodes = unodes.shape[0]
+            u = np.vstack((unodes[:, 2], np.zeros(n_nodes), np.zeros(n_nodes))).T.flatten()
+            return u
+
+        _base_fun = {0:           base0,
+                     1:           base1,
+                     2:           base2,
+                     3:           base3,
+                     4:           base4,
+                     5:           base5,
+                     6:           base6,
+                     7:           base7,
+                     8:           base8,
+                     9:           base9,
+                     10:          base10,
+                     'ABC':       base_ABC,
+                     'ABCDEFHIJ': base_ABCDEFHIJ,
+                     'shear':     base_shear, }
         return _base_fun
 
     def get_given_flow(self, obj):
@@ -4747,7 +4822,8 @@ class FundSoltObj(StokesFlowObj):
     def __init__(self):
         super(FundSoltObj, self).__init__()
         # each element contain two vectors and a type ((x1,2,3), (f1,2,3), StokesletsHandle)
-        self._point_force_list = []
+        # self._point_force_list = []
+        self._point_force_list = uniqueList()
         # the following properties store the location history of the composite.
         self._force_norm_hist = []  # [[force1 hist], [force2 hist]...]
 
@@ -5067,7 +5143,7 @@ class _GivenTorqueGivenVelocityGivenFlowProblem(GivenForceProblem, _GivenFlowPro
         self._ffweigth = np.array([ffweightT ** 2, ffweightT ** 2, ffweightT ** 2])
         err_msg = ' # IMPORTANT!!!   _ffweigth[0]==_ffweigth[1]==_ffweigth[2]'
         assert self._ffweigth[0] == self._ffweigth[1] == self._ffweigth[2], err_msg
-        PETSc.Sys.Print('-->absolute force free weight %s ' % self._ffweigth)
+        PETSc.Sys.Print('  absolute force free weight %s ' % self._ffweigth)
         return True
 
     def _create_U(self):
@@ -5224,6 +5300,7 @@ problem_dic = {
     'pf_selfRotate':                SelfRotateProblem,
     'rs_selfRotate':                SelfRotateProblem,
     'lg_rs_selfRotate':             SelfRotateProblem,
+    'pf_sphere':                    StokesFlowProblem,
 }
 
 obj_dic = {
@@ -5245,11 +5322,13 @@ obj_dic = {
     'lg_rs_selfRotate':             SelfRotateObj,
     'KRJ_slb':                      StokesFlowObj,
     'lightill_slb':                 StokesFlowObj,
+    'pf_sphere':                    StokesFlowObj,
 }
 
 # names of models that need two geometries.
-two_geo_method_list = ('pf', 'ps', 'ps_ds', 'pf_ds',
-                       'pf_stokesletsInPipe', 'pf_stokesletsInPipeforcefree',
+two_geo_method_list = ('pf', 'ps', 'ps_ds', 'pf_ds', 'pf_sphere'
+                                                     'pf_stokesletsInPipe',
+                       'pf_stokesletsInPipeforcefree',
                        'pf_stokesletsTwoPlane', 'pf_infhelix',
                        'pf_ShearFlow',
                        'pf_dualPotential',

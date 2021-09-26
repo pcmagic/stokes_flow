@@ -1,6 +1,8 @@
 import sys
 from collections import UserList
 import numpy as np
+import copy
+from scipy.spatial.transform import Rotation as spR
 
 __all__ = ['uniqueList', 'typeList', 'intList', 'floatList',
            'abs_comp', 'abs_construct_matrix',
@@ -8,7 +10,7 @@ __all__ = ['uniqueList', 'typeList', 'intList', 'floatList',
            'coordinate_transformation',
            'tube_flatten',
            'get_rot_matrix', 'rot_vec2rot_mtx', 'vector_rotation_norm', 'vector_rotation',
-           'rotMatrix_DCM',
+           'rotMatrix_DCM', 'Rloc2glb',
            'Adams_Moulton_Methods', 'Adams_Bashforth_Methods',
            'Quaternion']
 
@@ -275,6 +277,20 @@ def rotMatrix_DCM(x0, y0, z0, x, y, z):
     return R
 
 
+def Rloc2glb(theta, phi, psi):
+    Rloc2glb = np.array(
+            ((np.cos(phi) * np.cos(psi) * np.cos(theta) - np.sin(phi) * np.sin(psi),
+              -(np.cos(psi) * np.sin(phi)) - np.cos(phi) * np.cos(theta) * np.sin(psi),
+              np.cos(phi) * np.sin(theta)),
+             (np.cos(psi) * np.cos(theta) * np.sin(phi) + np.cos(phi) * np.sin(psi),
+              np.cos(phi) * np.cos(psi) - np.cos(theta) * np.sin(phi) * np.sin(psi),
+              np.sin(phi) * np.sin(theta)),
+             (-(np.cos(psi) * np.sin(theta)),
+              np.sin(psi) * np.sin(theta),
+              np.cos(theta))))
+    return Rloc2glb
+
+
 class coordinate_transformation:
     @staticmethod
     def vector_rotation(f, R):
@@ -287,6 +303,7 @@ class coordinate_transformation:
 
 class fullprint:
     'context manager for printing full numpy arrays'
+
     def __init__(self, **kwargs):
         kwargs.setdefault('threshold', np.inf)
         self.opt = kwargs
@@ -396,8 +413,20 @@ class Quaternion:
         Q.q = self.q + other
         return Q
 
+    def __str__(self):
+        return str(self.q)
+
+    def __repr__(self):
+        return str(self.q)
+
+    def copy(self):
+        q2 = copy.deepcopy(self)
+        return q2
+
     def mul(self, other):
-        assert (type(other) is Quaternion)
+        # print(type(other))
+        # print(type(other) is Quaternion)
+        # assert (type(other) is Quaternion)
 
         W = self.q[0]
         X = self.q[1]
@@ -421,11 +450,50 @@ class Quaternion:
     def set_wxyz(self, w, x, y, z):
         self.q = np.array([w, x, y, z])
 
-    def __str__(self):
-        return str(self.q)
+    def from_matrix(self, rotM):
+        assert np.isclose(np.linalg.det(rotM), 1)
+
+        # https://en.wikipedia.org/wiki/Rotation_matrix#Quaternion
+        t = rotM[0, 0] + rotM[1, 1] + rotM[2, 2]
+        r = np.sqrt(1 + t)
+        s = 1 / 2 / r
+        w = 1 / 2 * r
+        x = (rotM[2, 1] - rotM[1, 2]) * s
+        y = (rotM[0, 2] - rotM[2, 0]) * s
+        z = (rotM[1, 0] - rotM[0, 1]) * s
+        self.q = np.array([w, x, y, z])
+
+        # # http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
+        # w = np.sqrt(1 + rotM[0, 0] + rotM[1, 1] + rotM[2, 2]) / 2
+        # x = (rotM[2, 1] - rotM[1, 2]) / (4 * w)
+        # y = (rotM[0, 2] - rotM[2, 0]) / (4 * w)
+        # z = (rotM[1, 0] - rotM[0, 1]) / (4 * w)
+        # self.q = np.array([w, x, y, z])
+
+    def from_thphps(self, theta, phi, psi):
+        self.from_matrix(Rloc2glb(theta, phi, psi))
+
+        # # dbg code
+        # rotM = Rloc2glb(theta, phi, psi)
+        # tq1 = spR.from_matrix(rotM).as_quat()
+        # print(tq1[3], tq1[0], tq1[1], tq1[2])
+        # print(self.q[0], self.q[1], self.q[2], self.q[3])
 
     def normalize(self):
         self.q = self.q / np.linalg.norm(self.q)
+
+    # def rot_by(self, q1: "Quaternion"):
+    #     # q2 = q1 q q1^-1
+    #     q = self
+    #     q2 = q1.mul(q.mul(q1.get_inv()))
+    #     return q2
+    #
+    # def rot_from(self, q1: "Quaternion"):
+    #     # q2 = q q1 q^-1
+    #     q = self
+    #     # q2 = q.mul(q1.mul(q.get_inv()))
+    #     q2 = q1.mul(q)
+    #     return q2
 
     def get_E(self):
         W = self.q[0]
@@ -453,3 +521,24 @@ class Quaternion:
 
     def get_R(self):
         return np.matmul(self.get_E(), self.get_G().T)
+
+    def get_inv(self):
+        q_inv = Quaternion()
+        q_inv.set_wxyz(self.q[0], -self.q[1], -self.q[2], -self.q[3])
+        return q_inv
+
+    def get_thphps(self):
+        W = self.q[0]
+        X = self.q[1]
+        Y = self.q[2]
+        Z = self.q[3]
+        # print('dbg, theta', W, X, Y, Z, theta, Z ** 2 - Y ** 2 - X ** 2 + W ** 2)
+        theta = np.arccos(np.clip(Z ** 2 - Y ** 2 - X ** 2 + W ** 2, -1, 1))
+        phi = np.arctan2(2 * Y * Z - 2 * W * X, 2 * X * Z + 2 * W * Y)
+        phi = phi if phi > 0 else phi + 2 * np.pi  # (-pi,pi) -> (0, 2pi)
+        psi = np.arctan2(2 * Y * Z + 2 * W * X, -2 * X * Z + 2 * W * Y)
+        psi = psi if psi > 0 else psi + 2 * np.pi  # (-pi,pi) -> (0, 2pi)
+        return theta, phi, psi
+
+    def get_rotM(self):
+        return Rloc2glb(*self.get_thphps())

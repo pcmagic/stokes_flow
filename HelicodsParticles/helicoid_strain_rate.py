@@ -25,8 +25,13 @@ def get_problem_kwargs(**main_kwargs):
     fileHandle = OptDB.getString('f', 'helicoid_strain_rate')
     OptDB.setValue('f', fileHandle)
     problem_kwargs['fileHandle'] = fileHandle
+    dumb_d = OptDB.getReal('dumb_d', 5)
+    problem_kwargs['dumb_d'] = dumb_d
+    dumb_theta = OptDB.getReal('dumb_theta', np.pi / 3)
+    problem_kwargs['dumb_theta'] = dumb_theta
 
-    kwargs_list = (get_helicoid_kwargs(), get_forcefree_kwargs(), main_kwargs,)
+    kwargs_list = (get_helicoid_kwargs(), get_sphere_kwargs(),
+                   get_forcefree_kwargs(), main_kwargs,)
     for t_kwargs in kwargs_list:
         for key in t_kwargs:
             problem_kwargs[key] = t_kwargs[key]
@@ -37,6 +42,10 @@ def print_case_info(**problem_kwargs):
     fileHandle = problem_kwargs['fileHandle']
     print_solver_info(**problem_kwargs)
     print_forcefree_info(**problem_kwargs)
+    print_sphere_info(fileHandle, **problem_kwargs)
+    dumb_d = problem_kwargs['dumb_d']
+    dumb_theta = problem_kwargs['dumb_theta']
+    PETSc.Sys.Print('  dumb_d: %f, dumb_theta: %f' % (dumb_d, dumb_theta))
     print_helicoid_info(**problem_kwargs)
     return True
 
@@ -47,7 +56,9 @@ def do_solve_base_flow(basei, problem, obj_comp, uw_Base_list, sumFT_Base_list):
     problem.solve()
     PETSc.Sys.Print('---> basei %d' % basei)
     PETSc.Sys.Print(obj_comp.get_total_force())
-    PETSc.Sys.Print(obj_comp.get_ref_U())
+    ref_U = obj_comp.get_ref_U()
+    PETSc.Sys.Print('ref_u: %f %f %f' % (ref_U[0], ref_U[1], ref_U[2]))
+    PETSc.Sys.Print('ref_w: %f %f %f' % (ref_U[3], ref_U[4], ref_U[5]))
     uw_Base_list.append(obj_comp.get_ref_U())
     sumFT_Base_list.append(obj_comp.get_total_force())
     return uw_Base_list, sumFT_Base_list
@@ -59,7 +70,9 @@ def do_solve_base_flow_iter(basei, problem, obj_comp, uw_Base_list, sumFT_Base_l
     problem.do_iterate3()
     PETSc.Sys.Print('---> basei %d' % basei)
     PETSc.Sys.Print(obj_comp.get_total_force())
-    PETSc.Sys.Print(obj_comp.get_ref_U())
+    ref_U = obj_comp.get_ref_U()
+    PETSc.Sys.Print('ref_u: %f %f %f' % (ref_U[0], ref_U[1], ref_U[2]))
+    PETSc.Sys.Print('ref_w: %f %f %f' % (ref_U[3], ref_U[4], ref_U[5]))
     uw_Base_list.append(obj_comp.get_ref_U())
     sumFT_Base_list.append(obj_comp.get_total_force())
     return uw_Base_list, sumFT_Base_list
@@ -111,7 +124,7 @@ def main_fun(**main_kwargs):
                        'uw_Base_list':    uw_Base_list,
                        'sumFT_Base_list': sumFT_Base_list, }
         with open('%s.pickle' % fileHandle, 'wb') as handle:
-            pickle.dump(pickle_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(pickle_dict, handle, protocol=4)
         PETSc.Sys.Print('save table_data to %s.pickle' % fileHandle)
     return True
 
@@ -138,7 +151,6 @@ def main_fun_E(**main_kwargs):
         print_case_info(**problem_kwargs)
         helicoid_comp = create_helicoid_comp(namehandle='helicoid', **problem_kwargs)
 
-
         problem = sf.StrainRateBaseForceFreeProblem(**problem_kwargs)
         problem.add_obj(helicoid_comp)
         problem.print_info()
@@ -149,6 +161,45 @@ def main_fun_E(**main_kwargs):
         # passive cases
         for basei in (1, 2, 3, 4, 5):
             uw_Base_list, sumFT_Base_list = do_solve_base_flow(basei, problem, helicoid_comp,
+                                                               uw_Base_list, sumFT_Base_list)
+    return True
+
+
+def main_fun_dumb_E(**main_kwargs):
+    OptDB = PETSc.Options()
+    fileHandle = OptDB.getString('f', 'dumb_strain_rate')
+    OptDB.setValue('f', fileHandle)
+    main_kwargs['fileHandle'] = fileHandle
+    # field_range = np.array([[-3, -3, -3], [3, 3, 3]])
+    # n_grid = np.array([1, 1, 1]) * OptDB.getInt('n_grid', 10)
+    # main_kwargs['field_range'] = field_range
+    # main_kwargs['n_grid'] = n_grid
+    # main_kwargs['region_type'] = 'rectangle'
+    problem_kwargs = get_problem_kwargs(**main_kwargs)
+    # matrix_method = problem_kwargs['matrix_method']
+    # pickProblem = problem_kwargs['pickProblem']
+    # fileHandle = problem_kwargs['fileHandle']
+    # save_vtk = problem_kwargs['save_vtk']
+    problem_kwargs['basei'] = 1
+    problem_kwargs['zoom_factor'] = 1
+
+    if not problem_kwargs['restart']:
+        print_case_info(**problem_kwargs)
+        dumb_obj = creat_dumb_obj(**problem_kwargs)
+        dumb_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((0, 0, 1)),
+                                          name='dumb_comp')
+        dumb_comp.add_obj(obj=dumb_obj, rel_U=np.zeros(6))
+
+        problem = sf.StrainRateBaseForceFreeProblem(**problem_kwargs)
+        problem.add_obj(dumb_comp)
+        problem.print_info()
+        problem.create_matrix()
+        uw_Base_list = []
+        sumFT_Base_list = []
+
+        # passive cases
+        for basei in (1, 2, 3, 4, 5):
+            uw_Base_list, sumFT_Base_list = do_solve_base_flow(basei, problem, dumb_comp,
                                                                uw_Base_list, sumFT_Base_list)
     return True
 
@@ -207,7 +258,7 @@ def main_fun_iter(**main_kwargs):
                        'uw_Base_list':    uw_Base_list,
                        'sumFT_Base_list': sumFT_Base_list, }
         with open('%s.pickle' % fileHandle, 'wb') as handle:
-            pickle.dump(pickle_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(pickle_dict, handle, protocol=4)
         PETSc.Sys.Print('save table_data to %s.pickle' % fileHandle)
         # print_single_ecoli_force_result(problem, part='tail', prefix='tran', **problem_kwargs)
     return True
@@ -222,6 +273,10 @@ if __name__ == '__main__':
     if OptDB.getBool('main_fun_E', False):
         OptDB.setValue('main_fun', False)
         main_fun_E()
+
+    if OptDB.getBool('main_fun_dumb_E', False):
+        OptDB.setValue('main_fun', False)
+        main_fun_dumb_E()
 
     if OptDB.getBool('main_fun', True):
         main_fun()

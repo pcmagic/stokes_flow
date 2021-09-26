@@ -7,6 +7,7 @@ import numpy as np
 from petsc4py import PETSc
 from src import stokes_flow as sf
 from src.support_class import *
+from src import jeffery_model as jm
 
 __all__ = ['get_solver_kwargs', 'get_forcefree_kwargs', 'get_givenForce_kwargs',
            'get_vtk_tetra_kwargs',
@@ -21,6 +22,7 @@ __all__ = ['get_solver_kwargs', 'get_forcefree_kwargs', 'get_givenForce_kwargs',
            'print_single_ecoli_forcefree_result', 'print_single_ecoli_force_result',
            'get_rod_kwargs', 'print_Rod_info',
            'get_one_ellipse_kwargs', 'print_one_ellipse_info',
+           'get_one_ellipse_kwargs_v2', 'print_one_ellipse_info_v2',
            'get_integrate_kwargs', 'print_integrate_kwargs',
            'get_helicoid_kwargs', 'print_helicoid_info',
            'get_obj_helicoid_kwargs', 'print_obj_helicoid_info',
@@ -33,13 +35,14 @@ __all__ = ['get_solver_kwargs', 'get_forcefree_kwargs', 'get_givenForce_kwargs',
 def print_single_ecoli_force_result(ecoli_comp: sf.ForceFreeComposite, prefix='', part='full',
                                     **kwargs):
     def print_full():
+        center = ecoli_comp.get_center()
         head_obj = ecoli_comp.get_obj_list()[0]
         tail_obj = ecoli_comp.get_obj_list()[1:]
-        head_force = head_obj.get_total_force()
-        tail_force = np.sum([t_obj.get_total_force() for t_obj in tail_obj], axis=0)
-        helix0_force = tail_obj[0].get_total_force()
+        head_force = head_obj.get_total_force(center=center)
+        tail_force = np.sum([t_obj.get_total_force(center=center) for t_obj in tail_obj], axis=0)
+        helix0_force = tail_obj[0].get_total_force(center=center)
         if len(tail_obj) > 1:
-            helix1_force = tail_obj[1].get_total_force()
+            helix1_force = tail_obj[1].get_total_force(center=center)
         total_force = head_force + tail_force
         abs_force = 0.5 * (np.abs(head_force) + np.abs(tail_force))
         absF = np.sqrt(np.sum(abs_force[:3] ** 2))
@@ -106,13 +109,15 @@ def print_single_ecoli_forcefree_result(ecoli_comp, **kwargs):
                 np.array((zoom_factor * rh1, zoom_factor * rh1, zoom_factor * rh1, 1, 1, 1))
     non_dim_sumU = np.sqrt(np.sum(non_dim_U[:3] ** 2))
     non_dim_sumW = np.sqrt(np.sum(non_dim_U[3:] ** 2))
+    PETSc.Sys.Print('')
+    PETSc.Sys.Print('Information about %s' % str(ecoli_comp))
     PETSc.Sys.Print(' absolute ref U', ref_U)
     PETSc.Sys.Print(' non_dim_U', non_dim_U)
     PETSc.Sys.Print(' non_dim: sumU = %f, sumW = %f' % (non_dim_sumU, non_dim_sumW))
     head_U = rel_Us + ref_U
     tail_U = rel_Uh + ref_U
-    PETSc.Sys.Print(' velocity_sphere', head_U)
-    PETSc.Sys.Print(' velocity_helix', tail_U)
+    PETSc.Sys.Print(' velocity_head', head_U)
+    PETSc.Sys.Print(' velocity_tail', tail_U)
 
     print_single_ecoli_force_result(ecoli_comp, **kwargs)
     return head_U, tail_U
@@ -225,6 +230,68 @@ def get_ecoli_kwargs():
     return ecoli_kwargs
 
 
+def get_ecoli_location_kwargs():
+    pass
+
+
+def print_ecoli_info(ecoName, **problem_kwargs):
+    nth = problem_kwargs['nth']
+    n_tail = problem_kwargs['n_tail']
+    hfct = problem_kwargs['hfct']
+    eh = problem_kwargs['eh']
+    ch = problem_kwargs['ch']
+    repeat_n = problem_kwargs['repeat_n']
+    rh1 = problem_kwargs['rh1']
+    rh11 = problem_kwargs['rh11']
+    rh12 = problem_kwargs['rh12']
+    rh2 = problem_kwargs['rh2']
+    ph = problem_kwargs['ph']
+    ds = problem_kwargs['ds']
+    rs1 = problem_kwargs['rs1']
+    rs2 = problem_kwargs['rs2']
+    ls = problem_kwargs['ls']
+    es = problem_kwargs['es']
+    center = problem_kwargs['center']
+    rel_Us = problem_kwargs['rel_Us']
+    rel_Uh = problem_kwargs['rel_Uh']
+    dist_hs = problem_kwargs['dist_hs']
+    rT1 = problem_kwargs['rT1']
+    rT2 = problem_kwargs['rT2']
+    ntT = problem_kwargs['nth']
+    eT = problem_kwargs['eT']
+    Tfct = problem_kwargs['Tfct']
+    zoom_factor = problem_kwargs['zoom_factor']
+    # additional properties of ecoli composite, previous version of kwargs may not exist.
+    if 'rot_norm' in problem_kwargs.keys():
+        rot_norm = problem_kwargs['rot_norm']
+    else:
+        rot_norm = np.full(3, np.nan)
+    if 'rot_theta' in problem_kwargs.keys():
+        rot_theta = problem_kwargs['rot_theta']
+    else:
+        rot_theta = np.nan
+
+    PETSc.Sys.Print(ecoName, 'geo information: ')
+    PETSc.Sys.Print(
+            '  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
+    PETSc.Sys.Print('    nth, n_tail, hfct and epsilon of helix are %d, %d, %f and %f, ' % (
+        nth, n_tail, hfct, eh))
+    if repeat_n > 1:
+        PETSc.Sys.Print('    self repeat helix, repeat %d times' % repeat_n)
+    if not (np.isclose(rh1, rh11) and np.isclose(rh1, rh12)):
+        PETSc.Sys.Print('    fat helix case, rh11: %f, rh12: %f' % (rh11, rh12))
+    PETSc.Sys.Print('  head radius: %f and %f, length: %f, delta length: %f, epsilon: %f' % (
+        rs1, rs2, ls, ds, es))
+    PETSc.Sys.Print('  Tgeo radius: %f and %f' % (rT1, rT2))
+    PETSc.Sys.Print('    ntT, eT and Tfct of Tgeo are: %d, %f and %f' % (ntT, eT, Tfct))
+    PETSc.Sys.Print('  ecoli center: %s, distance from head to tail is %f' % (str(center), dist_hs))
+    PETSc.Sys.Print('  relative velocity of head is %s' % str(rel_Us))
+    PETSc.Sys.Print('  relative velocity of tail is %s' % str(rel_Uh))
+    PETSc.Sys.Print('  rot_norm is %s, rot_theta is %f*pi' % (str(rot_norm), rot_theta))
+    PETSc.Sys.Print('  geometry zoom factor is %f' % zoom_factor)
+    return True
+
+
 def get_helix_kwargs():
     OptDB = PETSc.Options()
     rh1 = OptDB.getReal('rh1', 0.2)  # radius of helix
@@ -284,6 +351,47 @@ def get_helix_kwargs():
     return helix_kwargs
 
 
+def print_helix_info(helixName, **problem_kwargs):
+    rh1 = problem_kwargs['rh1']
+    rh11 = problem_kwargs['rh11']
+    rh12 = problem_kwargs['rh12']
+    rh2 = problem_kwargs['rh2']
+    nth = problem_kwargs['nth']
+    eh = problem_kwargs['eh']
+    ch = problem_kwargs['ch']
+    repeat_n = problem_kwargs['repeat_n']
+    ph = problem_kwargs['ph']
+    hfct = problem_kwargs['hfct']
+    n_tail = problem_kwargs['n_tail']
+    with_cover = problem_kwargs['with_cover']
+    left_hand = problem_kwargs['left_hand']
+    rel_Uh = problem_kwargs['rel_Uh']
+    zoom_factor = problem_kwargs['zoom_factor']
+    # additional properties of ecoli composite, previous version of kwargs may not exist.
+    if 'rot_norm' in problem_kwargs.keys():
+        rot_norm = problem_kwargs['rot_norm']
+    else:
+        rot_norm = np.full(3, np.nan)
+    if 'rot_theta' in problem_kwargs.keys():
+        rot_theta = problem_kwargs['rot_theta']
+    else:
+        rot_theta = np.nan
+
+    PETSc.Sys.Print(helixName, 'geo information: ')
+    PETSc.Sys.Print(
+            '  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
+    PETSc.Sys.Print('    nth, n_tail, hfct and epsilon of helix are %d, %d, %f and %f, ' % (
+        nth, n_tail, hfct, eh))
+    if repeat_n > 1:
+        PETSc.Sys.Print('    self repeat helix, repeat %d times' % repeat_n)
+    if not (np.isclose(rh1, rh11) and np.isclose(rh1, rh12)):
+        PETSc.Sys.Print('    fat helix case, rh11: %f, rh12: %f' % (rh11, rh12))
+    PETSc.Sys.Print('  relative velocity of helix is %s' % (str(rel_Uh)))
+    PETSc.Sys.Print('  rot_norm is %s, rot_theta is %f*pi' % (str(rot_norm), rot_theta))
+    PETSc.Sys.Print('  geometry zoom factor is %f' % zoom_factor)
+    return True
+
+
 def get_helix_SLB_kwargs():
     from src.geo import slb_helix, Johnson_helix
 
@@ -332,105 +440,6 @@ def get_helix_SLB_kwargs():
                     'slb_epsrel':  slb_epsrel,
                     'slb_limit':   slb_limit, }
     return helix_kwargs
-
-
-def print_ecoli_info(ecoName, **problem_kwargs):
-    nth = problem_kwargs['nth']
-    n_tail = problem_kwargs['n_tail']
-    hfct = problem_kwargs['hfct']
-    eh = problem_kwargs['eh']
-    ch = problem_kwargs['ch']
-    repeat_n = problem_kwargs['repeat_n']
-    rh1 = problem_kwargs['rh1']
-    rh11 = problem_kwargs['rh11']
-    rh12 = problem_kwargs['rh12']
-    rh2 = problem_kwargs['rh2']
-    ph = problem_kwargs['ph']
-    ds = problem_kwargs['ds']
-    rs1 = problem_kwargs['rs1']
-    rs2 = problem_kwargs['rs2']
-    ls = problem_kwargs['ls']
-    es = problem_kwargs['es']
-    center = problem_kwargs['center']
-    rel_Us = problem_kwargs['rel_Us']
-    rel_Uh = problem_kwargs['rel_Uh']
-    dist_hs = problem_kwargs['dist_hs']
-    rT1 = problem_kwargs['rT1']
-    rT2 = problem_kwargs['rT2']
-    ntT = problem_kwargs['nth']
-    eT = problem_kwargs['eT']
-    Tfct = problem_kwargs['Tfct']
-    zoom_factor = problem_kwargs['zoom_factor']
-    # additional properties of ecoli composite, previous version of kwargs may not exist.
-    if 'rot_norm' in problem_kwargs.keys():
-        rot_norm = problem_kwargs['rot_norm']
-    else:
-        rot_norm = np.full(3, np.nan)
-    if 'rot_theta' in problem_kwargs.keys():
-        rot_theta = problem_kwargs['rot_theta']
-    else:
-        rot_theta = np.nan
-
-    PETSc.Sys.Print(ecoName, 'geo information: ')
-    PETSc.Sys.Print(
-            '  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
-    PETSc.Sys.Print('    nth, n_tail, hfct and epsilon of helix are %d, %d, %f and %f, ' % (
-        nth, n_tail, hfct, eh))
-    if repeat_n > 1:
-        PETSc.Sys.Print('    self repeat helix, repeat %d times' % repeat_n)
-    if not (np.isclose(rh1, rh11) and np.isclose(rh1, rh12)):
-        PETSc.Sys.Print('    fat helix case, rh11: %f, rh12: %f' % (rh11, rh12))
-    PETSc.Sys.Print('  head radius: %f and %f, length: %f, delta length: %f, epsilon: %f' % (
-        rs1, rs2, ls, ds, es))
-    PETSc.Sys.Print('  Tgeo radius: %f and %f' % (rT1, rT2))
-    PETSc.Sys.Print('    ntT, eT and Tfct of Tgeo are: %d, %f and %f' % (ntT, eT, Tfct))
-    PETSc.Sys.Print('  ecoli center: %s, distance from head to tail is %f' % (str(center), dist_hs))
-    PETSc.Sys.Print(
-            '  relative velocity of head and tail are %s and %s' % (str(rel_Us), str(rel_Uh)))
-    PETSc.Sys.Print('  rot_norm is %s, rot_theta is %f*pi' % (str(rot_norm), rot_theta))
-    PETSc.Sys.Print('  geometry zoom factor is %f' % zoom_factor)
-    return True
-
-
-def print_helix_info(helixName, **problem_kwargs):
-    rh1 = problem_kwargs['rh1']
-    rh11 = problem_kwargs['rh11']
-    rh12 = problem_kwargs['rh12']
-    rh2 = problem_kwargs['rh2']
-    nth = problem_kwargs['nth']
-    eh = problem_kwargs['eh']
-    ch = problem_kwargs['ch']
-    repeat_n = problem_kwargs['repeat_n']
-    ph = problem_kwargs['ph']
-    hfct = problem_kwargs['hfct']
-    n_tail = problem_kwargs['n_tail']
-    with_cover = problem_kwargs['with_cover']
-    left_hand = problem_kwargs['left_hand']
-    rel_Uh = problem_kwargs['rel_Uh']
-    zoom_factor = problem_kwargs['zoom_factor']
-    # additional properties of ecoli composite, previous version of kwargs may not exist.
-    if 'rot_norm' in problem_kwargs.keys():
-        rot_norm = problem_kwargs['rot_norm']
-    else:
-        rot_norm = np.full(3, np.nan)
-    if 'rot_theta' in problem_kwargs.keys():
-        rot_theta = problem_kwargs['rot_theta']
-    else:
-        rot_theta = np.nan
-
-    PETSc.Sys.Print(helixName, 'geo information: ')
-    PETSc.Sys.Print(
-            '  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
-    PETSc.Sys.Print('    nth, n_tail, hfct and epsilon of helix are %d, %d, %f and %f, ' % (
-        nth, n_tail, hfct, eh))
-    if repeat_n > 1:
-        PETSc.Sys.Print('    self repeat helix, repeat %d times' % repeat_n)
-    if not (np.isclose(rh1, rh11) and np.isclose(rh1, rh12)):
-        PETSc.Sys.Print('    fat helix case, rh11: %f, rh12: %f' % (rh11, rh12))
-    PETSc.Sys.Print('  relative velocity of helix is %s' % (str(rel_Uh)))
-    PETSc.Sys.Print('  rot_norm is %s, rot_theta is %f*pi' % (str(rot_norm), rot_theta))
-    PETSc.Sys.Print('  geometry zoom factor is %f' % zoom_factor)
-    return True
 
 
 def print_helix_SLB_info(helixName, **problem_kwargs):
@@ -530,9 +539,12 @@ def get_solver_kwargs():
     elif matrix_method in ('pf_stokesletsTwoPlane',):
         twoPlateHeight = OptDB.getReal('twoPlateHeight', 1)  # twoPlateHeight
         problem_kwargs['twoPlateHeight'] = twoPlateHeight
-    elif matrix_method in ('rs', 'rs_selfRotate'):
+    elif matrix_method in ('rs', 'rs_selfRotate', 'rs_plane'):
         epsilon = OptDB.getReal('epsilon', 0.3)
         problem_kwargs['epsilon'] = epsilon
+    elif matrix_method in ('pf_sphere'):
+        pf_sphere_image_Ra = OptDB.getReal('pf_sphere_image_Ra', 1)
+        problem_kwargs['pf_sphere_image_Ra'] = pf_sphere_image_Ra
     elif matrix_method in ('lg_rs', 'lg_rs_selfRotate'):
         legendre_m = OptDB.getInt('legendre_m', 3)
         legendre_k = OptDB.getInt('legendre_k', 2)
@@ -560,7 +572,7 @@ def print_solver_info(**problem_kwargs):
 
     acceptType = ('rs', 'rs_plane', 'lg_rs',
                   'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane', 'pf_dualPotential',
-                  'pf_infhelix', 'pf_stokesletsRingInPipe', 'pf_stokesletsRing',
+                  'pf_infhelix', 'pf_stokesletsRingInPipe', 'pf_stokesletsRing', 'pf_sphere',
                   'pf_stokesletsRingInPipeProblemSymz', 'pf_stokesletsRingInPipeSymz',
                   'pf_selfRepeat', 'pf_selfRotate', 'rs_selfRotate', 'lg_rs_selfRotate',
                   'lightill_slb', 'KRJ_slb',)
@@ -569,9 +581,15 @@ def print_solver_info(**problem_kwargs):
     assert matrix_method in acceptType, err_msg
     PETSc.Sys.Print('  output file handle: ' + fileHandle)
     PETSc.Sys.Print('  create matrix method: %s, ' % matrix_method)
-    if matrix_method in ('rs', 'pf', 'rs_plane', 'pf_dualPotential', 'pf_infhelix',
-                         'pf_stokesletsRing', 'pf_selfRepeat', 'pf_selfRotate', 'rs_selfRotate'):
+    if matrix_method in ('pf', 'pf_dualPotential', 'pf_infhelix', 'pf_stokesletsRing',
+                         'pf_selfRepeat', 'pf_selfRotate'):
         pass
+    elif matrix_method in ('rs', 'rs_selfRotate', 'rs_plane',):
+        epsilon = problem_kwargs['epsilon']
+        PETSc.Sys.Print('  epsilon: %f' % epsilon)
+    elif matrix_method in ('pf_sphere',):
+        pf_sphere_image_Ra = problem_kwargs['pf_sphere_image_Ra']
+        PETSc.Sys.Print('  radius of central sphere: %f' % pf_sphere_image_Ra)
     elif matrix_method in ('pf_stokesletsInPipe',):
         forcepipe = problem_kwargs['forcepipe']
         PETSc.Sys.Print('  read force of pipe from: ' + forcepipe)
@@ -1005,6 +1023,61 @@ def print_one_ellipse_info(sphereName, **problem_kwargs):
     PETSc.Sys.Print('  ellipsoid: rs1=%f, rs2=%f, rs3=%f, ds=%f, es=%f' % (rs1, rs2, rs3, ds, es))
     PETSc.Sys.Print('  ellipsoid: center=%s, velocity=%s, zoom_factor=%f' %
                     (str(center), str(velocity), zoom_factor))
+    return True
+
+
+def get_one_ellipse_kwargs_v2():
+    # the key word names are modified.
+    """
+    u: translating velocity of sphere.
+    w: rotation velocity of sphere.
+    ds: distance between two point on sphere.
+    es: distance between tow point on force sphere.
+    """
+    OptDB = PETSc.Options()
+    ellipse_rs1 = OptDB.getReal('ellipse_rs1', 0.5)
+    ellipse_rs2 = OptDB.getReal('ellipse_rs2', ellipse_rs1)
+    ellipse_rs3 = OptDB.getReal('ellipse_rs3', ellipse_rs1)
+    ellipse_ds = OptDB.getReal('ellipse_ds', 0.1)
+    ellipse_es = OptDB.getReal('ellipse_es', -0.1)
+    ellipse_ux = OptDB.getReal('ellipse_ux', 0)
+    ellipse_uy = OptDB.getReal('ellipse_uy', 0)
+    ellipse_uz = OptDB.getReal('ellipse_uz', 0)
+    ellipse_wx = OptDB.getReal('ellipse_wx', 0)
+    ellipse_wy = OptDB.getReal('ellipse_wy', 0)
+    ellipse_wz = OptDB.getReal('ellipse_wz', 0)
+    random_velocity = OptDB.getBool('random_velocity', False)
+    t_velocity = np.array((ellipse_ux, ellipse_uy, ellipse_uz, ellipse_wx, ellipse_wy, ellipse_wz))
+    if random_velocity:
+        ellipse_velocity = np.random.sample(6) * t_velocity
+    else:
+        ellipse_velocity = np.ones(6) * t_velocity
+
+    sphere_kwargs = {
+        'ellipse_rs1':      ellipse_rs1,
+        'ellipse_rs2':      ellipse_rs2,
+        'ellipse_rs3':      ellipse_rs3,
+        'ellipse_velocity': ellipse_velocity,
+        'ellipse_ds':       ellipse_ds,
+        'ellipse_es':       ellipse_es,
+        'ellipse_center':   np.zeros(3), }
+    return sphere_kwargs
+
+
+def print_one_ellipse_info_v2(sphereName, **problem_kwargs):
+    ellipse_rs1 = problem_kwargs['ellipse_rs1']
+    ellipse_rs2 = problem_kwargs['ellipse_rs2']
+    ellipse_rs3 = problem_kwargs['ellipse_rs3']
+    ellipse_velocity = problem_kwargs['ellipse_velocity']
+    ellipse_ds = problem_kwargs['ellipse_ds']
+    ellipse_es = problem_kwargs['ellipse_es']
+    ellipse_center = problem_kwargs['ellipse_center']
+
+    PETSc.Sys.Print(sphereName, 'geo information: ')
+    PETSc.Sys.Print('  ellipsoid: rs1=%f, rs2=%f, rs3=%f, ds=%f, es=%f' %
+                    (ellipse_rs1, ellipse_rs2, ellipse_rs3, ellipse_ds, ellipse_es))
+    PETSc.Sys.Print('  ellipsoid: center=%s, velocity=%s' %
+                    (str(ellipse_center), str(ellipse_velocity)))
     return True
 
 

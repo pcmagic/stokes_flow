@@ -19,6 +19,8 @@ def main_fun(**main_kwargs):
     print_case_info(**problem_kwargs)
     ecoli_comp = createEcoliComp_tunnel(name='ecoli_0', **problem_kwargs)
     ecoli_comp.show_u_nodes(linestyle=' ')
+    for tobj in ecoli_comp.get_obj_list():
+        tobj.set_matrix_method(problem_kwargs['matrix_method'])
     ecoli_comp.vtk(fileHandle)
 
     return True

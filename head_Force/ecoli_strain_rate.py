@@ -133,7 +133,7 @@ def main_fun(**main_kwargs):
                        'uw_Base_list':    uw_Base_list,
                        'sumFT_Base_list': sumFT_Base_list, }
         with open('%s.pickle' % fileHandle, 'wb') as handle:
-            pickle.dump(pickle_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(pickle_dict, handle, protocol=4)
         PETSc.Sys.Print('save table_data to %s.pickle' % fileHandle)
         # print_single_ecoli_force_result(problem, part='tail', prefix='tran', **problem_kwargs)
     return True
@@ -169,6 +169,41 @@ def main_fun_E(**main_kwargs):
 
         # passive cases
         for basei in (1, 2, 3, 4, 5,):
+            uw_Base_list, sumFT_Base_list = do_solve_base_flow(basei, problem, ecoli_comp,
+                                                               uw_Base_list, sumFT_Base_list)
+    return True
+
+
+def main_fun_E45(**main_kwargs):
+    OptDB = PETSc.Options()
+    fileHandle = OptDB.getString('f', 'ecoli_strain_rate')
+    OptDB.setValue('f', fileHandle)
+    main_kwargs['fileHandle'] = fileHandle
+    problem_kwargs = get_problem_kwargs(**main_kwargs)
+    problem_kwargs['basei'] = 1
+    hlx_ini_rot_theta = problem_kwargs['hlx_ini_rot_theta']
+    hlx_ini_rot_phi = problem_kwargs['hlx_ini_rot_phi']
+
+    if not problem_kwargs['restart']:
+        print_case_info(**problem_kwargs)
+
+        ecoli_comp = create_ecoli_2part(**problem_kwargs)
+        ecoli_comp.node_rotation(norm=np.array([0, 1, 0]), theta=hlx_ini_rot_theta)
+        ecoli_comp.node_rotation(norm=np.array([0, 0, 1]), theta=hlx_ini_rot_phi)
+        ecoli_comp.set_rel_U_list([np.zeros(6), np.zeros(6)])
+        # for tobj in ecoli_comp.get_obj_list():
+        #     tobj.get_u_geo().mirrorImage(norm=np.array((0, 0, 1)), rotation_origin=np.zeros(3))
+        #     tobj.get_f_geo().mirrorImage(norm=np.array((0, 0, 1)), rotation_origin=np.zeros(3))
+
+        problem = sf.StrainRateBaseForceFreeProblem(**problem_kwargs)
+        problem.add_obj(ecoli_comp)
+        problem.print_info()
+        problem.create_matrix()
+        uw_Base_list = []
+        sumFT_Base_list = []
+
+        # passive cases
+        for basei in (4, 5,):
             uw_Base_list, sumFT_Base_list = do_solve_base_flow(basei, problem, ecoli_comp,
                                                                uw_Base_list, sumFT_Base_list)
     return True
@@ -218,7 +253,7 @@ def main_fun_iter(**main_kwargs):
                        'uw_Base_list':    uw_Base_list,
                        'sumFT_Base_list': sumFT_Base_list, }
         with open('%s.pickle' % fileHandle, 'wb') as handle:
-            pickle.dump(pickle_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(pickle_dict, handle, protocol=4)
         PETSc.Sys.Print('save table_data to %s.pickle' % fileHandle)
         # print_single_ecoli_force_result(problem, part='tail', prefix='tran', **problem_kwargs)
     return True
@@ -252,6 +287,10 @@ if __name__ == '__main__':
     if OptDB.getBool('main_fun_E', False):
         OptDB.setValue('main_fun', False)
         main_fun_E()
+
+    if OptDB.getBool('main_fun_E45', False):
+        OptDB.setValue('main_fun', False)
+        main_fun_E45()
 
     if OptDB.getBool('main_fun_plot', False):
         OptDB.setValue('main_fun', False)

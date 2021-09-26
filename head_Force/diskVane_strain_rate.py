@@ -129,7 +129,7 @@ def main_fun(**main_kwargs):
                        'uw_Base_list':    uw_Base_list,
                        'sumFT_Base_list': sumFT_Base_list, }
         with open('%s.pickle' % fileHandle, 'wb') as handle:
-            pickle.dump(pickle_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(pickle_dict, handle, protocol=4)
         PETSc.Sys.Print('save table_data to %s.pickle' % fileHandle)
     return True
 
@@ -172,6 +172,10 @@ def main_fun_E(**main_kwargs):
 
 
 if __name__ == '__main__':
+    # pythonmpi ../diskVane_strain_rate.py -sm lg_rs -legendre_m 3 -legendre_k 2 -epsilon 3 -ffweight 2 -main_fun_E 1 -diskVane_r1 1 -diskVane_rz 1 -diskVane_r2 0.3 -diskVane_ds 0.05 -diskVane_ph_loc 0 -diskVane_nr 2 -diskVane_nz 2 -diskVane_th_loc 0.7853981633974483
+    # pythonmpi ../diskVane_strain_rate.py -sm lg_rs -legendre_m 3 -legendre_k 2 -epsilon 3 -ffweight 2 -main_fun_E 1 -diskVane_r1 1 -diskVane_rz 1 -diskVane_r2 0.3 -diskVane_ds 0.05 -diskVane_th_loc 1.5 -diskVane_ph_loc 0 -diskVane_nr 3 -diskVane_nz 3
+    # pythonmpi ../diskVane_strain_rate.py -sm lg_rs -legendre_m 3 -legendre_k 2 -epsilon 3 -ffweight 2 -diskVane_r1 1 -diskVane_rz 1 -diskVane_r2 0.3 -diskVane_ds 0.1 -diskVane_th_loc 0 -diskVane_ph_loc 0 -diskVane_nr 1 -diskVane_nz 2
+    
     OptDB = PETSc.Options()
     # if OptDB.getBool('main_fun_iter', False):
     #     OptDB.setValue('main_fun', False)

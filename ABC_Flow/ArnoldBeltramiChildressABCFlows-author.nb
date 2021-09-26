@@ -1,0 +1,2162 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 8.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       157,          7]
+NotebookDataLength[     97311,       2153]
+NotebookOptionsPosition[     92723,       2011]
+NotebookOutlinePosition[     94344,       2062]
+CellTagsIndexPosition[     94016,       2050]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell["\<\
+Arnold-Beltrami-Childress (ABC) Flows\
+\>", "DemoTitle",
+ CellChangeTimes->{{3.5539720902417593`*^9, 3.553972094082893*^9}, 
+   3.554466557603466*^9, {3.5545652208984337`*^9, 3.5545652253300695`*^9}, {
+   3.554829844716839*^9, 3.554829849821349*^9}}],
+
+Cell["", "InitializationSection"],
+
+Cell[CellGroupData[{
+
+Cell["", "ManipulateSection"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"Manipulate", "[", "\n", "  ", 
+   RowBox[{
+    RowBox[{"With", "[", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"ns$", " ", "=", " ", 
+        RowBox[{"Table", "[", 
+         RowBox[{
+          RowBox[{"NDSolve", "[", 
+           RowBox[{
+            RowBox[{"{", 
+             RowBox[{
+              RowBox[{
+               RowBox[{
+                RowBox[{
+                 RowBox[{"Derivative", "[", "1", "]"}], "[", "x", "]"}], "[", 
+                "t", "]"}], " ", "==", " ", 
+               RowBox[{
+                RowBox[{"\[Alpha]", "*", 
+                 RowBox[{"Sin", "[", 
+                  RowBox[{"z", "[", "t", "]"}], "]"}]}], " ", "+", " ", "\n", 
+                "          ", 
+                RowBox[{"\[Gamma]", "*", 
+                 RowBox[{"Cos", "[", 
+                  RowBox[{"y", "[", "t", "]"}], "]"}]}]}]}], ",", " ", 
+              RowBox[{
+               RowBox[{
+                RowBox[{
+                 RowBox[{"Derivative", "[", "1", "]"}], "[", "y", "]"}], "[", 
+                "t", "]"}], " ", "==", " ", 
+               RowBox[{
+                RowBox[{"\[Beta]", "*", 
+                 RowBox[{"Sin", "[", 
+                  RowBox[{"x", "[", "t", "]"}], "]"}]}], " ", "+", " ", 
+                RowBox[{"\[Alpha]", "*", 
+                 RowBox[{"Cos", "[", 
+                  RowBox[{"x", "[", "t", "]"}], "]"}]}]}]}], ",", " ", "\n", 
+              "        ", 
+              RowBox[{
+               RowBox[{
+                RowBox[{
+                 RowBox[{"Derivative", "[", "1", "]"}], "[", "z", "]"}], "[", 
+                "t", "]"}], " ", "==", " ", 
+               RowBox[{
+                RowBox[{"\[Gamma]", "*", 
+                 RowBox[{"Sin", "[", 
+                  RowBox[{"y", "[", "t", "]"}], "]"}]}], " ", "+", " ", 
+                RowBox[{"\[Beta]", "*", 
+                 RowBox[{"Cos", "[", 
+                  RowBox[{"x", "[", "t", "]"}], "]"}]}]}]}], ",", " ", 
+              RowBox[{
+               RowBox[{"x", "[", "0", "]"}], " ", "==", " ", 
+               RowBox[{"x0", " ", "+", " ", "c"}]}], ",", " ", "\n", 
+              "        ", 
+              RowBox[{
+               RowBox[{"y", "[", "0", "]"}], " ", "==", " ", 
+               RowBox[{"y0", " ", "+", " ", "c"}]}], ",", " ", 
+              RowBox[{
+               RowBox[{"z", "[", "0", "]"}], " ", "==", " ", 
+               RowBox[{"z0", " ", "+", " ", "c"}]}]}], "}"}], ",", " ", 
+            RowBox[{"{", 
+             RowBox[{"x", ",", " ", "y", ",", " ", "z"}], "}"}], ",", " ", 
+            RowBox[{"{", 
+             RowBox[{"t", ",", " ", "0", ",", " ", "T"}], "}"}], ",", " ", 
+            RowBox[{"MaxSteps", " ", "->", " ", 
+             RowBox[{"10", "^", "4"}]}]}], "]"}], ",", " ", "\n", "      ", 
+          RowBox[{"{", 
+           RowBox[{
+           "c", ",", " ", "0", ",", " ", "0.1", ",", " ", "\[Delta]"}], 
+           "}"}]}], "]"}]}], "}"}], ",", "\[IndentingNewLine]", 
+      RowBox[{"Pane", "[", " ", 
+       RowBox[{
+        RowBox[{"If", "[", 
+         RowBox[{
+          RowBox[{"view", " ", "==", " ", "\"\<lines\>\""}], ",", " ", 
+          RowBox[{"ParametricPlot3D", "[", "\n", "     ", 
+           RowBox[{
+            RowBox[{"Evaluate", "[", 
+             RowBox[{"Table", "[", 
+              RowBox[{
+               RowBox[{
+                RowBox[{"{", 
+                 RowBox[{
+                  RowBox[{"x", "[", "t", "]"}], ",", " ", 
+                  RowBox[{"y", "[", "t", "]"}], ",", " ", 
+                  RowBox[{"z", "[", "t", "]"}]}], "}"}], " ", "/.", " ", 
+                RowBox[{"ns$", "[", 
+                 RowBox[{"[", "i", "]"}], "]"}]}], ",", " ", 
+               RowBox[{"{", 
+                RowBox[{"i", ",", " ", 
+                 RowBox[{"0.1", "/", "\[Delta]"}]}], "}"}]}], "]"}], "]"}], 
+            ",", " ", 
+            RowBox[{"{", 
+             RowBox[{"t", ",", " ", "0", ",", " ", "T"}], "}"}], ",", " ", 
+            "\n", "     ", 
+            RowBox[{"PlotPoints", " ", "->", " ", "40"}], ",", " ", 
+            RowBox[{"Axes", " ", "->", " ", "False"}], ",", " ", 
+            RowBox[{"PlotRange", " ", "->", " ", "All"}], ",", " ", 
+            RowBox[{"ImageSize", " ", "->", " ", "420"}], ",", 
+            RowBox[{"SphericalRegion", "\[Rule]", "True"}], ",", " ", "\n", 
+            "     ", 
+            RowBox[{"PlotStyle", " ", "->", " ", 
+             RowBox[{"Table", "[", 
+              RowBox[{
+               RowBox[{
+                RowBox[{"ColorData", "[", "\"\<Rainbow\>\"", "]"}], "[", 
+                RowBox[{"i", "/", 
+                 RowBox[{"(", 
+                  RowBox[{"0.1", "/", "\[Delta]"}], ")"}]}], "]"}], ",", " ", 
+               RowBox[{"{", 
+                RowBox[{"i", ",", " ", 
+                 RowBox[{"0.1", "/", "\[Delta]"}]}], "}"}]}], "]"}]}], ",", 
+            RowBox[{"Boxed", "\[Rule]", "False"}]}], "]"}], ",", " ", "\n", 
+          "    ", 
+          RowBox[{
+           RowBox[{"Show", "[", 
+            RowBox[{"Table", "[", 
+             RowBox[{
+              RowBox[{"ParametricPlot3D", "[", 
+               RowBox[{
+                RowBox[{"Evaluate", "[", 
+                 RowBox[{
+                  RowBox[{"{", 
+                   RowBox[{
+                    RowBox[{"x", "[", "t", "]"}], ",", " ", 
+                    RowBox[{"y", "[", "t", "]"}], ",", " ", 
+                    RowBox[{"z", "[", "t", "]"}]}], "}"}], " ", "/.", " ", 
+                  RowBox[{"ns$", "[", 
+                   RowBox[{"[", "i", "]"}], "]"}]}], "]"}], ",", " ", "\n", 
+                "        ", 
+                RowBox[{"{", 
+                 RowBox[{"t", ",", " ", "0", ",", " ", "T"}], "}"}], ",", " ", 
+                RowBox[{"Axes", " ", "->", " ", "False"}], ",", " ", 
+                RowBox[{"PlotRange", " ", "->", " ", "All"}], ",", " ", 
+                RowBox[{"Mesh", " ", "->", " ", "80"}], ",", 
+                RowBox[{"Boxed", "\[Rule]", "False"}], ",", "\n", "        ", 
+                RowBox[{"PlotStyle", " ", "->", " ", "None"}], ",", " ", 
+                RowBox[{"MeshStyle", " ", "->", " ", 
+                 RowBox[{"Directive", "[", 
+                  RowBox[{
+                   RowBox[{"PointSize", "[", "Medium", "]"}], ",", " ", 
+                   RowBox[{"ImageSize", " ", "->", " ", "420"}], ",", "\n", 
+                   "          ", 
+                   RowBox[{
+                    RowBox[{"ColorData", "[", "\"\<Rainbow\>\"", "]"}], "[", 
+                    RowBox[{"i", "/", 
+                    RowBox[{"(", 
+                    RowBox[{"0.1", "/", "\[Delta]"}], ")"}]}], "]"}]}], 
+                  "]"}]}], ",", 
+                RowBox[{"SphericalRegion", "\[Rule]", "True"}]}], "]"}], ",", 
+              " ", 
+              RowBox[{"{", 
+               RowBox[{"i", ",", " ", 
+                RowBox[{"0.1", "/", "\[Delta]"}]}], "}"}]}], "]"}], "]"}], 
+           " ", "/.", " ", "\n", "     ", 
+           RowBox[{
+            RowBox[{"Point", "[", "p_", "]"}], " ", "->", " ", 
+            RowBox[{"Sphere", "[", 
+             RowBox[{"p", ",", " ", "0.1"}], "]"}]}]}]}], "]"}], ",", 
+        RowBox[{"ImageSize", "\[Rule]", 
+         RowBox[{"{", 
+          RowBox[{"420", ",", "420"}], "}"}]}]}], "]"}]}], "]"}], ",", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"T", ",", " ", "29.5", ",", " ", 
+        RowBox[{"Style", "[", 
+         RowBox[{"\"\<t\>\"", ",", " ", "Italic"}], "]"}]}], "}"}], ",", " ", 
+      "0.01", ",", " ", "100", ",", " ", 
+      RowBox[{"ImageSize", " ", "->", " ", "Tiny"}], ",", " ", 
+      RowBox[{"Appearance", " ", "->", " ", "\"\<Labeled\>\""}]}], "}"}], ",",
+     " ", "\n", "  ", 
+    RowBox[{"{", 
+     RowBox[{"view", ",", " ", 
+      RowBox[{"{", 
+       RowBox[{"\"\<lines\>\"", ",", " ", "\"\<spheres\>\""}], "}"}]}], "}"}],
+     ",", " ", "Delimiter", ",", " ", 
+    RowBox[{"Style", "[", 
+     RowBox[{"\"\<constants\>\"", ",", " ", "Bold"}], "]"}], ",", " ", "\n", 
+    "  ", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"\[Alpha]", ",", " ", 
+        RowBox[{"-", "1.2880529879718154"}]}], "}"}], ",", " ", 
+      RowBox[{"-", "Pi"}], ",", " ", "Pi", ",", " ", 
+      RowBox[{"ImageSize", " ", "->", " ", "Tiny"}], ",", " ", 
+      RowBox[{"Appearance", " ", "->", " ", "\"\<Labeled\>\""}]}], "}"}], ",",
+     " ", "\n", "  ", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"\[Beta]", ",", " ", "0.031415926535897754"}], "}"}], ",", " ", 
+      RowBox[{"-", "Pi"}], ",", " ", "Pi", ",", " ", 
+      RowBox[{"ImageSize", " ", "->", " ", "Tiny"}], ",", " ", 
+      RowBox[{"Appearance", " ", "->", " ", "\"\<Labeled\>\""}]}], "}"}], ",",
+     " ", "\n", "  ", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"\[Gamma]", ",", " ", 
+        RowBox[{"-", "0.5026548245743672"}]}], "}"}], ",", " ", 
+      RowBox[{"-", "Pi"}], ",", " ", "Pi", ",", " ", 
+      RowBox[{"ImageSize", " ", "->", " ", "Tiny"}], ",", " ", 
+      RowBox[{"Appearance", " ", "->", " ", "\"\<Labeled\>\""}]}], "}"}], ",",
+     " ", "\n", "  ", "Delimiter", ",", " ", 
+    RowBox[{"Style", "[", 
+     RowBox[{"\"\<initial positions\>\"", ",", " ", "Bold"}], "]"}], ",", " ",
+     "\n", "  ", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"x0", ",", " ", 
+        RowBox[{"-", "0.188495"}], ",", " ", 
+        RowBox[{"Text", "[", 
+         RowBox[{"Subscript", "[", 
+          RowBox[{
+           RowBox[{"Style", "[", 
+            RowBox[{"\"\<x\>\"", ",", " ", "Italic"}], "]"}], ",", " ", 
+           "\"\<0\>\""}], "]"}], "]"}]}], "}"}], ",", " ", 
+      RowBox[{"-", "Pi"}], ",", " ", "Pi", ",", " ", 
+      RowBox[{"ImageSize", " ", "\[Rule]", " ", "Tiny"}], ",", " ", 
+      RowBox[{"Appearance", " ", "\[Rule]", " ", "\"\<Labeled\>\""}]}], "}"}],
+     ",", " ", "\n", "  ", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"y0", ",", " ", "0.251327", ",", " ", 
+        RowBox[{"Text", "[", 
+         RowBox[{"Subscript", "[", 
+          RowBox[{
+           RowBox[{"Style", "[", 
+            RowBox[{"\"\<z\>\"", ",", " ", "Italic"}], "]"}], ",", " ", 
+           "\"\<0\>\""}], "]"}], "]"}]}], "}"}], ",", " ", 
+      RowBox[{"-", "Pi"}], ",", " ", "Pi", ",", " ", 
+      RowBox[{"ImageSize", " ", "\[Rule]", "  ", "Tiny"}], ",", " ", 
+      RowBox[{"Appearance", " ", "\[Rule]", " ", "\"\<Labeled\>\""}]}], "}"}],
+     ",", " ", "\n", "  ", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"z0", ",", " ", 
+        RowBox[{"-", "0.282743"}], ",", " ", 
+        RowBox[{"Text", "[", 
+         RowBox[{"Subscript", "[", 
+          RowBox[{
+           RowBox[{"Style", "[", 
+            RowBox[{"\"\<z\>\"", ",", " ", "Italic"}], "]"}], ",", " ", 
+           "\"\<0\>\""}], "]"}], "]"}]}], "}"}], ",", " ", 
+      RowBox[{"-", "Pi"}], ",", " ", "Pi", ",", " ", 
+      RowBox[{"ImageSize", " ", "\[Rule]", " ", "Tiny"}], ",", " ", 
+      RowBox[{"Appearance", " ", "\[Rule]", " ", "\"\<Labeled\>\""}]}], "}"}],
+     ",", " ", "\[IndentingNewLine]", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"\[Delta]", ",", " ", "0.0025"}], "}"}], ",", " ", "0.001", 
+      ",", " ", "0.1", ",", 
+      RowBox[{"ImageSize", " ", "\[Rule]", " ", "Tiny"}], ",", " ", 
+      RowBox[{"Appearance", " ", "\[Rule]", " ", "\"\<Labeled\>\""}]}], "}"}],
+     ",", "\[IndentingNewLine]", 
+    RowBox[{"Spacer", "[", "170", "]"}], ",", "\n", "  ", 
+    RowBox[{"ControlPlacement", " ", "\[Rule]", " ", "Left"}], ",", 
+    "\[IndentingNewLine]", 
+    RowBox[{"SynchronousUpdating", "\[Rule]", " ", "False"}]}], "]"}], 
+  " "}]], "Input",
+ CellChangeTimes->{{3.554466123234515*^9, 3.554466150579774*^9}, {
+   3.5544661933431253`*^9, 3.5544662010945873`*^9}, {3.554466241188785*^9, 
+   3.554466246531827*^9}, {3.554466321564433*^9, 3.554466329607646*^9}, {
+   3.554466421806527*^9, 3.554466437151095*^9}, {3.5544665132702312`*^9, 
+   3.554466518206305*^9}, {3.554466633141358*^9, 3.554466676633463*^9}, {
+   3.554466710653184*^9, 3.554466716715702*^9}, {3.554469463586541*^9, 
+   3.554469554033812*^9}, {3.554469630842005*^9, 3.554469688216378*^9}, {
+   3.5544697319260473`*^9, 3.554469749550971*^9}, 3.554473833870542*^9, {
+   3.554565279685904*^9, 3.5545653780575027`*^9}, {3.554746772916411*^9, 
+   3.554746781764262*^9}, {3.554746822222382*^9, 3.55474694510856*^9}},
+ CellID->1086837130],
+
+Cell[BoxData[
+ TagBox[
+  StyleBox[
+   DynamicModuleBox[{$CellContext`T$$ = 29.5, $CellContext`view$$ = 
+    "lines", $CellContext`x0$$ = -0.188495, $CellContext`y0$$ = 
+    0.251327, $CellContext`z0$$ = -0.282743, $CellContext`\[Alpha]$$ = \
+-1.2880529879718154`, $CellContext`\[Beta]$$ = 
+    0.031415926535897754`, $CellContext`\[Gamma]$$ = -0.5026548245743672, \
+$CellContext`\[Delta]$$ = 0.0025, Typeset`show$$ = True, 
+    Typeset`bookmarkList$$ = {}, Typeset`bookmarkMode$$ = "Menu", 
+    Typeset`animator$$, Typeset`animvar$$ = 1, Typeset`name$$ = 
+    "\"untitled\"", Typeset`specs$$ = {{{
+       Hold[$CellContext`T$$], 29.5, 
+       Style["t", Italic]}, 0.01, 100}, {
+      Hold[$CellContext`view$$], {"lines", "spheres"}}, {
+      Hold[
+       Style["constants", Bold]], Manipulate`Dump`ThisIsNotAControl}, {{
+       Hold[$CellContext`\[Alpha]$$], -1.2880529879718154`}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Beta]$$], 0.031415926535897754`}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Gamma]$$], -0.5026548245743672}, -Pi, Pi}, {
+      Hold[
+       Style["initial positions", Bold]], 
+      Manipulate`Dump`ThisIsNotAControl}, {{
+       Hold[$CellContext`x0$$], -0.188495, 
+       Text[
+        Subscript[
+         Style["x", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`y0$$], 0.251327, 
+       Text[
+        Subscript[
+         Style["z", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`z0$$], -0.282743, 
+       Text[
+        Subscript[
+         Style["z", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Delta]$$], 0.0025}, 0.001, 0.1}, {
+      Hold[
+       Spacer[170]], Manipulate`Dump`ThisIsNotAControl}}, Typeset`size$$ = {
+    420., {207., 213.}}, Typeset`update$$ = 0, Typeset`initDone$$, 
+    Typeset`skipInitDone$$ = True, $CellContext`T$710454$$ = 
+    0, $CellContext`view$710455$$ = False, $CellContext`\[Alpha]$710456$$ = 
+    0, $CellContext`\[Beta]$710457$$ = 0, $CellContext`\[Gamma]$710458$$ = 
+    0, $CellContext`x0$710459$$ = 0, $CellContext`y0$710460$$ = 
+    0, $CellContext`z0$710461$$ = 0, $CellContext`\[Delta]$710462$$ = 0}, 
+    DynamicBox[Manipulate`ManipulateBoxes[
+     1, StandardForm, 
+      "Variables" :> {$CellContext`T$$ = 29.5, $CellContext`view$$ = 
+        "lines", $CellContext`x0$$ = -0.188495, $CellContext`y0$$ = 
+        0.251327, $CellContext`z0$$ = -0.282743, $CellContext`\[Alpha]$$ = \
+-1.2880529879718154`, $CellContext`\[Beta]$$ = 
+        0.031415926535897754`, $CellContext`\[Gamma]$$ = -0.5026548245743672, \
+$CellContext`\[Delta]$$ = 0.0025}, "ControllerVariables" :> {
+        Hold[$CellContext`T$$, $CellContext`T$710454$$, 0], 
+        Hold[$CellContext`view$$, $CellContext`view$710455$$, False], 
+        Hold[$CellContext`\[Alpha]$$, $CellContext`\[Alpha]$710456$$, 0], 
+        Hold[$CellContext`\[Beta]$$, $CellContext`\[Beta]$710457$$, 0], 
+        Hold[$CellContext`\[Gamma]$$, $CellContext`\[Gamma]$710458$$, 0], 
+        Hold[$CellContext`x0$$, $CellContext`x0$710459$$, 0], 
+        Hold[$CellContext`y0$$, $CellContext`y0$710460$$, 0], 
+        Hold[$CellContext`z0$$, $CellContext`z0$710461$$, 0], 
+        Hold[$CellContext`\[Delta]$$, $CellContext`\[Delta]$710462$$, 0]}, 
+      "OtherVariables" :> {
+       Typeset`show$$, Typeset`bookmarkList$$, Typeset`bookmarkMode$$, 
+        Typeset`animator$$, Typeset`animvar$$, Typeset`name$$, 
+        Typeset`specs$$, Typeset`size$$, Typeset`update$$, Typeset`initDone$$,
+         Typeset`skipInitDone$$}, "Body" :> With[{$CellContext`ns$ = Table[
+           
+           NDSolve[{
+            Derivative[
+              1][$CellContext`x][$CellContext`t] == $CellContext`\[Alpha]$$ 
+               Sin[
+                 $CellContext`z[$CellContext`t]] + $CellContext`\[Gamma]$$ Cos[
+                 $CellContext`y[$CellContext`t]], 
+             Derivative[
+              1][$CellContext`y][$CellContext`t] == $CellContext`\[Beta]$$ Sin[
+                 $CellContext`x[$CellContext`t]] + $CellContext`\[Alpha]$$ Cos[
+                 $CellContext`x[$CellContext`t]], 
+             Derivative[
+              1][$CellContext`z][$CellContext`t] == $CellContext`\[Gamma]$$ 
+               Sin[
+                 $CellContext`y[$CellContext`t]] + $CellContext`\[Beta]$$ Cos[
+                 $CellContext`x[$CellContext`t]], $CellContext`x[
+              0] == $CellContext`x0$$ + $CellContext`c, $CellContext`y[
+              0] == $CellContext`y0$$ + $CellContext`c, $CellContext`z[
+              0] == $CellContext`z0$$ + $CellContext`c}, {$CellContext`x, \
+$CellContext`y, $CellContext`z}, {$CellContext`t, 0, $CellContext`T$$}, 
+            MaxSteps -> 10^4], {$CellContext`c, 0, 
+            0.1, $CellContext`\[Delta]$$}]}, 
+        Pane[
+         If[$CellContext`view$$ == "lines", 
+          ParametricPlot3D[
+           Evaluate[
+            Table[
+             ReplaceAll[{
+               $CellContext`x[$CellContext`t], 
+               $CellContext`y[$CellContext`t], 
+               $CellContext`z[$CellContext`t]}, 
+              Part[$CellContext`ns$, $CellContext`i]], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}]], {$CellContext`t, 
+            0, $CellContext`T$$}, PlotPoints -> 40, Axes -> False, PlotRange -> 
+           All, ImageSize -> 420, SphericalRegion -> True, PlotStyle -> Table[
+             ColorData[
+             "Rainbow"][$CellContext`i/(
+              0.1/$CellContext`\[Delta]$$)], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}], Boxed -> False], 
+          ReplaceAll[
+           Show[
+            Table[
+             ParametricPlot3D[
+              Evaluate[
+               ReplaceAll[{
+                 $CellContext`x[$CellContext`t], 
+                 $CellContext`y[$CellContext`t], 
+                 $CellContext`z[$CellContext`t]}, 
+                Part[$CellContext`ns$, $CellContext`i]]], {$CellContext`t, 
+               0, $CellContext`T$$}, Axes -> False, PlotRange -> All, Mesh -> 
+              80, Boxed -> False, PlotStyle -> None, MeshStyle -> Directive[
+                PointSize[Medium], ImageSize -> 420, 
+                ColorData[
+                "Rainbow"][$CellContext`i/(0.1/$CellContext`\[Delta]$$)]], 
+              SphericalRegion -> True], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}]], Point[
+             Pattern[$CellContext`p, 
+              Blank[]]] -> Sphere[$CellContext`p, 0.1]]], 
+         ImageSize -> {420, 420}]], 
+      "Specifications" :> {{{$CellContext`T$$, 29.5, 
+          Style["t", Italic]}, 0.01, 100, ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {$CellContext`view$$, {"lines", "spheres"}}, Delimiter, 
+        Style[
+        "constants", 
+         Bold], {{$CellContext`\[Alpha]$$, -1.2880529879718154`}, -Pi, Pi, 
+         ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {{$CellContext`\[Beta]$$, 0.031415926535897754`}, -Pi, 
+         Pi, ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {{$CellContext`\[Gamma]$$, -0.5026548245743672}, -Pi, Pi,
+          ImageSize -> Tiny, Appearance -> "Labeled"}, Delimiter, 
+        Style["initial positions", Bold], {{$CellContext`x0$$, -0.188495, 
+          Text[
+           Subscript[
+            Style["x", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`y0$$, 0.251327, 
+          Text[
+           Subscript[
+            Style["z", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`z0$$, -0.282743, 
+          Text[
+           Subscript[
+            Style["z", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`\[Delta]$$, 0.0025}, 0.001, 
+         0.1, ImageSize -> Tiny, Appearance -> "Labeled"}, 
+        Spacer[170]}, 
+      "Options" :> {ControlPlacement -> Left, SynchronousUpdating -> False}, 
+      "DefaultOptions" :> {ControllerLinking -> True}],
+     ImageSizeCache->{645., {238., 243.}},
+     SingleEvaluation->True],
+    Deinitialization:>None,
+    DynamicModuleValues:>{},
+    SynchronousInitialization->True,
+    UnsavedVariables:>{Typeset`initDone$$},
+    UntrackedVariables:>{Typeset`size$$}], "Manipulate",
+   Deployed->True,
+   StripOnInput->False],
+  Manipulate`InterpretManipulate[1]]], "Output",
+ CellID->2079976548]
+}, {2}]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["", "ManipulateCaptionSection"],
+
+Cell["\<\
+The ABC flow, a three-parameter velocity field that provides a simple \
+stationary solution of Euler's equations in three dimensions for \
+incompressible, inviscid fluid flows, can be considered to be a prototype for \
+the study of turbulence. It is named after V. Arnold, E. Beltrami, and S. \
+Childress.\
+\>", "ManipulateCaption",
+ CellChangeTimes->{
+  3.5544759459749928`*^9, {3.554475985474782*^9, 3.554475988136387*^9}, {
+   3.554476427203415*^9, 3.5544764435811167`*^9}, {3.554476725711429*^9, 
+   3.5544767266090393`*^9}, {3.554476942250905*^9, 3.554476943902883*^9}, {
+   3.554477495131011*^9, 3.5544775026672792`*^9}, {3.554478927582693*^9, 
+   3.5544789325084867`*^9}, {3.554479701729094*^9, 3.554479777135579*^9}, {
+   3.5544801046240892`*^9, 3.554480106636569*^9}, {3.554480203659275*^9, 
+   3.554480206288571*^9}, 3.554480287459511*^9, {3.5547469729562674`*^9, 
+   3.554747014736507*^9}, {3.55475945045324*^9, 3.554759473606716*^9}, {
+   3.554760670696653*^9, 3.554760701728191*^9}, 3.5548298171420813`*^9, {
+   3.5548298877921457`*^9, 3.5548298928066473`*^9}, {3.5548299268160477`*^9, 
+   3.5548299591132774`*^9}},
+ CellID->1274971196],
+
+Cell[TextData[{
+ "Trajectories for a set of initial conditions differing by factors of ",
+ Cell[BoxData[
+  FormBox["\[Delta]", TraditionalForm]], "InlineMath"],
+ " are shown; as you increase the value, the number of initial conditions \
+decreases."
+}], "ManipulateCaption",
+ CellChangeTimes->{{3.554476496476348*^9, 3.554476525256551*^9}, {
+  3.554476560617014*^9, 3.554476586658415*^9}, {3.554478620786929*^9, 
+  3.554478625416994*^9}, {3.554747027167685*^9, 3.55474707256118*^9}, {
+  3.5547594908395348`*^9, 3.554759497247855*^9}, {3.554760781005909*^9, 
+  3.5547607936039543`*^9}},
+ CellID->753258714]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["", "ThumbnailSection"],
+
+Cell[BoxData[
+ TagBox[
+  StyleBox[
+   DynamicModuleBox[{$CellContext`T$$ = 29.5, $CellContext`view$$ = 
+    "lines", $CellContext`x0$$ = -0.18849555921538763`, $CellContext`y0$$ = 
+    0.2513274122871838, $CellContext`z0$$ = -0.2827433388230811, \
+$CellContext`\[Alpha]$$ = -1.2880529879718154`, $CellContext`\[Beta]$$ = 
+    0.031415926535897754`, $CellContext`\[Gamma]$$ = -0.5026548245743672, \
+$CellContext`\[Delta]$$ = 0.0025, Typeset`show$$ = True, 
+    Typeset`bookmarkList$$ = {}, Typeset`bookmarkMode$$ = "Menu", 
+    Typeset`animator$$, Typeset`animvar$$ = 1, Typeset`name$$ = 
+    "\"untitled\"", Typeset`specs$$ = {{{
+       Hold[$CellContext`T$$], 29.5, 
+       Style["t", Italic]}, 0.01, 100}, {
+      Hold[$CellContext`view$$], {"lines", "spheres"}}, {
+      Hold[
+       Style["constants", Bold]], Manipulate`Dump`ThisIsNotAControl}, {{
+       Hold[$CellContext`\[Alpha]$$], -1.2880529879718154`}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Beta]$$], 0.031415926535897754`}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Gamma]$$], -0.5026548245743672}, -Pi, Pi}, {
+      Hold[
+       Style["initial positions", Bold]], 
+      Manipulate`Dump`ThisIsNotAControl}, {{
+       Hold[$CellContext`x0$$], -0.18849555921538763`, 
+       Text[
+        Subscript[
+         Style["x", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`y0$$], 0.2513274122871838, 
+       Text[
+        Subscript[
+         Style["z", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`z0$$], -0.2827433388230811, 
+       Text[
+        Subscript[
+         Style["z", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Delta]$$], 0.0025}, 0.001, 0.1}, {
+      Hold[
+       Spacer[170]], Manipulate`Dump`ThisIsNotAControl}}, Typeset`size$$ = {
+    420., {207., 213.}}, Typeset`update$$ = 0, Typeset`initDone$$, 
+    Typeset`skipInitDone$$ = True, $CellContext`T$710558$$ = 
+    0, $CellContext`view$710559$$ = False, $CellContext`\[Alpha]$710560$$ = 
+    0, $CellContext`\[Beta]$710561$$ = 0, $CellContext`\[Gamma]$710562$$ = 
+    0, $CellContext`x0$710563$$ = 0, $CellContext`y0$710564$$ = 
+    0, $CellContext`z0$710565$$ = 0, $CellContext`\[Delta]$710566$$ = 0}, 
+    DynamicBox[Manipulate`ManipulateBoxes[
+     1, StandardForm, 
+      "Variables" :> {$CellContext`T$$ = 29.5, $CellContext`view$$ = 
+        "lines", $CellContext`x0$$ = -0.18849555921538763`, $CellContext`y0$$ = 
+        0.2513274122871838, $CellContext`z0$$ = -0.2827433388230811, \
+$CellContext`\[Alpha]$$ = -1.2880529879718154`, $CellContext`\[Beta]$$ = 
+        0.031415926535897754`, $CellContext`\[Gamma]$$ = -0.5026548245743672, \
+$CellContext`\[Delta]$$ = 0.0025}, "ControllerVariables" :> {
+        Hold[$CellContext`T$$, $CellContext`T$710558$$, 0], 
+        Hold[$CellContext`view$$, $CellContext`view$710559$$, False], 
+        Hold[$CellContext`\[Alpha]$$, $CellContext`\[Alpha]$710560$$, 0], 
+        Hold[$CellContext`\[Beta]$$, $CellContext`\[Beta]$710561$$, 0], 
+        Hold[$CellContext`\[Gamma]$$, $CellContext`\[Gamma]$710562$$, 0], 
+        Hold[$CellContext`x0$$, $CellContext`x0$710563$$, 0], 
+        Hold[$CellContext`y0$$, $CellContext`y0$710564$$, 0], 
+        Hold[$CellContext`z0$$, $CellContext`z0$710565$$, 0], 
+        Hold[$CellContext`\[Delta]$$, $CellContext`\[Delta]$710566$$, 0]}, 
+      "OtherVariables" :> {
+       Typeset`show$$, Typeset`bookmarkList$$, Typeset`bookmarkMode$$, 
+        Typeset`animator$$, Typeset`animvar$$, Typeset`name$$, 
+        Typeset`specs$$, Typeset`size$$, Typeset`update$$, Typeset`initDone$$,
+         Typeset`skipInitDone$$}, "Body" :> With[{$CellContext`ns$ = Table[
+           
+           NDSolve[{
+            Derivative[
+              1][$CellContext`x][$CellContext`t] == $CellContext`\[Alpha]$$ 
+               Sin[
+                 $CellContext`z[$CellContext`t]] + $CellContext`\[Gamma]$$ Cos[
+                 $CellContext`y[$CellContext`t]], 
+             Derivative[
+              1][$CellContext`y][$CellContext`t] == $CellContext`\[Beta]$$ Sin[
+                 $CellContext`x[$CellContext`t]] + $CellContext`\[Alpha]$$ Cos[
+                 $CellContext`x[$CellContext`t]], 
+             Derivative[
+              1][$CellContext`z][$CellContext`t] == $CellContext`\[Gamma]$$ 
+               Sin[
+                 $CellContext`y[$CellContext`t]] + $CellContext`\[Beta]$$ Cos[
+                 $CellContext`x[$CellContext`t]], $CellContext`x[
+              0] == $CellContext`x0$$ + $CellContext`c, $CellContext`y[
+              0] == $CellContext`y0$$ + $CellContext`c, $CellContext`z[
+              0] == $CellContext`z0$$ + $CellContext`c}, {$CellContext`x, \
+$CellContext`y, $CellContext`z}, {$CellContext`t, 0, $CellContext`T$$}, 
+            MaxSteps -> 10^4], {$CellContext`c, 0, 
+            0.1, $CellContext`\[Delta]$$}]}, 
+        Pane[
+         If[$CellContext`view$$ == "lines", 
+          ParametricPlot3D[
+           Evaluate[
+            Table[
+             ReplaceAll[{
+               $CellContext`x[$CellContext`t], 
+               $CellContext`y[$CellContext`t], 
+               $CellContext`z[$CellContext`t]}, 
+              Part[$CellContext`ns$, $CellContext`i]], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}]], {$CellContext`t, 
+            0, $CellContext`T$$}, PlotPoints -> 40, Axes -> False, PlotRange -> 
+           All, ImageSize -> 420, SphericalRegion -> True, PlotStyle -> Table[
+             ColorData[
+             "Rainbow"][$CellContext`i/(
+              0.1/$CellContext`\[Delta]$$)], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}], Boxed -> False], 
+          ReplaceAll[
+           Show[
+            Table[
+             ParametricPlot3D[
+              Evaluate[
+               ReplaceAll[{
+                 $CellContext`x[$CellContext`t], 
+                 $CellContext`y[$CellContext`t], 
+                 $CellContext`z[$CellContext`t]}, 
+                Part[$CellContext`ns$, $CellContext`i]]], {$CellContext`t, 
+               0, $CellContext`T$$}, Axes -> False, PlotRange -> All, Mesh -> 
+              80, Boxed -> False, PlotStyle -> None, MeshStyle -> Directive[
+                PointSize[Medium], ImageSize -> 420, 
+                ColorData[
+                "Rainbow"][$CellContext`i/(0.1/$CellContext`\[Delta]$$)]], 
+              SphericalRegion -> True], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}]], Point[
+             Pattern[$CellContext`p, 
+              Blank[]]] -> Sphere[$CellContext`p, 0.1]]], 
+         ImageSize -> {420, 420}]], 
+      "Specifications" :> {{{$CellContext`T$$, 29.5, 
+          Style["t", Italic]}, 0.01, 100, ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {$CellContext`view$$, {"lines", "spheres"}}, Delimiter, 
+        Style[
+        "constants", 
+         Bold], {{$CellContext`\[Alpha]$$, -1.2880529879718154`}, -Pi, Pi, 
+         ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {{$CellContext`\[Beta]$$, 0.031415926535897754`}, -Pi, 
+         Pi, ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {{$CellContext`\[Gamma]$$, -0.5026548245743672}, -Pi, Pi,
+          ImageSize -> Tiny, Appearance -> "Labeled"}, Delimiter, 
+        Style[
+        "initial positions", 
+         Bold], {{$CellContext`x0$$, -0.18849555921538763`, 
+          Text[
+           Subscript[
+            Style["x", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`y0$$, 0.2513274122871838, 
+          Text[
+           Subscript[
+            Style["z", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`z0$$, -0.2827433388230811, 
+          Text[
+           Subscript[
+            Style["z", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`\[Delta]$$, 0.0025}, 0.001, 
+         0.1, ImageSize -> Tiny, Appearance -> "Labeled"}, 
+        Spacer[170]}, 
+      "Options" :> {ControlPlacement -> Left, SynchronousUpdating -> False}, 
+      "DefaultOptions" :> {ControllerLinking -> True}],
+     ImageSizeCache->{645., {238., 243.}},
+     SingleEvaluation->True],
+    Deinitialization:>None,
+    DynamicModuleValues:>{},
+    SynchronousInitialization->True,
+    UnsavedVariables:>{Typeset`initDone$$},
+    UntrackedVariables:>{Typeset`size$$}], "Manipulate",
+   Deployed->True,
+   StripOnInput->False],
+  Manipulate`InterpretManipulate[1]]], "Output",
+ CellID->1427036370]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["", "SnapshotsSection"],
+
+Cell[BoxData[
+ TagBox[
+  StyleBox[
+   DynamicModuleBox[{$CellContext`T$$ = 49., $CellContext`view$$ = 
+    "spheres", $CellContext`x0$$ = -0.4084070449666728, $CellContext`y0$$ = 
+    0.2513274122871838, $CellContext`z0$$ = 
+    0.15707963267948966`, $CellContext`\[Alpha]$$ = 
+    0.4712388980384694, $CellContext`\[Beta]$$ = -0.5026548245743672, \
+$CellContext`\[Gamma]$$ = -0.2827433388230811, $CellContext`\[Delta]$$ = 
+    0.001, Typeset`show$$ = True, Typeset`bookmarkList$$ = {}, 
+    Typeset`bookmarkMode$$ = "Menu", Typeset`animator$$, Typeset`animvar$$ = 
+    1, Typeset`name$$ = "\"untitled\"", Typeset`specs$$ = {{{
+       Hold[$CellContext`T$$], 49., 
+       Style["t", Italic]}, 0.01, 100}, {
+      Hold[$CellContext`view$$], {"lines", "spheres"}}, {
+      Hold[
+       Style["constants", Bold]], Manipulate`Dump`ThisIsNotAControl}, {{
+       Hold[$CellContext`\[Alpha]$$], 0.4712388980384694}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Beta]$$], -0.5026548245743672}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Gamma]$$], -0.2827433388230811}, -Pi, Pi}, {
+      Hold[
+       Style["initial positions", Bold]], 
+      Manipulate`Dump`ThisIsNotAControl}, {{
+       Hold[$CellContext`x0$$], -0.4084070449666728, 
+       Text[
+        Subscript[
+         Style["x", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`y0$$], 0.2513274122871838, 
+       Text[
+        Subscript[
+         Style["z", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`z0$$], 0.15707963267948966`, 
+       Text[
+        Subscript[
+         Style["z", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Delta]$$], 0.001}, 0.001, 0.1}, {
+      Hold[
+       Spacer[170]], Manipulate`Dump`ThisIsNotAControl}}, Typeset`size$$ = {
+    420., {207., 213.}}, Typeset`update$$ = 0, Typeset`initDone$$, 
+    Typeset`skipInitDone$$ = True, $CellContext`T$710662$$ = 
+    0, $CellContext`view$710663$$ = False, $CellContext`\[Alpha]$710664$$ = 
+    0, $CellContext`\[Beta]$710665$$ = 0, $CellContext`\[Gamma]$710666$$ = 
+    0, $CellContext`x0$710667$$ = 0, $CellContext`y0$710668$$ = 
+    0, $CellContext`z0$710669$$ = 0, $CellContext`\[Delta]$710670$$ = 0}, 
+    DynamicBox[Manipulate`ManipulateBoxes[
+     1, StandardForm, 
+      "Variables" :> {$CellContext`T$$ = 49., $CellContext`view$$ = 
+        "lines", $CellContext`x0$$ = -0.4084070449666728, $CellContext`y0$$ = 
+        0.2513274122871838, $CellContext`z0$$ = 
+        0.15707963267948966`, $CellContext`\[Alpha]$$ = 
+        0.4712388980384694, $CellContext`\[Beta]$$ = -0.5026548245743672, \
+$CellContext`\[Gamma]$$ = -0.2827433388230811, $CellContext`\[Delta]$$ = 
+        0.001}, "ControllerVariables" :> {
+        Hold[$CellContext`T$$, $CellContext`T$710662$$, 0], 
+        Hold[$CellContext`view$$, $CellContext`view$710663$$, False], 
+        Hold[$CellContext`\[Alpha]$$, $CellContext`\[Alpha]$710664$$, 0], 
+        Hold[$CellContext`\[Beta]$$, $CellContext`\[Beta]$710665$$, 0], 
+        Hold[$CellContext`\[Gamma]$$, $CellContext`\[Gamma]$710666$$, 0], 
+        Hold[$CellContext`x0$$, $CellContext`x0$710667$$, 0], 
+        Hold[$CellContext`y0$$, $CellContext`y0$710668$$, 0], 
+        Hold[$CellContext`z0$$, $CellContext`z0$710669$$, 0], 
+        Hold[$CellContext`\[Delta]$$, $CellContext`\[Delta]$710670$$, 0]}, 
+      "OtherVariables" :> {
+       Typeset`show$$, Typeset`bookmarkList$$, Typeset`bookmarkMode$$, 
+        Typeset`animator$$, Typeset`animvar$$, Typeset`name$$, 
+        Typeset`specs$$, Typeset`size$$, Typeset`update$$, Typeset`initDone$$,
+         Typeset`skipInitDone$$}, "Body" :> With[{$CellContext`ns$ = Table[
+           
+           NDSolve[{
+            Derivative[
+              1][$CellContext`x][$CellContext`t] == $CellContext`\[Alpha]$$ 
+               Sin[
+                 $CellContext`z[$CellContext`t]] + $CellContext`\[Gamma]$$ Cos[
+                 $CellContext`y[$CellContext`t]], 
+             Derivative[
+              1][$CellContext`y][$CellContext`t] == $CellContext`\[Beta]$$ Sin[
+                 $CellContext`x[$CellContext`t]] + $CellContext`\[Alpha]$$ Cos[
+                 $CellContext`x[$CellContext`t]], 
+             Derivative[
+              1][$CellContext`z][$CellContext`t] == $CellContext`\[Gamma]$$ 
+               Sin[
+                 $CellContext`y[$CellContext`t]] + $CellContext`\[Beta]$$ Cos[
+                 $CellContext`x[$CellContext`t]], $CellContext`x[
+              0] == $CellContext`x0$$ + $CellContext`c, $CellContext`y[
+              0] == $CellContext`y0$$ + $CellContext`c, $CellContext`z[
+              0] == $CellContext`z0$$ + $CellContext`c}, {$CellContext`x, \
+$CellContext`y, $CellContext`z}, {$CellContext`t, 0, $CellContext`T$$}, 
+            MaxSteps -> 10^4], {$CellContext`c, 0, 
+            0.1, $CellContext`\[Delta]$$}]}, 
+        Pane[
+         If[$CellContext`view$$ == "lines", 
+          ParametricPlot3D[
+           Evaluate[
+            Table[
+             ReplaceAll[{
+               $CellContext`x[$CellContext`t], 
+               $CellContext`y[$CellContext`t], 
+               $CellContext`z[$CellContext`t]}, 
+              Part[$CellContext`ns$, $CellContext`i]], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}]], {$CellContext`t, 
+            0, $CellContext`T$$}, PlotPoints -> 40, Axes -> False, PlotRange -> 
+           All, ImageSize -> 420, SphericalRegion -> True, PlotStyle -> Table[
+             ColorData[
+             "Rainbow"][$CellContext`i/(
+              0.1/$CellContext`\[Delta]$$)], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}], Boxed -> False], 
+          ReplaceAll[
+           Show[
+            Table[
+             ParametricPlot3D[
+              Evaluate[
+               ReplaceAll[{
+                 $CellContext`x[$CellContext`t], 
+                 $CellContext`y[$CellContext`t], 
+                 $CellContext`z[$CellContext`t]}, 
+                Part[$CellContext`ns$, $CellContext`i]]], {$CellContext`t, 
+               0, $CellContext`T$$}, Axes -> False, PlotRange -> All, Mesh -> 
+              80, Boxed -> False, PlotStyle -> None, MeshStyle -> Directive[
+                PointSize[Medium], ImageSize -> 420, 
+                ColorData[
+                "Rainbow"][$CellContext`i/(0.1/$CellContext`\[Delta]$$)]], 
+              SphericalRegion -> True], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}]], Point[
+             Pattern[$CellContext`p, 
+              Blank[]]] -> Sphere[$CellContext`p, 0.1]]], 
+         ImageSize -> {420, 420}]], 
+      "Specifications" :> {{{$CellContext`T$$, 49., 
+          Style["t", Italic]}, 0.01, 100, ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {$CellContext`view$$, {"lines", "spheres"}}, Delimiter, 
+        Style[
+        "constants", Bold], {{$CellContext`\[Alpha]$$, 0.4712388980384694}, -
+         Pi, Pi, ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {{$CellContext`\[Beta]$$, -0.5026548245743672}, -Pi, Pi, 
+         ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {{$CellContext`\[Gamma]$$, -0.2827433388230811}, -Pi, Pi,
+          ImageSize -> Tiny, Appearance -> "Labeled"}, Delimiter, 
+        Style[
+        "initial positions", Bold], {{$CellContext`x0$$, -0.4084070449666728, 
+          Text[
+           Subscript[
+            Style["x", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`y0$$, 0.2513274122871838, 
+          Text[
+           Subscript[
+            Style["z", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`z0$$, 0.15707963267948966`, 
+          Text[
+           Subscript[
+            Style["z", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`\[Delta]$$, 0.001}, 0.001, 
+         0.1, ImageSize -> Tiny, Appearance -> "Labeled"}, 
+        Spacer[170]}, 
+      "Options" :> {ControlPlacement -> Left, SynchronousUpdating -> False}, 
+      "DefaultOptions" :> {ControllerLinking -> True}],
+     ImageSizeCache->{645., {238., 243.}},
+     SingleEvaluation->True],
+    Deinitialization:>None,
+    DynamicModuleValues:>{},
+    SynchronousInitialization->True,
+    UnsavedVariables:>{Typeset`initDone$$},
+    UntrackedVariables:>{Typeset`size$$}], "Manipulate",
+   Deployed->True,
+   StripOnInput->False],
+  Manipulate`InterpretManipulate[1]]], "Output",
+ CellID->1102900894],
+
+Cell[BoxData[
+ TagBox[
+  StyleBox[
+   DynamicModuleBox[{$CellContext`T$$ = 10.5, $CellContext`view$$ = 
+    "lines", $CellContext`x0$$ = -0.4084070449666728, $CellContext`y0$$ = 
+    0.2513274122871838, $CellContext`z0$$ = 
+    0.15707963267948966`, $CellContext`\[Alpha]$$ = 
+    0.4712388980384694, $CellContext`\[Beta]$$ = 
+    1.036725575684632, $CellContext`\[Gamma]$$ = -0.2827433388230811, \
+$CellContext`\[Delta]$$ = 0.001, Typeset`show$$ = True, 
+    Typeset`bookmarkList$$ = {}, Typeset`bookmarkMode$$ = "Menu", 
+    Typeset`animator$$, Typeset`animvar$$ = 1, Typeset`name$$ = 
+    "\"untitled\"", Typeset`specs$$ = {{{
+       Hold[$CellContext`T$$], 10.5, 
+       Style["t", Italic]}, 0.01, 100}, {
+      Hold[$CellContext`view$$], {"lines", "spheres"}}, {
+      Hold[
+       Style["constants", Bold]], Manipulate`Dump`ThisIsNotAControl}, {{
+       Hold[$CellContext`\[Alpha]$$], 0.4712388980384694}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Beta]$$], 1.036725575684632}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Gamma]$$], -0.2827433388230811}, -Pi, Pi}, {
+      Hold[
+       Style["initial positions", Bold]], 
+      Manipulate`Dump`ThisIsNotAControl}, {{
+       Hold[$CellContext`x0$$], -0.4084070449666728, 
+       Text[
+        Subscript[
+         Style["x", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`y0$$], 0.2513274122871838, 
+       Text[
+        Subscript[
+         Style["z", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`z0$$], 0.15707963267948966`, 
+       Text[
+        Subscript[
+         Style["z", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Delta]$$], 0.001}, 0.001, 0.1}, {
+      Hold[
+       Spacer[170]], Manipulate`Dump`ThisIsNotAControl}}, Typeset`size$$ = {
+    420., {207., 213.}}, Typeset`update$$ = 0, Typeset`initDone$$, 
+    Typeset`skipInitDone$$ = True, $CellContext`T$710766$$ = 
+    0, $CellContext`view$710767$$ = False, $CellContext`\[Alpha]$710768$$ = 
+    0, $CellContext`\[Beta]$710769$$ = 0, $CellContext`\[Gamma]$710770$$ = 
+    0, $CellContext`x0$710771$$ = 0, $CellContext`y0$710772$$ = 
+    0, $CellContext`z0$710773$$ = 0, $CellContext`\[Delta]$710774$$ = 0}, 
+    DynamicBox[Manipulate`ManipulateBoxes[
+     1, StandardForm, 
+      "Variables" :> {$CellContext`T$$ = 10.5, $CellContext`view$$ = 
+        "lines", $CellContext`x0$$ = -0.4084070449666728, $CellContext`y0$$ = 
+        0.2513274122871838, $CellContext`z0$$ = 
+        0.15707963267948966`, $CellContext`\[Alpha]$$ = 
+        0.4712388980384694, $CellContext`\[Beta]$$ = 
+        1.036725575684632, $CellContext`\[Gamma]$$ = -0.2827433388230811, \
+$CellContext`\[Delta]$$ = 0.001}, "ControllerVariables" :> {
+        Hold[$CellContext`T$$, $CellContext`T$710766$$, 0], 
+        Hold[$CellContext`view$$, $CellContext`view$710767$$, False], 
+        Hold[$CellContext`\[Alpha]$$, $CellContext`\[Alpha]$710768$$, 0], 
+        Hold[$CellContext`\[Beta]$$, $CellContext`\[Beta]$710769$$, 0], 
+        Hold[$CellContext`\[Gamma]$$, $CellContext`\[Gamma]$710770$$, 0], 
+        Hold[$CellContext`x0$$, $CellContext`x0$710771$$, 0], 
+        Hold[$CellContext`y0$$, $CellContext`y0$710772$$, 0], 
+        Hold[$CellContext`z0$$, $CellContext`z0$710773$$, 0], 
+        Hold[$CellContext`\[Delta]$$, $CellContext`\[Delta]$710774$$, 0]}, 
+      "OtherVariables" :> {
+       Typeset`show$$, Typeset`bookmarkList$$, Typeset`bookmarkMode$$, 
+        Typeset`animator$$, Typeset`animvar$$, Typeset`name$$, 
+        Typeset`specs$$, Typeset`size$$, Typeset`update$$, Typeset`initDone$$,
+         Typeset`skipInitDone$$}, "Body" :> With[{$CellContext`ns$ = Table[
+           
+           NDSolve[{
+            Derivative[
+              1][$CellContext`x][$CellContext`t] == $CellContext`\[Alpha]$$ 
+               Sin[
+                 $CellContext`z[$CellContext`t]] + $CellContext`\[Gamma]$$ Cos[
+                 $CellContext`y[$CellContext`t]], 
+             Derivative[
+              1][$CellContext`y][$CellContext`t] == $CellContext`\[Beta]$$ Sin[
+                 $CellContext`x[$CellContext`t]] + $CellContext`\[Alpha]$$ Cos[
+                 $CellContext`x[$CellContext`t]], 
+             Derivative[
+              1][$CellContext`z][$CellContext`t] == $CellContext`\[Gamma]$$ 
+               Sin[
+                 $CellContext`y[$CellContext`t]] + $CellContext`\[Beta]$$ Cos[
+                 $CellContext`x[$CellContext`t]], $CellContext`x[
+              0] == $CellContext`x0$$ + $CellContext`c, $CellContext`y[
+              0] == $CellContext`y0$$ + $CellContext`c, $CellContext`z[
+              0] == $CellContext`z0$$ + $CellContext`c}, {$CellContext`x, \
+$CellContext`y, $CellContext`z}, {$CellContext`t, 0, $CellContext`T$$}, 
+            MaxSteps -> 10^4], {$CellContext`c, 0, 
+            0.1, $CellContext`\[Delta]$$}]}, 
+        Pane[
+         If[$CellContext`view$$ == "lines", 
+          ParametricPlot3D[
+           Evaluate[
+            Table[
+             ReplaceAll[{
+               $CellContext`x[$CellContext`t], 
+               $CellContext`y[$CellContext`t], 
+               $CellContext`z[$CellContext`t]}, 
+              Part[$CellContext`ns$, $CellContext`i]], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}]], {$CellContext`t, 
+            0, $CellContext`T$$}, PlotPoints -> 40, Axes -> False, PlotRange -> 
+           All, ImageSize -> 420, SphericalRegion -> True, PlotStyle -> Table[
+             ColorData[
+             "Rainbow"][$CellContext`i/(
+              0.1/$CellContext`\[Delta]$$)], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}], Boxed -> False], 
+          ReplaceAll[
+           Show[
+            Table[
+             ParametricPlot3D[
+              Evaluate[
+               ReplaceAll[{
+                 $CellContext`x[$CellContext`t], 
+                 $CellContext`y[$CellContext`t], 
+                 $CellContext`z[$CellContext`t]}, 
+                Part[$CellContext`ns$, $CellContext`i]]], {$CellContext`t, 
+               0, $CellContext`T$$}, Axes -> False, PlotRange -> All, Mesh -> 
+              80, Boxed -> False, PlotStyle -> None, MeshStyle -> Directive[
+                PointSize[Medium], ImageSize -> 420, 
+                ColorData[
+                "Rainbow"][$CellContext`i/(0.1/$CellContext`\[Delta]$$)]], 
+              SphericalRegion -> True], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}]], Point[
+             Pattern[$CellContext`p, 
+              Blank[]]] -> Sphere[$CellContext`p, 0.1]]], 
+         ImageSize -> {420, 420}]], 
+      "Specifications" :> {{{$CellContext`T$$, 10.5, 
+          Style["t", Italic]}, 0.01, 100, ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {$CellContext`view$$, {"lines", "spheres"}}, Delimiter, 
+        Style[
+        "constants", Bold], {{$CellContext`\[Alpha]$$, 0.4712388980384694}, -
+         Pi, Pi, ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {{$CellContext`\[Beta]$$, 1.036725575684632}, -Pi, Pi, 
+         ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {{$CellContext`\[Gamma]$$, -0.2827433388230811}, -Pi, Pi,
+          ImageSize -> Tiny, Appearance -> "Labeled"}, Delimiter, 
+        Style[
+        "initial positions", Bold], {{$CellContext`x0$$, -0.4084070449666728, 
+          Text[
+           Subscript[
+            Style["x", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`y0$$, 0.2513274122871838, 
+          Text[
+           Subscript[
+            Style["z", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`z0$$, 0.15707963267948966`, 
+          Text[
+           Subscript[
+            Style["z", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`\[Delta]$$, 0.001}, 0.001, 
+         0.1, ImageSize -> Tiny, Appearance -> "Labeled"}, 
+        Spacer[170]}, 
+      "Options" :> {ControlPlacement -> Left, SynchronousUpdating -> False}, 
+      "DefaultOptions" :> {ControllerLinking -> True}],
+     ImageSizeCache->{645., {238., 243.}},
+     SingleEvaluation->True],
+    Deinitialization:>None,
+    DynamicModuleValues:>{},
+    SynchronousInitialization->True,
+    UnsavedVariables:>{Typeset`initDone$$},
+    UntrackedVariables:>{Typeset`size$$}], "Manipulate",
+   Deployed->True,
+   StripOnInput->False],
+  Manipulate`InterpretManipulate[1]]], "Output",
+ CellID->1523968201],
+
+Cell[BoxData[
+ TagBox[
+  StyleBox[
+   DynamicModuleBox[{$CellContext`T$$ = 75., $CellContext`view$$ = 
+    "spheres", $CellContext`x0$$ = 0.5969026041820604, $CellContext`y0$$ = 
+    0.816814089933346, $CellContext`z0$$ = -0.6283185307179586, $CellContext`\
+\[Alpha]$$ = 0.3769911184307757, $CellContext`\[Beta]$$ = 
+    0.2513274122871838, $CellContext`\[Gamma]$$ = -0.18849555921538763`, \
+$CellContext`\[Delta]$$ = 0.001, Typeset`show$$ = True, 
+    Typeset`bookmarkList$$ = {}, Typeset`bookmarkMode$$ = "Menu", 
+    Typeset`animator$$, Typeset`animvar$$ = 1, Typeset`name$$ = 
+    "\"untitled\"", Typeset`specs$$ = {{{
+       Hold[$CellContext`T$$], 75., 
+       Style["t", Italic]}, 0.01, 100}, {{
+       Hold[$CellContext`view$$], "spheres"}, {"lines", "spheres"}}, {
+      Hold[
+       Style["constants", Bold]], Manipulate`Dump`ThisIsNotAControl}, {{
+       Hold[$CellContext`\[Alpha]$$], 0.3769911184307757}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Beta]$$], 0.2513274122871838}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Gamma]$$], -0.18849555921538763`}, -Pi, Pi}, {
+      Hold[
+       Style["initial positions", Bold]], 
+      Manipulate`Dump`ThisIsNotAControl}, {{
+       Hold[$CellContext`x0$$], 0.5969026041820604, 
+       Text[
+        Subscript[
+         Style["x", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`y0$$], 0.816814089933346, 
+       Text[
+        Subscript[
+         Style["z", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`z0$$], -0.6283185307179586, 
+       Text[
+        Subscript[
+         Style["z", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Delta]$$], 0.001}, 0.001, 0.1}, {
+      Hold[
+       Spacer[170]], Manipulate`Dump`ThisIsNotAControl}}, Typeset`size$$ = {
+    420., {207., 213.}}, Typeset`update$$ = 0, Typeset`initDone$$, 
+    Typeset`skipInitDone$$ = True, $CellContext`T$710870$$ = 
+    0, $CellContext`view$710871$$ = False, $CellContext`\[Alpha]$710872$$ = 
+    0, $CellContext`\[Beta]$710873$$ = 0, $CellContext`\[Gamma]$710874$$ = 
+    0, $CellContext`x0$710875$$ = 0, $CellContext`y0$710876$$ = 
+    0, $CellContext`z0$710877$$ = 0, $CellContext`\[Delta]$710878$$ = 0}, 
+    DynamicBox[Manipulate`ManipulateBoxes[
+     1, StandardForm, 
+      "Variables" :> {$CellContext`T$$ = 75., $CellContext`view$$ = 
+        "spheres", $CellContext`x0$$ = 0.5969026041820604, $CellContext`y0$$ = 
+        0.816814089933346, $CellContext`z0$$ = -0.6283185307179586, \
+$CellContext`\[Alpha]$$ = 0.3769911184307757, $CellContext`\[Beta]$$ = 
+        0.2513274122871838, $CellContext`\[Gamma]$$ = -0.18849555921538763`, \
+$CellContext`\[Delta]$$ = 0.001}, "ControllerVariables" :> {
+        Hold[$CellContext`T$$, $CellContext`T$710870$$, 0], 
+        Hold[$CellContext`view$$, $CellContext`view$710871$$, False], 
+        Hold[$CellContext`\[Alpha]$$, $CellContext`\[Alpha]$710872$$, 0], 
+        Hold[$CellContext`\[Beta]$$, $CellContext`\[Beta]$710873$$, 0], 
+        Hold[$CellContext`\[Gamma]$$, $CellContext`\[Gamma]$710874$$, 0], 
+        Hold[$CellContext`x0$$, $CellContext`x0$710875$$, 0], 
+        Hold[$CellContext`y0$$, $CellContext`y0$710876$$, 0], 
+        Hold[$CellContext`z0$$, $CellContext`z0$710877$$, 0], 
+        Hold[$CellContext`\[Delta]$$, $CellContext`\[Delta]$710878$$, 0]}, 
+      "OtherVariables" :> {
+       Typeset`show$$, Typeset`bookmarkList$$, Typeset`bookmarkMode$$, 
+        Typeset`animator$$, Typeset`animvar$$, Typeset`name$$, 
+        Typeset`specs$$, Typeset`size$$, Typeset`update$$, Typeset`initDone$$,
+         Typeset`skipInitDone$$}, "Body" :> With[{$CellContext`ns$ = Table[
+           
+           NDSolve[{
+            Derivative[
+              1][$CellContext`x][$CellContext`t] == $CellContext`\[Alpha]$$ 
+               Sin[
+                 $CellContext`z[$CellContext`t]] + $CellContext`\[Gamma]$$ Cos[
+                 $CellContext`y[$CellContext`t]], 
+             Derivative[
+              1][$CellContext`y][$CellContext`t] == $CellContext`\[Beta]$$ Sin[
+                 $CellContext`x[$CellContext`t]] + $CellContext`\[Alpha]$$ Cos[
+                 $CellContext`x[$CellContext`t]], 
+             Derivative[
+              1][$CellContext`z][$CellContext`t] == $CellContext`\[Gamma]$$ 
+               Sin[
+                 $CellContext`y[$CellContext`t]] + $CellContext`\[Beta]$$ Cos[
+                 $CellContext`x[$CellContext`t]], $CellContext`x[
+              0] == $CellContext`x0$$ + $CellContext`c, $CellContext`y[
+              0] == $CellContext`y0$$ + $CellContext`c, $CellContext`z[
+              0] == $CellContext`z0$$ + $CellContext`c}, {$CellContext`x, \
+$CellContext`y, $CellContext`z}, {$CellContext`t, 0, $CellContext`T$$}, 
+            MaxSteps -> 10^4], {$CellContext`c, 0, 
+            0.1, $CellContext`\[Delta]$$}]}, 
+        Pane[
+         If[$CellContext`view$$ == "lines", 
+          ParametricPlot3D[
+           Evaluate[
+            Table[
+             ReplaceAll[{
+               $CellContext`x[$CellContext`t], 
+               $CellContext`y[$CellContext`t], 
+               $CellContext`z[$CellContext`t]}, 
+              Part[$CellContext`ns$, $CellContext`i]], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}]], {$CellContext`t, 
+            0, $CellContext`T$$}, PlotPoints -> 40, Axes -> False, PlotRange -> 
+           All, ImageSize -> 420, SphericalRegion -> True, PlotStyle -> Table[
+             ColorData[
+             "Rainbow"][$CellContext`i/(
+              0.1/$CellContext`\[Delta]$$)], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}], Boxed -> False], 
+          ReplaceAll[
+           Show[
+            Table[
+             ParametricPlot3D[
+              Evaluate[
+               ReplaceAll[{
+                 $CellContext`x[$CellContext`t], 
+                 $CellContext`y[$CellContext`t], 
+                 $CellContext`z[$CellContext`t]}, 
+                Part[$CellContext`ns$, $CellContext`i]]], {$CellContext`t, 
+               0, $CellContext`T$$}, Axes -> False, PlotRange -> All, Mesh -> 
+              80, Boxed -> False, PlotStyle -> None, MeshStyle -> Directive[
+                PointSize[Medium], ImageSize -> 420, 
+                ColorData[
+                "Rainbow"][$CellContext`i/(0.1/$CellContext`\[Delta]$$)]], 
+              SphericalRegion -> True], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}]], Point[
+             Pattern[$CellContext`p, 
+              Blank[]]] -> Sphere[$CellContext`p, 0.1]]], 
+         ImageSize -> {420, 420}]], 
+      "Specifications" :> {{{$CellContext`T$$, 75., 
+          Style["t", Italic]}, 0.01, 100, ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {{$CellContext`view$$, "spheres"}, {"lines", "spheres"}},
+         Delimiter, 
+        Style[
+        "constants", Bold], {{$CellContext`\[Alpha]$$, 0.3769911184307757}, -
+         Pi, Pi, ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {{$CellContext`\[Beta]$$, 0.2513274122871838}, -Pi, Pi, 
+         ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {{$CellContext`\[Gamma]$$, -0.18849555921538763`}, -Pi, 
+         Pi, ImageSize -> Tiny, Appearance -> "Labeled"}, Delimiter, 
+        Style[
+        "initial positions", Bold], {{$CellContext`x0$$, 0.5969026041820604, 
+          Text[
+           Subscript[
+            Style["x", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`y0$$, 0.816814089933346, 
+          Text[
+           Subscript[
+            Style["z", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`z0$$, -0.6283185307179586, 
+          Text[
+           Subscript[
+            Style["z", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`\[Delta]$$, 0.001}, 0.001, 
+         0.1, ImageSize -> Tiny, Appearance -> "Labeled"}, 
+        Spacer[170]}, 
+      "Options" :> {ControlPlacement -> Left, SynchronousUpdating -> False}, 
+      "DefaultOptions" :> {ControllerLinking -> True}],
+     ImageSizeCache->{645., {238., 243.}},
+     SingleEvaluation->True],
+    Deinitialization:>None,
+    DynamicModuleValues:>{},
+    SynchronousInitialization->True,
+    UnsavedVariables:>{Typeset`initDone$$},
+    UntrackedVariables:>{Typeset`size$$}], "Manipulate",
+   Deployed->True,
+   StripOnInput->False],
+  Manipulate`InterpretManipulate[1]]], "Output",
+ CellID->296096438],
+
+Cell[BoxData[
+ TagBox[
+  StyleBox[
+   DynamicModuleBox[{$CellContext`T$$ = 70., $CellContext`view$$ = 
+    "spheres", $CellContext`x0$$ = 0.5969026041820604, $CellContext`y0$$ = 
+    0.816814089933346, $CellContext`z0$$ = -0.6283185307179586, $CellContext`\
+\[Alpha]$$ = 
+    0.15707963267948966`, $CellContext`\[Beta]$$ = -0.06283185307179595, \
+$CellContext`\[Gamma]$$ = -0.8482300164692442, $CellContext`\[Delta]$$ = 
+    0.001, Typeset`show$$ = True, Typeset`bookmarkList$$ = {}, 
+    Typeset`bookmarkMode$$ = "Menu", Typeset`animator$$, Typeset`animvar$$ = 
+    1, Typeset`name$$ = "\"untitled\"", Typeset`specs$$ = {{{
+       Hold[$CellContext`T$$], 70., 
+       Style["t", Italic]}, 0.01, 100}, {{
+       Hold[$CellContext`view$$], "spheres"}, {"lines", "spheres"}}, {
+      Hold[
+       Style["constants", Bold]], Manipulate`Dump`ThisIsNotAControl}, {{
+       Hold[$CellContext`\[Alpha]$$], 0.15707963267948966`}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Beta]$$], -0.06283185307179595}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Gamma]$$], -0.8482300164692442}, -Pi, Pi}, {
+      Hold[
+       Style["initial positions", Bold]], 
+      Manipulate`Dump`ThisIsNotAControl}, {{
+       Hold[$CellContext`x0$$], 0.5969026041820604, 
+       Text[
+        Subscript[
+         Style["x", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`y0$$], 0.816814089933346, 
+       Text[
+        Subscript[
+         Style["z", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`z0$$], -0.6283185307179586, 
+       Text[
+        Subscript[
+         Style["z", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Delta]$$], 0.001}, 0.001, 0.1}, {
+      Hold[
+       Spacer[170]], Manipulate`Dump`ThisIsNotAControl}}, Typeset`size$$ = {
+    420., {207., 213.}}, Typeset`update$$ = 0, Typeset`initDone$$, 
+    Typeset`skipInitDone$$ = True, $CellContext`T$710974$$ = 
+    0, $CellContext`view$710975$$ = False, $CellContext`\[Alpha]$710976$$ = 
+    0, $CellContext`\[Beta]$710977$$ = 0, $CellContext`\[Gamma]$710978$$ = 
+    0, $CellContext`x0$710979$$ = 0, $CellContext`y0$710980$$ = 
+    0, $CellContext`z0$710981$$ = 0, $CellContext`\[Delta]$710982$$ = 0}, 
+    DynamicBox[Manipulate`ManipulateBoxes[
+     1, StandardForm, 
+      "Variables" :> {$CellContext`T$$ = 70., $CellContext`view$$ = 
+        "spheres", $CellContext`x0$$ = 0.5969026041820604, $CellContext`y0$$ = 
+        0.816814089933346, $CellContext`z0$$ = -0.6283185307179586, \
+$CellContext`\[Alpha]$$ = 
+        0.15707963267948966`, $CellContext`\[Beta]$$ = -0.06283185307179595, \
+$CellContext`\[Gamma]$$ = -0.8482300164692442, $CellContext`\[Delta]$$ = 
+        0.001}, "ControllerVariables" :> {
+        Hold[$CellContext`T$$, $CellContext`T$710974$$, 0], 
+        Hold[$CellContext`view$$, $CellContext`view$710975$$, False], 
+        Hold[$CellContext`\[Alpha]$$, $CellContext`\[Alpha]$710976$$, 0], 
+        Hold[$CellContext`\[Beta]$$, $CellContext`\[Beta]$710977$$, 0], 
+        Hold[$CellContext`\[Gamma]$$, $CellContext`\[Gamma]$710978$$, 0], 
+        Hold[$CellContext`x0$$, $CellContext`x0$710979$$, 0], 
+        Hold[$CellContext`y0$$, $CellContext`y0$710980$$, 0], 
+        Hold[$CellContext`z0$$, $CellContext`z0$710981$$, 0], 
+        Hold[$CellContext`\[Delta]$$, $CellContext`\[Delta]$710982$$, 0]}, 
+      "OtherVariables" :> {
+       Typeset`show$$, Typeset`bookmarkList$$, Typeset`bookmarkMode$$, 
+        Typeset`animator$$, Typeset`animvar$$, Typeset`name$$, 
+        Typeset`specs$$, Typeset`size$$, Typeset`update$$, Typeset`initDone$$,
+         Typeset`skipInitDone$$}, "Body" :> With[{$CellContext`ns$ = Table[
+           
+           NDSolve[{
+            Derivative[
+              1][$CellContext`x][$CellContext`t] == $CellContext`\[Alpha]$$ 
+               Sin[
+                 $CellContext`z[$CellContext`t]] + $CellContext`\[Gamma]$$ Cos[
+                 $CellContext`y[$CellContext`t]], 
+             Derivative[
+              1][$CellContext`y][$CellContext`t] == $CellContext`\[Beta]$$ Sin[
+                 $CellContext`x[$CellContext`t]] + $CellContext`\[Alpha]$$ Cos[
+                 $CellContext`x[$CellContext`t]], 
+             Derivative[
+              1][$CellContext`z][$CellContext`t] == $CellContext`\[Gamma]$$ 
+               Sin[
+                 $CellContext`y[$CellContext`t]] + $CellContext`\[Beta]$$ Cos[
+                 $CellContext`x[$CellContext`t]], $CellContext`x[
+              0] == $CellContext`x0$$ + $CellContext`c, $CellContext`y[
+              0] == $CellContext`y0$$ + $CellContext`c, $CellContext`z[
+              0] == $CellContext`z0$$ + $CellContext`c}, {$CellContext`x, \
+$CellContext`y, $CellContext`z}, {$CellContext`t, 0, $CellContext`T$$}, 
+            MaxSteps -> 10^4], {$CellContext`c, 0, 
+            0.1, $CellContext`\[Delta]$$}]}, 
+        Pane[
+         If[$CellContext`view$$ == "lines", 
+          ParametricPlot3D[
+           Evaluate[
+            Table[
+             ReplaceAll[{
+               $CellContext`x[$CellContext`t], 
+               $CellContext`y[$CellContext`t], 
+               $CellContext`z[$CellContext`t]}, 
+              Part[$CellContext`ns$, $CellContext`i]], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}]], {$CellContext`t, 
+            0, $CellContext`T$$}, PlotPoints -> 40, Axes -> False, PlotRange -> 
+           All, ImageSize -> 420, SphericalRegion -> True, PlotStyle -> Table[
+             ColorData[
+             "Rainbow"][$CellContext`i/(
+              0.1/$CellContext`\[Delta]$$)], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}], Boxed -> False], 
+          ReplaceAll[
+           Show[
+            Table[
+             ParametricPlot3D[
+              Evaluate[
+               ReplaceAll[{
+                 $CellContext`x[$CellContext`t], 
+                 $CellContext`y[$CellContext`t], 
+                 $CellContext`z[$CellContext`t]}, 
+                Part[$CellContext`ns$, $CellContext`i]]], {$CellContext`t, 
+               0, $CellContext`T$$}, Axes -> False, PlotRange -> All, Mesh -> 
+              80, Boxed -> False, PlotStyle -> None, MeshStyle -> Directive[
+                PointSize[Medium], ImageSize -> 420, 
+                ColorData[
+                "Rainbow"][$CellContext`i/(0.1/$CellContext`\[Delta]$$)]], 
+              SphericalRegion -> True], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}]], Point[
+             Pattern[$CellContext`p, 
+              Blank[]]] -> Sphere[$CellContext`p, 0.1]]], 
+         ImageSize -> {420, 420}]], 
+      "Specifications" :> {{{$CellContext`T$$, 70., 
+          Style["t", Italic]}, 0.01, 100, ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {{$CellContext`view$$, "spheres"}, {"lines", "spheres"}},
+         Delimiter, 
+        Style[
+        "constants", 
+         Bold], {{$CellContext`\[Alpha]$$, 0.15707963267948966`}, -Pi, Pi, 
+         ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {{$CellContext`\[Beta]$$, -0.06283185307179595}, -Pi, Pi,
+          ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {{$CellContext`\[Gamma]$$, -0.8482300164692442}, -Pi, Pi,
+          ImageSize -> Tiny, Appearance -> "Labeled"}, Delimiter, 
+        Style[
+        "initial positions", Bold], {{$CellContext`x0$$, 0.5969026041820604, 
+          Text[
+           Subscript[
+            Style["x", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`y0$$, 0.816814089933346, 
+          Text[
+           Subscript[
+            Style["z", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`z0$$, -0.6283185307179586, 
+          Text[
+           Subscript[
+            Style["z", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`\[Delta]$$, 0.001}, 0.001, 
+         0.1, ImageSize -> Tiny, Appearance -> "Labeled"}, 
+        Spacer[170]}, 
+      "Options" :> {ControlPlacement -> Left, SynchronousUpdating -> False}, 
+      "DefaultOptions" :> {ControllerLinking -> True}],
+     ImageSizeCache->{651., {238., 243.}},
+     SingleEvaluation->True],
+    Deinitialization:>None,
+    DynamicModuleValues:>{},
+    SynchronousInitialization->True,
+    UnsavedVariables:>{Typeset`initDone$$},
+    UntrackedVariables:>{Typeset`size$$}], "Manipulate",
+   Deployed->True,
+   StripOnInput->False],
+  Manipulate`InterpretManipulate[1]]], "Output",
+ CellID->773223367],
+
+Cell[BoxData[
+ TagBox[
+  StyleBox[
+   DynamicModuleBox[{$CellContext`T$$ = 33., $CellContext`view$$ = 
+    "lines", $CellContext`x0$$ = 1.2566370614359175`, $CellContext`y0$$ = 
+    0.5969026041820604, $CellContext`z0$$ = -0.7225663103256523, \
+$CellContext`\[Alpha]$$ = -0.8482300164692442, $CellContext`\[Beta]$$ = 
+    0.3769911184307757, $CellContext`\[Gamma]$$ = -0.6283185307179586, \
+$CellContext`\[Delta]$$ = 0.001, Typeset`show$$ = True, 
+    Typeset`bookmarkList$$ = {}, Typeset`bookmarkMode$$ = "Menu", 
+    Typeset`animator$$, Typeset`animvar$$ = 1, Typeset`name$$ = 
+    "\"untitled\"", Typeset`specs$$ = {{{
+       Hold[$CellContext`T$$], 33., 
+       Style["t", Italic]}, 0.01, 100}, {
+      Hold[$CellContext`view$$], {"lines", "spheres"}}, {
+      Hold[
+       Style["constants", Bold]], Manipulate`Dump`ThisIsNotAControl}, {{
+       Hold[$CellContext`\[Alpha]$$], -0.8482300164692442}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Beta]$$], 0.3769911184307757}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Gamma]$$], -0.6283185307179586}, -Pi, Pi}, {
+      Hold[
+       Style["initial positions", Bold]], 
+      Manipulate`Dump`ThisIsNotAControl}, {{
+       Hold[$CellContext`x0$$], 1.2566370614359175`, 
+       Text[
+        Subscript[
+         Style["x", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`y0$$], 0.5969026041820604, 
+       Text[
+        Subscript[
+         Style["z", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`z0$$], -0.7225663103256523, 
+       Text[
+        Subscript[
+         Style["z", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Delta]$$], 0.001}, 0.001, 0.1}, {
+      Hold[
+       Spacer[170]], Manipulate`Dump`ThisIsNotAControl}}, Typeset`size$$ = {
+    420., {207., 213.}}, Typeset`update$$ = 0, Typeset`initDone$$, 
+    Typeset`skipInitDone$$ = True, $CellContext`T$711078$$ = 
+    0, $CellContext`view$711079$$ = False, $CellContext`\[Alpha]$711080$$ = 
+    0, $CellContext`\[Beta]$711081$$ = 0, $CellContext`\[Gamma]$711082$$ = 
+    0, $CellContext`x0$711083$$ = 0, $CellContext`y0$711084$$ = 
+    0, $CellContext`z0$711085$$ = 0, $CellContext`\[Delta]$711086$$ = 0}, 
+    DynamicBox[Manipulate`ManipulateBoxes[
+     1, StandardForm, 
+      "Variables" :> {$CellContext`T$$ = 33., $CellContext`view$$ = 
+        "lines", $CellContext`x0$$ = 1.2566370614359175`, $CellContext`y0$$ = 
+        0.5969026041820604, $CellContext`z0$$ = -0.7225663103256523, \
+$CellContext`\[Alpha]$$ = -0.8482300164692442, $CellContext`\[Beta]$$ = 
+        0.3769911184307757, $CellContext`\[Gamma]$$ = -0.6283185307179586, \
+$CellContext`\[Delta]$$ = 0.001}, "ControllerVariables" :> {
+        Hold[$CellContext`T$$, $CellContext`T$711078$$, 0], 
+        Hold[$CellContext`view$$, $CellContext`view$711079$$, False], 
+        Hold[$CellContext`\[Alpha]$$, $CellContext`\[Alpha]$711080$$, 0], 
+        Hold[$CellContext`\[Beta]$$, $CellContext`\[Beta]$711081$$, 0], 
+        Hold[$CellContext`\[Gamma]$$, $CellContext`\[Gamma]$711082$$, 0], 
+        Hold[$CellContext`x0$$, $CellContext`x0$711083$$, 0], 
+        Hold[$CellContext`y0$$, $CellContext`y0$711084$$, 0], 
+        Hold[$CellContext`z0$$, $CellContext`z0$711085$$, 0], 
+        Hold[$CellContext`\[Delta]$$, $CellContext`\[Delta]$711086$$, 0]}, 
+      "OtherVariables" :> {
+       Typeset`show$$, Typeset`bookmarkList$$, Typeset`bookmarkMode$$, 
+        Typeset`animator$$, Typeset`animvar$$, Typeset`name$$, 
+        Typeset`specs$$, Typeset`size$$, Typeset`update$$, Typeset`initDone$$,
+         Typeset`skipInitDone$$}, "Body" :> With[{$CellContext`ns$ = Table[
+           
+           NDSolve[{
+            Derivative[
+              1][$CellContext`x][$CellContext`t] == $CellContext`\[Alpha]$$ 
+               Sin[
+                 $CellContext`z[$CellContext`t]] + $CellContext`\[Gamma]$$ Cos[
+                 $CellContext`y[$CellContext`t]], 
+             Derivative[
+              1][$CellContext`y][$CellContext`t] == $CellContext`\[Beta]$$ Sin[
+                 $CellContext`x[$CellContext`t]] + $CellContext`\[Alpha]$$ Cos[
+                 $CellContext`x[$CellContext`t]], 
+             Derivative[
+              1][$CellContext`z][$CellContext`t] == $CellContext`\[Gamma]$$ 
+               Sin[
+                 $CellContext`y[$CellContext`t]] + $CellContext`\[Beta]$$ Cos[
+                 $CellContext`x[$CellContext`t]], $CellContext`x[
+              0] == $CellContext`x0$$ + $CellContext`c, $CellContext`y[
+              0] == $CellContext`y0$$ + $CellContext`c, $CellContext`z[
+              0] == $CellContext`z0$$ + $CellContext`c}, {$CellContext`x, \
+$CellContext`y, $CellContext`z}, {$CellContext`t, 0, $CellContext`T$$}, 
+            MaxSteps -> 10^4], {$CellContext`c, 0, 
+            0.1, $CellContext`\[Delta]$$}]}, 
+        Pane[
+         If[$CellContext`view$$ == "lines", 
+          ParametricPlot3D[
+           Evaluate[
+            Table[
+             ReplaceAll[{
+               $CellContext`x[$CellContext`t], 
+               $CellContext`y[$CellContext`t], 
+               $CellContext`z[$CellContext`t]}, 
+              Part[$CellContext`ns$, $CellContext`i]], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}]], {$CellContext`t, 
+            0, $CellContext`T$$}, PlotPoints -> 40, Axes -> False, PlotRange -> 
+           All, ImageSize -> 420, SphericalRegion -> True, PlotStyle -> Table[
+             ColorData[
+             "Rainbow"][$CellContext`i/(
+              0.1/$CellContext`\[Delta]$$)], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}], Boxed -> False], 
+          ReplaceAll[
+           Show[
+            Table[
+             ParametricPlot3D[
+              Evaluate[
+               ReplaceAll[{
+                 $CellContext`x[$CellContext`t], 
+                 $CellContext`y[$CellContext`t], 
+                 $CellContext`z[$CellContext`t]}, 
+                Part[$CellContext`ns$, $CellContext`i]]], {$CellContext`t, 
+               0, $CellContext`T$$}, Axes -> False, PlotRange -> All, Mesh -> 
+              80, Boxed -> False, PlotStyle -> None, MeshStyle -> Directive[
+                PointSize[Medium], ImageSize -> 420, 
+                ColorData[
+                "Rainbow"][$CellContext`i/(0.1/$CellContext`\[Delta]$$)]], 
+              SphericalRegion -> True], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}]], Point[
+             Pattern[$CellContext`p, 
+              Blank[]]] -> Sphere[$CellContext`p, 0.1]]], 
+         ImageSize -> {420, 420}]], 
+      "Specifications" :> {{{$CellContext`T$$, 33., 
+          Style["t", Italic]}, 0.01, 100, ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {$CellContext`view$$, {"lines", "spheres"}}, Delimiter, 
+        Style[
+        "constants", Bold], {{$CellContext`\[Alpha]$$, -0.8482300164692442}, -
+         Pi, Pi, ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {{$CellContext`\[Beta]$$, 0.3769911184307757}, -Pi, Pi, 
+         ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {{$CellContext`\[Gamma]$$, -0.6283185307179586}, -Pi, Pi,
+          ImageSize -> Tiny, Appearance -> "Labeled"}, Delimiter, 
+        Style[
+        "initial positions", Bold], {{$CellContext`x0$$, 1.2566370614359175`, 
+          Text[
+           Subscript[
+            Style["x", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`y0$$, 0.5969026041820604, 
+          Text[
+           Subscript[
+            Style["z", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`z0$$, -0.7225663103256523, 
+          Text[
+           Subscript[
+            Style["z", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`\[Delta]$$, 0.001}, 0.001, 
+         0.1, ImageSize -> Tiny, Appearance -> "Labeled"}, 
+        Spacer[170]}, 
+      "Options" :> {ControlPlacement -> Left, SynchronousUpdating -> False}, 
+      "DefaultOptions" :> {ControllerLinking -> True}],
+     ImageSizeCache->{645., {238., 243.}},
+     SingleEvaluation->True],
+    Deinitialization:>None,
+    DynamicModuleValues:>{},
+    SynchronousInitialization->True,
+    UnsavedVariables:>{Typeset`initDone$$},
+    UntrackedVariables:>{Typeset`size$$}], "Manipulate",
+   Deployed->True,
+   StripOnInput->False],
+  Manipulate`InterpretManipulate[1]]], "Output",
+ CellID->1141581172],
+
+Cell[BoxData[
+ TagBox[
+  StyleBox[
+   DynamicModuleBox[{$CellContext`T$$ = 28., $CellContext`view$$ = 
+    "spheres", $CellContext`x0$$ = -0.4084070449666728, $CellContext`y0$$ = 
+    0.2513274122871838, $CellContext`z0$$ = 
+    0.15707963267948966`, $CellContext`\[Alpha]$$ = 
+    1.4765485471872024`, $CellContext`\[Beta]$$ = 
+    1.130973355292326, $CellContext`\[Gamma]$$ = -0.2827433388230811, \
+$CellContext`\[Delta]$$ = 0.001, Typeset`show$$ = True, 
+    Typeset`bookmarkList$$ = {}, Typeset`bookmarkMode$$ = "Menu", 
+    Typeset`animator$$, Typeset`animvar$$ = 1, Typeset`name$$ = 
+    "\"untitled\"", Typeset`specs$$ = {{{
+       Hold[$CellContext`T$$], 28., 
+       Style["t", Italic]}, 0.01, 100}, {{
+       Hold[$CellContext`view$$], "spheres"}, {"lines", "spheres"}}, {
+      Hold[
+       Style["constants", Bold]], Manipulate`Dump`ThisIsNotAControl}, {{
+       Hold[$CellContext`\[Alpha]$$], 1.4765485471872024`}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Beta]$$], 1.130973355292326}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Gamma]$$], -0.2827433388230811}, -Pi, Pi}, {
+      Hold[
+       Style["initial positions", Bold]], 
+      Manipulate`Dump`ThisIsNotAControl}, {{
+       Hold[$CellContext`x0$$], -0.4084070449666728, 
+       Text[
+        Subscript[
+         Style["x", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`y0$$], 0.2513274122871838, 
+       Text[
+        Subscript[
+         Style["z", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`z0$$], 0.15707963267948966`, 
+       Text[
+        Subscript[
+         Style["z", Italic], "0"]]}, -Pi, Pi}, {{
+       Hold[$CellContext`\[Delta]$$], 0.001}, 0.001, 0.1}, {
+      Hold[
+       Spacer[170]], Manipulate`Dump`ThisIsNotAControl}}, Typeset`size$$ = {
+    420., {207., 213.}}, Typeset`update$$ = 0, Typeset`initDone$$, 
+    Typeset`skipInitDone$$ = True, $CellContext`T$711182$$ = 
+    0, $CellContext`view$711183$$ = False, $CellContext`\[Alpha]$711184$$ = 
+    0, $CellContext`\[Beta]$711185$$ = 0, $CellContext`\[Gamma]$711186$$ = 
+    0, $CellContext`x0$711187$$ = 0, $CellContext`y0$711188$$ = 
+    0, $CellContext`z0$711189$$ = 0, $CellContext`\[Delta]$711190$$ = 0}, 
+    DynamicBox[Manipulate`ManipulateBoxes[
+     1, StandardForm, 
+      "Variables" :> {$CellContext`T$$ = 28., $CellContext`view$$ = 
+        "spheres", $CellContext`x0$$ = -0.4084070449666728, $CellContext`y0$$ = 
+        0.2513274122871838, $CellContext`z0$$ = 
+        0.15707963267948966`, $CellContext`\[Alpha]$$ = 
+        1.4765485471872024`, $CellContext`\[Beta]$$ = 
+        1.130973355292326, $CellContext`\[Gamma]$$ = -0.2827433388230811, \
+$CellContext`\[Delta]$$ = 0.001}, "ControllerVariables" :> {
+        Hold[$CellContext`T$$, $CellContext`T$711182$$, 0], 
+        Hold[$CellContext`view$$, $CellContext`view$711183$$, False], 
+        Hold[$CellContext`\[Alpha]$$, $CellContext`\[Alpha]$711184$$, 0], 
+        Hold[$CellContext`\[Beta]$$, $CellContext`\[Beta]$711185$$, 0], 
+        Hold[$CellContext`\[Gamma]$$, $CellContext`\[Gamma]$711186$$, 0], 
+        Hold[$CellContext`x0$$, $CellContext`x0$711187$$, 0], 
+        Hold[$CellContext`y0$$, $CellContext`y0$711188$$, 0], 
+        Hold[$CellContext`z0$$, $CellContext`z0$711189$$, 0], 
+        Hold[$CellContext`\[Delta]$$, $CellContext`\[Delta]$711190$$, 0]}, 
+      "OtherVariables" :> {
+       Typeset`show$$, Typeset`bookmarkList$$, Typeset`bookmarkMode$$, 
+        Typeset`animator$$, Typeset`animvar$$, Typeset`name$$, 
+        Typeset`specs$$, Typeset`size$$, Typeset`update$$, Typeset`initDone$$,
+         Typeset`skipInitDone$$}, "Body" :> With[{$CellContext`ns$ = Table[
+           
+           NDSolve[{
+            Derivative[
+              1][$CellContext`x][$CellContext`t] == $CellContext`\[Alpha]$$ 
+               Sin[
+                 $CellContext`z[$CellContext`t]] + $CellContext`\[Gamma]$$ Cos[
+                 $CellContext`y[$CellContext`t]], 
+             Derivative[
+              1][$CellContext`y][$CellContext`t] == $CellContext`\[Beta]$$ Sin[
+                 $CellContext`x[$CellContext`t]] + $CellContext`\[Alpha]$$ Cos[
+                 $CellContext`x[$CellContext`t]], 
+             Derivative[
+              1][$CellContext`z][$CellContext`t] == $CellContext`\[Gamma]$$ 
+               Sin[
+                 $CellContext`y[$CellContext`t]] + $CellContext`\[Beta]$$ Cos[
+                 $CellContext`x[$CellContext`t]], $CellContext`x[
+              0] == $CellContext`x0$$ + $CellContext`c, $CellContext`y[
+              0] == $CellContext`y0$$ + $CellContext`c, $CellContext`z[
+              0] == $CellContext`z0$$ + $CellContext`c}, {$CellContext`x, \
+$CellContext`y, $CellContext`z}, {$CellContext`t, 0, $CellContext`T$$}, 
+            MaxSteps -> 10^4], {$CellContext`c, 0, 
+            0.1, $CellContext`\[Delta]$$}]}, 
+        Pane[
+         If[$CellContext`view$$ == "lines", 
+          ParametricPlot3D[
+           Evaluate[
+            Table[
+             ReplaceAll[{
+               $CellContext`x[$CellContext`t], 
+               $CellContext`y[$CellContext`t], 
+               $CellContext`z[$CellContext`t]}, 
+              Part[$CellContext`ns$, $CellContext`i]], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}]], {$CellContext`t, 
+            0, $CellContext`T$$}, PlotPoints -> 40, Axes -> False, PlotRange -> 
+           All, ImageSize -> 420, SphericalRegion -> True, PlotStyle -> Table[
+             ColorData[
+             "Rainbow"][$CellContext`i/(
+              0.1/$CellContext`\[Delta]$$)], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}], Boxed -> False], 
+          ReplaceAll[
+           Show[
+            Table[
+             ParametricPlot3D[
+              Evaluate[
+               ReplaceAll[{
+                 $CellContext`x[$CellContext`t], 
+                 $CellContext`y[$CellContext`t], 
+                 $CellContext`z[$CellContext`t]}, 
+                Part[$CellContext`ns$, $CellContext`i]]], {$CellContext`t, 
+               0, $CellContext`T$$}, Axes -> False, PlotRange -> All, Mesh -> 
+              80, Boxed -> False, PlotStyle -> None, MeshStyle -> Directive[
+                PointSize[Medium], ImageSize -> 420, 
+                ColorData[
+                "Rainbow"][$CellContext`i/(0.1/$CellContext`\[Delta]$$)]], 
+              SphericalRegion -> True], {$CellContext`i, 
+              0.1/$CellContext`\[Delta]$$}]], Point[
+             Pattern[$CellContext`p, 
+              Blank[]]] -> Sphere[$CellContext`p, 0.1]]], 
+         ImageSize -> {420, 420}]], 
+      "Specifications" :> {{{$CellContext`T$$, 28., 
+          Style["t", Italic]}, 0.01, 100, ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {{$CellContext`view$$, "spheres"}, {"lines", "spheres"}},
+         Delimiter, 
+        Style[
+        "constants", Bold], {{$CellContext`\[Alpha]$$, 1.4765485471872024`}, -
+         Pi, Pi, ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {{$CellContext`\[Beta]$$, 1.130973355292326}, -Pi, Pi, 
+         ImageSize -> Tiny, Appearance -> 
+         "Labeled"}, {{$CellContext`\[Gamma]$$, -0.2827433388230811}, -Pi, Pi,
+          ImageSize -> Tiny, Appearance -> "Labeled"}, Delimiter, 
+        Style[
+        "initial positions", Bold], {{$CellContext`x0$$, -0.4084070449666728, 
+          Text[
+           Subscript[
+            Style["x", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`y0$$, 0.2513274122871838, 
+          Text[
+           Subscript[
+            Style["z", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`z0$$, 0.15707963267948966`, 
+          Text[
+           Subscript[
+            Style["z", Italic], "0"]]}, -Pi, Pi, ImageSize -> Tiny, 
+         Appearance -> "Labeled"}, {{$CellContext`\[Delta]$$, 0.001}, 0.001, 
+         0.1, ImageSize -> Tiny, Appearance -> "Labeled"}, 
+        Spacer[170]}, 
+      "Options" :> {ControlPlacement -> Left, SynchronousUpdating -> False}, 
+      "DefaultOptions" :> {ControllerLinking -> True}],
+     ImageSizeCache->{645., {238., 243.}},
+     SingleEvaluation->True],
+    Deinitialization:>None,
+    DynamicModuleValues:>{},
+    SynchronousInitialization->True,
+    UnsavedVariables:>{Typeset`initDone$$},
+    UntrackedVariables:>{Typeset`size$$}], "Manipulate",
+   Deployed->True,
+   StripOnInput->False],
+  Manipulate`InterpretManipulate[1]]], "Output",
+ CellID->935855506]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["", "DetailsSection"],
+
+Cell["The ABC flow is explicitly given by:", "DetailNotes",
+ CellChangeTimes->{{3.5544756134669647`*^9, 3.554475627247403*^9}, 
+   3.5544764213754253`*^9, {3.5544764715273533`*^9, 3.554476474687973*^9}},
+ CellID->1612889691],
+
+Cell[TextData[{
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    RowBox[{
+     SuperscriptBox["x", "\[Prime]",
+      MultilineFunction->None], 
+     RowBox[{"(", "t", ")"}]}], "\[LongEqual]", 
+    RowBox[{
+     RowBox[{"\[Gamma]", " ", "cos", " ", 
+      RowBox[{"y", "(", "t", ")"}]}], "+", 
+     RowBox[{"\[Alpha]", " ", "sin", " ", 
+      RowBox[{"z", "(", "t", ")"}]}]}]}], TraditionalForm]], "InlineMath"],
+ ",",
+ "\n",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    RowBox[{
+     SuperscriptBox["y", "\[Prime]",
+      MultilineFunction->None], 
+     RowBox[{"(", "t", ")"}]}], "\[LongEqual]", 
+    RowBox[{
+     RowBox[{"\[Alpha]", " ", "cos", " ", 
+      RowBox[{"x", "(", "t", ")"}]}], "+", 
+     RowBox[{"\[Beta]", " ", "sin", " ", 
+      RowBox[{"x", "(", "t", ")"}]}]}]}], TraditionalForm]], "InlineMath"],
+ ",",
+ "\n",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    RowBox[{
+     SuperscriptBox["z", "\[Prime]",
+      MultilineFunction->None], 
+     RowBox[{"(", "t", ")"}]}], "\[LongEqual]", 
+    RowBox[{
+     RowBox[{"\[Beta]", " ", "cos", " ", 
+      RowBox[{"x", "(", "t", ")"}]}], "+", 
+     RowBox[{"\[Gamma]", " ", "sin", " ", 
+      RowBox[{"y", "(", "t", ")"}]}]}]}], TraditionalForm]], "InlineMath"],
+ "."
+}], "DetailNotes",
+ CellChangeTimes->{{3.554830168341198*^9, 3.554830172421606*^9}, 
+   3.554830297306093*^9},
+ CellID->450583639],
+
+Cell["Reference", "DetailNotes",
+ CellChangeTimes->{{3.554476654852087*^9, 3.55447665652081*^9}},
+ CellID->1359577445],
+
+Cell[TextData[{
+ "[1] R. Ricca, ",
+ StyleBox["An Introduction to the Geometry and Topology of Fluid Flows",
+  FontSlant->"Italic"],
+ ", Dordrecht; Boston: Kluwer Academic Publishers, 2001."
+}], "DetailNotes",
+ CellChangeTimes->{{3.5544766670780573`*^9, 3.554476675488599*^9}, {
+  3.554477028189488*^9, 3.554477031235875*^9}, {3.5544770624582777`*^9, 
+  3.554477084374083*^9}, {3.554477178321986*^9, 3.554477186160473*^9}, {
+  3.554477257476262*^9, 3.554477258284067*^9}, {3.5544774554815607`*^9, 
+  3.554477457363399*^9}, {3.554747242325947*^9, 3.554747261202334*^9}, {
+  3.5548300456959343`*^9, 3.554830046212986*^9}, {3.55483042958932*^9, 
+  3.5548304399263535`*^9}},
+ CellID->1015877585]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["", "ControlSuggestionsSection"],
+
+Cell[BoxData[
+ TooltipBox[
+  RowBox[{
+   CheckboxBox[True], Cell[" Resize Images"]}],
+  "\"Click inside an image to reveal its orange resize frame.\\nDrag any of \
+the orange resize handles to resize the image.\"",
+  TooltipDelay->0.35]], "ControlSuggestions",
+ CellChangeTimes->{3.5544698735693703`*^9},
+ FontFamily->"Verdana",
+ CellTags->"ResizeImages"],
+
+Cell[BoxData[
+ TooltipBox[
+  RowBox[{
+   CheckboxBox[True], Cell[" Rotate and Zoom in 3D"]}],
+  RowBox[{
+   "\"Drag a 3D graphic to rotate it. Starting the drag near the center \
+tumbles\\nthe graphic; starting near a corner turns it parallel to the plane \
+of the screen.\\nHold down \"", 
+    FrameBox[
+    "Ctrl", Background -> GrayLevel[0.9], FrameMargins -> 2, FrameStyle -> 
+     GrayLevel[0.9]], "\" (or \"", 
+    FrameBox[
+    "Cmd", Background -> GrayLevel[0.9], FrameMargins -> 2, FrameStyle -> 
+     GrayLevel[0.9]], "\" on Mac) and drag up and down to zoom.\""}],
+  TooltipDelay->0.35]], "ControlSuggestions",
+ CellChangeTimes->{3.554469869070147*^9},
+ FontFamily->"Verdana",
+ CellTags->"RotateAndZoomIn3D"],
+
+Cell[BoxData[
+ TooltipBox[
+  RowBox[{
+   CheckboxBox[False], Cell[" Drag Locators"]}],
+  RowBox[{"\"Drag any locator (\"", 
+    GraphicsBox[
+     LocatorBox[
+      Scaled[{0.5, 0.5}]], ImageSize -> 20], 
+    "\", etc.) to move it around.\""}],
+  TooltipDelay->0.35]], "ControlSuggestions",
+ FontFamily->"Verdana",
+ CellTags->"DragLocators"],
+
+Cell[BoxData[
+ TooltipBox[
+  RowBox[{
+   CheckboxBox[False], Cell[" Create and Delete Locators"]}],
+  RowBox[{"\"Insert a new locator in the graphic by holding down the \"", 
+    FrameBox[
+    "Alt", Background -> GrayLevel[0.9], FrameMargins -> 2, FrameStyle -> 
+     GrayLevel[0.9]], 
+    "\" key\\nand clicking where you want it to be. Delete a locator by \
+clicking it\\nwhile holding down the \"", 
+    FrameBox[
+    "Alt", Background -> GrayLevel[0.9], FrameMargins -> 2, FrameStyle -> 
+     GrayLevel[0.9]], "\" key.\""}],
+  TooltipDelay->0.35]], "ControlSuggestions",
+ FontFamily->"Verdana",
+ CellTags->"CreateAndDeleteLocators"],
+
+Cell[BoxData[
+ TooltipBox[
+  RowBox[{
+   CheckboxBox[True], Cell[" Slider Zoom"]}],
+  RowBox[{"\"Hold down the \"", 
+    FrameBox[
+    "Alt", Background -> GrayLevel[0.9], FrameMargins -> 2, FrameStyle -> 
+     GrayLevel[0.9]], 
+    "\" key while moving a slider to make fine adjustments in the slider \
+value.\\nHold \"", 
+    FrameBox[
+    "Ctrl", Background -> GrayLevel[0.9], FrameMargins -> 2, FrameStyle -> 
+     GrayLevel[0.9]], "\" and/or \"", 
+    FrameBox[
+    "Shift", Background -> GrayLevel[0.9], FrameMargins -> 2, FrameStyle -> 
+     GrayLevel[0.9]], "\" at the same time as \"", 
+    FrameBox[
+    "Alt", Background -> GrayLevel[0.9], FrameMargins -> 2, FrameStyle -> 
+     GrayLevel[0.9]], "\" to make ever finer adjustments.\""}],
+  TooltipDelay->0.35]], "ControlSuggestions",
+ CellChangeTimes->{3.554469870576651*^9},
+ FontFamily->"Verdana",
+ CellTags->"SliderZoom"],
+
+Cell[BoxData[
+ TooltipBox[
+  RowBox[{
+   CheckboxBox[True], Cell[" Gamepad Controls"]}],
+  "\"Control this Demonstration with a gamepad or other\\nhuman interface \
+device connected to your computer.\"",
+  TooltipDelay->0.35]], "ControlSuggestions",
+ CellChangeTimes->{3.35696210375764*^9, 3.3895522232313623`*^9, 
+  3.554746708900415*^9},
+ FontFamily->"Verdana",
+ CellTags->"GamepadControls"],
+
+Cell[BoxData[
+ TooltipBox[
+  RowBox[{
+   CheckboxBox[True], Cell[" Automatic Animation"]}],
+  RowBox[{"\"Animate a slider in this Demonstration by clicking the\"", 
+    AdjustmentBox[
+     Cell[
+      GraphicsData[
+      "CompressedBitmap", 
+       "eJzzTSzJSM1NLMlMTlRwL0osyMhMLlZwyy8CCjEzMjAwcIKwAgOI/R/IhBKc\n\
+/4EAyGAG0f+nTZsGwgysIJIRKsWKLAXGIHFmEpUgLADxWUAkI24jZs+eTaEt\n\
+IG+wQKRmzJgBlYf5lhEA30OqWA=="], "Graphics", ImageSize -> {9, 9}, ImageMargins -> 
+      0, CellBaseline -> Baseline], BoxBaselineShift -> 0.1839080459770115, 
+     BoxMargins -> {{0., 0.}, {-0.1839080459770115, 0.1839080459770115}}], 
+    "\"button\\nnext to the slider, and then clicking the play button that \
+appears.\\nAnimate all controls by selecting \"", 
+    StyleBox["Autorun", FontWeight -> "Bold"], "\" from the\"", 
+    AdjustmentBox[
+     Cell[
+      GraphicsData[
+      "CompressedBitmap", 
+       "eJyNULENwyAQfEySIlMwTVJlCGRFsosokeNtqBmDBagoaZjAI1C8/8GUUUC6\n\
+57h7cQ8PvU7Pl17nUav7oj/TPH7V7b2QJAUAXBkKmCPRowxICy64bRvGGNF7\n\
+X8CctGoDSN4xhIDGGDhzFXwUh3/ClBKrDQPmnGXtI6u0OOd+tZBVUqy1xSaH\n\
+UqiK6pPe4XdEdAz6563tx/gejuORGMxJaz8mdpJn7hc="], "Graphics", 
+      ImageSize -> {10, 10}, ImageMargins -> 0, CellBaseline -> Baseline], 
+     BoxBaselineShift -> 0.1839080459770115, 
+     BoxMargins -> {{0., 0.}, {-0.1839080459770115, 0.1839080459770115}}], 
+    "\"menu.\""}],
+  TooltipDelay->0.35]], "ControlSuggestions",
+ CellChangeTimes->{3.5544698716792507`*^9},
+ FontFamily->"Verdana",
+ CellTags->"AutomaticAnimation"],
+
+Cell[BoxData[
+ TooltipBox[
+  RowBox[{
+   CheckboxBox[False], Cell[" Bookmark Animation"]}],
+  RowBox[{
+   "\"See a prepared animation of this Demonstration by selecting\\n\"", 
+    StyleBox["Animate Bookmarks", FontWeight -> "Bold"], "\" from the\"", 
+    AdjustmentBox[
+     Cell[
+      GraphicsData[
+      "CompressedBitmap", 
+       "eJyNULENwyAQfEySIlMwTVJlCGRFsosokeNtqBmDBagoaZjAI1C8/8GUUUC6\n\
+57h7cQ8PvU7Pl17nUav7oj/TPH7V7b2QJAUAXBkKmCPRowxICy64bRvGGNF7\n\
+X8CctGoDSN4xhIDGGDhzFXwUh3/ClBKrDQPmnGXtI6u0OOd+tZBVUqy1xSaH\n\
+UqiK6pPe4XdEdAz6563tx/gejuORGMxJaz8mdpJn7hc="], "Graphics", 
+      ImageSize -> {10, 10}, ImageMargins -> 0, CellBaseline -> Baseline], 
+     BoxBaselineShift -> 0.1839080459770115, 
+     BoxMargins -> {{0., 0.}, {-0.1839080459770115, 0.1839080459770115}}], 
+    "\"menu.\""}],
+  TooltipDelay->0.35]], "ControlSuggestions",
+ FontFamily->"Verdana",
+ CellTags->"BookmarkAnimation"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["", "SearchTermsSection"],
+
+Cell["fluid", "SearchTerms",
+ CellChangeTimes->{{3.5544790532165813`*^9, 3.554479053906871*^9}},
+ CellID->1192114035],
+
+Cell["Euler's equation of inviscid motion", "SearchTerms",
+ CellChangeTimes->{{3.5544790569531307`*^9, 3.554479062546689*^9}, {
+  3.554479540619947*^9, 3.5544795536767263`*^9}},
+ CellID->1985643382],
+
+Cell["ABC flow", "SearchTerms",
+ CellChangeTimes->{{3.5544790803044367`*^9, 3.554479082234211*^9}},
+ CellID->1093919832],
+
+Cell["turbulence", "SearchTerms",
+ CellChangeTimes->{{3.554479064292169*^9, 3.554479067293939*^9}},
+ CellID->812446894]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["", "RelatedLinksSection"],
+
+Cell[TextData[ButtonBox["Fluid Mechanics",
+ BaseStyle->"Hyperlink",
+ ButtonData->{
+   URL["http://scienceworld.wolfram.com/physics/FluidMechanics.html"], None},
+ ButtonNote->
+  "http://scienceworld.wolfram.com/physics/FluidMechanics.html"]], \
+"RelatedLinks",
+ CellChangeTimes->{{3.5544792055933743`*^9, 3.5544792055953817`*^9}},
+ CellID->244591127],
+
+Cell[TextData[ButtonBox["Euler's Equation of Inviscid Motion",
+ BaseStyle->"Hyperlink",
+ ButtonData->{
+   URL["http://scienceworld.wolfram.com/physics/\
+EulersEquationofInviscidMotion.html"], None},
+ ButtonNote->
+  "http://scienceworld.wolfram.com/physics/EulersEquationofInviscidMotion.\
+html"]], "RelatedLinks",
+ CellChangeTimes->{{3.5544795636249533`*^9, 3.554479563635417*^9}},
+ CellID->559371131],
+
+Cell[TextData[ButtonBox["Turbulence",
+ BaseStyle->"Hyperlink",
+ ButtonData->{
+   URL["http://scienceworld.wolfram.com/physics/Turbulence.html"], None},
+ ButtonNote->
+  "http://scienceworld.wolfram.com/physics/Turbulence.html"]], "RelatedLinks",\
+
+ CellChangeTimes->{{3.5544791607493896`*^9, 3.554479160751601*^9}},
+ CellID->230261803]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["", "AuthorSection"],
+
+Cell[TextData[{
+ "Contributed by: ",
+ ButtonBox["Enrique Zeleny",
+  BaseStyle->"Hyperlink",
+  ButtonData->{
+    URL["http://demonstrations.wolfram.com/author.html?author=Enrique+Zeleny"]\
+, None},
+  ButtonNote->
+   "http://demonstrations.wolfram.com/author.html?author=Enrique+Zeleny"]
+}], "Author",
+ CellChangeTimes->{{3.5544698609480963`*^9, 3.554469864186459*^9}}]
+}, Open  ]]
+}, Open  ]]
+},
+WindowSize->{811, 881},
+WindowMargins->{{141, Automatic}, {Automatic, 4}},
+Magnification->1.,
+FrontEndVersion->"8.0 for Microsoft Windows (64-bit) (October 6, 2011)",
+StyleDefinitions->FrontEnd`FileName[{"Wolfram"}, "Demonstration.nb", 
+  CharacterEncoding -> "WindowsANSI"]
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{
+ "AutomaticAnimation"->{
+  Cell[88051, 1877, 1507, 32, 22, "ControlSuggestions",
+   CellTags->"AutomaticAnimation"]},
+ "BookmarkAnimation"->{
+  Cell[89561, 1911, 908, 21, 22, "ControlSuggestions",
+   CellTags->"BookmarkAnimation"]},
+ "CreateAndDeleteLocators"->{
+  Cell[86127, 1824, 637, 15, 22, "ControlSuggestions",
+   CellTags->"CreateAndDeleteLocators"]},
+ "DragLocators"->{
+  Cell[85784, 1811, 340, 11, 22, "ControlSuggestions",
+   CellTags->"DragLocators"]},
+ "GamepadControls"->{
+  Cell[87655, 1865, 393, 10, 22, "ControlSuggestions",
+   CellTags->"GamepadControls"]},
+ "ResizeImages"->{
+  Cell[84704, 1781, 355, 9, 22, "ControlSuggestions",
+   CellTags->"ResizeImages"]},
+ "RotateAndZoomIn3D"->{
+  Cell[85062, 1792, 719, 17, 22, "ControlSuggestions",
+   CellTags->"RotateAndZoomIn3D"]},
+ "SliderZoom"->{
+  Cell[86767, 1841, 885, 22, 22, "ControlSuggestions",
+   CellTags->"SliderZoom"]}
+ }
+*)
+(*CellTagsIndex
+CellTagsIndex->{
+ {"AutomaticAnimation", 93122, 2023},
+ {"BookmarkAnimation", 93239, 2026},
+ {"CreateAndDeleteLocators", 93360, 2029},
+ {"DragLocators", 93476, 2032},
+ {"GamepadControls", 93584, 2035},
+ {"ResizeImages", 93692, 2038},
+ {"RotateAndZoomIn3D", 93801, 2041},
+ {"SliderZoom", 93909, 2044}
+ }
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[579, 22, 260, 5, 74, "DemoTitle"],
+Cell[842, 29, 33, 0, 287, "InitializationSection"],
+Cell[CellGroupData[{
+Cell[900, 33, 29, 0, 194, "ManipulateSection"],
+Cell[CellGroupData[{
+Cell[954, 37, 12405, 278, 748, "Input",
+ CellID->1086837130],
+Cell[13362, 317, 8236, 163, 493, "Output",
+ CellID->2079976548]
+}, {2}]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[21644, 486, 36, 0, 169, "ManipulateCaptionSection"],
+Cell[21683, 488, 1159, 19, 52, "ManipulateCaption",
+ CellID->1274971196],
+Cell[22845, 509, 604, 12, 38, "ManipulateCaption",
+ CellID->753258714]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[23486, 526, 28, 0, 173, "ThumbnailSection"],
+Cell[23517, 528, 8383, 165, 493, "Output",
+ CellID->1427036370]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[31937, 698, 28, 0, 143, "SnapshotsSection"],
+Cell[31968, 700, 8356, 164, 493, "Output",
+ CellID->1102900894],
+Cell[40327, 866, 8355, 165, 493, "Output",
+ CellID->1523968201],
+Cell[48685, 1033, 8366, 164, 493, "Output",
+ CellID->296096438],
+Cell[57054, 1199, 8393, 166, 493, "Output",
+ CellID->773223367],
+Cell[65450, 1367, 8331, 163, 493, "Output",
+ CellID->1141581172],
+Cell[73784, 1532, 8394, 166, 493, "Output",
+ CellID->935855506]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[82215, 1703, 26, 0, 336, "DetailsSection"],
+Cell[82244, 1705, 224, 3, 22, "DetailNotes",
+ CellID->1612889691],
+Cell[82471, 1710, 1342, 45, 55, "DetailNotes",
+ CellID->450583639],
+Cell[83816, 1757, 118, 2, 22, "DetailNotes",
+ CellID->1359577445],
+Cell[83937, 1761, 690, 13, 37, "DetailNotes",
+ CellID->1015877585]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[84664, 1779, 37, 0, 126, "ControlSuggestionsSection"],
+Cell[84704, 1781, 355, 9, 22, "ControlSuggestions",
+ CellTags->"ResizeImages"],
+Cell[85062, 1792, 719, 17, 22, "ControlSuggestions",
+ CellTags->"RotateAndZoomIn3D"],
+Cell[85784, 1811, 340, 11, 22, "ControlSuggestions",
+ CellTags->"DragLocators"],
+Cell[86127, 1824, 637, 15, 22, "ControlSuggestions",
+ CellTags->"CreateAndDeleteLocators"],
+Cell[86767, 1841, 885, 22, 22, "ControlSuggestions",
+ CellTags->"SliderZoom"],
+Cell[87655, 1865, 393, 10, 22, "ControlSuggestions",
+ CellTags->"GamepadControls"],
+Cell[88051, 1877, 1507, 32, 22, "ControlSuggestions",
+ CellTags->"AutomaticAnimation"],
+Cell[89561, 1911, 908, 21, 22, "ControlSuggestions",
+ CellTags->"BookmarkAnimation"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[90506, 1937, 30, 0, 155, "SearchTermsSection"],
+Cell[90539, 1939, 117, 2, 22, "SearchTerms",
+ CellID->1192114035],
+Cell[90659, 1943, 198, 3, 22, "SearchTerms",
+ CellID->1985643382],
+Cell[90860, 1948, 120, 2, 22, "SearchTerms",
+ CellID->1093919832],
+Cell[90983, 1952, 119, 2, 22, "SearchTerms",
+ CellID->812446894]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[91139, 1959, 31, 0, 141, "RelatedLinksSection"],
+Cell[91173, 1961, 349, 8, 22, "RelatedLinks",
+ CellID->244591127],
+Cell[91525, 1971, 401, 9, 22, "RelatedLinks",
+ CellID->559371131],
+Cell[91929, 1982, 334, 8, 22, "RelatedLinks",
+ CellID->230261803]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[92300, 1995, 25, 0, 141, "AuthorSection"],
+Cell[92328, 1997, 367, 10, 22, "Author"]
+}, Open  ]]
+}, Open  ]]
+}
+]
+*)
+
+(* End of internal cache information *)

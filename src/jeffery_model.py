@@ -14,6 +14,7 @@ from petsc4py import PETSc
 from tqdm import tqdm
 from tqdm.notebook import tqdm as tqdm_notebook
 from scipy.spatial.transform import Rotation as spR
+from src.objComposite import create_ecoli_2part
 
 # import quaternion
 
@@ -38,21 +39,29 @@ class _JefferyProblem:
         return self._name
 
     @abc.abstractmethod
-    def flow_strain(self, location):
-        ...
-
-    @abc.abstractmethod
-    def flow_rotation(self, location):
-        ...
-
-    def flow_strain_rotation(self, location):
-        S_ij = self.flow_strain(location)
-        Omega_ij = self.flow_rotation(location)
-        return S_ij, Omega_ij
-
-    @abc.abstractmethod
     def flow_velocity(self, location):
         ...
+
+    @abc.abstractmethod
+    def flow_gradient(self, location):
+        ...
+
+    def flow_strain(self, location):
+        Dij = self.flow_gradient(location)
+        Eij = 0.5 * (Dij + Dij.T)
+        return Eij
+
+    def flow_rotation(self, location):
+        Dij = self.flow_gradient(location)
+        # print(Dij)
+        Sij = 0.5 * (Dij - Dij.T)
+        return Sij
+
+    def flow_strain_rotation(self, location):
+        Dij = self.flow_gradient(location)
+        Eij = 0.5 * (Dij + Dij.T)
+        Sij = 0.5 * (Dij - Dij.T)
+        return Eij, Sij
 
     def _check_add_obj(self, obj):
         err_msg = 'only JefferyObj accept'
@@ -82,6 +91,75 @@ class _JefferyProblem:
     def update_location(self, eval_dt, print_handle=''):
         for obj in self.obj_list:  # type: JefferyObj
             obj.update_location(eval_dt, print_handle)
+        # return True
+
+    def Rloc2glb(self, theta, phi, psi):
+        Rloc2glb = np.array(
+                ((np.cos(phi) * np.cos(psi) * np.cos(theta) - np.sin(phi) * np.sin(psi),
+                  -(np.cos(psi) * np.sin(phi)) - np.cos(phi) * np.cos(theta) * np.sin(psi),
+                  np.cos(phi) * np.sin(theta)),
+                 (np.cos(psi) * np.cos(theta) * np.sin(phi) + np.cos(phi) * np.sin(psi),
+                  np.cos(phi) * np.cos(psi) - np.cos(theta) * np.sin(phi) * np.sin(psi),
+                  np.sin(phi) * np.sin(theta)),
+                 (-(np.cos(psi) * np.sin(theta)),
+                  np.sin(psi) * np.sin(theta),
+                  np.cos(theta))))
+        return Rloc2glb
+
+    @abc.abstractmethod
+    def MBF_U_b(self, X):
+        # see my paper for detail
+        ...
+
+    @abc.abstractmethod
+    def MBF_W_S(self, X):
+        # see my paper for detail
+        ...
+
+    @abc.abstractmethod
+    def MBF_beta(self, theta, phi, psi, X):
+        # see my paper for detail
+        ...
+
+    def MBF_U_b_v2(self, X):
+        U_b = self.flow_velocity(X)
+        return U_b
+
+    def MBF_W_S_v2(self, X):
+        Sij = self.flow_rotation(X)
+        # print(Sij)
+        W = np.array((Sij[2, 1], Sij[2, 0], Sij[0, 1]))
+        return W
+
+    def MBF_beta_v2(self, theta, phi, psi, X):
+        Eij = self.flow_strain(X)
+        R = self.Rloc2glb(theta, phi, psi)
+        Elc = np.dot(R.T, np.dot(Eij, R))
+        beta = np.array((Elc[0, 0], Elc[2, 2], Elc[0, 1], Elc[0, 2], Elc[1, 2]))
+        return beta
+
+    def MBF_Ub_WS_beta_v2(self, theta, phi, psi, X):
+        # print('dbg fix X=(0, 0, 0)')
+        # X = np.zeros(3)
+
+        Dij = self.flow_gradient(X)
+        Eij = 0.5 * (Dij + Dij.T)
+        Sij = 0.5 * (Dij - Dij.T)
+        R = self.Rloc2glb(theta, phi, psi)
+
+        U_b = self.flow_velocity(X)
+        W = np.array((Sij[1, 2], Sij[2, 0], Sij[0, 1]))
+        Elc = np.dot(R.T, np.dot(Eij, R))
+        beta = np.array((Elc[0, 0], Elc[2, 2], Elc[0, 1], Elc[0, 2], Elc[1, 2]))
+
+        # print('dbg theta, phi, psi', theta, phi, psi)
+        # print('dbg W', W)
+        # print('dbg Eij')
+        # print(Eij)
+        # print('dbg Elc')
+        # print(Elc)
+        # print('dbg beta', beta)
+        return U_b, W, beta
 
 
 # class _Jeffery3DProblem(_JefferyProblem):
@@ -91,7 +169,7 @@ class _JefferyProblem:
 
 
 class ShearJefferyProblem(_JefferyProblem):
-    _planeShearRate = ...  # type: np.ndarray
+    # _planeShearRate = ...  # type: np.ndarray
 
     # current version the velocity of shear flow points to the x axis and only varys in the z axis.
     def __init__(self, **kwargs):
@@ -101,29 +179,146 @@ class ShearJefferyProblem(_JefferyProblem):
         err_msg = 'shear flow velocity is must vertical to (y, z) plane. '
         assert np.all(np.isclose(self._planeShearRate[0, -2:], (0, 0))), err_msg
 
-    def flow_strain(self, location):
-        tao_x = self._planeShearRate[0, 0]
-        S_ij = 1 / 2 * np.array(((0, 0, tao_x,),
-                                 (0, 0, 0,),
-                                 (tao_x, 0, 0,)))
-        return S_ij
-
-    def flow_rotation(self, location):
-        tao_x = self._planeShearRate[0, 0]
-        Omega_ij = 1 / 2 * np.array(((0, 0, tao_x,),
-                                     (0, 0, 0,),
-                                     (-tao_x, 0, 0,)))
-        return Omega_ij
-
     def flow_velocity(self, location):
         loc_z = location[-1]
         tao_x = self._planeShearRate[0, 0]
         given_u = np.array((tao_x * loc_z, 0, 0))
         return given_u
 
+    def flow_gradient(self, location):
+        tao_x = self._planeShearRate[0, 0]
+        Dij = np.array(((0, 0, 0,),
+                        (0, 0, 0,),
+                        (tao_x, 0, 0,)))
+        return Dij
+
     @property
     def planeShearRate(self):
         return self._planeShearRate
+
+    def MBF_U_b(self, X):
+        # see my paper for detail
+        U_p = self.flow_velocity(X)
+        return U_p
+
+    def MBF_W_S(self, X):
+        # see my paper for detail
+        tao_x = self._planeShearRate[0, 0]
+        W_p = np.hstack((0, 1 / 2 * tao_x, 0))
+        return W_p
+
+    def MBF_beta(self, theta, phi, psi, X):
+        # see my paper for detail
+        tao_x = self._planeShearRate[0, 0]
+        beta = tao_x * np.array((np.cos(psi) * (-(np.cos(phi) * np.cos(psi) * np.cos(theta)) +
+                                                np.sin(phi) * np.sin(psi)) * np.sin(theta),
+                                 np.cos(phi) * np.cos(theta) * np.sin(theta),
+                                 (2 * np.cos(2 * psi) * np.sin(phi) * np.sin(theta) +
+                                  np.cos(phi) * np.sin(2 * psi) * np.sin(2 * theta)) / 4.,
+                                 (np.cos(phi) * np.cos(psi) * np.cos(2 * theta) -
+                                  np.cos(theta) * np.sin(phi) * np.sin(psi)) / 2.,
+                                 (-(np.cos(psi) * np.cos(theta) * np.sin(phi)) -
+                                  np.cos(phi) * np.cos(2 * theta) * np.sin(psi)) / 2.,))
+        return beta
+
+
+class ABCFlowProblem(_JefferyProblem):
+    # see https://en.wikipedia.org/wiki/Arnold%E2%80%93Beltrami%E2%80%93Childress_flow
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._type = 'ABCFlowProblem'
+        self._A = kwargs['ABC_A']
+        self._B = kwargs['ABC_B']
+        self._C = kwargs['ABC_C']
+
+    @property
+    def A(self):
+        return self._A
+
+    @property
+    def B(self):
+        return self._B
+
+    @property
+    def C(self):
+        return self._C
+
+    def flow_velocity(self, location):
+        A, B, C = self.A, self.B, self.C
+        x, y, z = location[0], location[1], location[2]
+        Ub = np.array((A * np.sin(z) + C * np.cos(y),
+                       B * np.sin(x) + A * np.cos(z),
+                       C * np.sin(y) + B * np.cos(x)))
+        return Ub
+
+    def flow_gradient(self, location):
+        A, B, C = self.A, self.B, self.C
+        x, y, z = location[0], location[1], location[2]
+        Dij = np.array(((0, B * np.cos(x), -B * np.sin(x),),
+                        (-C * np.sin(y), 0, C * np.cos(y),),
+                        (A * np.cos(z), -A * np.sin(z), 0,)))
+
+        # print('dbg code 330')
+        # Dij = np.array(((0, B * np.cos(x), -B * np.sin(x),),
+        #                 (-C * np.sin(y), 0, C * np.cos(y),),
+        #                 (A * np.cos(z), -A * np.sin(z), 0,))).T
+        return Dij
+
+
+class ABCFlowProblem_DEFHIJ(ABCFlowProblem):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._type = 'ABCFlowProblem'
+        self._D = kwargs['ABC_D']
+        self._E = kwargs['ABC_E']
+        self._F = kwargs['ABC_F']
+        self._G = kwargs['ABC_G']
+        self._H = kwargs['ABC_H']
+        self._I = kwargs['ABC_I']
+
+    @property
+    def D(self):
+        return self._D
+
+    @property
+    def E(self):
+        return self._E
+
+    @property
+    def F(self):
+        return self._F
+
+    @property
+    def G(self):
+        return self._G
+
+    @property
+    def H(self):
+        return self._H
+
+    @property
+    def I(self):
+        return self._I
+
+    def flow_velocity(self, location):
+        A, B, C = self.A, self.B, self.C
+        D, E, F = self.D, self.E, self.F
+        G, H, I = self.G, self.H, self.I
+        x, y, z = location[0], location[1], location[2]
+        Ub = np.array((A * np.sin(D * z + G) + C * np.cos(F * y + I),
+                       B * np.sin(E * x + H) + A * np.cos(D * z + G),
+                       C * np.sin(F * y + I) + B * np.cos(E * x + H)))
+        return Ub
+
+    def flow_gradient(self, location):
+        A, B, C = self.A, self.B, self.C
+        D, E, F = self.D, self.E, self.F
+        G, H, I = self.G, self.H, self.I
+        x, y, z = location[0], location[1], location[2]
+        Dij = np.array(((0, B * E * np.cos(E * x + H), -B * E * np.sin(E * x + H),),
+                        (-C * F * np.sin(F * y + I), 0, C * F * np.cos(F * y + I),),
+                        (A * D * np.cos(D * z + G), -A * D * np.sin(D * z + G), 0,)))
+        return Dij
 
 
 class ShearTableProblem(ShearJefferyProblem):
@@ -139,7 +334,58 @@ class SingleStokesletsJefferyProblem(_JefferyProblem):
         self._type = 'SingleStokesletsJefferyProblem'
         self._StokesletsStrength = np.array(kwargs['StokesletsStrength']).reshape((1, 3)).flatten()
 
-    def flow_strain(self, location):
+    # def flow_strain(self, location):
+    #     S_fun = lambda x0, x1, x2, f0, f1, f2: np.array(
+    #             [[(-3.0 * x0 ** 2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** 1.5 +
+    #                1.0 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** 2.5) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (
+    #                   -4.0) * (
+    #                       f0 * x0 + f1 * x1 + f2 * x2),
+    #               -3.0 * x0 * x1 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-2.5) * (
+    #                       f0 * x0 + f1 * x1 + f2 * x2),
+    #               -3.0 * x0 * x2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-2.5) * (
+    #                       f0 * x0 + f1 * x1 + f2 * x2)],
+    #              [-3.0 * x0 * x1 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-2.5) * (
+    #                      f0 * x0 + f1 * x1 + f2 * x2),
+    #               (-3.0 * x1 ** 2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** 1.5 +
+    #                1.0 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** 2.5) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (
+    #                   -4.0) * (
+    #                       f0 * x0 + f1 * x1 + f2 * x2),
+    #               -3.0 * x1 * x2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-2.5) * (
+    #                       f0 * x0 + f1 * x1 + f2 * x2)],
+    #              [-3.0 * x0 * x2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-2.5) * (
+    #                      f0 * x0 + f1 * x1 + f2 * x2),
+    #               -3.0 * x1 * x2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-2.5) * (
+    #                       f0 * x0 + f1 * x1 + f2 * x2),
+    #               (-3.0 * x2 ** 2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** 1.5 +
+    #                1.0 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** 2.5) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (
+    #                   -4.0) * (
+    #                       f0 * x0 + f1 * x1 + f2 * x2)]]) / (8 * np.pi)
+    #     return S_fun(*location, *self._StokesletsStrength)
+    #
+    # def flow_rotation(self, location):
+    #     Omega_fun = lambda x0, x1, x2, f0, f1, f2: np.array(
+    #             [[np.zeros_like(x0),
+    #               (-1.0 * f0 * x1 + f1 * x0) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5),
+    #               (-1.0 * f0 * x2 + f2 * x0) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5)],
+    #              [(f0 * x1 - 1.0 * f1 * x0) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5),
+    #               np.zeros_like(x0),
+    #               (-1.0 * f1 * x2 + f2 * x1) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5)],
+    #              [(f0 * x2 - 1.0 * f2 * x0) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5),
+    #               (f1 * x2 - 1.0 * f2 * x1) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5),
+    #               np.zeros_like(x0), ]]) / (8 * np.pi)
+    #     return Omega_fun(*location, *self._StokesletsStrength)
+
+    def flow_gradient(self, location):
+        Omega_fun = lambda x0, x1, x2, f0, f1, f2: np.array(
+                [[np.zeros_like(x0),
+                  (-1.0 * f0 * x1 + f1 * x0) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5),
+                  (-1.0 * f0 * x2 + f2 * x0) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5)],
+                 [(f0 * x1 - 1.0 * f1 * x0) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5),
+                  np.zeros_like(x0),
+                  (-1.0 * f1 * x2 + f2 * x1) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5)],
+                 [(f0 * x2 - 1.0 * f2 * x0) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5),
+                  (f1 * x2 - 1.0 * f2 * x1) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5),
+                  np.zeros_like(x0), ]]) / (8 * np.pi)
         S_fun = lambda x0, x1, x2, f0, f1, f2: np.array(
                 [[(-3.0 * x0 ** 2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** 1.5 +
                    1.0 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** 2.5) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (
@@ -165,34 +411,9 @@ class SingleStokesletsJefferyProblem(_JefferyProblem):
                    1.0 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** 2.5) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (
                       -4.0) * (
                           f0 * x0 + f1 * x1 + f2 * x2)]]) / (8 * np.pi)
-        return S_fun(*location, *self._StokesletsStrength)
-
-    def flow_rotation(self, location):
-        Omega_fun = lambda x0, x1, x2, f0, f1, f2: np.array(
-                [[np.zeros_like(x0),
-                  (-1.0 * f0 * x1 + f1 * x0) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5),
-                  (-1.0 * f0 * x2 + f2 * x0) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5)],
-                 [(f0 * x1 - 1.0 * f1 * x0) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5),
-                  np.zeros_like(x0),
-                  (-1.0 * f1 * x2 + f2 * x1) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5)],
-                 [(f0 * x2 - 1.0 * f2 * x0) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5),
-                  (f1 * x2 - 1.0 * f2 * x1) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5),
-                  np.zeros_like(x0), ]]) / (8 * np.pi)
-        return Omega_fun(*location, *self._StokesletsStrength)
-        # x0, x1, x2 = location
-        # f0, f1, f2 = self._StokesletsStrength
-        # o00 = np.ones_like(x0)
-        # o01 = (-1.0 * f0 * x1 + f1 * x0) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5)
-        # o02 = (-1.0 * f0 * x2 + f2 * x0) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5)
-        # o10 = (f0 * x1 - 1.0 * f1 * x0) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5)
-        # o11 = np.ones_like(x0)
-        # o12 = (-1.0 * f1 * x2 + f2 * x1) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5)
-        # o20 = (f0 * x2 - 1.0 * f2 * x0) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5)
-        # o21 = (f1 * x2 - 1.0 * f2 * x1) * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5)
-        # o22 = np.ones_like(x0)
-        # Omega = np.vstack(((o00, o01, o02),
-        #                    (o10, o11, o12),
-        #                    (o20, o21, o22)))
+        Dij = S_fun(*location, *self._StokesletsStrength) \
+              + Omega_fun(*location, *self._StokesletsStrength)
+        return Dij
 
     def flow_velocity(self, location):
         given_u_fun = lambda x0, x1, x2, f0, f1, f2: np.array(
@@ -224,7 +445,7 @@ class HalfSpaceJefferyProblem(_JefferyProblem):
         self._StokesletsStrength = np.array(kwargs['StokesletsStrength']).reshape((1, 3)).flatten()
         self._h = h
 
-    def J_matrix(self, location):
+    def flow_gradient(self, location):
         h = self._h
         x1, x2, x3 = location
         f1, f2, f3 = self.StokesletsStrength
@@ -518,22 +739,6 @@ class HalfSpaceJefferyProblem(_JefferyProblem):
                       (j20, j21, j22),))
         return J
 
-    def flow_strain(self, location):
-        J = self.J_matrix(location)
-        S_ij = 1 / 2 * (J + J.T)
-        return S_ij
-
-    def flow_rotation(self, location):
-        J = self.J_matrix(location)
-        Omega_ij = 1 / 2 * (J - J.T)
-        return Omega_ij
-
-    def flow_strain_rotation(self, location):
-        J = self.J_matrix(location)
-        S_ij = 1 / 2 * (J + J.T)
-        Omega_ij = 1 / 2 * (J - J.T)
-        return S_ij, Omega_ij
-
     def flow_velocity(self, location):
         u0_fun = lambda x0, x1, x2, f0, f1, f2, h: (
                 0.75 * f0 * h * x0 ** 2 * x2 * (x0 ** 2 + x1 ** 2 + (h + x2) ** 2) ** (
@@ -657,7 +862,7 @@ class SingleDoubleletJefferyProblem(_JefferyProblem):
         self._DoubleletStrength = np.array(kwargs['DoubleletStrength']).reshape((1, 3)).flatten()
         self._B = np.array(kwargs['B']).reshape((1, 3)).flatten()
 
-    def J_matrix(self, location):
+    def flow_gradient(self, location):
         b1, b2, b3 = self._B
         x1, x2, x3 = location
         f1, f2, f3 = self.DoubleletStrength
@@ -809,22 +1014,6 @@ class SingleDoubleletJefferyProblem(_JefferyProblem):
                       (j10, j11, j12),
                       (j20, j21, j22),))
         return J
-
-    def flow_strain(self, location):
-        J = self.J_matrix(location)
-        S_ij = 1 / 2 * (J + J.T)
-        return S_ij
-
-    def flow_rotation(self, location):
-        J = self.J_matrix(location)
-        Omega_ij = 1 / 2 * (J - J.T)
-        return Omega_ij
-
-    def flow_strain_rotation(self, location):
-        J = self.J_matrix(location)
-        S_ij = 1 / 2 * (J + J.T)
-        Omega_ij = 1 / 2 * (J - J.T)
-        return S_ij, Omega_ij
 
     def flow_velocity(self, location):
         b1, b2, b3 = self._B
@@ -984,7 +1173,9 @@ class JefferyObj:
             tb = np.array((tP2[0], tP2[1]))
             sin_psi, cos_psi = np.linalg.solve(tA, tb)
         t_psi = np.arctan2(sin_psi, cos_psi)
-        t_psi = t_psi + 2 * np.pi if t_psi < 0 else t_psi  # (-pi,pi) -> (0, 2pi)
+        # t_psi = t_psi + 2 * np.pi if t_psi < 0 else t_psi  # (-pi,pi) -> (0, 2pi)
+        t_psi = t_psi + np.pi * 1.5 if t_psi < np.pi / 2 \
+            else t_psi - np.pi / 2  # (-pi,pi) -> (0, 2pi)
         return t_psi
 
     def _theta_phi_psi_v2(self, P1, P2):
@@ -1087,7 +1278,7 @@ class JefferyObj:
         return self._update_order
 
     def set_update_para(self, fix_x=False, fix_y=False, fix_z=False,
-                        update_fun=Adams_Moulton_Methods, update_order=1):
+                        update_fun=Adams_Moulton_Methods, update_order=1, **kwargs):
         # for a cutoff infinity symmetric problem,
         #   each time step set the obj in the center of the cutoff region to improve the accuracy.
         self._locomotion_fct = np.array((not fix_x, not fix_y, not fix_z), dtype=np.float)
@@ -1518,7 +1709,7 @@ class TableRkObj(TableObj):
         return np.hstack((dX, dP, dP2))
 
     def set_update_para(self, fix_x=False, fix_y=False, fix_z=False,
-                        update_fun=integrate.RK45, rtol=1e-6, atol=1e-9):
+                        update_fun=integrate.RK45, rtol=1e-6, atol=1e-9, **kwargs):
         # for a cutoff infinity symmetric problem,
         #   each time step set the obj in the center of the cutoff region to improve the accuracy.
         self._locomotion_fct = np.array((not fix_x, not fix_y, not fix_z), dtype=np.float)
@@ -1664,7 +1855,7 @@ class TablePetscObj(TableRkObj):
         return True
 
     def set_update_para(self, fix_x=False, fix_y=False, fix_z=False, update_fun='3bs',
-                        rtol=1e-6, atol=1e-9, save_every=1, tqdm_fun=tqdm_notebook, ):
+                        rtol=1e-6, atol=1e-9, save_every=1, tqdm_fun=tqdm_notebook, **kwargs):
         # for a cutoff infinity symmetric problem,
         #   each time step set the obj in the center of the cutoff region to improve the accuracy.
         self._locomotion_fct = np.array((not fix_x, not fix_y, not fix_z), dtype=np.float)
@@ -1697,7 +1888,7 @@ class TablePetscObj(TableRkObj):
         if not i % save_every:
             percentage = np.clip(t / self._t1 * 100, 0, 100)
             dp = int(percentage - self._percentage)
-            if dp > 1:
+            if dp >= 1:
                 self._tqdm.update(dp)
                 self._percentage = self._percentage + dp
             self._do_store_data(ts, i, t, Y)
@@ -1842,6 +2033,14 @@ class TablePetsc4nPsiEcoli(TablePetsc4nEcoli):
     def psi(self, psi):
         self._psi = psi
 
+    @property
+    def ini_psi(self):
+        return self._ini_psi
+
+    @ini_psi.setter
+    def ini_psi(self, ini_psi):
+        self._ini_psi = ini_psi
+
     # @property
     # def q_hist(self):
     #     return self._q_hist
@@ -1880,6 +2079,9 @@ class TablePetsc4nPsiEcoli(TablePetsc4nEcoli):
     def _theta_phi_psi2(self, P, P2):
         return self._theta_phi_psi2_v2(P, P2)
 
+    def theta_phi_psi2(self, P, P2):
+        return self._theta_phi_psi2(P, P2)
+
     def _get_velocity_at2(self, X, P, P2, psi):
         # print('dbg', P, P2)
         t_theta, t_phi, t_psi = self._theta_phi_psi2(P, P2)
@@ -1903,6 +2105,7 @@ class TablePetsc4nPsiEcoli(TablePetsc4nEcoli):
         R = tq.get_R()
         P = R[:, 2]
         P2 = R[:, 1]
+        # print('dbg, self.q', self.q)
 
         dX, omega = self._get_velocity_at2(X, P, P2, psi)
         # print('dbg, dX', dX)
@@ -1976,13 +2179,13 @@ class TableAvrPetsc4nEcoli(TableAvrObj, TablePetsc4nEcoli):
         pass
 
 
-class _GivenFlowPetsc4nPsiObj(TablePetsc4nPsiEcoli):
+class GivenFlowPetsc4nPsiObj(TablePetsc4nPsiEcoli):
     def __init__(self, table_name, flow_strength, omega_tail, name='...', ini_psi=0, **kwargs):
         self._uEbase_list = []
         self._uSbase_list = []
         self._wEbase_list = []
         self._wSbase_list = []
-        self._U_a_loc = np.zeros(6)  # active part of translational and rotational velocity
+        self._Ua_loc = np.zeros(6)  # active part of translational and rotational velocity
         super().__init__(table_name, omega_tail, name, ini_psi=ini_psi, **kwargs)
         self._flow_strength = flow_strength
 
@@ -2023,7 +2226,8 @@ class _GivenFlowPetsc4nPsiObj(TablePetsc4nPsiEcoli):
         self._uSbase_list = uSbase_list
         self._wEbase_list = wEbase_list
         self._wSbase_list = wSbase_list
-        self._U_a_loc = pickle_dict['uw_Base_list'][9]
+        self._Ua_loc = pickle_dict['uw_Base_list'][9]
+        self._pickle_kwargs = pickle_dict['problem_kwargs']
         return True
 
     @property
@@ -2043,59 +2247,79 @@ class _GivenFlowPetsc4nPsiObj(TablePetsc4nPsiEcoli):
         return self._wSbase_list
 
     @property
-    def U_a_loc(self):
-        return self._U_a_loc
+    def Ua_loc(self):
+        return self._Ua_loc
 
     @property
     def flow_strength(self):
         return self._flow_strength
 
     # back flow induced passive velocity of the microswimmer
-    def calc_Up_fun(self, t_theta, t_phi, t_psi, Rlog2glb):
+    def calc_Up_fun(self, t_theta, t_phi, t_psi, X, Rlog2glb):
         uEbase_list = self.uEbase_list
-        uSbase_list = self.uSbase_list
         wEbase_list = self.wEbase_list
-        wSbase_list = self.wSbase_list
+        problem = self.father  # Type: JefferyProblem
 
-        Eij_loc = self.Eij_loc(t_theta, t_phi, t_psi)
-        Sij_loc = self.Sij_loc(t_theta, t_phi, t_psi)
-        Ebase_fct = np.array([Eij_loc[0, 0], Eij_loc[2, 2], Eij_loc[0, 1],
-                              Eij_loc[0, 2], Eij_loc[1, 2]])
-        Sbase_fct = np.array([Sij_loc[2, 1], Sij_loc[0, 2], Sij_loc[1, 0]])
+        # # # version 1
+        # MBF_U_b = problem.MBF_U_b(X)
+        # MBF_W_S = problem.MBF_W_S(X)
+        # MBF_beta = problem.MBF_beta(t_theta, t_phi, t_psi, X)
+        # # print(MBF_W_S)
+        # # # version 2
+        # MBF_U_b = problem.MBF_U_b_v2(X)
+        # MBF_W_S = problem.MBF_W_S_v2(X)
+        # MBF_beta = problem.MBF_beta_v2(t_theta, t_phi, t_psi, X)
+        # # print(MBF_W_S)
+        # # version 2, speedup
+        MBF_U_b, MBF_W_S, MBF_beta = problem.MBF_Ub_WS_beta_v2(t_theta, t_phi, t_psi, X)
 
-        uE_loc = np.sum([a * b for a, b in zip(Ebase_fct, uEbase_list)], axis=0)
-        uS_loc = np.sum([a * b for a, b in zip(Sbase_fct, uSbase_list)], axis=0)
-        dX = np.dot(Rlog2glb, uE_loc + uS_loc)
-        wE_loc = np.sum([a * b for a, b in zip(Ebase_fct, wEbase_list)], axis=0)
-        wS_loc = np.sum([a * b for a, b in zip(Sbase_fct, wSbase_list)], axis=0)
-        omega = np.dot(Rlog2glb, wE_loc + wS_loc)
-        return np.hstack((dX, omega))
+        uE_loc = np.sum([a * b for a, b in zip(MBF_beta, uEbase_list)], axis=0)
+        Up = MBF_U_b + np.dot(Rlog2glb, uE_loc)
+        wE_loc = np.sum([a * b for a, b in zip(MBF_beta, wEbase_list)], axis=0)
+        Wp = MBF_W_S + np.dot(Rlog2glb, wE_loc)
+
+        np.set_printoptions(formatter={'float_kind': "{:10.5f}".format})
+        # print('dbg Up', Up)
+        # print('dbg wE_loc', wE_loc)
+        # print('dbg Wp', Wp)
+        # print()
+        return Up, Wp
+
+    def simu_Up_fun(self, t_theta, t_phi, t_psi, X, Rlog2glb):
+        pass
 
     # active velocity
     def calc_Ua_fun(self, Rlog2glb):
-        U_a_loc = self._U_a_loc
-        dX = np.dot(Rlog2glb, U_a_loc[:3])
-        omega = np.dot(Rlog2glb, U_a_loc[3:])
-        return np.hstack((dX, omega))
-
-    def _get_velocity_at2(self, X, P, P2, psi):
-        flow_strength = self.flow_strength
         omega_tail = self.omega_tail
+        Ua_loc = self._Ua_loc
+        Ua = omega_tail * np.dot(Rlog2glb, Ua_loc[:3])
+        Wa = omega_tail * np.dot(Rlog2glb, Ua_loc[3:])
+        return Ua, Wa
 
-        t_theta, t_phi, t_psi = self._theta_phi_psi2(P, P2)
+    def _get_velocity_at_thphps(self, X, t_theta, t_phi, t_psi, psi):
         t_psi = (t_psi + psi - self._ini_psi) % (2 * np.pi)
         Rlog2glb = self.Rloc2glb(t_theta, t_phi, t_psi)
+        Up, Wp = self.calc_Up_fun(t_theta, t_phi, t_psi, X, Rlog2glb)
+        Ua, Wa = self.calc_Ua_fun(Rlog2glb)
+        dX = Up + Ua
+        omega = Wp + Wa
+        # print(dX, omega)
+        # print('dbg thphps, %.20f, %.20f, %.20f' % (t_theta, t_phi, t_psi))
+        # print('dbg Rlog2glb')
+        # print(Rlog2glb)
+        # print('dbg dX, %.20f, %.20f, %.20f' % (dX[0], dX[1], dX[2]))
+        # print('dbg omega, %.20f, %.20f, %.20f' % (omega[0], omega[1], omega[2]))
+        # print()
+        return dX, omega
 
-        Up = flow_strength * self.calc_Up_fun(t_theta, t_phi, t_psi, Rlog2glb)
-        Ua = omega_tail * self.calc_Ua_fun(Rlog2glb)
-        Ub = flow_strength * self.father.flow_velocity(X)  # background velocity
-        dX = Up[:3] + Ua[:3] + Ub
-        # print((t_theta, t_phi, t_psi), Ua[:3])
-        omega = Up[3:] + Ua[3:]
+    def _get_velocity_at2(self, X, P, P2, psi):
+        t_theta, t_phi, t_psi = self._theta_phi_psi2(P, P2)
+        # print('dbg, t_theta, t_phi, t_psi', t_theta, t_phi, t_psi)
+        dX, omega = self._get_velocity_at_thphps(X, t_theta, t_phi, t_psi, psi)
         return dX, omega
 
 
-class ShearFlowPetsc4nPsiObj(_GivenFlowPetsc4nPsiObj):
+class ShearFlowPetsc4nPsiObj(GivenFlowPetsc4nPsiObj):
     def Eij_loc(self, theta, phi, psi):
         Eij_loc = np.array(
                 ((np.cos(psi) * (-(np.cos(phi) * np.cos(psi) * np.cos(theta)) +
@@ -2131,47 +2355,200 @@ class ShearFlowPetsc4nPsiObj(_GivenFlowPetsc4nPsiObj):
         return Sij_loc
 
 
-class ShearFlowPetsc4nPsiObj_dbg(ShearFlowPetsc4nPsiObj):
-    def _get_velocity_at2(self, X, P, P2, psi):
-        flow_strength = self.flow_strength
-        omega_tail = self.omega_tail
+# rewrite the obj part using the base flow method
+class GivenFlowObj(GivenFlowPetsc4nPsiObj):
+    def __init__(self, ini_theta, ini_phi, ini_psi, table_name, omega_tail, name='...', **kwargs):
+        # err_msg = 'this parameter is abandoned in current version'
+        # assert np.isnan(flow_strength)
+        # err_msg = 'this parameter is abandoned in current version'
+        # assert np.isclose(ini_psi, 0)
 
-        t_theta, t_phi, t_psi = self._theta_phi_psi2(P, P2)
-        t_psi = (t_psi + psi - self._ini_psi) % (2 * np.pi)
-        Rlog2glb = self.Rloc2glb(t_theta, t_phi, t_psi)
+        kwargs['norm'], kwargs['lateral_norm'] = self.thphps2P(ini_theta, ini_phi, ini_psi)
+        self._pickle_kwargs = []
+        self._simu_mode = False
+        self._problem = None
 
-        Up = flow_strength * self.calc_Up_fun(t_theta, t_phi, t_psi, Rlog2glb)
-        Ua0 = self.calc_Ua_fun(Rlog2glb)
+        super().__init__(table_name=table_name, flow_strength=np.nan, omega_tail=omega_tail,
+                         name=name, ini_psi=0, **kwargs)
+        self._ini_theta = ini_theta
+        self._ini_phi = ini_phi
+        self._ini_psi = 0  # here psi is the pure tail rotation.
+        self._theta = ini_theta
+        self._phi = ini_phi
+        self._psi = 0  # here psi is the pure tail rotation.
+        self.q = self.thphps2q(ini_theta, ini_phi, ini_psi)
+        self._q_hist = []
+        # self._ini_center = kwargs['center']
 
-        omega_p = Up[3:]
-        omega_a0 = Ua0[3:]
-        dp_p = np.cross(omega_p, P)
-        dp_a0 = np.cross(omega_a0, P)
-        omega_tail_adp = -dp_p[1] / dp_a0[1]
-        omega_tail_adp = np.sign(omega_tail_adp) * np.min((np.abs(omega_tail_adp), omega_tail))
-        # print(omega_tail_adp)
-        # omega_tail_adp = omega_tail
+        # the following parameters are abandoned in current version
+        self._displace_hist = np.nan
+        self._norm = np.nan
+        self._lateral_norm = np.nan
+        # self._ini_norm = np.nan
+        self._norm_hist = np.nan
+        # self._ini_lateral_norm = np.nan
+        self._lateral_norm_hist = np.nan
+        self._ini_lateral_norm2 = np.nan
+        self._uSbase_list = np.nan
+        self._wSbase_list = np.nan
+        self._flow_strength = np.nan
+        self._locomotion_fct = np.nan
+        self._intp_fun_list = np.nan
+        self._intp_psi_list = np.nan
+        # self._tmp_idx = np.nan
+        self._speed = np.nan
+        self._dP_hist = np.nan
+        self._dP2_hist = np.nan
+        self._speed = np.nan
+        self._lbd = np.nan
+        self._rot_v = np.nan
 
-        Ub = flow_strength * self.father.flow_velocity(X)  # background velocity
-        Ua = omega_tail_adp * Ua0
-        dX = Up[:3] + Ua[:3] + Ub
-        omega = Up[3:] + Ua[3:]
+    def set_update_para(self, fix_x=False, fix_y=False, fix_z=False, update_fun='3bs',
+                        rtol=1e-6, atol=1e-9, save_every=1, tqdm_fun=tqdm_notebook,
+                        simu_mode=False, **kwargs):
+        # for a cutoff infinity symmetric problem,
+        #   each time step set the obj in the center of the cutoff region to improve the accuracy.
+        self._locomotion_fct = np.array((not fix_x, not fix_y, not fix_z), dtype=np.float)
+        self._update_fun = update_fun
+        self._tqdm_fun = tqdm_fun
+        self._update_order = (rtol, atol)
+        self._save_every = save_every
+        self._simu_mode = simu_mode
 
-        return dX, omega
+        # if simu_mode:
+        #     problem_kwargs = self._pickle_kwargs
+        #     ecoli_comp = create_ecoli_2part(**problem_kwargs)
+        #     # self._problem =
+        return self._locomotion_fct
 
-# class JefferyObj3D(JefferyObj):
-#     def __init__(self, name='...', **kwargs):
-#         super().__init__(name, **kwargs)
-#         self._type = 'JefferyObj3D'
-#         self._norm = ...  # type: np.ndarray
-#         self._set_norm(kwargs['norm'])
-#         # lbd   = (a^2-1)/(a^2+1), a = rs2 / rs1
-#         # kappa = (b^2-1)/(b^2+1), b = rs3 / rs1
-#         # rs1, rs2, rs3 are 3 half length of the ellipse.
-#         self._lbd = kwargs['lbd']  # type: np.ndarray
-#         self._kappa = kwargs['kappa']  # type: np.ndarray
-#         # the following properties store the location history of the composite.
-#         self._norm_hist = []  # each element is a (9,) array contain 3 norms.
-#
-#     def nothint(self):
-#         pass
+    @property
+    def q_hist(self):
+        return self._q_hist
+
+    @property
+    def theta(self):
+        return self._theta
+
+    @theta.setter
+    def theta(self, theta):
+        self._theta = theta
+
+    @property
+    def phi(self):
+        return self._phi
+
+    @phi.setter
+    def phi(self, phi):
+        self._phi = phi
+
+    @property
+    def psi(self):
+        return self._psi
+
+    @psi.setter
+    def psi(self, psi):
+        self._psi = psi
+
+    @property
+    def theta_phi_psi(self):
+        t_theta_all, t_phi_all, t_psi_all = [], [], []
+        psi_t = self.psi
+        for q in self.q_hist:
+            t1 = q.get_thphps()
+            t_theta_all.append(t1[0])
+            t_phi_all.append(t1[1])
+            t_psi_all.append(t1[2])
+        t_theta_all = np.hstack(t_theta_all)
+        t_phi_all = np.hstack(t_phi_all)
+        t_psi_all = (np.hstack(t_psi_all) + psi_t) % (2 * np.pi)
+        return t_theta_all, t_phi_all, t_psi_all
+
+    def thphps2P(self, theta, phi, psi):
+        rotM = self.Rloc2glb(theta, phi, psi)
+        P0 = rotM[:, 2]
+        P1 = rotM[:, 1]
+        return P0, P1
+
+    def thphps2q(self, theta, phi, psi):
+        rotM = self.Rloc2glb(theta, phi, psi)
+        tq1 = spR.from_matrix(rotM).as_quat()
+        q = Quaternion()
+        q.set_wxyz(tq1[3], tq1[0], tq1[1], tq1[2])
+        return q
+
+    def _rhsfunction(self, ts, t, Y, F):
+        y = Y.getArray()
+        X = y[0:3]  # center (x, y, z)
+        Q = y[3:7]  # quaternion (w, x, y, z), where w=cos(theta/2).
+        psi = y[7]  # relative tail spin about head
+        tq = self.q
+        tq.set_wxyz(*Q)
+        tq.normalize()
+        # print('dbg, self.q', self.q)
+
+        t_theta, t_phi, t_psi = tq.get_thphps()
+        # print('dbg, q', tq)
+        # print('dbg, t_theta, t_phi, t_psi', t_theta, t_phi, t_psi)
+        # print()
+        dX, omega = self._get_velocity_at_thphps(X, t_theta, t_phi, t_psi, psi)
+        # print('dbg X, %.2f, %.20f, %.20f, %.20f' % (t, X[0], X[1], X[2]))
+        # print('dbg, omega', omega)
+        dX = dX * self._locomotion_fct
+        dQ = 0.5 * omega.dot(tq.get_E())
+        F[:] = np.hstack((dX, dQ, self.omega_tail))
+        F.assemble()
+        return True
+
+    # Todo: update this function
+    def _monitor(self, ts, i, t, Y):
+        save_every = self._save_every
+        # print(ts.getTimeStep())
+        if not i % save_every:
+            percentage = np.clip(t / self._t1 * 100, 0, 100)
+            dp = int(percentage - self._percentage)
+            if dp >= 1:
+                self._tqdm.update(dp)
+                self._percentage = self._percentage + dp
+            self._do_store_data(ts, i, t, Y)
+        return True
+
+    def _do_store_data(self, ts, i, t, Y):
+        y = Y.getArray().copy()
+        self.center = y[0:3]  # center (x, y, z)
+        self.q.set_wxyz(*y[3:7])  # quaternion (w, x, y, z), where w=cos(theta/2).
+        self.psi = y[7]
+        self.theta, self.phi, tpsi = self.q.get_thphps()
+        dX, omega = self._get_velocity_at_thphps(self.center, self.theta, self.phi, tpsi, self.psi)
+
+        dt = ts.getTimeStep()
+        self.t_hist.append(t)
+        self.dt_hist.append(dt)
+        self.center_hist.append(self.center)
+        self.q_hist.append(self.q.copy())
+        self.U_hist.append(dX)
+        self.rotation_hist.append(omega)
+        self.psi_hist.append(self.psi)
+        return True
+
+    def get_simulate_results(self):
+        # self.center = self.center_hist[-2]
+        # self.norm = self.norm_hist[-2]
+        # self.lateral_norm = self.lateral_norm_hist[-2]
+        self._tmp_idx = np.hstack(self.t_hist) < self._t1
+        self._t_hist = [j for (i, j) in zip(self._tmp_idx, self.t_hist) if i]
+        self._dt_hist = [j for (i, j) in zip(self._tmp_idx, self.dt_hist) if i]
+        self._center_hist = [j for (i, j) in zip(self._tmp_idx, self.center_hist) if i]
+        self._q_hist = [j for (i, j) in zip(self._tmp_idx, self.q_hist) if i]
+        self._U_hist = [j for (i, j) in zip(self._tmp_idx, self.U_hist) if i]
+        self._rotation_hist = [j for (i, j) in zip(self._tmp_idx, self.rotation_hist) if i]
+        self._psi_hist = [j for (i, j) in zip(self._tmp_idx, self.psi_hist) if i]
+
+        base_t = np.hstack(self.t_hist)
+        base_dt = np.hstack(self.dt_hist)
+        base_X = np.vstack(self.center_hist)
+        base_thphps = np.vstack([q.get_thphps() for q in self.q_hist])
+        base_U = np.vstack(self.U_hist)
+        base_W = np.vstack(self.rotation_hist)
+        # tail rotation respect to the global coordinate.
+        base_psi_t = (np.hstack(self.psi_hist) + base_thphps[:, 2]) % (2 * np.pi)
+        return base_t, base_dt, base_X, base_thphps, base_U, base_W, base_psi_t

@@ -33,6 +33,11 @@ def get_problem_kwargs(**main_kwargs):
     for t_kwargs in kwargs_list:
         for key in t_kwargs:
             problem_kwargs[key] = t_kwargs[key]
+
+    dumb_rs2_fct = OptDB.getReal('dumb_rs2_fct', 1)
+    problem_kwargs['dumb_rs2_fct'] = dumb_rs2_fct
+    dumb_ds2_fct = OptDB.getReal('dumb_ds2_fct', 1)
+    problem_kwargs['dumb_ds2_fct'] = dumb_ds2_fct
     return problem_kwargs
 
 
@@ -43,7 +48,10 @@ def print_case_info(**problem_kwargs):
     print_sphere_info(fileHandle, **problem_kwargs)
     dumb_d = problem_kwargs['dumb_d']
     dumb_theta = problem_kwargs['dumb_theta']
+    dumb_rs2_fct = problem_kwargs['dumb_rs2_fct']
+    dumb_ds2_fct = problem_kwargs['dumb_ds2_fct']
     PETSc.Sys.Print('  dumb_d: %f, dumb_theta: %f' % (dumb_d, dumb_theta))
+    PETSc.Sys.Print('  dumb_rs2_fct: %f, dumb_ds2_fct: %f' % (dumb_rs2_fct, dumb_ds2_fct))
     print_obj_helicoid_info(**problem_kwargs)
     return True
 
@@ -61,9 +69,13 @@ def main_resistanceMatrix(**main_kwargs):
     dumb_theta = problem_kwargs['dumb_theta']
     ds = problem_kwargs['ds']
     rs = problem_kwargs['rs']
+    dumb_rs2_fct = problem_kwargs['dumb_rs2_fct']
+    dumb_ds2_fct = problem_kwargs['dumb_ds2_fct']
     sphere_geo0 = sphere_geo()
     sphere_geo0.create_delta(ds, rs)
-    sphere_geo1 = sphere_geo0.copy()
+    # sphere_geo1 = sphere_geo0.copy()
+    sphere_geo1 = sphere_geo()
+    sphere_geo1.create_delta(ds * dumb_ds2_fct, rs * dumb_rs2_fct)
     sphere_geo0.move(np.array((0, 0, dumb_d / 2)))
     sphere_geo1.move(np.array((0, 0, -dumb_d / 2)))
     dumb_geo = base_geo()

@@ -2,7 +2,7 @@ import sys
 import matplotlib
 import petsc4py
 
-matplotlib.use('agg')
+# matplotlib.use('agg')
 petsc4py.init(sys.argv)
 
 import numpy as np
@@ -14,7 +14,7 @@ from datetime import datetime
 from tqdm import tqdm
 
 
-# get kewrgs
+# get kwargs
 def get_problem_kwargs(**main_kwargs):
     calculate_fun_dict = {'do_calculate_helix_Petsc4n':
                               spf_tb.do_calculate_helix_Petsc4n,
@@ -30,8 +30,8 @@ def get_problem_kwargs(**main_kwargs):
                               spf_tb.do_calculate_ecoli_Petsc4nPsi,
                           'do_ShearFlowPetsc4nPsiObj':
                               spf_tb.do_ShearFlowPetsc4nPsiObj,
-                          'do_ShearFlowPetsc4nPsiObj_dbg':
-                              spf_tb.do_ShearFlowPetsc4nPsiObj_dbg,
+                          'do_ShearFlowPetsc4nPsiObj_v2':
+                              spf_tb.do_ShearFlowPetsc4nPsiObj_v2,
                           'do_calculate_ecoli_AvrPetsc4n':
                               spf_tb.do_calculate_ecoli_AvrPetsc4n,
                           'do_calculate_ecoli_passive_Petsc4n':
@@ -76,7 +76,7 @@ def get_problem_kwargs(**main_kwargs):
     return problem_kwargs
 
 
-def do_pickel(Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi,
+def do_pickle(Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi,
               Table_eta, simulate_t, **problem_kwargs):
     ini_theta = problem_kwargs['ini_theta']
     ini_phi = problem_kwargs['ini_phi']
@@ -117,7 +117,7 @@ def do_pickel(Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_
         t_pick[var_name] = locals()[var_name]
     t_pick['problem_kwargs'] = problem_kwargs
     with open('%s.pickle' % t_name, 'wb') as handle:
-        pickle.dump(t_pick, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(t_pick, handle, protocol=4)
     expt_str = expt_str + 'save to %s \n' % t_name
 
     # spf_tb.save_table_result('%s.jpg' % t_name, Table_t, Table_dt, Table_X, Table_P, Table_P2,
@@ -158,7 +158,7 @@ def main_fun(**main_kwargs):
                       tqdm_fun=tqdm, omega_tail=omega_tail)
     t1 = time()
     simulate_t = t1 - t0
-    expt_str = do_pickel(Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi,
+    expt_str = do_pickle(Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi,
                          Table_psi, Table_eta, simulate_t, **problem_kwargs)
 
     print(expt_str)
@@ -170,6 +170,7 @@ def main_fun(**main_kwargs):
 def main_fun_base_flow(**main_kwargs):
     OptDB = PETSc.Options()
     assert OptDB.getString('calculate_fun') in ('do_ShearFlowPetsc4nPsiObj',
+                                                'do_ShearFlowPetsc4nPsiObj_v2',
                                                 'do_ShearFlowPetsc4nPsiObj_dbg',)
 
     problem_kwargs = get_problem_kwargs(**main_kwargs)
@@ -195,16 +196,26 @@ def main_fun_base_flow(**main_kwargs):
     calculate_fun = problem_kwargs['calculate_fun']
 
     t0 = time()
-    tnorm = np.array((np.sin(ini_theta) * np.cos(ini_phi), np.sin(ini_theta) * np.sin(ini_phi),
-                      np.cos(ini_theta)))
-    Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi, Table_eta = \
-        calculate_fun(tnorm, ini_psi, max_t, update_fun=update_fun, rtol=rtol, atol=atol,
-                      eval_dt=eval_dt, ini_t=ini_t, table_name=table_name, save_every=save_every,
-                      tqdm_fun=tqdm, omega_tail=omega_tail, flow_strength=flow_strength,
-                      return_psi_body=False)
+    if OptDB.getString('calculate_fun') in ('do_ShearFlowPetsc4nPsiObj',
+                                            'do_ShearFlowPetsc4nPsiObj_dbg',):
+        tnorm = np.array((np.sin(ini_theta) * np.cos(ini_phi), np.sin(ini_theta) * np.sin(ini_phi),
+                          np.cos(ini_theta)))
+        Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi, Table_eta = \
+            calculate_fun(tnorm, ini_psi, max_t, update_fun=update_fun, rtol=rtol, atol=atol,
+                          eval_dt=eval_dt, ini_t=ini_t, table_name=table_name,
+                          save_every=save_every, tqdm_fun=tqdm, omega_tail=omega_tail,
+                          flow_strength=flow_strength, return_psi_body=False)
+    elif OptDB.getString('calculate_fun') in ('do_ShearFlowPetsc4nPsiObj_v2',):
+        Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi, Table_psi, Table_eta = \
+            calculate_fun(ini_theta, ini_phi, ini_psi, max_t, table_name=table_name,
+                          update_fun=update_fun, rtol=rtol, atol=atol, eval_dt=eval_dt, ini_t=ini_t,
+                          save_every=save_every, tqdm_fun=tqdm, omega_tail=omega_tail,
+                          flow_strength=flow_strength, return_psi_body=False)
+    else:
+        raise Exception('  set correct "calculate_fun". ')
     t1 = time()
     simulate_t = t1 - t0
-    expt_str = do_pickel(Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi,
+    expt_str = do_pickle(Table_t, Table_dt, Table_X, Table_P, Table_P2, Table_theta, Table_phi,
                          Table_psi, Table_eta, simulate_t, **problem_kwargs)
 
     print(expt_str)
@@ -216,6 +227,7 @@ def main_fun_base_flow(**main_kwargs):
 if __name__ == '__main__':
     OptDB = PETSc.Options()
     if OptDB.getString('calculate_fun') in ('do_ShearFlowPetsc4nPsiObj',
+                                            'do_ShearFlowPetsc4nPsiObj_v2',
                                             'do_ShearFlowPetsc4nPsiObj_dbg',):
         OptDB.setValue('main_fun', False)
         main_fun_base_flow()

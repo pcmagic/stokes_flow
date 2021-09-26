@@ -41,6 +41,20 @@ def print_case_info(**problem_kwargs):
     return True
 
 
+def do_solve_base_flow(basei, problem, obj_comp, uw_Base_list, sumFT_Base_list):
+    problem.set_basei(basei)
+    problem.create_F_U()
+    problem.solve()
+    PETSc.Sys.Print('---> basei %d' % basei)
+    PETSc.Sys.Print(obj_comp.get_total_force())
+    ref_U = obj_comp.get_ref_U()
+    PETSc.Sys.Print('ref_u: %f %f %f' % (ref_U[0], ref_U[1], ref_U[2]))
+    PETSc.Sys.Print('ref_w: %f %f %f' % (ref_U[3], ref_U[4], ref_U[5]))
+    uw_Base_list.append(obj_comp.get_ref_U())
+    sumFT_Base_list.append(obj_comp.get_total_force())
+    return uw_Base_list, sumFT_Base_list
+
+
 def create_helicoid_hlx_comp(**problem_kwargs):
     tail_obj_list = create_ecoli_tail(moveh=np.zeros(3), **problem_kwargs)
     tobj = sf.obj_dic[matrix_method]()
@@ -56,6 +70,7 @@ def create_helicoid_hlx_comp(**problem_kwargs):
     # helicoid_comp.set_update_para(fix_x=False, fix_y=False, fix_z=False,
     #                               update_fun=update_fun, update_order=update_order)
     return helicoid_comp
+
 
 def create_helicoid_hlx_selfRotate(**problem_kwargs):
     tail_obj_list = create_ecoli_tail(moveh=np.zeros(3), **problem_kwargs)
@@ -228,12 +243,13 @@ def main_resistanceMatrix_part(**main_kwargs):
     helicoid_part_idx = problem_kwargs['helicoid_part_idx']
     print_case_info(**problem_kwargs)
 
-    helicoid_comp = create_helicoid_hlx_comp(**problem_kwargs)
+    helicoid_comp = create_helicoid_hlx_selfRotate(**problem_kwargs)
     # helicoid_comp.show_u_nodes(linestyle='')
     # assert 1 == 2
     helicoid_obj_list = helicoid_comp.get_obj_list()
     helicoid_center = helicoid_comp.get_center()
     tobj = helicoid_obj_list[helicoid_part_idx]
+    tobj_center = tobj.get_u_geo().get_center()
     # PETSc.Sys.Print(tobj.get_u_geo().get_center())
     # PETSc.Sys.Print(helicoid_center)
 
@@ -244,8 +260,10 @@ def main_resistanceMatrix_part(**main_kwargs):
         problem.pickmyself('%s_tran' % fileHandle, ifcheck=True)
     problem.print_info()
     problem.create_matrix()
-    AtBtCt_full(problem, save_vtk=False, pick_M=False, print_each=False,
-                center=helicoid_center, save_name=fileHandle)
+    At, Bt1, Bt2, Ct = AtBtCt_full(problem, save_vtk=False, pick_M=False, print_each=False,
+                                   center=tobj_center, save_name=fileHandle)
+    PETSc.Sys.Print('Tr(A)=%f, Tr(B1)=%f, Tr(B2)=%f, ' %
+                    (np.trace(At), np.trace(Bt1), np.trace(Bt2)))
     return True
 
 
@@ -279,12 +297,54 @@ def main_resistanceMatrix_selfRotate(**main_kwargs):
     return True
 
 
+def main_fun_E(**main_kwargs):
+    OptDB = PETSc.Options()
+    fileHandle = OptDB.getString('f', 'helicoid_strain_rate')
+    OptDB.setValue('f', fileHandle)
+    main_kwargs['fileHandle'] = fileHandle
+    # field_range = np.array([[-3, -3, -3], [3, 3, 3]])
+    # n_grid = np.array([1, 1, 1]) * OptDB.getInt('n_grid', 10)
+    # main_kwargs['field_range'] = field_range
+    # main_kwargs['n_grid'] = n_grid
+    # main_kwargs['region_type'] = 'rectangle'
+    problem_kwargs = get_problem_kwargs(**main_kwargs)
+    # matrix_method = problem_kwargs['matrix_method']
+    # pickProblem = problem_kwargs['pickProblem']
+    # fileHandle = problem_kwargs['fileHandle']
+    # save_vtk = problem_kwargs['save_vtk']
+    problem_kwargs['basei'] = 1
+    problem_kwargs['zoom_factor'] = 1
+
+    if not problem_kwargs['restart']:
+        print_case_info(**problem_kwargs)
+        helicoid_comp = create_helicoid_hlx_comp(namehandle='helicoid', **problem_kwargs)
+
+        problem = sf.StrainRateBaseForceFreeProblem(**problem_kwargs)
+        problem.add_obj(helicoid_comp)
+        problem.print_info()
+        problem.create_matrix()
+        uw_Base_list = []
+        sumFT_Base_list = []
+
+        # passive cases
+        for basei in (1, 2, 3, 4, 5):
+            uw_Base_list, sumFT_Base_list = do_solve_base_flow(basei, problem, helicoid_comp,
+                                                               uw_Base_list, sumFT_Base_list)
+    return True
+
+
 if __name__ == '__main__':
     OptDB = PETSc.Options()
     # pythonmpi helicoid.py -sm lg_rs -legendre_m 3 -legendre_k 2 -epsilon 3 -ffweight 2 -main_fun_noIter 1 -vortexStrength 1 -helicoid_r1 1 -helicoid_r2 0.3 -helicoid_ds 0.03
     # if OptDB.getBool('main_fun_noIter', False):
     #     OptDB.setValue('main_fun', False)
     #     main_fun_noIter()
+
+    matrix_method = OptDB.getString('sm', 'pf')
+    if OptDB.getBool('main_fun_E', False):
+        assert '_selfRotate' not in matrix_method
+        OptDB.setValue('main_fun', False)
+        main_fun_E()
 
     matrix_method = OptDB.getString('sm', 'pf')
     if OptDB.getBool('main_resistanceMatrix_hlx', False):
