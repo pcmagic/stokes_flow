@@ -3081,7 +3081,7 @@ class slb_helix(slb_geo):
         self._ch_max = ch_max
         ch_mid = (ch_min + ch_max) / 2
         s_mid = ch_mid * self.arclength(0)
-        # self._s_list = np.array((ch_min, ch_max)) * self.arclength(s_mid)
+        self._s_list = np.array((ch_min, ch_max)) * self.arclength(s_mid) # just for self.natu_cut, not final result.
         max_n = np.floor(ch * self.arclength(s_mid) / (self.natu_cut(s_mid) * 2)).astype(int)
         if n is None:
             n = max_n

@@ -6,6 +6,7 @@ petsc4py.init(sys.argv)
 import numpy as np
 from petsc4py import PETSc
 from src import stokes_flow as sf
+from src import slender_body as slb
 from src.support_class import *
 from src import jeffery_model as jm
 
@@ -404,8 +405,9 @@ def get_helix_SLB_kwargs():
     n_segment = int(np.ceil(n_sgm * ch))
     n_tail = OptDB.getInt('n_tail', 2)  # total of tails
     matrix_method = OptDB.getString('sm', 'pf')
-    check_nth = matrix_method == 'lightill_slb'
-    slb_geo_fun = slb_helix if matrix_method == 'lightill_slb' else Johnson_helix
+    slb.check_matrix_method(matrix_method)
+    check_nth = matrix_method == 'lighthill_slb'
+    slb_geo_fun = slb_helix if matrix_method == 'lighthill_slb' else Johnson_helix
     # left_hand = OptDB.getBool('left_hand', False) # current version now available.
 
     rel_uhx = OptDB.getReal('rel_uhx', 0)
@@ -575,7 +577,7 @@ def print_solver_info(**problem_kwargs):
                   'pf_infhelix', 'pf_stokesletsRingInPipe', 'pf_stokesletsRing', 'pf_sphere',
                   'pf_stokesletsRingInPipeProblemSymz', 'pf_stokesletsRingInPipeSymz',
                   'pf_selfRepeat', 'pf_selfRotate', 'rs_selfRotate', 'lg_rs_selfRotate',
-                  'lightill_slb', 'KRJ_slb',)
+                  'lighthill_slb', 'KRJ_slb',)
     err_msg = "Only 'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane', 'pf_dualPotential'" \
               ", 'rs', 'lg_rs', and 'rs_plane' methods are accept for this main code. "
     assert matrix_method in acceptType, err_msg
@@ -606,7 +608,7 @@ def print_solver_info(**problem_kwargs):
                            'pf_stokesletsRingInPipeProblemSymz', 'pf_stokesletsRingInPipeSymz'):
         stokeslets_threshold = problem_kwargs['stokeslets_threshold']
         PETSc.Sys.Print('  cut of threshold of the summation is %d' % stokeslets_threshold)
-    elif matrix_method in ('lightill_slb', 'KRJ_slb'):
+    elif matrix_method in ('lighthill_slb', 'KRJ_slb'):
         pass
     else:
         raise Exception('  set how to print matrix method please. ')

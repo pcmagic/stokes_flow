@@ -41,7 +41,7 @@ for chi in ch_list:
     nthi = int(intsij_nth_ch * chi)
     print('-->ch=%5.2f, nth=%d' % (chi, nthi))
     # tAt, tBt, tCt, tftr, tfrt = \
-    #     slb.Lightill_AtBtCt_nhlx(ph, rt1, rt2, chi, nth=nthi, gmres_maxiter=gmres_maxiter,
+    #     slb.Lighthill_AtBtCt_nhlx(ph, rt1, rt2, chi, nth=nthi, gmres_maxiter=gmres_maxiter,
     #                              hlx_node_fun_list=hlx_node_fun_list, FnMat_fun_list=FnMat_fun_list,
     #                              intsij_epsabs=intsij_epsabs, intsij_epsrel=intsij_epsrel,
     #                              intsij_limit=intsij_limit,

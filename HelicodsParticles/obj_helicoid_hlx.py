@@ -233,35 +233,43 @@ def main_resistanceMatrix_hlx(**main_kwargs):
 def main_resistanceMatrix_part(**main_kwargs):
     OptDB = PETSc.Options()
     main_kwargs['zoom_factor'] = 1
-    helicoid_part_idx = OptDB.getInt('helicoid_part_idx', 0)
-    main_kwargs['helicoid_part_idx'] = helicoid_part_idx
+    # helicoid_part_idx = OptDB.getInt('helicoid_part_idx', 0)
+    # main_kwargs['helicoid_part_idx'] = helicoid_part_idx
+    save_vtk = OptDB.getBool('save_vtk', False)
+    main_kwargs['save_vtk'] = save_vtk
 
     problem_kwargs = get_problem_kwargs(**main_kwargs)
-    matrix_method = problem_kwargs['matrix_method']
+    # matrix_method = problem_kwargs['matrix_method']
     fileHandle = problem_kwargs['fileHandle']
     pickProblem = problem_kwargs['pickProblem']
-    helicoid_part_idx = problem_kwargs['helicoid_part_idx']
+    center = problem_kwargs['center']
+    # helicoid_part_idx = problem_kwargs['helicoid_part_idx']
     print_case_info(**problem_kwargs)
 
-    helicoid_comp = create_helicoid_hlx_selfRotate(**problem_kwargs)
-    # helicoid_comp.show_u_nodes(linestyle='')
-    # assert 1 == 2
-    helicoid_obj_list = helicoid_comp.get_obj_list()
-    helicoid_center = helicoid_comp.get_center()
-    tobj = helicoid_obj_list[helicoid_part_idx]
-    tobj_center = tobj.get_u_geo().get_center()
-    # PETSc.Sys.Print(tobj.get_u_geo().get_center())
-    # PETSc.Sys.Print(helicoid_center)
+    # helicoid_comp = create_helicoid_hlx_comp(**problem_kwargs)
+    # # helicoid_comp.show_u_nodes(linestyle='')
+    # # assert 1 == 2
+    # helicoid_obj_list = helicoid_comp.get_obj_list()
+    # # helicoid_center = helicoid_comp.get_center()
+    # tobj = helicoid_obj_list[helicoid_part_idx]
+    # tobj_center = tobj.get_u_geo().get_center()
+    # # PETSc.Sys.Print(tobj.get_u_geo().get_center())
+    # # PETSc.Sys.Print(helicoid_center)
+
+    tail_obj_list = create_ecoli_tail(moveh=np.zeros(3), **problem_kwargs)
 
     # solve
     problem = sf.StokesFlowProblem(**problem_kwargs)
-    problem.add_obj(tobj)
+    for tobj in tail_obj_list:
+        problem.add_obj(tobj)
     if pickProblem:
         problem.pickmyself('%s_tran' % fileHandle, ifcheck=True)
     problem.print_info()
     problem.create_matrix()
-    At, Bt1, Bt2, Ct = AtBtCt_full(problem, save_vtk=False, pick_M=False, print_each=False,
-                                   center=tobj_center, save_name=fileHandle)
+    # At, Bt1, Bt2, Ct = AtBtCt_full(problem, save_vtk=save_vtk, pick_M=False, print_each=False,
+    #                                center=tobj_center, save_name=fileHandle)
+    At, Bt1, Bt2, Ct = AtBtCt_pickInfo(problem=problem, pick_M=False, save_vtk=save_vtk,
+                                       center=center, print_each=False, save_name=fileHandle)
     PETSc.Sys.Print('Tr(A)=%f, Tr(B1)=%f, Tr(B2)=%f, ' %
                     (np.trace(At), np.trace(Bt1), np.trace(Bt2)))
     return True

@@ -67,6 +67,9 @@ baseFlow/rheotaxis*
 */loop_table/*/*
 lis_wrapper*
 sphereNearPlane/*/*
+HelicodsParticles/helicoid_hlx/*/*
+
+
 
 
 # Byte-compiled / optimized / DLL files

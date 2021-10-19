@@ -26,7 +26,7 @@ slb_limit = 100
 n_hlx = 2
 neighbor_range = OptDB.getInt('neighbor_range', 1)
 
-# At, Bt, Ct, ftr_info, frt_info = do_SLB.do_Lightill_nhelix(ph, rt1, rt2, ch, n_segment)
+# At, Bt, Ct, ftr_info, frt_info = do_SLB.do_Lighthill_nhelix(ph, rt1, rt2, ch, n_segment)
 At, Bt, Ct, ftr_info, frt_info = \
     do_SLB.do_mod_KRJ_nhelix(ph, rt1, rt2, ch, n_segment, n_hlx=n_hlx, slb_epsabs=slb_epsabs,
                              slb_epsrel=slb_epsrel, slb_limit=slb_limit,

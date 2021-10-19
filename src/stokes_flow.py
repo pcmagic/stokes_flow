@@ -562,7 +562,7 @@ class StokesFlowProblem:
         # obj0.show_velocity()
         obj0.vtk(filename, stp_idx)
         t1 = time()
-        PETSc.Sys.Print('%s: write self vtk files use: %fs' % (str(self), (t1 - t0)))
+        PETSc.Sys.Print('  %s: write self vtk files use: %fs' % (str(self), (t1 - t0)))
         return True
 
     def vtk_obj(self, filename, stp_idx=0):
@@ -594,8 +594,8 @@ class StokesFlowProblem:
 
         t1 = time()
         PETSc.Sys.Print(
-                'export to %s.vtk, element type is %s, contain %d nodes and %d elements using %fs. '
-                % (filename, elemtype, bnodes.shape[0], belems.shape[0], (t1 - t0)))
+            'export to %s.vtk, element type is %s, contain %d nodes and %d elements using %fs. '
+            % (filename, elemtype, bnodes.shape[0], belems.shape[0], (t1 - t0)))
         return True
 
     def saveM_ASCII(self, filename: str = '..', ):
@@ -645,7 +645,7 @@ class StokesFlowProblem:
                 M_dict,
                 oned_as='column')
         PETSc.Sys.Print(
-                '%s: save M matrix to %s_rank(%03d~%03d).mat' % (str(self), filename, 0, size))
+            '%s: save M matrix to %s_rank(%03d~%03d).mat' % (str(self), filename, 0, size))
         return True
 
     def saveF_ASCII(self, filename: str = '..', ):
@@ -1077,9 +1077,9 @@ class StokesFlowObj:
         return self.get_name()
 
     def print_info(self):
-        PETSc.Sys.Print('  %s: father %s, type %s, index %d, force nodes %d, velocity nodes %d'
-                        % (self.get_name(), self._problem.get_name(), self._type, self.get_index(),
-                           self.get_n_f_node(), self.get_n_u_node()))
+        PETSc.Sys.Print('  %s, father: %s, type: %s, index: %d, '
+                        % (self.get_name(), self._problem.get_name(), self._type, self.get_index(),))
+        PETSc.Sys.Print('    force nodes %d, velocity nodes %d' % (self.get_n_f_node(), self.get_n_u_node()))
         self.get_u_geo().print_info()
         self.get_f_geo().print_info()
         return True
@@ -1404,7 +1404,9 @@ class StokesFlowRingObj(StokesFlowObj):
     def set_data(self, f_geo: base_geo, u_geo: base_geo, name='...', **kwargs):
         self.check_nodes(f_geo.get_nodes())
         self.check_nodes(u_geo.get_nodes())
-        return super().set_data(f_geo, u_geo, name, **kwargs)
+        super().set_data(f_geo, u_geo, name, **kwargs)
+        self._type = 'stokes flow ring obj'
+        return True
 
     def get_total_force_sum(self, center=None):
         n_c = self.get_problem().get_kwargs()['n_c']
@@ -1438,6 +1440,8 @@ class StokesletsRingObjFull(StokesFlowObj):
         u_geo.create_full_geo(n_c)
         f_geo.create_full_geo(n_c)
         super().set_data(f_geo, u_geo, name, **kwargs)
+        self._type = 'stokeslets ring obj'
+        return True
 
     def show_slice_force(self, idx=0, length_factor=1, show_nodes=True):
         self.get_problem().check_finish_solve()
@@ -1467,13 +1471,13 @@ class StokesletsInPipeProblem(StokesFlowProblem):
         # create a empty matrix, and a empty velocity vecters, to avoid use too much time to allocate memory.
         # for numerical part
         self._t_m = PETSc.Mat().create(
-                comm=PETSc.COMM_WORLD)  # M matrix associated with u1 part ,velocity due to pipe boundary.
+            comm=PETSc.COMM_WORLD)  # M matrix associated with u1 part ,velocity due to pipe boundary.
         self._t_u11 = uniqueList()  # a list contain three u1 component of f1, for interpolation
         self._t_u12 = uniqueList()  # a list contain three u1 component of f2, for interpolation
         self._t_u13 = uniqueList()  # a list contain three u1 component of f3, for interpolation
         self._set_f123()
         self._stokeslet_m = PETSc.Mat().create(
-                comm=PETSc.COMM_WORLD)  # M matrix associated with stokeslet singularity
+            comm=PETSc.COMM_WORLD)  # M matrix associated with stokeslet singularity
         self._t_u2 = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
         # for theoretical part
         # DBG
@@ -1790,7 +1794,7 @@ class StokesletsInPipeProblem(StokesFlowProblem):
                          (np.sin(theta), np.cos(theta), 0),
                          (0, 0, 1)))
         temp_loc = np.dstack(
-                (u_fx_loc.reshape((-1, 3)), u_fy_loc.reshape((-1, 3)), u_fz_loc.reshape((-1, 3))))
+            (u_fx_loc.reshape((-1, 3)), u_fy_loc.reshape((-1, 3)), u_fz_loc.reshape((-1, 3))))
         temp_glb = np.tensordot(Tinv, np.tensordot(temp_loc, T, axes=(2, 0)), axes=(1, 1))
         u_fx_glb = np.dstack((temp_glb[0, :, 0], temp_glb[1, :, 0], temp_glb[2, :, 0])).flatten()
         u_fy_glb = np.dstack((temp_glb[0, :, 1], temp_glb[1, :, 1], temp_glb[2, :, 1])).flatten()
@@ -2068,7 +2072,7 @@ class StokesletsInPipeProblem(StokesFlowProblem):
         obj1 = StokesFlowObj()
         obj1.set_data(self._fpgeo, self._vpgeo)
         PETSc.Sys().Print(
-                'Stokeslets in pipe prepare, contain %d nodes' % self._vpgeo.get_n_nodes())
+            'Stokeslets in pipe prepare, contain %d nodes' % self._vpgeo.get_n_nodes())
         self._m_pipe = self.create_obj_matrix(obj1, obj1, copy_obj=False, **kwargs)
 
         if kwargs['check_acc']:
@@ -2314,7 +2318,7 @@ class StokesletsInPipeProblem(StokesFlowProblem):
     def _create_matrix_obj(self, obj1, m, INDEX='', *args):
         # set stokeslets using numerical solution.
         t_u_glbIdx_all = self._set_temp_var(
-                obj1)  # index of stokeslets, maybe different from index of m matrix.
+            obj1)  # index of stokeslets, maybe different from index of m matrix.
         _, u_glbIdx_all = obj1.get_u_geo().get_glbIdx()
         unodes = obj1.get_u_nodes()
         n_obj = len(self.get_all_obj_list())
@@ -2968,8 +2972,8 @@ class ForceFreeComposite:
 
     def get_total_force(self):
         sum_F = np.sum(
-                [tobj.get_total_force(center=self.get_center()) for tobj in self.get_obj_list()],
-                axis=0)
+            [tobj.get_total_force(center=self.get_center()) for tobj in self.get_obj_list()],
+            axis=0)
         return sum_F
 
     def show_velocity(self, length_factor=1, show_nodes=True):
@@ -3478,9 +3482,9 @@ class GivenForceComposite(ForceFreeComposite):
         fig = temp_geo.core_show_nodes()
         if rank == 0:
             temp1 = arrowFactor * givenF[:3] / np.sqrt(
-                    np.sum(givenF[:3] ** 2))  # normalized, for show.
+                np.sum(givenF[:3] ** 2))  # normalized, for show.
             temp2 = arrowFactor * givenF[3:] / np.sqrt(
-                    np.sum(givenF[3:] ** 2))  # normalized, for show.
+                np.sum(givenF[3:] ** 2))  # normalized, for show.
             ax = fig.gca()
             ax.quiver(center[0], center[1], center[2], temp1[0], temp1[1], temp1[2], color='r')
             ax.quiver(center[0], center[1], center[2], temp2[0], temp2[1], temp2[2], color='k')
@@ -4068,8 +4072,8 @@ class ForceFreeIterateProblem(ForceFreeProblem):
             Ttol = np.abs(T22 / T_reference)
             tol = np.hstack((Ftol, Ttol))
             PETSc.Sys.Print(
-                    '  u2=%s, w2=%s, F22=%s, T22=%s, Ftol=%s, Ttol=%s' % (
-                        u2, w2, F22, T22, Ftol, Ttol))
+                '  u2=%s, w2=%s, F22=%s, T22=%s, Ftol=%s, Ttol=%s' % (
+                    u2, w2, F22, T22, Ftol, Ttol))
             u0, u1 = u1, u2
             w0, w1 = w1, w2
             n_it = n_it + 1
@@ -4097,7 +4101,7 @@ class ForceFreeIterateProblem(ForceFreeProblem):
         Ftol = np.abs(F11 / F_reference)
         Ttol = np.abs(T11 / T_reference)
         PETSc.Sys.Print(
-                '  u1=%s, w1=%s, F11=%s, T11=%s, Ftol=%s, Ttol=%s' % (u1, w1, F11, T11, Ftol, Ttol))
+            '  u1=%s, w1=%s, F11=%s, T11=%s, Ftol=%s, Ttol=%s' % (u1, w1, F11, T11, Ftol, Ttol))
         tol = np.hstack((Ftol, Ttol))
         while np.any(tol > tolerate) and n_it < max_it:
             PETSc.Sys.Print('-->>iterate: %d' % (n_it + 1))
@@ -4107,8 +4111,8 @@ class ForceFreeIterateProblem(ForceFreeProblem):
             Ttol = np.abs(T22 / T_reference)
             tol = np.hstack((Ftol, Ttol))
             PETSc.Sys.Print(
-                    '  u2=%s, w2=%s, F22=%s, T22=%s, Ftol=%s, Ttol=%s' % (
-                        u2, w2, F22, T22, Ftol, Ttol))
+                '  u2=%s, w2=%s, F22=%s, T22=%s, Ftol=%s, Ttol=%s' % (
+                    u2, w2, F22, T22, Ftol, Ttol))
             u0, u1 = u1, u2
             w0, w1 = w1, w2
             F11, T11 = F22, T22
@@ -4783,18 +4787,18 @@ class StokesletsFlowProblem(_GivenFlowProblem):
         given_u = super().get_given_flow(obj)
         # in this case, background flow is a given shear flow
         given_u_fun = lambda x0, x1, x2, f0, f1, f2: np.array(
-                [f0 * x0 ** 2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5) +
-                 f0 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-0.5) +
-                 f1 * x0 * x1 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5) +
-                 f2 * x0 * x2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5),
-                 f0 * x0 * x1 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5) +
-                 f1 * x1 ** 2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5) +
-                 f1 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-0.5) +
-                 f2 * x1 * x2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5),
-                 f0 * x0 * x2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5) +
-                 f1 * x1 * x2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5) +
-                 f2 * x2 ** 2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5) +
-                 f2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-0.5)]) / (8 * np.pi)
+            [f0 * x0 ** 2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5) +
+             f0 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-0.5) +
+             f1 * x0 * x1 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5) +
+             f2 * x0 * x2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5),
+             f0 * x0 * x1 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5) +
+             f1 * x1 ** 2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5) +
+             f1 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-0.5) +
+             f2 * x1 * x2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5),
+             f0 * x0 * x2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5) +
+             f1 * x1 * x2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5) +
+             f2 * x2 ** 2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-1.5) +
+             f2 * (x0 ** 2 + x1 ** 2 + x2 ** 2) ** (-0.5)]) / (8 * np.pi)
         unodes = obj.get_u_geo().get_nodes()
         given_u = given_u + given_u_fun(*unodes, *self._StokesletsStrength)
         return given_u
@@ -4826,6 +4830,11 @@ class FundSoltObj(StokesFlowObj):
         self._point_force_list = uniqueList()
         # the following properties store the location history of the composite.
         self._force_norm_hist = []  # [[force1 hist], [force2 hist]...]
+
+    def set_data(self, *args, **kwargs):
+        super().set_data(*args, **kwargs)
+        self._type = 'fund sold obj'
+        return True
 
     def add_point_force(self, location: np.ndarray, force: np.ndarray,
                         StokesletsHandle=light_stokeslets_matrix_3d):
@@ -5025,6 +5034,10 @@ class DualPotentialObj(StokesFlowObj):
         super(DualPotentialObj, self).__init__()
         self._n_unknown = 4
 
+    def set_data(self, *args, **kwargs):
+        super().set_data(*args, **kwargs)
+        self._type = 'dual potential obj'
+        return True
 
 class GivenTorqueIterateVelocity1DProblem(StokesFlowProblem):
     def __init__(self, axis='z', givenF=0, **kwargs):
@@ -5321,7 +5334,7 @@ obj_dic = {
     'rs_selfRotate':                SelfRotateObj,
     'lg_rs_selfRotate':             SelfRotateObj,
     'KRJ_slb':                      StokesFlowObj,
-    'lightill_slb':                 StokesFlowObj,
+    'lighthill_slb':                StokesFlowObj,
     'pf_sphere':                    StokesFlowObj,
 }
 

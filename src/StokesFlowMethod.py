@@ -2113,18 +2113,18 @@ def self_rotate_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity in
     #     'pf_selfRotate':    point_force_matrix_3d_petsc_mij,
     # }
 
-    def _wapper_regularized_stokeslets_matrix_3d_petsc_mij(u_nodes, f_nodes, i0, **kwargs):
+    def _wrapper_regularized_stokeslets_matrix_3d_petsc_mij(u_nodes, f_nodes, i0, **kwargs):
         kwargs['i0'] = i0
         t1 = regularized_stokeslets_matrix_3d_petsc_mij(u_nodes, f_nodes, **kwargs)
         return t1
 
-    def _wapper_legendre_regularized_stokeslets_matrix_3d_mij(u_nodes, f_nodes, i0, **kwargs):
+    def _wrapper_legendre_regularized_stokeslets_matrix_3d_mij(u_nodes, f_nodes, i0, **kwargs):
         kwargs['i0'] = i0
         t1 = legendre_regularized_stokeslets_matrix_3d_mij(u_nodes, f_nodes, **kwargs)
         [m00, m01, m02, m10, m11, m12, m20, m21, m22], i1 = t1
         return m00, m01, m02, m10, m11, m12, m20, m21, m22, i1
 
-    def _wapper_point_force_matrix_3d_petsc_mij(u_nodes, f_nodes, i0, **kwargs):
+    def _wrapper_point_force_matrix_3d_petsc_mij(u_nodes, f_nodes, i0, **kwargs):
         kwargs['i0'] = i0
         t1 = point_force_matrix_3d_petsc_mij(u_nodes, f_nodes, **kwargs)
         return t1
@@ -2148,15 +2148,15 @@ def self_rotate_3d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity in
         delta = epsilon * obj2.get_f_geo().get_deltaLength()
         delta_2 = delta ** 2  # correction factor
         kwargs['delta_2'] = delta_2
-        mij_fun = _wapper_regularized_stokeslets_matrix_3d_petsc_mij
+        mij_fun = _wrapper_regularized_stokeslets_matrix_3d_petsc_mij
     elif matrix_method == 'lg_rs_selfRotate':
         f_ds = obj2.get_f_geo().get_deltaLength()
         if np.array(f_ds).size == 1:
             f_ds = f_ds * np.ones(obj2.get_n_f_node())
         kwargs['f_ds'] = f_ds
-        mij_fun = _wapper_legendre_regularized_stokeslets_matrix_3d_mij
+        mij_fun = _wrapper_legendre_regularized_stokeslets_matrix_3d_mij
     elif matrix_method == 'pf_selfRotate':
-        mij_fun = _wapper_point_force_matrix_3d_petsc_mij
+        mij_fun = _wrapper_point_force_matrix_3d_petsc_mij
     else:
         raise Exception('matrix_method do NOT sufficient self_rotate_3d_petsc function. ')
 

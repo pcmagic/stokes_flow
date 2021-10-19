@@ -15,7 +15,8 @@ import src.stokes_flow as sf
 from src import geo
 
 __all__ = ['get_problem_kwargs', 'print_case_info',
-           'AtBtCt', 'AtBtCt_full', 'AtBtCt_full_dbg', 'AtBtCt_selfRotate', 'AtBtCt_multiObj']
+           'AtBtCt', 'AtBtCt_full', 'AtBtCt_full_dbg', 'AtBtCt_selfRotate', 'AtBtCt_multiObj',
+           'AtBtCt_pickInfo', 'AtBtCt_SBT']
 
 
 def get_problem_kwargs(**main_kwargs):
@@ -207,6 +208,7 @@ def AtBtCt_full(problem: 'sf.StokesFlowProblem', pick_M=False, save_vtk=True,
 
     def _get_total_force(problem: 'sf.StokesFlowProblem'):
         f_info = []
+        geo_info = []
         F_all = 0
         T_all = 0
         for obj in problem.get_obj_list():
@@ -572,6 +574,91 @@ def AtBtCt_selfRotate(problem: 'sf.SelfRotateProblem', pick_M=False, save_vtk=Tr
         rank = comm.Get_rank()
         save_name = check_file_extension(save_name, '.pickle')
         tpickle = [problem_kwargs, At, Bt1, Bt2, Ct, ]
+        if rank == 0:
+            with open(save_name, 'wb') as output:
+                pickle.dump(tpickle, output, protocol=4)
+            print('save AtBtCt data to %s' % save_name)
+    return At, Bt1, Bt2, Ct
+
+
+def AtBtCt_pickInfo(problem: 'sf.StokesFlowProblem', pick_M=False, save_vtk=True,
+                    center=np.zeros(3), print_each=False, save_name=None,
+                    u_use=1, w_use=1, uNormFct=1, wNormFct=1, uwNormFct=1):
+    problem_kwargs = problem.get_kwargs()
+    fileHandle = problem_kwargs['fileHandle']
+
+    def _do_solve_once(u, w, t1, norm, tfct):
+        U = np.hstack((norm * u, norm * w))
+        for tobj in problem.get_obj_list():
+            tobj.get_u_geo().set_rigid_velocity(U, center=center)
+
+        problem.create_F_U()
+        problem.solve()
+        if problem_kwargs['pickProblem']:
+            problem.pickmyself('%s_%s' % (fileHandle, t1), pick_M=pick_M, mat_destroy=False)
+        if save_vtk:
+            problem.vtk_self('%s_%s' % (fileHandle, t1))
+
+        tFT = problem.get_total_force(center=center) / tfct
+        f_info = [tobj.get_force() for tobj in problem.get_obj_list()]
+        tF = tFT[:3]
+        tT = tFT[3:]
+        if print_each:
+            PETSc.Sys.Print('--->>tF: %s' % (str(tF)))
+            PETSc.Sys.Print('--->>tT: %s' % (str(tT)))
+        return tF, tT, f_info
+
+    def _do_solve_case(norm, thandle, u_use, w_use):
+        u, w, t1 = u_use, 0, 'tran_%s' % thandle
+        F_all, T_all, f_info = _do_solve_once(u, w, t1, norm, w_use)
+        At_list.append(F_all / u_use)
+        Bt2_list.append(T_all / u_use)
+        f_tran_list.append(f_info)
+        u, w, t1 = 0, w_use, 'rot_%s' % thandle
+        F_all, T_all, f_info = _do_solve_once(u, w, t1, norm, w_use)
+        Bt1_list.append(F_all / w_use)
+        Ct_list.append(T_all / w_use)
+        f_rot_list.append(f_info)
+        return True
+
+    At_list = []
+    Bt1_list = []
+    Bt2_list = []
+    Ct_list = []
+    f_tran_list = []
+    f_rot_list = []
+
+    _do_solve_case(norm=np.array((1, 0, 0)), thandle='100', u_use=u_use, w_use=w_use)
+    _do_solve_case(norm=np.array((0, 1, 0)), thandle='010', u_use=u_use, w_use=w_use)
+    _do_solve_case(norm=np.array((0, 0, 1)), thandle='001', u_use=u_use, w_use=w_use)
+    At = np.vstack(At_list).T
+    Bt1 = np.vstack(Bt1_list).T
+    Bt2 = np.vstack(Bt2_list).T
+    Ct = np.vstack(Ct_list).T
+
+    PETSc.Sys.Print('-->>At / %f = ' % uNormFct)
+    PETSc.Sys.Print(At / uNormFct)
+    PETSc.Sys.Print('-->>Bt1 / %f = ' % uwNormFct)
+    PETSc.Sys.Print(Bt1 / uwNormFct)
+    PETSc.Sys.Print('-->>Bt2 / %f = ' % uwNormFct)
+    PETSc.Sys.Print(Bt2 / uwNormFct)
+    PETSc.Sys.Print('-->>Bt rel err')
+    t1 = np.abs(Bt1 - Bt2.T) / np.linalg.norm(Bt1 + Bt2.T) * 2
+    PETSc.Sys.Print(t1)
+    PETSc.Sys.Print('-->>Ct / %f = ' % wNormFct)
+    PETSc.Sys.Print(Ct / wNormFct)
+
+    if save_name is not None:
+        comm = PETSc.COMM_WORLD.tompi4py()
+        rank = comm.Get_rank()
+        save_name = check_file_extension(save_name, '.pickle')
+        # geo_info = [tobj.get_f_geo().get_nodes() for tobj in problem.get_obj_list()]
+        geo_info = []
+        for tobj in problem.get_obj_list():
+            fgeo = tobj.get_f_geo().copy()
+            fgeo.destroy_dmda()
+            geo_info.append(fgeo)
+        tpickle = [problem_kwargs, At, Bt1, Bt2, Ct, f_tran_list, f_rot_list, geo_info]
         if rank == 0:
             with open(save_name, 'wb') as output:
                 pickle.dump(tpickle, output, protocol=4)

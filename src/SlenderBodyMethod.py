@@ -129,9 +129,9 @@ def mdf_SLB_matrix_nonlocal_petsc(obj1: 'sf.StokesFlowObj',  # contain velocity 
     return m
 
 
-# Lightill Slender Body Theory, this version assert mesh size > local part size.
+# Lighthill Slender Body Theory, this version assert mesh size > local part size.
 #     part 2, local part, version 3, locally integration of tsij.
-def Lightill_matrix_local_petsc(obj1: 'sf.StokesFlowObj',  # contain velocity information
+def Lighthill_matrix_local_petsc(obj1: 'sf.StokesFlowObj',  # contain velocity information
                                 obj2: 'sf.StokesFlowObj',  # contain force information
                                 m, slb_epsabs=1e-200, slb_epsrel=1e-08,
                                 slb_limit=10000, **kwargs):

@@ -17,7 +17,7 @@ def load_ABC_list(job_dir):
 
     for pickle_name in pickle_names:
         with open(pickle_name, 'rb') as myinput:
-            problem_kwargs, A, B1, B2, C, = pickle.load(myinput)
+            problem_kwargs, A, B1, B2, C, = pickle.load(myinput)[:5]
         problem_kwarg_list.append(problem_kwargs)
         A_list.append(A)
         B1_list.append(B1)

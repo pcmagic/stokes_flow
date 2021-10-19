@@ -1,3 +1,5 @@
+import numpy as np
+
 from src import stokes_flow as sf
 from src import SlenderBodyMethod as slbm
 from src import StokesFlowMethod as sfm
@@ -7,16 +9,16 @@ class SlenderBodyProblem(sf.StokesFlowProblem):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._slb_nonlocal_method = {
-            'lightill_slb': slbm.SLB_matrix_nonlocal_petsc,
-            'KRJ_slb':      slbm.SLB_matrix_nonlocal_petsc,
-            'mod_KRJ_slb':  slbm.SLB_matrix_nonlocal_petsc,
+            'lighthill_slb': slbm.SLB_matrix_nonlocal_petsc,
+            'KRJ_slb':       slbm.SLB_matrix_nonlocal_petsc,
+            'mod_KRJ_slb':   slbm.SLB_matrix_nonlocal_petsc,
         }
         self._slb_local_method = {
-            'lightill_slb': slbm.Lightill_matrix_local_petsc,
-            'KRJ_slb':      slbm.KRJ_matrix_local_petsc,
-            'mod_KRJ_slb':  slbm.mod_KRJ_matrix_local_petsc,
+            'lighthill_slb': slbm.Lighthill_matrix_local_petsc,
+            'KRJ_slb':       slbm.KRJ_matrix_local_petsc,
+            'mod_KRJ_slb':   slbm.mod_KRJ_matrix_local_petsc,
         }
-        self._check_args_dict['lightill_slb'] = sfm.check_point_force_matrix_3d_petsc
+        self._check_args_dict['lighthill_slb'] = sfm.check_point_force_matrix_3d_petsc
         self._check_args_dict['KRJ_slb'] = sfm.check_point_force_matrix_3d_petsc
         self._check_args_dict['mod_KRJ_slb'] = sfm.check_point_force_matrix_3d_petsc
 
@@ -31,11 +33,30 @@ class SlenderBodyProblem(sf.StokesFlowProblem):
         m_petsc.assemble()
         return True
 
-# class SlenderBodyObj(sf.StokesFlowObj):
-#     def move(self, displacement):
-#         super().move(displacement)
-#
-#         return True
+    # def get_total_force(self, center=np.zeros(3)):
+    #     F = np.zeros(6)
+    #     for obj0 in self.get_all_obj_list():
+    #         assert isinstance(obj0, sf.StokesFlowObj)
+    #         F = F + obj0.get_total_force(center=center)
+    #     return F
+
+
+class SlenderBodyObj(sf.StokesFlowObj):
+    def set_data(self, *args, **kwargs):
+        super().set_data(*args, **kwargs)
+        self._type = 'slender body obj'
+        return True
+
+    def get_total_force(self, center=None):
+        if center is None:
+            center = self.get_u_geo().get_origin()
+
+        f = self.get_force().reshape((-1, self.get_n_unknown())) * self.get_f_geo().get_deltaLength()
+        r = self.get_f_geo().get_nodes() - center
+        t = np.cross(r, f[:, :3])  # some solve methods may have additional degrees of freedoms.
+        f_t = np.hstack((f, t)).sum(axis=0)
+        return f_t
+
 
 class StrainRateBaseForceFreeProblem(SlenderBodyProblem,
                                      sf.StrainRateBaseProblem,
@@ -43,17 +64,19 @@ class StrainRateBaseForceFreeProblem(SlenderBodyProblem,
     def _nothing(self):
         pass
 
+
 problem_dic = {
-    'lightill_slb': SlenderBodyProblem,
-    'KRJ_slb':      SlenderBodyProblem,
-    'mod_KRJ_slb':  SlenderBodyProblem,
+    'lighthill_slb': SlenderBodyProblem,
+    'KRJ_slb':       SlenderBodyProblem,
+    'mod_KRJ_slb':   SlenderBodyProblem,
 }
 
 obj_dic = {
-    'lightill_slb': sf.StokesFlowObj,
-    'KRJ_slb':      sf.StokesFlowObj,
-    'mod_KRJ_slb':  sf.StokesFlowObj,
+    'lighthill_slb': SlenderBodyObj,
+    'KRJ_slb':       SlenderBodyObj,
+    'mod_KRJ_slb':   SlenderBodyObj,
 }
+
 
 def check_matrix_method(matrix_method):
     keys = problem_dic.keys()

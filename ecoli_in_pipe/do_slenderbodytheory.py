@@ -91,7 +91,7 @@ def do_KRJ_1helix(ph, rt1, rt2, ch, n_segment, slb_epsabs=1e-200, slb_epsrel=1e-
                                         slb_epsabs=slb_epsabs, slb_epsrel=slb_epsrel,
                                         slb_limit=slb_limit, slb_geo_fun=slb_geo_fun, )
     hlx_geo = slb_geo_fun(ph, ch, rt1, rt2)
-    hlx_geo.create_nSegment(n_segment, check_nth=problem_kwargs['matrix_method'] == 'lightill_slb')
+    hlx_geo.create_nSegment(n_segment, check_nth=False)
     hlx_obj = sf.StokesFlowObj()
     hlx_obj.set_data(hlx_geo, hlx_geo, name='helix1')
     problem = slb.problem_dic[matrix_method](**problem_kwargs)

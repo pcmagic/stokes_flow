@@ -220,8 +220,8 @@ def doublets_matrix_dij2(u_theta, f_theta, fidx, ph, rt1, rt2, u_node_fun=x1_fun
     return t_d
 
 
-# Lightill Slender Body Theory, this version assume mesh size == local part size.
-def Lightill_slenderBody_matrix_1hlx(ph, rt1, rt2, ch,
+# Lighthill Slender Body Theory, this version assume mesh size == local part size.
+def Lighthill_slenderBody_matrix_1hlx(ph, rt1, rt2, ch,
                                      hlx_node_fun=x1_fun, FnMat_fun=Fn1Mat_fun,
                                      epsabs=1e-200, epsrel=1e-08, limit=10000,
                                      workers=1) -> np.ndarray:
@@ -275,8 +275,8 @@ def Lightill_slenderBody_matrix_1hlx(ph, rt1, rt2, ch,
     return m
 
 
-# Lightill Slender Body Theory, this version assert mesh size > local part size.
-def Lightill_slenderBody_matrix_1hlx_v2(ph, rt1, rt2, ch, nth=None,
+# Lighthill Slender Body Theory, this version assert mesh size > local part size.
+def Lighthill_slenderBody_matrix_1hlx_v2(ph, rt1, rt2, ch, nth=None,
                                         hlx_node_fun=x1_fun, FnMat_fun=Fn1Mat_fun,
                                         epsabs=1e-200, epsrel=1e-08, limit=10000,
                                         workers=1) -> np.ndarray:
@@ -410,8 +410,8 @@ def KRJ_slenderBody_matrix_1hlx(ph, rt1, rt2, ch, nth=None,
     return m
 
 
-# Lightill Slender Body Theory, this version assume mesh size == local part size.
-def Lightill_slenderBody_matrix_nhlx(ph, rt1, rt2, ch,
+# Lighthill Slender Body Theory, this version assume mesh size == local part size.
+def Lighthill_slenderBody_matrix_nhlx(ph, rt1, rt2, ch,
                                      hlx_node_fun_list=(x1_fun,), FnMat_fun_list=(Fn1Mat_fun,),
                                      epsabs=1e-200, epsrel=1e-08, limit=10000,
                                      workers=1) -> np.ndarray:
@@ -453,8 +453,8 @@ def Lightill_slenderBody_matrix_nhlx(ph, rt1, rt2, ch,
     return m
 
 
-# Lightill Slender Body Theory, this version assert mesh size > local part size.
-def Lightill_slenderBody_matrix_nhlx_v2(ph, rt1, rt2, ch, nth=None,
+# Lighthill Slender Body Theory, this version assert mesh size > local part size.
+def Lighthill_slenderBody_matrix_nhlx_v2(ph, rt1, rt2, ch, nth=None,
                                         hlx_node_fun_list=(x1_fun,), FnMat_fun_list=(Fn1Mat_fun,),
                                         epsabs=1e-200, epsrel=1e-08, limit=10000,
                                         workers=1) -> np.ndarray:
@@ -506,9 +506,9 @@ def Lightill_slenderBody_matrix_nhlx_v2(ph, rt1, rt2, ch, nth=None,
     return m
 
 
-# Lightill Slender Body Theory, this version assert mesh size > local part size,
+# Lighthill Slender Body Theory, this version assert mesh size > local part size,
 #   This version contain the influnce of doublet from the other helixs.
-def Lightill_slenderBody_matrix_nhlx_v3(ph, rt1, rt2, ch, nth=None,
+def Lighthill_slenderBody_matrix_nhlx_v3(ph, rt1, rt2, ch, nth=None,
                                         hlx_node_fun_list=(x1_fun,), FnMat_fun_list=(Fn1Mat_fun,),
                                         epsabs=1e-200, epsrel=1e-08, limit=10000,
                                         workers=1) -> np.ndarray:
@@ -693,7 +693,7 @@ def AtBtCt(nodes, dS, M, gmres_maxiter=300, ifprint=False):
     return At, Bt, Ct, ftr, frt
 
 
-def Lightill_AtBtCt_1hlx(ph, rt1, rt2, ch, nth=None, gmres_maxiter=300,
+def Lighthill_AtBtCt_1hlx(ph, rt1, rt2, ch, nth=None, gmres_maxiter=300,
                          hlx_node_fun=x1_fun, FnMat_fun=Fn1Mat_fun,
                          intsij_epsabs=1e-200, intsij_epsrel=1e-08, intsij_limit=10000,
                          intsij_workers=1, ifprint=False):
@@ -708,11 +708,11 @@ def Lightill_AtBtCt_1hlx(ph, rt1, rt2, ch, nth=None, gmres_maxiter=300,
             ch, 2 * natu_cut_th, dth, (dth - 2 * natu_cut_th) / natu_cut_th))
         print('nth =', nth)
     t0 = time()
-    M = Lightill_slenderBody_matrix_1hlx_v2(ph, rt1, rt2, ch, nth=nth,
+    M = Lighthill_slenderBody_matrix_1hlx_v2(ph, rt1, rt2, ch, nth=nth,
                                             hlx_node_fun=hlx_node_fun, FnMat_fun=FnMat_fun,
                                             epsabs=intsij_epsabs, epsrel=intsij_epsrel,
                                             limit=intsij_limit, workers=intsij_workers)
-    # M = Lightill_slenderBody_matrix_1hlx(ph, rt1, rt2, ch,
+    # M = Lighthill_slenderBody_matrix_1hlx(ph, rt1, rt2, ch,
     #                                         hlx_node_fun=hlx_node_fun, FnMat_fun=FnMat_fun,
     #                                         epsabs=intsij_epsabs, epsrel=intsij_epsrel,
     #                                         limit=intsij_limit, workers=intsij_workers)
@@ -751,7 +751,7 @@ def KRJ_AtBtCt_1hlx(ph, rt1, rt2, ch, nth=None, gmres_maxiter=300,
     return At, Bt, Ct, ftr, frt
 
 
-def Lightill_AtBtCt_nhlx(ph, rt1, rt2, ch, nth=None, gmres_maxiter=300,
+def Lighthill_AtBtCt_nhlx(ph, rt1, rt2, ch, nth=None, gmres_maxiter=300,
                          hlx_node_fun_list=(x1_fun,), FnMat_fun_list=(Fn1Mat_fun,),
                          intsij_epsabs=1e-200, intsij_epsrel=1e-08, intsij_limit=10000,
                          intsij_workers=1, ifprint=False):
@@ -766,17 +766,17 @@ def Lightill_AtBtCt_nhlx(ph, rt1, rt2, ch, nth=None, gmres_maxiter=300,
             ch, 2 * natu_cut_th, dth, (dth - 2 * natu_cut_th) / natu_cut_th))
         print('nth = %d × %d ' % (nth, len(hlx_node_fun_list)))
     t0 = time()
-    # M = Lightill_slenderBody_matrix_nhlx(ph, rt1, rt2, ch,
+    # M = Lighthill_slenderBody_matrix_nhlx(ph, rt1, rt2, ch,
     #                                      hlx_node_fun_list=hlx_node_fun_list,
     #                                      FnMat_fun_list=FnMat_fun_list,
     #                                      epsabs=intsij_epsabs, epsrel=intsij_epsrel,
     #                                      limit=intsij_limit, workers=intsij_workers)
-    M = Lightill_slenderBody_matrix_nhlx_v2(ph, rt1, rt2, ch, nth=nth,
+    M = Lighthill_slenderBody_matrix_nhlx_v2(ph, rt1, rt2, ch, nth=nth,
                                             hlx_node_fun_list=hlx_node_fun_list,
                                             FnMat_fun_list=FnMat_fun_list,
                                             epsabs=intsij_epsabs, epsrel=intsij_epsrel,
                                             limit=intsij_limit, workers=intsij_workers)
-    # M = Lightill_slenderBody_matrix_nhlx_v3(ph, rt1, rt2, ch, nth=nth,
+    # M = Lighthill_slenderBody_matrix_nhlx_v3(ph, rt1, rt2, ch, nth=nth,
     #                                         hlx_node_fun_list=hlx_node_fun_list,
     #                                         FnMat_fun_list=FnMat_fun_list,
     #                                         epsabs=intsij_epsabs, epsrel=intsij_epsrel,

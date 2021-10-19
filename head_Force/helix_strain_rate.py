@@ -425,8 +425,8 @@ def main_fun_SLB_E(**main_kwargs):
         print_case_info(**problem_kwargs)
         tail_comp = sf.ForceFreeComposite(center=np.zeros(3), norm=np.array((0, 0, 1)),
                                           name='tail_comp')
-        check_nth = matrix_method == 'lightill_slb'
-        slb_geo_fun = slb_helix if matrix_method == 'lightill_slb' else Johnson_helix
+        check_nth = matrix_method == 'lighthill_slb'
+        slb_geo_fun = slb_helix if matrix_method == 'lighthill_slb' else Johnson_helix
         for i0, theta0 in enumerate(np.linspace(0, 2 * np.pi, n_hlx, endpoint=False)):
             hlx1_geo = slb_geo_fun(ph, ch, rt1, rt2, theta0=theta0)
             hlx1_geo.create_nSegment(n_segment, check_nth=check_nth)

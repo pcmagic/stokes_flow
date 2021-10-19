@@ -15,6 +15,7 @@ from matplotlib import pyplot as plt
 import os
 # import glob
 import numpy as np
+from datetime import datetime
 # import matplotlib
 import re
 from scanf import scanf
@@ -399,7 +400,85 @@ def write_main_run_comm_list(comm_list, txt_list, use_node, njob_node, job_dir,
         print(' --->>random order mode is ON. ')
     print('Command of first case is:')
     print(comm_list[0])
-    return True 
+    return True
+
+
+def write_main_run_local(comm_list, njob_node, job_dir, random_order=False, ):
+    PWD = os.getcwd()
+    comm_list = np.array(comm_list)
+    n_comm = comm_list.size
+    sh_name = 'main_run.sh'
+    pbs_name = 'pbs.main_run'
+    csh_name = 'csh.main_run'
+
+    t_path = os.path.join(PWD, job_dir)
+    if not os.path.exists(t_path):
+        os.makedirs(t_path)
+        print('make folder %s' % t_path)
+    else:
+        print('exist folder %s' % t_path)
+
+    if random_order:
+        tidx = np.arange(n_comm)
+        np.random.shuffle(tidx)
+        comm_list = comm_list[tidx]
+
+    # generate comm_list.sh
+    t_name0 = os.path.join(t_path, 'comm_list.sh')
+    with open(t_name0, 'w') as fcomm:
+        for i0, ts in enumerate(comm_list):
+            fcomm.write('%s \n' % ts)
+            fcomm.write('echo \'%d / %d start.\'  \n\n' % (i0 + 1, n_comm))
+
+    # generate .pbs file
+    t_name = os.path.join(t_path, pbs_name)
+    with open(t_name, 'w') as fpbs:
+        fpbs.write('#!/bin/sh\n')
+        fpbs.write('# run the job locally. \n')
+        fpbs.write('echo start job at $(date) \n')
+        t2 = 'seq 0 %d | parallel -j %d -u ' % (n_comm - 1, njob_node)
+        t2 = t2 + ' --sshdelay 0.1 '
+        t2 = t2 + ' "cd $PWD; echo $PWD; echo; bash %s {} true " \n ' % csh_name
+        fpbs.write(t2)
+        fpbs.write('echo finish job at $(date) \n')
+        fpbs.write('\n')
+
+    # generate .csh file
+    t_name = os.path.join(t_path, csh_name)
+    with open(t_name, 'w') as fcsh:
+        fcsh.write('#!/bin/csh -fe \n\n')
+        t2 = 'comm_list=('
+        for t3 in comm_list:
+            t2 = t2 + '"%s" ' % t3
+        t2 = t2 + ') \n\n'
+        fcsh.write(t2)
+        fcsh.write('echo ${comm_list[$1]} \n')
+        fcsh.write('echo $(expr $1 + 1) / %d start.  \n' % n_comm)
+        fcsh.write('echo \n')
+        fcsh.write('if [ ${2:-false} = true ]; then \n')
+        fcsh.write('    ${comm_list[$1]} \n')
+        fcsh.write('fi \n\n')
+
+    # generate .sh file
+    t_name = os.path.join(t_path, sh_name)
+    with open(t_name, 'w') as fsh:
+        fsh.write('t_dir=$PWD \n ')
+        fsh.write('bash_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" '
+                  '>/dev/null 2>&1 && pwd )" \n ')
+        fsh.write('echo $bash_dir \n ')
+        fsh.write('cd $bash_dir \n ')
+        nohup_name = 'nohup_%s.out' % '$(date +"%Y%m%d_%H%M%S")'
+        fsh.write('nohup bash %s > %s 2>&1 & \n' % (pbs_name, nohup_name))
+        fsh.write('echo Try the command to see the output information. \n ')
+        fsh.write('echo tail -f %s \n ' % nohup_name)
+        fsh.write('cd $t_dir \n ')
+        fsh.write('\n ')
+
+    print('Input %d cases. ' % n_comm)
+    print('Random order mode is %s. ' % random_order)
+    print('Command of first case is:')
+    print(comm_list[0])
+    return True
 
 
 def write_myscript(job_name_list, job_dir):
