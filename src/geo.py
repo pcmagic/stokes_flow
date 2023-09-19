@@ -15,16 +15,17 @@ from itertools import compress
 from scipy.spatial.transform import Rotation as spR
 from src.support_class import *
 
-__all__ = ['base_geo', 'sphere_geo', 'ellipse_base_geo', 'ellipse_3d_geo',
-           'geoComposit',
-           'tunnel_geo', 'pipe_cover_geo', 'supHelix', 'FatHelix',
-           'lineOnFatHelix', 'ThickLine_base_geo',
-           'SelfRepeat_body_geo', 'SelfRepeat_FatHelix',
-           'infgeo_1d', 'infHelix', 'infPipe',
-           'slb_geo', 'slb_helix', 'Johnson_helix', 'expJohnson_helix', 'sphereEnd_helix',
-           'regularizeDisk', 'helicoid',
-           '_revolve_geo', 'revolve_pipe', 'revolve_ellipse',
-           'region', 'set_axes_equal']
+
+# __all__ = ['base_geo', 'sphere_geo', 'ellipse_base_geo', 'ellipse_3d_geo',
+#            'geoComposit',
+#            'tunnel_geo', 'pipe_cover_geo', 'supHelix', 'FatHelix',
+#            'lineOnFatHelix', 'ThickLine_base_geo',
+#            'SelfRepeat_body_geo', 'SelfRepeat_FatHelix',
+#            'infgeo_1d', 'infHelix', 'infPipe',
+#            'slb_geo', 'slb_helix', 'Johnson_helix', 'expJohnson_helix', 'sphereEnd_helix',
+#            'regularizeDisk', 'helicoid',
+#            '_revolve_geo', 'revolve_pipe', 'revolve_ellipse',
+#            'region', 'set_axes_equal']
 
 
 class base_geo():
@@ -44,16 +45,16 @@ class base_geo():
         self._selfIdx = np.array([])  # indices of _glbIdx in _glbIdx_all
         self._dof = 3  # degrees of freedom pre node.
         self._type = 'general_geo'  # geo type
-
+    
     def __str__(self):
         return "%s(%r)" % (self.get_type(), id(self))
-
+    
     def mat_nodes(self, filename: str = '..',
                   mat_handle: str = 'nodes'):
         err_msg = 'wrong mat file name. '
         assert filename != '..', err_msg
         filename = check_file_extension(filename, '.mat')
-
+        
         mat_contents = loadmat(filename)
         nodes = mat_contents[mat_handle].astype(np.float, order='F')
         err_msg = 'nodes is a n*3 numpy array containing x, y and z coordinates. '
@@ -62,20 +63,20 @@ class base_geo():
         self._u = np.zeros(self._nodes.size)
         self.set_dmda()
         return True
-
+    
     def mat_elmes(self, filename: str = '..',
                   mat_handle: str = 'elmes',
                   elemtype: str = ' '):
         err_msg = 'wrong mat file name. '
         assert filename != '..', err_msg
-
+        
         mat_contents = loadmat(filename)
         elems = mat_contents[mat_handle].astype(np.int, order='F')
         elems = elems - elems.min()
         self._elems = elems
         self._elemtype = elemtype
         return True
-
+    
     def text_nodes(self, filename: str = '..'):
         err_msg = 'wrong mat file name. '
         assert filename != '..', err_msg
@@ -86,93 +87,93 @@ class base_geo():
         self._u = np.zeros(self._nodes.size)
         self.set_dmda()
         return True
-
+    
     def mat_origin(self, filename: str = '..',
                    mat_handle: str = 'origin'):
         err_msg = 'wrong mat file name. '
         assert filename != '..', err_msg
-
+        
         mat_contents = loadmat(filename)
         self._origin = mat_contents[mat_handle].astype(np.float)
         return True
-
+    
     def mat_velocity(self, filename: str = '..',
                      mat_handle: str = 'U'):
         err_msg = 'wrong mat file name. '
         assert filename != '..', err_msg
-
+        
         mat_contents = loadmat(filename)
         self._u = mat_contents[mat_handle].flatten()
         return True
-
+    
     def node_rotation(self, norm=np.array([0, 0, 1]), theta=0, rotation_origin=None):
         rotM = get_rot_matrix(norm, theta)
         return self.node_rotM(rotM=rotM, rotation_origin=rotation_origin)
-
+    
     def node_rotM(self, rotM, rotation_origin=None):
         # The rotation is counterclockwise
         if rotation_origin is None:
             rotation_origin = self.get_origin()
         else:
             rotation_origin = np.array(rotation_origin).reshape((3,))
-
+        
         self._nodes = np.dot(rotM, (self._nodes - rotation_origin).T).T + \
                       rotation_origin  # The rotation is counterclockwise
         self._origin = np.dot(rotM, (self._origin - rotation_origin)) + rotation_origin
         self._geo_norm = np.dot(rotM, self._geo_norm) / np.linalg.norm(self._geo_norm)
         return True
-
+    
     def coord_rotation(self, norm=np.array([0, 0, 1]), theta=0):
         # TODO: check the direction.
         assert 1 == 2
         # theta = -theta # The rotation is counterclockwise
         rotation = get_rot_matrix(norm, theta)
-
+        
         temp_u = self._u.reshape((3, -1), order='F')
         self._u = rotation.dot(temp_u).T.flatten()
         self._nodes = np.dot(rotation, self._nodes.T).T
         self._origin = 000
         self._geo_norm = 000
         return True
-
+    
     def node_zoom(self, factor, zoom_origin=None):
         if zoom_origin is None:
             zoom_origin = self.get_origin()
         self._nodes = (self._nodes - zoom_origin) * factor + zoom_origin
         return True
-
+    
     def node_zoom_x(self, factor, zoom_origin=None):
         if zoom_origin is None:
             zoom_origin = self.get_origin()
         self._nodes[:, 0] = (self._nodes[:, 0] - zoom_origin[0]) * factor + zoom_origin[0]
         return True
-
+    
     def node_zoom_y(self, factor, zoom_origin=None):
         if zoom_origin is None:
             zoom_origin = self.get_origin()
         self._nodes[:, 1] = (self._nodes[:, 1] - zoom_origin[1]) * factor + zoom_origin[1]
         return True
-
+    
     def node_zoom_z(self, factor, zoom_origin=None):
         if zoom_origin is None:
             zoom_origin = self.get_origin()
         self._nodes[:, 2] = (self._nodes[:, 2] - zoom_origin[2]) * factor + zoom_origin[2]
         return True
-
+    
     def move(self, displacement: np.array):
-        displacement = np.array(displacement).reshape((3,))
-
+        displacement = np.array(displacement).reshape((self.get_dof(),))
+        
         self.set_nodes(self.get_nodes() + displacement, self.get_deltaLength())
         self.set_origin(self.get_origin() + displacement)
         return True
-
+    
     def mirrorImage(self, norm=np.array([0, 0, 1]), rotation_origin=None):
         if rotation_origin is None:
             rotation_origin = self.get_origin()
         else:
             rotation_origin = np.array(rotation_origin).reshape((3,))
         norm = norm / np.linalg.norm(norm)
-
+        
         nodes = self.get_nodes()
         dist = nodes - rotation_origin
         parallel = np.einsum('i,j', np.einsum('ij,j', dist, norm), norm)
@@ -181,7 +182,7 @@ class base_geo():
         nodes2 = dist2 + rotation_origin
         self.set_nodes(nodes2, self.get_deltaLength())
         return True
-
+    
     def combine(self, geo_list, deltaLength=None, origin=None, geo_norm=None):
         if len(geo_list) == 0:
             return False
@@ -196,7 +197,7 @@ class base_geo():
             origin = geo_list[0].get_origin()
         if geo_norm is None:
             geo_norm = geo_list[0].get_geo_norm()
-
+        
         geo1 = geo_list.pop(0)
         self.set_nodes(geo1.get_nodes(), deltalength=deltaLength)
         self.set_velocity(geo1.get_velocity())
@@ -207,74 +208,77 @@ class base_geo():
         self._geo_norm = geo_norm
         self.set_origin(origin)
         return True
-
+    
     def get_nodes(self):
         return self._nodes
-
+    
     def get_nodes_petsc(self):
         nodes_petsc = self.get_dmda().createGlobalVector()
-        nodes_petsc[:] = self._nodes.reshape((3, -1))[:]
+        nodes_petsc[:] = self._nodes.reshape((self.get_dof(), -1))[:]
         nodes_petsc.assemble()
         return nodes_petsc
-
+    
     def set_nodes(self, nodes, deltalength, resetVelocity=False):
-        nodes = np.array(nodes).reshape((-1, 3), order='F')
+        nodes = np.array(nodes).reshape((-1, self.get_dof()), order='F')
         self._nodes = nodes
         self._deltaLength = deltalength
         self.set_dmda()
-
+        
         if resetVelocity:
             self._u = np.zeros(self._nodes.size)
         return True
-
+    
     def get_nodes_x(self):
         return self._nodes[:, 0]
-
+    
     def get_nodes_y(self):
         return self._nodes[:, 1]
-
+    
     def get_nodes_z(self):
         return self._nodes[:, 2]
-
+    
     def get_nodes_x_petsc(self):
         x_petsc = self.get_dmda().createGlobalVector()
-        t_x = np.matlib.repmat(self._nodes[:, 0].reshape((-1, 1)), 1, 3).flatten()
+        t_x = np.matlib.repmat(self._nodes[:, 0].reshape((-1, 1)), 1, self.get_dof()).flatten()
         x_petsc[:] = t_x[:]
         x_petsc.assemble()
         return x_petsc
-
+    
     def get_nodes_y_petsc(self):
         y_petsc = self.get_dmda().createGlobalVector()
-        t_y = np.matlib.repmat(self._nodes[:, 1].reshape((-1, 1)), 1, 3).flatten()
+        t_y = np.matlib.repmat(self._nodes[:, 1].reshape((-1, 1)), 1, self.get_dof()).flatten()
         y_petsc[:] = t_y[:]
         y_petsc.assemble()
         return y_petsc
-
+    
     def get_nodes_z_petsc(self):
-        z_petsc = self.get_dmda().createGlobalVector()
-        t_z = np.matlib.repmat(self._nodes[:, 2].reshape((-1, 1)), 1, 3).flatten()
+        if self.get_dof() >= 3:
+            z_petsc = self.get_dmda().createGlobalVector()
+            t_z = np.matlib.repmat(self._nodes[:, 2].reshape((-1, 1)), 1, self.get_dof()).flatten()
+        else:
+            t_z = np.zeros(self.get_n_nodes())
         z_petsc[:] = t_z[:]
         z_petsc.assemble()
         return z_petsc
-
+    
     def get_n_nodes(self):
         return self._nodes.shape[0]
-
+    
     def get_n_velocity(self):
         return self._u.size
-
+    
     def get_velocity(self):
         return self._u.flatten()
-
+    
     def set_velocity(self, velocity):
         err_msg = 'set nodes first. '
         assert self._nodes.size != 0, err_msg
-
+        
         err_msg = 'velocity is a numpy array having a similar size of nodes. '
         assert velocity.size == self._nodes.size, err_msg
         self._u = velocity.flatten()
         return True
-
+    
     def set_rigid_velocity(self, U=np.zeros(6), center=None):
         """
         :type U: np.array
@@ -287,83 +291,87 @@ class base_geo():
         center = np.array(center)
         err_msg = 'center is a np.array containing 3 scales. '
         assert center.size == 3, err_msg
-
+        assert self.get_dof() == 3
+        
         r = self._nodes - center
         self._u = np.zeros(self._nodes.size)
         self._u[0::3] = U[0] + U[4] * r[:, 2] - U[5] * r[:, 1]
         self._u[1::3] = U[1] + U[5] * r[:, 0] - U[3] * r[:, 2]
         self._u[2::3] = U[2] + U[3] * r[:, 1] - U[4] * r[:, 0]
         return True
-
+    
     def get_velocity_x(self):
-        return self._u[0::3].flatten()
-
+        return self._u[0::self.get_dof()].flatten()
+    
     def get_velocity_y(self):
-        return self._u[1::3].flatten()
-
+        return self._u[1::self.get_dof()].flatten()
+    
     def get_velocity_z(self):
-        return self._u[2::3].flatten()
-
+        assert self.get_dof() >= 3
+        return self._u[2::self.get_dof()].flatten()
+    
     def get_polar_coord(self):
         phi = np.arctan2(self.get_nodes_y(), self.get_nodes_x())
         rho = np.sqrt(self.get_nodes_x() ** 2 + self.get_nodes_y() ** 2)
         z = self.get_nodes_z()
         return phi, rho, z
-
+    
     def get_normal(self):
         return self._normal
-
+    
     def set_normal(self, normal):
         self._normal = normal
         return True
-
+    
     def get_geo_norm(self):
         return self._geo_norm
-
+    
     def set_geo_norm(self, geo_norm):
         geo_norm = np.array(geo_norm).ravel()
         assert geo_norm.size == 3
         self._geo_norm = geo_norm
         return True
-
+    
     def get_origin(self):
         return self._origin
-
+    
     def get_center(self):
         return self.get_origin()
-
+    
     def set_origin(self, origin):
         self._origin = np.array(origin).ravel()
         assert self._origin.size == 3
         return True
-
+    
     def set_center(self, origin):
         return self.set_origin(origin=origin)
-
+    
     def get_deltaLength(self):
         return self._deltaLength
-
+    
     def set_deltaLength(self, deltaLength):
         self._deltaLength = deltaLength
         return True
-
+    
     def copy(self) -> 'base_geo':
         self.destroy_dmda()
         geo2 = copy.deepcopy(self)
         self.set_dmda()
         geo2.set_dmda()
         return geo2
-
+    
     def save_nodes(self, filename):
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
         filename = check_file_extension(filename, extension='.mat')
         if rank == 0:
             savemat(filename,
-                    {'nodes': self.get_nodes()},
+                    {
+                        'nodes': self.get_nodes()
+                        },
                     oned_as='column')
         return True
-
+    
     def _show_velocity(self, length_factor=1, show_nodes=True):
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
@@ -386,7 +394,7 @@ class base_geo():
                       color='r', length=length)
             # ax.quiver(self.get_nodes_x(), self.get_nodes_y(), self.get_nodes_z(),
             #           0, 0, self.get_nodes_z(), length=self._deltaLength * 2)
-
+            
             X = np.hstack((self.get_nodes_x()))
             Y = np.hstack((self.get_nodes_y()))
             Z = np.hstack((self.get_nodes_z()))
@@ -404,7 +412,7 @@ class base_geo():
         else:
             fig = None
         return fig
-
+    
     def show_velocity(self, length_factor=1, show_nodes=True):
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
@@ -414,7 +422,7 @@ class base_geo():
             # plt.get_current_fig_manager().window.showMaximized()
             plt.show()
         return True
-
+    
     def core_show_nodes(self, linestyle='-', marker='.'):
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
@@ -426,7 +434,7 @@ class base_geo():
                     linestyle=linestyle,
                     color='b',
                     marker=marker)
-
+            
             X = np.hstack((self.get_nodes_x()))
             Y = np.hstack((self.get_nodes_y()))
             Z = np.hstack((self.get_nodes_z()))
@@ -445,7 +453,7 @@ class base_geo():
         else:
             fig = None
         return fig
-
+    
     def show_nodes(self, linestyle='-', marker='.'):
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
@@ -455,25 +463,25 @@ class base_geo():
             # plt.get_current_fig_manager().window.showMaximized()
             plt.show()
         return True
-
+    
     def png_nodes(self, finename, linestyle='-', marker='.'):
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
         finename = check_file_extension(finename, '.png')
-
+        
         fig = self.core_show_nodes(linestyle=linestyle, marker=marker)
         if rank == 0:
             fig.set_size_inches(18.5, 10.5)
             fig.savefig(finename, dpi=100)
             plt.close()
         return True
-
+    
     def get_mesh(self):
         return self._elems, self._elemtype
-
+    
     def get_dmda(self):
         return self._dmda
-
+    
     def set_dmda(self):
         if self.get_dmda() is not None:
             self._dmda.destroy()
@@ -485,51 +493,52 @@ class base_geo():
         self._dmda.setUp()
         # self._dmda.createGlobalVector()
         return True
-
+    
     def destroy_dmda(self):
         self._dmda.destroy()
         self._dmda = None
         return True
-
+    
     def get_dof(self):
         return self._dof
-
+    
     def set_dof(self, dof):
         self._dof = dof
         return True
-
+    
     def set_glbIdx(self, indices):
         comm = PETSc.COMM_WORLD.tompi4py()
         self._glbIdx = indices
         self._glbIdx_all = np.hstack(comm.allgather(indices))
         self._selfIdx = np.searchsorted(self._glbIdx_all, self._glbIdx)
+        pass
         return True
-
+    
     def set_glbIdx_all(self, indices):
         self._glbIdx = []
         self._selfIdx = []
         self._glbIdx_all = indices
         return True
-
+    
     def get_glbIdx(self):
         return self._glbIdx, self._glbIdx_all
-
+    
     def get_selfIdx(self):
         return self._selfIdx
-
+        
         # def _heaviside(self, n, factor):
         #     f = lambda x: 1 / (1 + np.exp(-factor * x))
         #     x = np.linspace(-0.5, 0.5, n)
         #     return (f(x) - f(-0.5)) / (f(0.5) - f(-0.5))
-
+    
     def get_type(self):
         return self._type
-
+    
     def print_info(self):
         PETSc.Sys.Print('    %s: norm %s, center %s' %
                         (str(self), str(self.get_geo_norm()), str(self.get_center())))
         return True
-
+    
     def pickmyself_prepare(self):
         if not self._dmda is None:
             self.destroy_dmda()
@@ -543,7 +552,7 @@ class geoComposit(uniqueList):
         liste = list(tube_flatten((liste,)))
         for geoi in liste:
             self.append(geoi)
-
+    
     def core_show_nodes(self, linestyle='-', marker='.'):
         color_list = ['b', 'g', 'r', 'c', 'm', 'y', 'k', ]
         comm = PETSc.COMM_WORLD.tompi4py()
@@ -563,7 +572,7 @@ class geoComposit(uniqueList):
                             linestyle=linestyle,
                             color=color_list[i0 % len(color_list)],
                             marker=marker)
-
+                    
                     X = np.hstack((geo0.get_nodes_x()))
                     Y = np.hstack((geo0.get_nodes_y()))
                     Z = np.hstack((geo0.get_nodes_z()))
@@ -590,11 +599,11 @@ class geoComposit(uniqueList):
         else:
             fig = None
         return fig
-
+    
     def show_nodes(self, linestyle='-', marker='.'):
         if len(self) == 0:
             return False
-
+        
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
         self.core_show_nodes(linestyle=linestyle, marker=marker)
@@ -603,7 +612,7 @@ class geoComposit(uniqueList):
             # plt.get_current_fig_manager().window.showMaximized()
             plt.show()
         return True
-
+    
     def move(self, displacement: np.array):
         if len(self) == 0:
             return False
@@ -633,48 +642,48 @@ class ThickLine_base_geo(base_geo):
         self._cover_end_idx = np.array([])
         self._local_rot = True  # special parameter for selfrepeat_geo
         self._node_axisNode_idx = []
-
+    
     def set_check_epsilon(self, check_epsilon):
         self._check_epsilon = check_epsilon
         return True
-
+    
     def get_check_epsilon(self):
         return self._check_epsilon
-
+    
     def _get_theta(self):
         def eqr(dth, ds, r):
             return (ds / (2 * r)) ^ 2 + np.sin(dth / 4) ** 2 - np.sin(dth / 2) ** 2
-
+        
         from scipy import optimize as sop
         self._dth = sop.brentq(eqr, -1e-3 * np.pi, np.pi, args=(self.get_deltaLength(), self._r))
         return self._dth
-
+    
     def _get_deltalength(self):
         # dl = 2 * self._r * np.sqrt(np.sin(self._dth / 2) ** 2 - np.sin(self._dth / 4) ** 2)
         dl = 2 * self._r * np.sin(self._dth / 2)
         self.set_deltaLength(dl)
         return dl
-
+    
     @abc.abstractmethod
     def _get_axis(self):
         return
-
+    
     @abc.abstractmethod
     def _get_fgeo_axis(self, epsilon):
         return
-
+    
     @abc.abstractmethod
     def _body_pretreatment(self, nodes, **kwargs):
         return
-
+    
     @abc.abstractmethod
     def _strat_pretreatment(self, nodes, **kwargs):
         return
-
+    
     @abc.abstractmethod
     def _end_pretreatment(self, nodes, **kwargs):
         return
-
+    
     def _create_deltatheta(self, dth: float,  # delta theta of the cycle for the mesh
                            radius: float,  # radius of the cycle
                            epsilon=0, with_cover=0, local_rot=True):
@@ -701,7 +710,7 @@ class ThickLine_base_geo(base_geo):
         local_rot = self._local_rot
         self._node_axisNode_idx = []
         self._body_idx_list = []
-
+        
         # cover at start
         if with_cover == 1:
             # old version, cover is a plate.
@@ -749,7 +758,7 @@ class ThickLine_base_geo(base_geo):
             self._strat_pretreatment(t_nodes)
             iscover.append(np.ones(vhsgeo.get_n_nodes()) * -1)
             self._node_axisNode_idx.append(np.zeros(vhsgeo.get_n_nodes()))
-
+        
         # body
         for i0, nodei_line in enumerate(axisNodes):
             ai_para = ai_para + 1 if local_rot else 0
@@ -770,7 +779,7 @@ class ThickLine_base_geo(base_geo):
             self._body_pretreatment(t_nodes)
             self._node_axisNode_idx.append(np.ones(ai.size) * i0)
         self._body_idx_list = np.array(self._body_idx_list)
-
+        
         # cover at end
         if with_cover == 1:
             # old version, cover is a plate.
@@ -813,7 +822,7 @@ class ThickLine_base_geo(base_geo):
             self._end_pretreatment(t_nodes)
             iscover.append(np.ones(vhsgeo.get_n_nodes()))
             self._node_axisNode_idx.append(np.ones(vhsgeo.get_n_nodes()) * (axisNodes.shape[0] - 1))
-
+        
         self._iscover = np.hstack(iscover)
         self._nodes = np.asfortranarray(np.vstack(vgeo_nodes))
         self.set_dmda()
@@ -825,14 +834,14 @@ class ThickLine_base_geo(base_geo):
         fgeo.set_nodes(np.asfortranarray(np.vstack(fgeo_nodes)), deltalength=deltalength * epsilon,
                        resetVelocity=True)
         return fgeo
-
+    
     def get_iscover(self):
         return self._iscover
-
+    
     def _factor_fun(self, n, factor):
         err_msg = 'factor must positive'
         assert factor > 0, err_msg
-
+        
         if np.abs(factor - 1) < 0.01:
             y = np.linspace(0, 1, n)
         else:
@@ -843,51 +852,51 @@ class ThickLine_base_geo(base_geo):
             y2 = np.sign(x) * f2(np.abs(x)) + 0.5
             y = (y1 * factor + y2 / factor) / (y1[-1] * factor + y2[-1] / factor)
         return y
-
+    
     @property
     def axisNodes(self):
         return self._axisNodes
-
+    
     @property
     def frenetFrame(self):
         return self._frenetFrame
-
+    
     @property
     def cover_strat_idx(self):
         return self._cover_strat_idx
-
+    
     @property
     def body_idx_list(self):
         return self._body_idx_list
-
+    
     @property
     def cover_end_idx(self):
         return self._cover_end_idx
-
+    
     @property
     def with_cover(self):
         return self._with_cover
-
+    
     @property
     def cover_start_nodes(self):
         return self.get_nodes()[self.cover_strat_idx]
-
+    
     @property
     def body_nodes_list(self):
         return [self.get_nodes()[tidx] for tidx in self.body_idx_list]
-
+    
     @property
     def cover_end_nodes(self):
         return self.get_nodes()[self.cover_end_idx]
-
+    
     @property
     def node_axisNode_idx(self):
         return self._node_axisNode_idx
-
+    
     @property
     def left_hand(self):
         return self.left_hand
-
+    
     # def node_rotation(self, norm=np.array([0, 0, 1]), theta=0, rotation_origin=None):
     #     # The rotation is counterclockwise
     #     super().node_rotation(norm, theta, rotation_origin)
@@ -912,16 +921,16 @@ class ThickLine_base_geo(base_geo):
     #         t0.append(np.vstack(t1))
     #     self._frenetFrame = t0
     #     return True
-
+    
     def node_rotM(self, rotM, rotation_origin=None):
         # The rotation is counterclockwise
         super().node_rotM(rotM, rotation_origin)
-
+        
         if rotation_origin is None:
             rotation_origin = self.get_origin()
         else:
             rotation_origin = np.array(rotation_origin).reshape((3,))
-
+        
         t_axisNodes = self._axisNodes
         self._axisNodes = np.dot(rotM, (self._axisNodes - rotation_origin).T).T + \
                           rotation_origin  # The rotation is counterclockwise
@@ -936,13 +945,13 @@ class ThickLine_base_geo(base_geo):
             t0.append(np.vstack(t1))
         self._frenetFrame = t0
         return True
-
+    
     def move(self, displacement: np.array):
         super().move(displacement)
         displacement = np.array(displacement).reshape((3,))
         self._axisNodes = self._axisNodes + displacement
         return True
-
+    
     def nodes_local_coord(self, nodes, axis_idx):
         tnode_line = self.axisNodes[axis_idx]
         tT = self.frenetFrame[0][axis_idx]
@@ -950,18 +959,18 @@ class ThickLine_base_geo(base_geo):
         tB = self.frenetFrame[2][axis_idx]
         tfnodes_local = np.dot((nodes - tnode_line), np.vstack((tN, tB, tT)).T)
         return tfnodes_local
-
+    
     def selfnodes_local_coord(self, axis_idx):
         nodes = self.get_nodes()[self.body_idx_list[axis_idx]]
         return self.nodes_local_coord(nodes, axis_idx)
-
+    
     def force_local_coord(self, force, axis_idx):
         tT = self.frenetFrame[0][axis_idx]
         tN = self.frenetFrame[1][axis_idx]
         tB = self.frenetFrame[2][axis_idx]
         tfi_local = np.dot(force, np.vstack((tN, tB, tT)).T)
         return tfi_local
-
+    
     def frenetFrame_local(self, axis_idx):
         tT = self.frenetFrame[0][axis_idx]
         tN = self.frenetFrame[1][axis_idx]
@@ -973,17 +982,17 @@ class ellipse_base_geo(base_geo):
     def __init__(self):
         super().__init__()
         self._type = 'ellipse_geo'  # geo type
-
+    
     def create_n(self, n: int,  # number of nodes.
                  headA: float,  # major axis = 2*headA
                  headC: float):  # minor axis = 2*headC
         err_msg = 'both major and minor axises should positive. '
         assert headA > 0 and headC > 0, err_msg
-
+        
         jj = np.arange(n)
         xlocH = -1 + 2 * jj / (n - 1)
         numf = 0.5
-
+        
         prefac = 3.6 * np.sqrt(headC / headA)
         spherePhi = np.ones(n)
         for i0 in range(0, n):
@@ -993,30 +1002,30 @@ class ellipse_base_geo(base_geo):
                 tr = np.sqrt(1 - xlocH[i0] ** 2)
                 wgt = prefac * (1 - numf * (1 - tr)) / tr
                 spherePhi[i0] = (spherePhi[i0 - 1] + wgt / np.sqrt(n)) % (2 * np.pi)
-
+        
         tsin = np.sqrt(1 - xlocH ** 2)
         self._nodes = np.zeros((n, 3), order='F')
         self._nodes[:, 0] = headC * xlocH
         self._nodes[:, 1] = headA * tsin * np.cos(spherePhi)
         self._nodes[:, 2] = headA * tsin * np.sin(spherePhi)
         self.set_dmda()
-
+        
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((n, 2), order='F')
         return True
-
+    
     def create_delta(self, ds: float,  # length of the mesh
                      a: float,  # axis1 = 2*a
                      b: float):  # axis2 = 2*b
         err_msg = 'both major and minor axises should positive. '
         assert a > 0 and b > 0, err_msg
         self._deltaLength = ds
-
+        
         # fit arc length as function F of theta using 2-degree pylonomial
         from scipy.special import ellipeinc
         from scipy.optimize import curve_fit
         func = lambda theta, a, b: a * theta ** 2 + b * theta
-
+        
         theta = np.linspace(0, np.pi / 2, 100)
         arcl = b * ellipeinc(theta, 1 - (a / b) ** 2)
         popt, _ = curve_fit(func, theta, arcl)
@@ -1025,7 +1034,7 @@ class ellipse_base_geo(base_geo):
         # plt.plot(theta, func(theta, popt[0], popt[1]))
         # plt.show()
         # assert 1 == 2
-
+        
         # divided arc length equally, and get theta using F^-1.
         n = np.ceil(arcl[-1] / ds).astype(int)
         t_arcl = np.linspace(0, arcl[-1], n, endpoint=False) + ds / 2
@@ -1042,7 +1051,7 @@ class ellipse_base_geo(base_geo):
         t_theta = np.hstack((t_theta0, np.pi / 2, np.pi - t_theta0[::-1]))
         t_x = a * np.cos(t_theta)
         t_y = b * np.sin(t_theta)
-
+        
         # generate nodes.
         x = []
         y = []
@@ -1062,19 +1071,19 @@ class ellipse_base_geo(base_geo):
         self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
         self._geo_norm = np.array((1, 0, 0))
         return True
-
+    
     def create_half_delta(self, ds: float,  # length of the mesh
                           a: float,  # axis1 = 2*a
                           b: float):  # axis2 = 2*b
         err_msg = 'both major and minor axises should positive. '
         assert a > 0 and b > 0, err_msg
         self._deltaLength = ds
-
+        
         # fit arc length as function F of theta using 2-degree pylonomial
         from scipy.special import ellipeinc
         from scipy.optimize import curve_fit
         func = lambda theta, a, b: a * theta ** 2 + b * theta
-
+        
         theta = np.linspace(0, np.pi / 2, 100)
         arcl = b * ellipeinc(theta, 1 - (a / b) ** 2)
         popt, _ = curve_fit(func, theta, arcl)
@@ -1083,7 +1092,7 @@ class ellipse_base_geo(base_geo):
         # plt.plot(theta, func(theta, popt[0], popt[1]))
         # plt.show()
         # assert 1 == 2
-
+        
         # divided arc length equally, and get theta using F^-1.
         n = np.ceil(arcl[-1] / ds).astype(int)
         t_arcl = np.linspace(0, arcl[-1], n, endpoint=False) + ds / 2
@@ -1099,7 +1108,7 @@ class ellipse_base_geo(base_geo):
         t_theta0 = t_theta1 * b_theta1 + t_theta2 * b_theta2
         t_x = a * np.cos(t_theta0)
         t_y = b * np.sin(t_theta0)
-
+        
         # generate nodes.
         x = []
         y = []
@@ -1124,7 +1133,7 @@ class ellipse_3d_geo(base_geo):
     def __init__(self):
         super().__init__()
         self._type = 'ellipse_3d_geo'  # geo type
-
+    
     def create_delta(self, ds: float,  # length of the mesh
                      a: float,  # axis1 = 2*a
                      b1: float, b2: float):  # axis2 = 2*b
@@ -1132,7 +1141,7 @@ class ellipse_3d_geo(base_geo):
         tgeo.create_delta(ds, a, b1)
         tnode = tgeo.get_nodes()
         tnode[:, 2] = tnode[:, 2] / b1 * b2
-
+        
         self._deltaLength = ds
         self._nodes = tnode
         self.set_dmda()
@@ -1146,26 +1155,26 @@ class sphere_geo(ellipse_base_geo):
     def __init__(self):
         super().__init__()
         self._type = 'sphere_geo'  # geo type
-
+    
     def create_n(self, n: int,  # number of nodes.
                  radius: float, *args):  # radius
         err_msg = 'additional parameters are useless.  '
         assert not args, err_msg
         self._deltaLength = np.sqrt(4 * np.pi * radius * radius / n)
         return super().create_n(n, radius, radius)
-
+    
     def create_delta(self, deltaLength: float,  # length of the mesh
                      radius: float, *args):  # radius
         err_msg = 'additional parameters are useless.  '
         assert not args, err_msg
         return super().create_delta(deltaLength, radius, radius)
-
+    
     def create_half_delta(self, ds: float,  # length of the mesh
                           a: float, *args):
         err_msg = 'additional parameters are useless.  '
         assert not args, err_msg
         return super().create_half_delta(ds, a, a)
-
+    
     def normal(self):
         self._normal = np.zeros((self._nodes.shape[0],
                                  2))  # {Sin[a] Sin[b], -Cos[a] Sin[b], Cos[b]} = {n1, n2, n3} is the normal vector
@@ -1186,14 +1195,14 @@ class tunnel_geo(ThickLine_base_geo):
         self._cover_strat_list = []
         self._cover_end_list = []
         self._type = 'tunnel_geo'  # geo type
-
+    
     def create_n(self, n: int,  # number of nodes.
                  length: float,  # length of the tunnel
                  radius: float):  # radius of the tunnel
         deltaLength = np.sqrt(2 * np.pi * radius * length / n)
         self._deltaLength = deltaLength
         deltaTheta = deltaLength / radius
-
+        
         # the geo is symmetrical
         if n % 2:  # if n is odd
             n_half = int((n - 1) / 2)
@@ -1206,12 +1215,12 @@ class tunnel_geo(ThickLine_base_geo):
         self._nodes[:, 1] = radius * np.sin(theta)
         self._nodes[:, 2] = radius * np.cos(theta)
         self.set_dmda()
-
+        
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((n, 2), order='F')
         self._geo_norm = np.array((1, 0, 0))
         return True
-
+    
     def create_deltalength(self, deltaLength: float,  # length of the mesh
                            length: float,  # length of the tunnel
                            radius: float):  # radius of the tunnel
@@ -1221,18 +1230,18 @@ class tunnel_geo(ThickLine_base_geo):
         x, y = np.cos(a) * radius, np.sin(a) * radius
         z = np.linspace(-length / 2, length / 2, num=np.ceil((length / deltaLength)).astype(int))
         n_a, n_z = a.size, z.size
-
+        
         self._nodes = np.zeros((n_a * n_z, 3), order='F')
         self._nodes[:, 0] = np.tile(z, n_a).reshape(n_a, -1).flatten(order='F')
         self._nodes[:, 1] = np.tile(x, (n_z, 1)).reshape(-1, 1).flatten(order='F')
         self._nodes[:, 2] = np.tile(y, (n_z, 1)).reshape(-1, 1).flatten(order='F')
         self.set_dmda()
-
+        
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
         self._geo_norm = np.array((0, 0, 1))
         return True
-
+    
     def create_deltatheta(self, dth: float,  # delta theta of the cycle for the mesh
                           radius: float,
                           length: float,
@@ -1245,7 +1254,7 @@ class tunnel_geo(ThickLine_base_geo):
         self._left_hand = left_hand
         self._geo_norm = np.array((0, 0, 1))
         return self._create_deltatheta(dth, radius, epsilon, with_cover)
-
+    
     def _get_axis(self):
         length = self._length
         factor = self._factor
@@ -1264,7 +1273,7 @@ class tunnel_geo(ThickLine_base_geo):
             B_frame = np.vstack((np.ones(nl), np.zeros(nl), np.zeros(nl))).T  # (1, 0, 0)
         self._frenetFrame = (T_frame, N_frame, B_frame)
         return self._axisNodes, self._frenetFrame[0], self._frenetFrame[1], self._frenetFrame[2]
-
+    
     def _get_fgeo_axis(self, epsilon):
         length = self._length
         factor = self._factor
@@ -1273,33 +1282,33 @@ class tunnel_geo(ThickLine_base_geo):
         z = self._factor_fun(nl, factor) * (length - ds * 2) - length / 2 + ds
         axisNodes = np.vstack((np.zeros_like(z), np.zeros_like(z), z)).T
         return axisNodes, self._frenetFrame[0], self._frenetFrame[1], self._frenetFrame[2]
-
+    
     def _strat_pretreatment(self, nodes, **kwargs):
         def cart2pol(x, y):
             rho = np.sqrt(x ** 2 + y ** 2)
             phi = np.arctan2(y, x)
             return rho, phi
-
+        
         r, ai = cart2pol(nodes[:, 0], nodes[:, 1])
         self._cover_strat_list.append((np.mean(r), ai, np.mean(nodes[:, 2])))
         return True
-
+    
     def _end_pretreatment(self, nodes, **kwargs):
         def cart2pol(x, y):
             rho = np.sqrt(x ** 2 + y ** 2)
             phi = np.arctan2(y, x)
             return (rho, phi)
-
+        
         r, ai = cart2pol(nodes[:, 0], nodes[:, 1])
         self._cover_end_list.append((np.mean(r), ai, np.mean(nodes[:, 2])))
         return True
-
+    
     def get_cover_start_list(self):
         return self._cover_strat_list
-
+    
     def get_cover_end_list(self):
         return self._cover_end_list
-
+    
     def normal(self):
         self._normal = np.zeros((self._nodes.shape[0],
                                  2))  # {Sin[a] Sin[b], -Cos[a] Sin[b], Cos[b]} = {n1, n2, n3} is the normal vector
@@ -1309,18 +1318,18 @@ class tunnel_geo(ThickLine_base_geo):
         self._normal[:, 1] = np.arccos(normal_vector[:, 2])  # b
         self._normal[:, 0] = 0  # a
         return True
-
+    
     def node_zoom_radius(self, factor):
         def cart2pol(x, y):
             rho = np.sqrt(x ** 2 + y ** 2)
             phi = np.arctan2(y, x)
             return rho, phi
-
+        
         def pol2cart(rho, phi):
             x = rho * np.cos(phi)
             y = rho * np.sin(phi)
             return x, y
-
+        
         # zooming geo along radius of tunnel, keep longitude axis.
         # 1. copy
         temp_geo = base_geo()
@@ -1344,7 +1353,7 @@ class tunnel_geo(ThickLine_base_geo):
         temp_nodes[:, 0] = (temp_nodes[:, 0] - (X1 + X2) / 2) * factor + (X1 + X2) / 2
         temp_nodes[:, 1], temp_nodes[:, 2] = pol2cart(temp_R, temp_phi)
         temp_geo.set_nodes(temp_nodes, self.get_deltaLength())
-
+        
         # 4. rotation back
         if doRotation:
             temp_geo.node_rotation(rotation_norm, -temp_theta)
@@ -1357,7 +1366,7 @@ class tunnel_geo(ThickLine_base_geo):
 class _revolve_geo(base_geo):
     def __init__(self):
         super().__init__()
-
+    
     def create_full_geo(self, n_c):
         # rotate alone z axis
         def rot_nodes(nodes):
@@ -1369,7 +1378,7 @@ class _revolve_geo(base_geo):
             z = np.outer(z, np.ones_like(theta)).flatten()
             nodes = np.vstack((x, y, z)).T
             return nodes
-
+        
         self.set_nodes(rot_nodes(self.get_nodes()), self.get_deltaLength(), resetVelocity=True)
         return True
 
@@ -1380,7 +1389,7 @@ class revolve_ellipse(_revolve_geo):
         self._length = 0
         self._radius = 0
         self._type = 'revolve_ellipse'
-
+    
     def create_deltaz(self, ds: float,  # length of the mesh
                       a: float,  # axis1 = 2*a
                       b: float):  # axis2 = 2*b
@@ -1389,13 +1398,13 @@ class revolve_ellipse(_revolve_geo):
         err_msg = 'both major and minor axises should positive. '
         assert a > 0 and b > 0, err_msg
         self._deltaLength = ds
-
+        
         n_2 = np.ceil(a / 2 / ds).astype(int)
         dz = a / n_2
         z0 = np.linspace(a - dz / 2, dz / 2, n_2)
         z1 = np.hstack([z0, np.flipud(z0) * -1])
         x1 = np.sqrt(b ** 2 * (1 - (z1 / a) ** 2))
-
+        
         # generate nodes.
         self._nodes = np.zeros((x1.size, 3), order='F')
         self._nodes[:, 0] = x1.flatten(order='F')
@@ -1404,7 +1413,7 @@ class revolve_ellipse(_revolve_geo):
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
         self._geo_norm = np.array((0, 0, 1))
-
+        
         # associated force geo
         move_delta = dz * epsilon1
         z0 = z0 - move_delta
@@ -1415,7 +1424,7 @@ class revolve_ellipse(_revolve_geo):
         fnodes = np.vstack((x1, np.zeros_like(x1), z1)).T
         f_geo.set_nodes(fnodes, 1)
         return f_geo
-
+    
     def create_half_deltaz(self, ds: float,  # length of the mesh
                            a: float,  # axis1 = 2*a
                            b: float):  # axis2 = 2*b
@@ -1424,12 +1433,12 @@ class revolve_ellipse(_revolve_geo):
         err_msg = 'both major and minor axises should positive. '
         assert a > 0 and b > 0, err_msg
         self._deltaLength = ds
-
+        
         n_2 = np.ceil(a / 2 / ds).astype(int)
         dz = a / n_2
         z1 = np.linspace(a - dz / 2, dz / 2, n_2)
         x1 = np.sqrt(b ** 2 * (1 - (z1 / a) ** 2))
-
+        
         # generate nodes.
         self._nodes = np.zeros((x1.size, 3), order='F')
         self._nodes[:, 0] = x1.flatten(order='F')
@@ -1438,7 +1447,7 @@ class revolve_ellipse(_revolve_geo):
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
         self._geo_norm = np.array((0, 0, 1))
-
+        
         # associated force geo
         move_delta = dz * epsilon1
         z1 = z1 - move_delta
@@ -1448,7 +1457,7 @@ class revolve_ellipse(_revolve_geo):
         fnodes = np.vstack((x1, np.zeros_like(x1), z1)).T
         f_geo.set_nodes(fnodes, 1)
         return f_geo
-
+    
     def create_delta(self, ds: float,  # length of the mesh
                      a: float,  # axis1 = 2*a
                      b: float,  # axis2 = 2*b
@@ -1456,16 +1465,16 @@ class revolve_ellipse(_revolve_geo):
         err_msg = 'both major and minor axises should positive. '
         assert a > 0 and b > 0, err_msg
         self._deltaLength = ds
-
+        
         # fit arc length as function F of theta using 2-degree pylonomial
         from scipy.special import ellipeinc
         from scipy.optimize import curve_fit
         func = lambda theta, a, b: a * theta ** 2 + b * theta
-
+        
         theta = np.linspace(0, np.pi / 2, 100)
         arcl = b * ellipeinc(theta, 1 - (a / b) ** 2)
         popt, _ = curve_fit(func, theta, arcl)
-
+        
         # divided arc length equally, and get theta using F^-1.
         n = np.ceil(arcl[-1] / ds).astype(int)
         t_arcl = np.linspace(0, arcl[-1], n, endpoint=False) + ds / 2
@@ -1482,13 +1491,13 @@ class revolve_ellipse(_revolve_geo):
         t_theta = np.hstack((t_theta0, np.pi / 2, np.pi - t_theta0[::-1]))
         t_x = a * np.cos(t_theta)
         t_y = b * np.sin(t_theta)
-
+        
         self._nodes = np.vstack((t_y, np.zeros_like(t_y), np.hstack(t_x))).T
         self.set_dmda()
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
         self._geo_norm = np.array((0, 0, 1))
-
+        
         # force geo
         tfct = (a + epsilon * ds) / a
         t_x = a * tfct * np.cos(t_theta)
@@ -1497,7 +1506,7 @@ class revolve_ellipse(_revolve_geo):
         f_geo = self.copy()
         f_geo.set_nodes(fnodes, 1)
         return f_geo
-
+    
     def create_half_delta(self, ds: float,  # length of the mesh
                           a: float,  # axis1 = 2*a
                           b: float,  # axis2 = 2*b
@@ -1505,16 +1514,16 @@ class revolve_ellipse(_revolve_geo):
         err_msg = 'both major and minor axises should positive. '
         assert a > 0 and b > 0, err_msg
         self._deltaLength = ds
-
+        
         # fit arc length as function F of theta using 2-degree pylonomial
         from scipy.special import ellipeinc
         from scipy.optimize import curve_fit
         func = lambda theta, a, b: a * theta ** 2 + b * theta
-
+        
         theta = np.linspace(0, np.pi / 2, 100)
         arcl = b * ellipeinc(theta, 1 - (a / b) ** 2)
         popt, _ = curve_fit(func, theta, arcl)
-
+        
         # divided arc length equally, and get theta using F^-1.
         n = np.ceil(arcl[-1] / ds).astype(int)
         t_arcl = np.linspace(0, arcl[-1], n, endpoint=False) + ds / 2
@@ -1530,13 +1539,13 @@ class revolve_ellipse(_revolve_geo):
         t_theta0 = t_theta1 * b_theta1 + t_theta2 * b_theta2
         t_x = a * np.cos(t_theta0)
         t_y = b * np.sin(t_theta0)
-
+        
         self._nodes = np.vstack((t_y, np.zeros_like(t_y), np.hstack(t_x))).T
         self.set_dmda()
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
         self._geo_norm = np.array((0, 0, 1))
-
+        
         # force geo
         tfct = (a + epsilon * ds) / a
         t_x = a * tfct * np.cos(t_theta0)
@@ -1553,7 +1562,7 @@ class revolve_pipe(_revolve_geo):
         self._length = 0
         self._radius = 0
         self._type = 'revolve_pipe'
-
+    
     def create_deltaz(self, ds: float,  # length of the mesh
                       length: float,  # length of the tunnel
                       radius: float):  # radius of the tunnel
@@ -1583,11 +1592,11 @@ class revolve_pipe(_revolve_geo):
         self._nodes[:, 1] = np.zeros_like(x).flatten(order='F')
         self._nodes[:, 2] = z.flatten(order='F')
         self.set_dmda()
-
+        
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
         self._geo_norm = np.array((0, 0, 1))
-
+        
         # associated force geo
         f_geo = self.copy()
         epsilon_x = epsilon_x / cover_fct
@@ -1606,7 +1615,7 @@ class revolve_pipe(_revolve_geo):
         fnodes = np.vstack((x, np.zeros_like(x), z)).T
         f_geo.set_nodes(fnodes, 1)
         return f_geo
-
+    
     def create_half_deltaz(self, ds: float,  # length of the mesh
                            length: float,  # length of the tunnel
                            radius: float):  # radius of the tunnel
@@ -1630,11 +1639,11 @@ class revolve_pipe(_revolve_geo):
         self._nodes[:, 1] = np.zeros_like(xi).flatten(order='F')
         self._nodes[:, 2] = zi.flatten(order='F')
         self.set_dmda()
-
+        
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
         self._geo_norm = np.array((0, 0, 1))
-
+        
         # associated force geo
         f_geo = self.copy()
         epsilon_x = epsilon_x / cover_fct
@@ -1650,7 +1659,7 @@ class revolve_pipe(_revolve_geo):
         fnodes = np.vstack((xi, np.zeros_like(xi), zi)).T
         f_geo.set_nodes(fnodes, 1)
         return f_geo
-
+    
     def create_half_deltaz_v2(self, ds: float,  # length of the mesh
                               length: float,  # length of the tunnel
                               radius: float):  # radius of the tunnel
@@ -1682,11 +1691,11 @@ class revolve_pipe(_revolve_geo):
         self._nodes[:, 1] = np.zeros_like(xi).flatten(order='F')
         self._nodes[:, 2] = zi.flatten(order='F')
         self.set_dmda()
-
+        
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
         self._geo_norm = np.array((0, 0, 1))
-
+        
         # associated force geo
         f_geo = self.copy()
         epsilon_x = epsilon_x / cover_fct
@@ -1704,7 +1713,7 @@ class revolve_pipe(_revolve_geo):
         fnodes = np.vstack((xi, np.zeros_like(xi), zi)).T
         f_geo.set_nodes(fnodes, 1)
         return f_geo
-
+    
     def create_half_deltaz_v3(self, ds: float,  # length of the mesh
                               length: float,  # length of the tunnel
                               radius: float):  # radius of the tunnel
@@ -1736,11 +1745,11 @@ class revolve_pipe(_revolve_geo):
         self._nodes[:, 1] = np.zeros_like(xi).flatten(order='F')
         self._nodes[:, 2] = zi.flatten(order='F')
         self.set_dmda()
-
+        
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((self._nodes.shape[0], 2), order='F')
         self._geo_norm = np.array((0, 0, 1))
-
+        
         # associated force geo
         f_geo = self.copy()
         epsilon_x = epsilon_x / cover_fct
@@ -1765,7 +1774,7 @@ class pipe_cover_geo(tunnel_geo):
         super().__init__()
         self._cover_node_list = uniqueList()
         self._type = 'pipe_cover_geo'  # geo type
-
+    
     def create_with_cover(self, deltaLength: float,  # length of the mesh
                           length: float,  # length of the tunnel
                           radius: float,  # radius of the tunnel
@@ -1787,10 +1796,10 @@ class pipe_cover_geo(tunnel_geo):
         nodes_z = nodes_z.flatten()
         nodes_x = np.cos(a) * radius
         nodes_y = np.sin(a) * radius
-
+        
         iscover = np.ones_like(nodes_z, dtype=bool)
         iscover[:] = False
-
+        
         # cover
         nc = np.ceil((radius - deltaLength) / deltaLength).astype(int) + 1
         ri = np.linspace(radius, deltaLength / 2, nc)[1:]
@@ -1800,7 +1809,7 @@ class pipe_cover_geo(tunnel_geo):
             ai = np.linspace(0, 2 * np.pi, ni, endpoint=False)
             t_cover = np.ones_like(ai, dtype=bool)
             t_cover[:] = True
-
+            
             # cover z>0
             nodes_z = np.hstack((length / 2 * np.ones(ai.shape), nodes_z))
             nodes_x = np.hstack((np.cos(ai) * ri[i0], nodes_x))
@@ -1813,7 +1822,7 @@ class pipe_cover_geo(tunnel_geo):
             nodes_x = np.hstack((nodes_x, np.cos(ai) * ri[i0]))
             nodes_y = np.hstack((nodes_y, np.sin(ai) * ri[i0]))
             iscover = np.hstack((iscover, t_cover))
-
+        
         self._nodes = np.zeros((nodes_z.size, 3), order='F')
         self._nodes[:, 0] = nodes_x
         self._nodes[:, 1] = nodes_y
@@ -1825,7 +1834,7 @@ class pipe_cover_geo(tunnel_geo):
         self._geo_norm = np.array((1, 0, 0))
         self._cover_node_list = cover_node_list
         return True
-
+    
     def get_cover_node_list(self):
         return self._cover_node_list
 
@@ -1863,7 +1872,7 @@ class supHelix(ThickLine_base_geo):
             (B * (B ** 2 + R ** 2) ** (-1 / 2) * np.cos((B ** 2 + R ** 2) ** (-1 / 2) * s),
              (-1) * B * (B ** 2 + R ** 2) ** (-1 / 2) * np.sin((B ** 2 + R ** 2) ** (-1 / 2) * s),
              (-1) * R * (B ** 2 + R ** 2) ** (-1 / 2) * np.ones_like(s))).T
-
+    
     def dbg_frame(self, R, B, s):
         print(self._helix_right_hand(R, B, s))
         print(self._T_frame_right_hand(R, B, s))
@@ -1877,7 +1886,7 @@ class supHelix(ThickLine_base_geo):
         print('N[T0[%f,%f,%f]]' % (R, B, s))
         print('N[N0[%f,%f,%f]]' % (R, B, s))
         print('N[B0[%f,%f,%f]]' % (R, B, s))
-
+    
     def __init__(self):
         super().__init__()
         self._R = 0  # major radius of helix
@@ -1885,10 +1894,10 @@ class supHelix(ThickLine_base_geo):
         self._B = 0  # B = pitch / (2 * np.pi)
         self._n_c = 0  # number of period
         self._type = 'supHelix'  # geo type
-
+    
     def supHelixLength(self, R, B, r, b, s):
         import scipy.integrate as integrate
-
+        
         A = R
         a = r
         dr = lambda s: 2 ** (-1 / 2) * ((a ** 2 + b ** 2) ** (-1) * (A ** 2 + B ** 2) ** (-2) * (
@@ -1899,7 +1908,7 @@ class supHelix(ThickLine_base_geo):
         t_ans = integrate.quad(dr, 0, s, limit=100)
         PETSc.Sys.Print(t_ans[1])
         return t_ans[0]
-
+    
     def create_n(self, R, B, r, n_node, n_c=1, eh=1):
         assert 1 == 2, 'The method DO NOT finished!!!'
         sH1 = lambda s: (R ** 2 + B ** 2) ** (-1 / 2) * (
@@ -1932,7 +1941,7 @@ class supHelix(ThickLine_base_geo):
         sHf3 = lambda s: ((r ** 2 + b ** 2) * (R ** 2 + B ** 2)) ** (-1 / 2) * (
                 b * B * s + R * af * (r ** 2 + b ** 2) ** (1 / 2) * sin(
                 (r ** 2 + b ** 2) ** (-1 / 2) * s))
-
+        
         from scipy import optimize as sop
         b = 2 ** (-1 / 2) * (n_node ** (-2) * n_c * (
                 B ** 2 * n_c + n_c * R ** 2 + (B ** 2 + R ** 2) ** (1 / 2) * (
@@ -1946,7 +1955,7 @@ class supHelix(ThickLine_base_geo):
         self._u = np.zeros(self._nodes.size)
         self._normal = np.zeros((n_node, 2), order='F')
         self.set_deltaLength(2 * np.pi * b)
-
+        
         af = r - 2 * np.pi * b * eh
         err_msg = 'epsilon of helix eh is too big, cause minor radius of force geo < 0. '
         assert r > 0, err_msg
@@ -1954,7 +1963,7 @@ class supHelix(ThickLine_base_geo):
         fgeo.set_nodes(np.vstack((sHf1(si), sHf2(si), sHf3(si) - B * 2 * np.pi * n_c / 2,)).T,
                        deltalength=2 * np.pi * b, resetVelocity=True)
         return fgeo
-
+    
     def create_deltatheta(self, dth: float,  # delta theta of the cycle for the mesh
                           radius: float,
                           R, B, n_c,
@@ -1970,7 +1979,7 @@ class supHelix(ThickLine_base_geo):
         self._factor = factor
         self._left_hand = left_hand
         return self._create_deltatheta(dth, radius, epsilon, with_cover)
-
+    
     def _get_axis(self):
         R = self._R
         B = self._B
@@ -1992,7 +2001,7 @@ class supHelix(ThickLine_base_geo):
                                  self._B_frame_right_hand(R, B, s))
             self._axisNodes = self._helix_right_hand(R, B, s)
         return self._axisNodes, self._frenetFrame[0], self._frenetFrame[1], self._frenetFrame[2]
-
+    
     def _get_fgeo_axis(self, epsilon):
         R = self._R
         B = self._B
@@ -2089,7 +2098,7 @@ class FatHelix(ThickLine_base_geo):
              -((np.sqrt(2) * R1 * R2) /
                np.sqrt(2 * R1 ** 2 * R2 ** 2 + B ** 2 * (R1 ** 2 + R2 ** 2) + B ** 2 * (R1 - R2) * (
                        R1 + R2) * np.cos(2 * s))))).T
-
+    
     def dbg_frame_right_hand(self, R1, R2, B, s):
         print(self.helix_right_hand(R1, R2, B, s))
         print(self.T_frame_right_hand(R1, R2, B, s))
@@ -2103,7 +2112,7 @@ class FatHelix(ThickLine_base_geo):
         print('N[T0[%f,%f,%f,%f]]' % (R1, R2, B, s))
         print('N[N0[%f,%f,%f,%f]]' % (R1, R2, B, s))
         print('N[B0[%f,%f,%f,%f]]' % (R1, R2, B, s))
-
+    
     def dbg_frame_left_hand(self, R1, R2, B, s):
         print(self.helix_left_hand(R1, R2, B, s))
         print(self.T_frame_left_hand(R1, R2, B, s))
@@ -2113,7 +2122,7 @@ class FatHelix(ThickLine_base_geo):
         print('N[T0[%f,%f,%f,%f]]' % (R1, R2, B, s))
         print('N[N0[%f,%f,%f,%f]]' % (R1, R2, B, s))
         print('N[B0[%f,%f,%f,%f]]' % (R1, R2, B, s))
-
+    
     def __init__(self):
         super().__init__()
         self._R1 = 0  # 1th major radius of helix
@@ -2123,43 +2132,43 @@ class FatHelix(ThickLine_base_geo):
         self._B = 0  # B = pitch / (2 * np.pi)
         self._n_c = 0  # number of period
         self._type = 'FatHelix'  # geo type
-
+    
     @property
     def rt11(self):
         return self._R1
-
+    
     @property
     def rt12(self):
         return self._R2
-
+    
     @property
     def rt2(self):
         return self._rho
-
+    
     @property
     def R1(self):
         return self._R1
-
+    
     @property
     def R2(self):
         return self._R2
-
+    
     @property
     def rho(self):
         return self._rho
-
+    
     @property
     def ph(self):
         return self._ph
-
+    
     @property
     def B(self):
         return self._B
-
+    
     @property
     def ch(self):
         return self._n_c
-
+    
     def create_deltatheta(self, dth: float, radius: float, R1, R2, B, n_c,
                           epsilon=0, with_cover=False, factor=1, left_hand=False):
         # definition of parameters see self.__init__()
@@ -2167,7 +2176,7 @@ class FatHelix(ThickLine_base_geo):
         # assert not left_hand, err_msg
         err_msg = 'R1 must >= R2'
         assert R1 >= R2, err_msg
-
+        
         self._R1 = R1
         self._R2 = R2
         self._rho = radius
@@ -2177,7 +2186,7 @@ class FatHelix(ThickLine_base_geo):
         self._factor = factor
         self._left_hand = left_hand
         return self._create_deltatheta(dth, radius, epsilon, with_cover)
-
+    
     def _get_axis(self):
         R1 = self._R1
         R2 = self._R2
@@ -2204,7 +2213,7 @@ class FatHelix(ThickLine_base_geo):
                                  self.B_frame_right_hand(R1, R2, B, s))
             self._axisNodes = self.helix_right_hand(R1, R2, B, s)
         return self._axisNodes, self._frenetFrame[0], self._frenetFrame[1], self._frenetFrame[2]
-
+    
     # def
     def _get_fgeo_axis(self, epsilon):
         R1 = self._R1
@@ -2239,15 +2248,15 @@ class SelfRepeat_body_geo(base_geo):
         super().__init__()
         self._repeat_n = repeat_n
         self._ph = ph
-
+    
     @property
     def ph(self):
         return self._ph
-
+    
     @property
     def repeat_n(self):
         return self._repeat_n
-
+    
     def get_bodyi_nodes(self, repeat_i):
         repeat_n = self._repeat_n
         ph = self._ph
@@ -2266,7 +2275,7 @@ class SelfRepeat_FatHelix(FatHelix):
         # self._start_dmda = None  # the start part
         # self._body0_dmda = None  # the middle part
         # self._end_dmda = None  # the end part
-
+    
     # def set_dmda(self):
     #     def _process_dmda(t_dmda, sizes):
     #         if t_dmda is not None:
@@ -2316,7 +2325,7 @@ class SelfRepeat_FatHelix(FatHelix):
     #
     # def get_end_dmda(self):
     #     return self._end_dmda
-
+    
     def create_deltatheta(self, dth: float, radius: float, R1, R2, B, n_c,
                           epsilon=0, with_cover=False, factor=1, left_hand=False):
         err_msg = 'the helix needs at least 1 period for the repeat case. '
@@ -2326,21 +2335,21 @@ class SelfRepeat_FatHelix(FatHelix):
         return super().create_deltatheta(dth, radius, R1, R2, B, n_c,
                                          epsilon, with_cover, factor,
                                          left_hand)
-
+    
     def get_n_start_node(self):
         return self.get_start_nodes().shape[0]
-
+    
     def get_n_body0_node(self):
         return self.get_body0_nodes().shape[0]
-
+    
     def get_n_end_node(self):
         return self.get_end_nodes().shape[0]
-
+    
     def get_start_idx(self):
         ph = self._ph
         center = self.get_center()
         geo_norm = self.get_geo_norm()
-
+        
         idx_start = []
         idx_start.append(self.cover_strat_idx)
         tdst = np.einsum('i,...i', geo_norm, self.axisNodes - center) / np.linalg.norm(geo_norm)
@@ -2349,7 +2358,7 @@ class SelfRepeat_FatHelix(FatHelix):
             idx_start.append(i0)
         idx_start = np.hstack(idx_start).astype('int')
         return idx_start
-
+    
     def get_start_nodes(self):
         repeat_n = self._repeat_n
         ph = self._ph
@@ -2359,17 +2368,17 @@ class SelfRepeat_FatHelix(FatHelix):
         tmove = -1 * (repeat_n - 1) * ph * geo_norm / 2
         nodes_start = nodes_start + tmove
         return nodes_start
-
+    
     def get_start_velocity(self):
         idx_start = self.get_start_idx()
         t1 = self.get_velocity().reshape((-1, self.get_dof()))[idx_start]
         return t1
-
+    
     def get_end_idx(self):
         ph = self._ph
         center = self.get_center()
         geo_norm = self.get_geo_norm()
-
+        
         idx_end = []
         tdst = np.einsum('i,...i', geo_norm, self.axisNodes - center) / np.linalg.norm(geo_norm)
         t2 = tdst > 0.5 * ph  # another end part
@@ -2378,7 +2387,7 @@ class SelfRepeat_FatHelix(FatHelix):
         idx_end.append(self.cover_end_idx)
         idx_end = np.hstack(idx_end).astype('int')
         return idx_end
-
+    
     def get_end_nodes(self):
         repeat_n = self._repeat_n
         ph = self._ph
@@ -2388,17 +2397,17 @@ class SelfRepeat_FatHelix(FatHelix):
         tmove = (repeat_n - 1) * ph * geo_norm / 2
         nodes_end = nodes_end + tmove
         return nodes_end
-
+    
     def get_end_velocity(self):
         idx_end = self.get_end_idx()
         t1 = self.get_velocity().reshape((-1, self.get_dof()))[idx_end]
         return t1
-
+    
     def get_body0_idx(self):
         ph = self._ph
         center = self.get_center()
         geo_norm = self.get_geo_norm()
-
+        
         idx_body0 = []
         tdst = np.einsum('i,...i', geo_norm, self.axisNodes - center) / np.linalg.norm(geo_norm)
         t1 = tdst < -0.5 * ph  # one end part
@@ -2408,7 +2417,7 @@ class SelfRepeat_FatHelix(FatHelix):
             idx_body0.append(i0)
         idx_body0 = np.hstack(idx_body0).astype('int')
         return idx_body0
-
+    
     def get_bodyi_nodes(self, repeat_i):
         repeat_n = self._repeat_n
         ph = self._ph
@@ -2418,35 +2427,35 @@ class SelfRepeat_FatHelix(FatHelix):
         tmove = (repeat_i - (repeat_n - 1) / 2) * ph * geo_norm
         nodes_bodyi = nodes_body + tmove
         return nodes_bodyi
-
+    
     def get_body0_nodes(self):
         return self.get_bodyi_nodes(0)
-
+    
     def get_body0_velocity(self):
         idx_body0 = self.get_body0_idx()
         t1 = self.get_velocity().reshape((-1, self.get_dof()))[idx_body0]
         return t1
-
+    
     def get_all_nodes_list(self):
         repeat_n = self._repeat_n
         nodes_start = self.get_start_nodes()
         nodes_end = self.get_end_nodes()
-
+        
         # idx_body
         nodes_body_repeat_list = []
         for i0 in range(repeat_n):
             nodes_bodyi = self.get_bodyi_nodes(i0)
             nodes_body_repeat_list.append(nodes_bodyi)
-
+        
         return nodes_start, np.vstack(nodes_body_repeat_list), nodes_end
-
+    
     def get_all_nodes(self):
         return np.vstack(self.get_all_nodes_list())
-
+    
     @property
     def repeat_n(self):
         return self._repeat_n
-
+    
     def show_all_nodes(self, linestyle='-'):
         nodes_start, nodes_body_repeat, nodes_end = self.get_all_nodes_list()
         tnodes = np.vstack((nodes_start, nodes_body_repeat, nodes_end))
@@ -2459,7 +2468,7 @@ class SelfRepeat_FatHelix(FatHelix):
         axi.plot(*cut_slice1.T, linestyle=linestyle, color='r')
         axi.plot(*cut_slice2.T, linestyle=linestyle, color='r')
         return True
-
+    
     def get_start_geo(self):
         # ph = self._ph
         # center = self.get_center()
@@ -2478,7 +2487,7 @@ class SelfRepeat_FatHelix(FatHelix):
         # tcover_end_idx = []
         # tiscover = self.get_iscover()[tidx]
         # tnormal = self.get_normal()[tidx]
-
+        
         tgeo = base_geo()
         tnodes = np.asfortranarray(self.get_start_nodes())
         tu = self.get_start_velocity()
@@ -2490,7 +2499,7 @@ class SelfRepeat_FatHelix(FatHelix):
         tgeo.set_dof(self.get_dof())
         tgeo.set_normal(self.get_normal()[tidx])
         return tgeo
-
+    
     def get_body0_geo(self):
         tgeo = SelfRepeat_body_geo(self.repeat_n, self.ph)
         tnodes = np.asfortranarray(self.get_body0_nodes())
@@ -2503,7 +2512,7 @@ class SelfRepeat_FatHelix(FatHelix):
         tgeo.set_dof(self.get_dof())
         tgeo.set_normal(self.get_normal()[tidx])
         return tgeo
-
+    
     def get_body_mid_geo(self):
         tgeo = SelfRepeat_body_geo(self.repeat_n, self.ph)
         t1 = (self.repeat_n - 1) / 2
@@ -2517,7 +2526,7 @@ class SelfRepeat_FatHelix(FatHelix):
         tgeo.set_dof(self.get_dof())
         tgeo.set_normal(self.get_normal()[tidx])
         return tgeo
-
+    
     def get_end_geo(self):
         tgeo = base_geo()
         tnodes = np.asfortranarray(self.get_end_nodes())
@@ -2540,7 +2549,7 @@ class MirrorSym_FatHelix(FatHelix):
         tdst = np.einsum('i,...i', geo_norm, tnodes - center) / np.linalg.norm(geo_norm)
         t2 = tdst > 0  # upper half part
         idx_half = [i0 for i0 in compress(self.body_idx_list, t2)]
-
+        
         tgeo = base_geo()
         tgeo.set_nodes(tnodes[idx_half], self.get_deltaLength(), resetVelocity=False)
         tgeo.set_velocity(self.get_velocity()[idx_half])
@@ -2555,7 +2564,7 @@ class lineOnFatHelix(FatHelix):
     def __init__(self):
         super().__init__()
         self._type = 'lineOnFatHelix'  # geo type
-
+    
     def _create_deltatheta(self, dth: float,  # delta theta of the cycle for the mesh
                            radius: float,  # radius of the cycle
                            epsilon=0, with_cover=0, theta0=0):
@@ -2575,7 +2584,7 @@ class lineOnFatHelix(FatHelix):
         if self.get_check_epsilon():
             err_msg = 'epsilon > %f. ' % (-radius / deltalength)
             assert epsilon > 0, err_msg
-
+        
         # cover at start
         if with_cover == 1:
             # old version, cover is a plate.
@@ -2615,7 +2624,7 @@ class lineOnFatHelix(FatHelix):
             fgeo_nodes.append(np.flipud(tf_nodes))
             self._strat_pretreatment(t_nodes)
             iscover.append(np.ones(vhsgeo.get_n_nodes(), dtype=bool))
-
+        
         # body
         for i0, nodei_line in enumerate(axisNodes):
             ai = angleCycle + theta0
@@ -2634,7 +2643,7 @@ class lineOnFatHelix(FatHelix):
                     (fgeo_N_frame[i0], fgeo_B_frame[i0], np.zeros_like(fgeo_T_frame[i0]))))
             fgeo_nodes.append(tf_nodes)
             self._body_pretreatment(t_nodes)
-
+        
         # cover at end
         if with_cover == 1:
             assert 1 == 2
@@ -2672,7 +2681,7 @@ class lineOnFatHelix(FatHelix):
             fgeo_nodes.append(tf_nodes)
             self._end_pretreatment(t_nodes)
             iscover.append(np.ones(vhsgeo.get_n_nodes(), dtype=bool))
-
+        
         self._iscover = np.hstack(iscover)
         self._nodes = np.asfortranarray(np.vstack(vgeo_nodes))
         self.set_dmda()
@@ -2683,7 +2692,7 @@ class lineOnFatHelix(FatHelix):
         fgeo.set_nodes(np.asfortranarray(np.vstack(fgeo_nodes)), deltalength=deltalength * epsilon,
                        resetVelocity=True)
         return fgeo
-
+    
     def create_deltatheta(self, dth: float, radius: float, R1, R2, B, n_c, epsilon=0,
                           with_cover=False, factor=1, left_hand=False, theta0=0):
         # definition of parameters see self.__init__()
@@ -2691,7 +2700,7 @@ class lineOnFatHelix(FatHelix):
         # assert not left_hand, err_msg
         err_msg = 'R1 must >= R2'
         assert R1 >= R2, err_msg
-
+        
         self._R1 = R1
         self._R2 = R2
         self._rho = radius
@@ -2903,19 +2912,19 @@ class slb_geo(base_geo):
         tq1 = spR.from_matrix(np.eye(3)).as_quat()
         self._orintation = Quaternion()
         self._orintation.set_wxyz(tq1[3], tq1[0], tq1[1], tq1[2])
-
+    
     @property
     def rt2(self):
         return self._rt2
-
+    
     @property
     def s_list(self):
         return self._s_list
-
+    
     @property
     def orintation(self):
         return self._orintation
-
+    
     # xc = xc(s), the center line function of slender body.
     def xc_fun(self, s):
         xc = self._base_xc_fun(s)
@@ -2923,53 +2932,53 @@ class slb_geo(base_geo):
         xc = np.dot(rotation, xc.T).T
         xc += self.get_center()
         return xc
-
+    
     @abc.abstractmethod
     def _base_xc_fun(self, s):
         return
-
+    
     @abc.abstractmethod
     # xs = xs(s, theta), the surface function of slender body.
     def xs_fun(self, s, theta):
         return
-
+    
     @abc.abstractmethod
     # tangent
     def t_fun(self, s):
         return
-
+    
     @abc.abstractmethod
     # normal
     def n_fun(self, s):
         return
-
+    
     @abc.abstractmethod
     # binormal
     def b_fun(self, s):
         return
-
+    
     @abc.abstractmethod
     def arclength(self, s):
         return
-
+    
     @abc.abstractmethod
     def rho_r(self, s):
         return
-
+    
     # normal component of force
     def fn_matrix(self, s):
         t = self.t_fun(s)
         tm = np.eye(3) - np.outer(t, t)
         return tm
-
+    
     def r0_fun(self, s1, s2):
         r0 = np.linalg.norm(self.xc_fun(s1) - self.xc_fun(s2), axis=-1)
         return r0
-
+    
     def natu_cut(self, s):
         nc = self.rt2 * self.rho_r(s) * np.sqrt(np.e) / 2
         return nc
-
+    
     # def node_rotation(self, norm=np.array([0, 0, 1]), theta=0, rotation_origin=None):
     #     super().node_rotation(norm=norm, theta=theta, rotation_origin=rotation_origin)
     #     tq2 = spR.from_rotvec(norm * theta).as_quat()
@@ -2977,7 +2986,7 @@ class slb_geo(base_geo):
     #     quat2.set_wxyz(tq2[3], tq2[0], tq2[1], tq2[2])
     #     self._orintation = quat2.mul(self.orintation)
     #     return True
-
+    
     def node_rotM(self, rotM, rotation_origin=None):
         super().node_rotM(rotM, rotation_origin)
         tq2 = spR.from_matrix(rotM).as_quat()
@@ -2995,34 +3004,44 @@ class slb_helix(slb_geo):
         self._ch_min = np.nan
         self._ch_max = np.nan
         self._rt1 = rt1
-        self._arc_length = np.sqrt(ph ** 2 + 4 * np.pi ** 2 * rt1 ** 2)
-        self._s0 = theta0 / (2 * np.pi) * self._arc_length
-        self._hlx_th = np.arctan(2 * np.pi * rt1 / ph)
-
+        self._s0 = theta0 / (2 * np.pi) * self.arc_length
+    
     @property
     def ph(self):
         return self._ph
-
+    
     @property
     def ch(self):
         return self._ch
-
+    
     @property
     def ch_min(self):
         return self._ch_min
-
+    
     @property
     def ch_max(self):
         return self._ch_max
-
+    
     @property
     def rt1(self):
         return self._rt1
-
+    
+    @property
+    def arc_length(self):
+        return np.sqrt(self.ph ** 2 + 4 * np.pi ** 2 * self.rt1 ** 2)
+    
+    @property
+    def s0(self):
+        return self._s0
+    
     @property
     def theta0(self):
         return self._s0 * 2 * np.pi / self.arclength(0)
-
+    
+    @property
+    def hlx_th(self):
+        return np.arctan(2 * np.pi * self.rt1 / self.ph)
+    
     def _base_xc_fun(self, s):
         ph = self.ph
         rt1 = self.rt1
@@ -3032,13 +3051,13 @@ class slb_helix(slb_geo):
                        rt1 * np.sin(theta1),
                        ph * s / self.arclength(0))).T
         return xc
-
+    
     def xs_fun(self, s, theta):
         xc = self.xc_fun(s)
         ep = np.cos(theta) * self.n_fun(s) + np.sin(theta) * self.b_fun(s)
         xs = xc + ep * self.rt2 * self.rho_r(s)
         return xs
-
+    
     def t_fun(self, s):
         ph = self.ph
         rt1 = self.rt1
@@ -3047,9 +3066,9 @@ class slb_helix(slb_geo):
         theta1 = theta + self.theta0
         t = np.array(((-2 * np.pi * rt1 * np.sin(theta1)),
                       (2 * np.pi * rt1 * np.cos(theta1)),
-                      np.ones_like(theta1) * ph)).T / arcl
+                      np.ones_like(theta) * ph)).T / arcl
         return t
-
+    
     def n_fun(self, s):
         ph = self.ph
         rt1 = self.rt1
@@ -3057,22 +3076,22 @@ class slb_helix(slb_geo):
         theta = s * 2 * np.pi / self.arclength(0)
         theta1 = theta + self.theta0
         n = np.array(((ph * np.sin(theta1)),
-                      -((ph * np.cos(theta1))),
-                      np.ones_like(theta1) * (2 * np.pi * rt1))).T / arcl
+                      -(ph * np.cos(theta1)),
+                      np.ones_like(theta) * (2 * np.pi * rt1))).T / arcl
         return n
-
+    
     def b_fun(self, s):
         theta = s * 2 * np.pi / self.arclength(0)
         theta1 = theta + self.theta0
-        b = np.array((-np.cos(theta1), -np.sin(theta1), np.zeros_like(theta1))).T
+        b = np.array((-np.cos(theta1), -np.sin(theta1), np.zeros_like(theta))).T
         return b
-
+    
     def arclength(self, s):
-        return np.ones_like(s) * self._arc_length
-
+        return np.ones_like(s) * self.arc_length
+    
     def rho_r(self, s):
         return np.ones_like(s) * 1
-
+    
     def create_nSegment(self, n=None, check_nth=True):
         ch = self.ch
         ch_min, ch_max = -1 * ch / 2, ch / 2
@@ -3081,14 +3100,14 @@ class slb_helix(slb_geo):
         self._ch_max = ch_max
         ch_mid = (ch_min + ch_max) / 2
         s_mid = ch_mid * self.arclength(0)
-        self._s_list = np.array((ch_min, ch_max)) * self.arclength(s_mid) # just for self.natu_cut, not final result.
+        self._s_list = np.array((ch_min, ch_max)) * self.arclength(s_mid)  # just for self.natu_cut, not final result.
         max_n = np.floor(ch * self.arclength(s_mid) / (self.natu_cut(s_mid) * 2)).astype(int)
         if n is None:
             n = max_n
         if check_nth:
             err_msg = 'nth is too large. nth <= %d' % max_n
             assert n <= max_n, err_msg
-
+        
         dth = 2 * np.pi * (ch_max - ch_min) / n
         ds = dth / (2 * np.pi) * self.arclength(s_mid)
         th_list = np.linspace(2 * np.pi * ch_min, 2 * np.pi * ch_max, n, endpoint=False) + dth / 2
@@ -3115,7 +3134,7 @@ class expJohnson_helix(Johnson_helix):
     def rho_r(self, s):
         xfct, xmove = 10, 0.7
         # xfct, xmove = 30, 0.9
-
+        
         s_list = self.s_list
         ds = self.get_deltaLength()
         l_min = s_list[0] - ds / 2
@@ -3137,7 +3156,7 @@ class sphereEnd_helix(Johnson_helix):
         th_min, th_max = 2 * np.pi * ch_min, 2 * np.pi * ch_max
         l_min = th_min / (2 * np.pi) * self.arclength(0)
         l_max = th_max / (2 * np.pi) * self.arclength(0)
-
+        
         idxa = s > l_max - rt2
         idxb = s < l_min + rt2
         rho_r = np.ones_like(s)
@@ -3153,11 +3172,11 @@ class regularizeDisk(base_geo):
     def __init__(self):
         super().__init__()
         self._type = 'regularizeDisk'  # geo type
-
+    
     def create_ds(self, ds, r):
         tn = np.ceil(r / ds).astype(int)
         r_list = np.linspace(ds / 2, r - ds / 2, tn)
-
+        
         # generate nodes.
         x = []
         y = []
@@ -3184,14 +3203,14 @@ class helicoid(base_geo):
     def __init__(self):
         super().__init__()
         self._type = 'helicoid'  # geo type
-
+    
     def create(self, r1, r2, ds, th_loc=np.pi / 4, ndsk_each=4):
         tgeo = regularizeDisk()
         tgeo.create_ds(ds, r2)
         tgeo.node_rotation(norm=np.array([1, 0, 0]), theta=th_loc)
         tgeo.move(np.array((r1, 0, 0)))
         # tgeo.show_nodes()
-
+        
         tgeo_list = []
         rot_dth = 2 * np.pi / ndsk_each
         for i0 in range(ndsk_each):
@@ -3223,24 +3242,24 @@ class infgeo_1d(base_geo):
         self._type = 'infgeo_1d'  # geo type
         self._phi = ...  # type: np.ndarray # define the coordinates of nodes at the reference cross section.
         self._ph = 0  # the length of the period of the infgeo, assume the system repeat itself at z axis infinitely.
-
+    
     def get_nSegment(self):
         return self._nSegment
-
+    
     def get_max_period(self):
         return self._max_period
-
+    
     def get_phi(self):
         return self._phi
-
+    
     @abc.abstractmethod
     def coord_x123(self, theta):
         return
-
+    
     @abc.abstractmethod
     def Frenetframe(self, theta):
         return
-
+    
     def rot_matrix(self, theta):
         # local -> reference
         # currently, assume the symmetry is along the z axis.
@@ -3250,10 +3269,10 @@ class infgeo_1d(base_geo):
         Rmxt[1][0] = np.sin(theta)
         Rmxt[1][1] = np.cos(theta)
         return Rmxt
-
+    
     def show_segment(self, linestyle='-'):
         return super().show_nodes(linestyle)
-
+    
     def show_nodes(self, linestyle='-'):
         t_nodes = []
         for ni in np.arange(-self.get_max_period(), self.get_max_period()):
@@ -3264,7 +3283,7 @@ class infgeo_1d(base_geo):
         t_geo = base_geo()
         t_geo.set_nodes(t_nodes, deltalength=0)
         return t_geo.show_nodes(linestyle)
-
+    
     def print_info(self):
         super().print_info()
         PETSc.Sys.Print('    %s: # of Segment: %d' % (str(self), self.get_nSegment()))
@@ -3279,7 +3298,7 @@ class infHelix(infgeo_1d):
         self._rho = 0  # minor radius of helix
         self._type = 'infHelix'  # geo type
         self._theta0 = 0  # define the reference location (original rotation) of the helix (for multi helix)
-
+    
     def coord_x123(self, th):
         R = self._R
         rho = self._rho
@@ -3287,7 +3306,7 @@ class infHelix(infgeo_1d):
         phi = self._phi
         th1 = th % (2 * np.pi) + self._theta0
         # th = th + self._theta0
-
+        
         # definition of parameters see __init__()
         # x1, x2, x3, coordinates of helix nodes
         x1 = lambda theta: np.cos(theta) * (R - rho * np.sin(phi)) + (
@@ -3299,7 +3318,7 @@ class infHelix(infgeo_1d):
                 2 * np.pi * R * rho * np.cos(phi)) / np.sqrt(
                 ph ** 2 + 4 * np.pi ** 2 * R ** 2)
         return np.vstack((x1(th1), x2(th1), x3(th))).T
-
+    
     def Frenetframe(self, th):
         th = th % (2 * np.pi) + self._theta0
         ph = self._ph
@@ -3309,7 +3328,7 @@ class infHelix(infgeo_1d):
         N = np.array((ph * np.sin(th) / s, -ph * np.cos(th) / s, lh / s))
         B = np.array((-np.cos(th), -np.sin(th), 0))
         return T, N, B
-
+    
     def create_n(self, R, rho, ph, ch, nth, theta0=0, nSegment=None):
         self._max_period = ch
         if nSegment is None:
@@ -3333,7 +3352,7 @@ class infHelix(infgeo_1d):
         # plt.show()
         # print(self.get_n_nodes())
         return True
-
+    
     def create_fgeo(self, epsilon):
         fgeo = infHelix()
         deltalength = self.get_deltaLength()
@@ -3352,14 +3371,14 @@ class infPipe(infgeo_1d):
         self._R = 0  # radius of pipe
         # self._theta = 0  # the angle between the cut plane and the z axis
         self._type = 'infPipe'  # geo type
-
+    
     def coord_x123(self, th):
         # return coordinates of inf pipe nodes
         xz = th / (2 * np.pi) * self._ph
         R = self._R
         phi = (self._phi + th) % (2 * np.pi)
         return np.vstack((np.cos(phi) * R, np.sin(phi) * R, np.ones_like(phi) * xz)).T
-
+    
     def create_n(self, R, ph, ch, nth, nSegment=None):
         deltaLength = 2 * np.pi * R / nth
         if nSegment is None:
@@ -3375,7 +3394,7 @@ class infPipe(infgeo_1d):
         self._u = np.zeros(self._nodes.size)
         self.set_dmda()
         return True
-
+    
     def create_fgeo(self, epsilon):
         fgeo = infPipe()
         deltalength = self.get_deltaLength()
@@ -3386,11 +3405,80 @@ class infPipe(infgeo_1d):
         return fgeo
 
 
+class sphere_particle_2d(base_geo):
+    def __init__(self):
+        super().__init__()
+        self._sphere_R = np.array([])
+        self._w = np.array([])  # spin of 2d spheres
+        self._phi = np.array([])  # orintation of 2d spheres
+    
+    def set_sphere_R(self, sphere_R):
+        self._sphere_R = sphere_R
+    
+    def get_sphere_R(self):
+        return self._sphere_R
+    
+    def get_n_spin(self):
+        return self._w.size
+    
+    def get_spin(self):
+        return self._w
+    
+    def set_spin(self, w):
+        w = np.array(w)
+        err_msg = 'set nodes first. '
+        assert self._nodes.size != 0, err_msg
+        assert self.get_dof() == 2
+        err_msg = 'w is a numpy array having a similar shape of (num of nodes). '
+        assert w.size == self.get_n_nodes(), err_msg
+        self._w = w.flatten()
+        return True
+    
+    def get_phi(self):
+        return self._phi
+    
+    def set_phi(self, phi):
+        phi = np.array(phi)
+        err_msg = 'set nodes first. '
+        assert self._nodes.size != 0, err_msg
+        assert self.get_dof() == 2
+        err_msg = '/phi is a numpy array having a similar shape of (num of nodes). '
+        assert phi.size == self.get_n_nodes(), err_msg
+        self._phi = phi.flatten()
+        return True
+    
+    def set_dmda(self):
+        if self.get_dmda() is not None:
+            self._dmda.destroy()
+        if not hasattr(self, '_dof'):
+            self._dof = 3
+        err_msg = 'current is 2D version: sphere_particle_2d.set_dof(2)'
+        assert self.get_dof() == 2, err_msg
+        
+        dof = self.get_dof() + 1  # for 2D case, two translation and a rotational velocity.
+        self._dmda = PETSc.DMDA().create(sizes=(self.get_n_nodes(),), dof=dof,
+                                         stencil_width=self._stencil_width, comm=PETSc.COMM_WORLD)
+        self._dmda.setFromOptions()
+        self._dmda.setUp()
+        # self._dmda.createGlobalVector()
+        return True
+    
+    def set_random_velocity(self):
+        self._u = np.random.sample(self._nodes.size)
+        return True
+    
+    def set_zero_velocity(self):
+        self._u = np.zeros(self._nodes.size)
+        return True
+
+
 class region:
     def __init__(self):
-        self.type = {'rectangle': self.rectangle,
-                     'sector':    self.sector}
-
+        self.type = {
+            'rectangle': self.rectangle,
+            'sector':    self.sector
+            }
+    
     def rectangle(self,
                   field_range: np.array,
                   n_grid: np.array):
@@ -3403,7 +3491,7 @@ class region:
         :type: n_grid: np.array
         :param n_grid: number of cells at each direction.
         """
-
+        
         min_range = np.amin(field_range, axis=0)
         max_range = np.amax(field_range, axis=0)
         # noinspection PyUnresolvedReferences
@@ -3414,9 +3502,9 @@ class region:
         full_region_z = np.linspace(min_range[2], max_range[2], n_grid[2])
         [full_region_x, full_region_y, full_region_z] = \
             np.meshgrid(full_region_x, full_region_y, full_region_z, indexing='ij')
-
+        
         return full_region_x, full_region_y, full_region_z
-
+    
     def sector(self,
                field_range: np.array,
                n_grid: np.array):
@@ -3429,7 +3517,7 @@ class region:
         :type: n_grid: np.array
         :param n_grid: number of cells at each direction.
         """
-
+        
         min_range = np.amin(field_range, axis=0)
         max_range = np.amax(field_range, axis=0)
         # noinspection PyUnresolvedReferences
@@ -3443,7 +3531,7 @@ class region:
                                                           indexing='ij')
         full_region_y = temp_r * np.cos(temp_theta)
         full_region_z = temp_r * np.sin(temp_theta)
-
+        
         return full_region_x, full_region_y, full_region_z
 
 

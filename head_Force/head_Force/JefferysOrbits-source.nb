@@ -1,0 +1,734 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 8.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       157,          7]
+NotebookDataLength[     27348,        724]
+NotebookOptionsPosition[     25925,        671]
+NotebookOutlinePosition[     26564,        696]
+CellTagsIndexPosition[     26521,        693]
+WindowTitle->Jeffery's Orbits - Source
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell["Jeffery's Orbits", "Section",
+ CellFrame->{{0, 0}, {0, 0}},
+ ShowCellBracket->False,
+ FontColor->RGBColor[0.597406, 0, 0.0527047]],
+
+Cell[BoxData[
+ GraphicsBox[RasterBox[CompressedData["
+1:eJztnVuSozgWQDNiPqa3MJ+zpVlCbaB3WlGVNV9dvYH6TQRUph/ZGIHQmwvG
+xoZzQu3Aku7VfUj4Nk53//fLn//78q+Xl5f/NP/88e+Xl8v154Xj5+fp89y0
+4+X63L7VnQu02XqOt9FzjRK5qtRMoYZFpk11/Ji+WDye92+r7+fFfbnGkuu9
+eIQ4LBVJ+YRo5DPnRdITDp0TLRg6m/62nY/n08f5+H461G37fWqum57z4Xy2
+jby0prMZOh4/jodLOx2bt6fzRSEA3B/KMKGSBy/DSKVcyYOn8krHqajvqed6
+G6iol4qkfAIVNQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADsizPA/lj72AEA
+AMCmWLu0AXh01j6jAAAAcdb+hNwUJ5e1zZnPDEeey/e1jx0AAABsirVLm03x
+XFVlhs1X1JNY+4wCAAB02B9PJ4BdsvYpBAAAgOeGihpADo9GAUDIr+Lnr7ef
+a9vw16/i73VtMPx6+2v1gGwMijeAE89FAQA2DRW1BxX14lBRA0wi+lx0baMA
+AAAAAAAAAAAAbkj0uegR4L4cDoe1TYA1YQMAbIaDy9rm3JU9+w4AjwB3np3D
+BgDYDHuuKu/su3k0ynNRACGLHMy93dm2ijCPpHvD7LliAQAAmA0VNRioqIGK
+GlYk9Vz0AAAAAAAAAAAAALBR9KPR8Kf0a9sFAAAAAAAAAAAAcCt4LgoAAAAA
+AAAAAAB7I/Vc9ONheH9/X9uEzUJsZ0PoAGBZ3gNuLQgggR21GUjl7SC2syF0
+ALAsVNQgxMv14XAI/xOja9sIAAAAT0lYWM5jbT/msGffAQAAAGAp9lxV3sF3
+b1r0uehSZgAAAAAAAAAAAAA8Ar9b6rpuXpu3+tf0PBcFWJcFvxYBAAAAANgh
+VNQAADCK5LnobwAAAAAAAAAAAIANUbcPRav+wehH7LmoUqpsqKqmNTSXRVE0
+by593mtRXlrfo7mImTlVN6ebUOhR07q3jmxVWXqquqxVOUjZq1eDVNe662ro
+Nxe1Xr5o2lt5cUc7VWr3BpGindNL6TkDl5nVIGWtbuaXWbwJo/OVKjSX68oL
+shMTO4ylHf+yy5GbhU5EubJJPeWgx5ayBfvOIR2qD5QJXWmFtJs2pLsLvu40
+4oOesh/tJ3TKW/3DomZONgVdVPtNXvVXYWydyBRl/NWNWNW62L06G344TcNW
+L/SVpaTqcmeOWGWOm3W+TFPWsbL8dE1yklUal73ghDtBH+Hu1dE/HBM7/t7h
+sjNoN29Calrl2GadWfsMeoc0elcR584clrm5qzO5a+5mQe4imy2Tu1qcu+g2
+7od7mkvVtqJtajgInQuqzUrRtWFCzIAkzQdK0/RR1U33JEhtgOhosnmLKtX0
+DArVhaJHtZOlmgPbVN+mWZhRGzNvEc13MD61kIRcEPS2WciRp/C97a0ow569
+DCOVRurZU0lFnUoBFbWkKiv7I0xFLc4dFXUAFfVUtVTUYRD2V1EnfTd7u920
+v+va/NXoSXM86qXVwFtzgNvS7vJG3730Ga76Wkq/6lFz3dlWOa+69XpUOSix
+ixQtrrVV1pxBleO+uesMsv6QjenXF+bViFjGO5rtObaUp7bVoENe21Kqy1Un
+1M8xOaxNftysOh61q5joKStQpbkIQ2p54HRWXcqsOsbVU7oZNBr8Fbv+yotk
+GBkvbuFbu9/LkY6DF3ZvTvqtOVXdBi0dlN6WZekEsHfQ2flmjpnQ+25vfn//
+2yH1eswnokp/tNkpsJNrTqJruX4tzAkKBJXJVdUbbJmtrwtrUfuoGm2Ru5S3
+AcrEGQyPld3jzbFTH+oP+is3d+XVuev2wI1zN9w8rZM1I3dFf203xxKvuUyT
+TevJkd8JSzF7iVHBzJa+D0vFZJLapawNh6xiQ91ixaf03R+lDHvaMqwPCKl8
++lRGgkZF3W3Q0oGKmoq685yKmoo6L5jZ0vdhqZhMUruUteEQFfUk37VU98C8
+qRvq+uPjQz8UPZ/P+snoZYIqVAwtaFY0r+E0+8l8VIM3Gs70JkelUoLR0XBm
+2X5dldcmWS5lQ2r1jDue+DBaRvrzvidVpc2WOKJicRvVZu+HaFqjgpngC/MS
+Fek2rRvSjKCy9rnxfepWFFKokVMzWaEsU9GDbEYnbfuoYOpGkdcwql/Sv+fc
+CVdJcY1a+Yo3WuUaZsfE+9S+j3mTRuFZoAxL9eTtFK6ecccTH0bnlmGkMtXz
+dKnMLCTpifZTUUfnyNOR4QGrstQuHTXGFqSiXiV3wlVSXKNWvuKNVrmG2TGh
+ooZb0+T0rUWf/br9e1HvuWjR/z1/+JOUIujKPxYu+l9YCEX0kGVARDxjjHxa
+ygZv6ejF6KiE0cfp0eUk6JMrmVamQx1qkPTIRzNSo4LC0OnbV7S/tD7WRw32
+ElFYP1/y7EkZn09lPhHedej7vDiHSkbzq79YsWcWfUUUzYgXf7mdqa04eiK0
+ebYxe86d9yE+T3n+OzuVqHbMx01Up/kkCud7Q0ZJ5uvCRQhNGvVCoueayK9O
+mKP8qDDd9szol7b5AM5LSup0P7LvxXBX8dWGvlCGTTJm1IBwianK3QySyo2k
+clR/KtShBkmPfDQjNSpIRS0xexJRy8NjS0UtMfVBcmegoh6FijrkEarKPVfU
+Gd89w+rwd/Tt34uq/kuT6C2xsG5WhXvLsu+KUb+8/kxsvQMryUIxdp8PLc/c
+FiblXaJEcgvKuODFf54N8yYXwYejZ2fUbO8i5b7kXwRSPfJtFu1JWZ7BtlZu
+eRg9XXJEbcuriorIU2xkjYjQi2hJFjXeFvFmhjeNUWu9HhO3/LQoe8tdSKqC
+ys+f+tE5aZVoBSU0T87U+sr2emq4Ur7k9eQrhydiaqiF3LqSX4QFfacMk684
+yaT7l2GkUr7iJJOoqKMrUlGPritxZ9RyT9aIUFHn133e3IVQUQvVUlHPhor6
+1r6r/k9G9X1A/47+dDrZ/9+lb9++vbr8+PHDe7X7w077rafHU+JNTo1GF/Wu
+U52hhtCjqGEZJVGdoZsp5ZmZoRe2kc3Fd0tnKGKvJQ9UKr8pRh15dY0MZTOO
+e/pTa43OSUmFpn5Pbzzv7agveTNCJRnZ70FCX4OU5ZWn9KfiELrpLZ3aIZn0
+RYmGN+NRPsIpd7y19pa7qIhQZ15coicVmamMLjpb1SLmLUgmzlOtzau6RRAm
+bYxFTJoh9Vy+U4aNKonqDN1MKc/MDL2wjXydWIaRylElz5LKVExSS2Scigqm
+HHl1jQxlM457+lNrjc5JSYWmUlF7jqQ2RmqHZNIXJRrejEf5CKfc8dbaW+6i
+IkKdeXGJnlRkpjK66GxVi5i3IJk4T7U2r+oWQZi0MRYxaYbUZnyPLvH/lte2
+FP/69esnAAAAAAAAAAAAwM74B4thROM=
+   "], {{0, 0}, {1800, 25}}, {0, 255},
+   ColorFunction->RGBColor],
+  ImageSize->{1800, 25},
+  PlotRange->{{0, 1800}, {0, 25}}]], "Section",
+ CellFrame->{{0, 0}, {0, 0}},
+ ShowCellBracket->False],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"Period", "[", "AspectRatio_", "]"}], " ", ":=", " ", 
+   RowBox[{"2", "\[Pi]", " ", 
+    RowBox[{"(", 
+     RowBox[{"AspectRatio", " ", "+", " ", 
+      FractionBox["1", "AspectRatio"]}], ")"}]}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{
+    RowBox[{"Full\[Phi]", "[", 
+     RowBox[{"AspectRatio_", ",", " ", "t_"}], "]"}], ":=", " ", 
+    RowBox[{"Piecewise", "[", "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"{", 
+        RowBox[{
+         RowBox[{"ArcTan", "[", "\[IndentingNewLine]", 
+          RowBox[{"AspectRatio", " ", 
+           RowBox[{"Tan", "[", 
+            FractionBox["t", 
+             RowBox[{"(", 
+              RowBox[{"AspectRatio", " ", "+", " ", 
+               FractionBox["1", "AspectRatio"]}], ")"}]], "]"}]}], 
+          "\[IndentingNewLine]", "]"}], " ", ",", " ", 
+         RowBox[{
+          RowBox[{"Abs", "[", "t", "]"}], "<", " ", 
+          RowBox[{"2", "\[Pi]", " ", 
+           RowBox[{
+            RowBox[{"(", 
+             RowBox[{"AspectRatio", " ", "+", " ", 
+              FractionBox["1", "AspectRatio"]}], ")"}], "/", "4"}]}]}]}], 
+        "}"}], "}"}], ",", "\[IndentingNewLine]", 
+      RowBox[{
+       RowBox[{"ArcTan", "[", "\[IndentingNewLine]", 
+        RowBox[{"AspectRatio", " ", 
+         RowBox[{"Tan", "[", 
+          FractionBox["t", 
+           RowBox[{"(", 
+            RowBox[{"AspectRatio", " ", "+", " ", 
+             FractionBox["1", "AspectRatio"]}], ")"}]], "]"}]}], 
+        "\[IndentingNewLine]", "]"}], " ", "+", " ", 
+       RowBox[{
+        RowBox[{"Sign", "[", "t", "]"}], "\[Pi]"}]}]}], "\[IndentingNewLine]",
+      "]"}]}], ";"}], "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{
+    RowBox[{"\[Theta]", "[", 
+     RowBox[{"AspectRatio_", ",", " ", "\[Phi]_", ",", " ", "C_"}], "]"}], 
+    " ", ":=", " ", 
+    RowBox[{
+     FractionBox["\[Pi]", "2"], "+", 
+     RowBox[{"ArcTan", "[", 
+      FractionBox[
+       RowBox[{"C", " ", "AspectRatio"}], 
+       SuperscriptBox[
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{
+           SuperscriptBox["AspectRatio", "2"], 
+           SuperscriptBox[
+            RowBox[{"Cos", "[", "\[Phi]", "]"}], "2"]}], " ", "+", " ", 
+          SuperscriptBox[
+           RowBox[{"Sin", "[", "\[Phi]", "]"}], "2"]}], ")"}], 
+        RowBox[{"1", "/", "2"}]]], "]"}]}]}], ";"}], 
+  "\[IndentingNewLine]"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{
+    RowBox[{"Ellipsoid", "[", 
+     RowBox[{"SemiMajor_", ",", " ", "SemiMinor_"}], "]"}], " ", ":=", " ", 
+    "\[IndentingNewLine]", 
+    RowBox[{"GeometricTransformation", "[", 
+     RowBox[{
+      RowBox[{"Sphere", "[", "]"}], ",", "\[IndentingNewLine]", 
+      RowBox[{"ScalingTransform", "[", 
+       RowBox[{"{", 
+        RowBox[{"SemiMinor", ",", " ", "SemiMinor", ",", " ", "SemiMajor"}], 
+        "}"}], "]"}]}], "\[IndentingNewLine]", "]"}]}], ";"}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"Aspect", " ", "=", " ", "3"}], ";"}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"primitive", " ", "=", " ", 
+    RowBox[{"Ellipsoid", "[", 
+     RowBox[{
+      RowBox[{"0.1", "Aspect"}], ",", "0.1"}], "]"}]}], ";"}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{
+    RowBox[{"JefferyEllipsoid", "[", 
+     RowBox[{"\[Theta]_", ",", " ", "\[Phi]_"}], "]"}], " ", ":=", 
+    "\[IndentingNewLine]", 
+    RowBox[{"Rotate", "[", "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{"Rotate", "[", "\[IndentingNewLine]", 
+       RowBox[{
+       "primitive", ",", "\[IndentingNewLine]", "\[Theta]", ",", " ", 
+        RowBox[{"{", 
+         RowBox[{"1", ",", " ", "0", ",", " ", "0"}], "}"}]}], 
+       "\[IndentingNewLine]", "]"}], ",", "\[IndentingNewLine]", "\[Phi]", 
+      ",", " ", 
+      RowBox[{"{", 
+       RowBox[{"0", ",", " ", "1", ",", " ", "0"}], "}"}]}], 
+     "\[IndentingNewLine]", "]"}]}], ";"}], "\[IndentingNewLine]"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"BgFlow", "[", 
+    RowBox[{"T_", ",", " ", "t_"}], "]"}], " ", ":=", 
+   RowBox[{"VectorPlot3D", "[", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{"z", ",", " ", "0", ",", " ", "0"}], "}"}], ",", 
+     "\[IndentingNewLine]", 
+     RowBox[{"{", 
+      RowBox[{"x", ",", 
+       RowBox[{"-", "1"}], ",", " ", "1"}], "}"}], ",", " ", 
+     "\[IndentingNewLine]", 
+     RowBox[{"{", 
+      RowBox[{"y", ",", " ", 
+       RowBox[{"-", "1"}], ",", " ", "1"}], "}"}], ",", " ", 
+     "\[IndentingNewLine]", 
+     RowBox[{"{", 
+      RowBox[{"z", ",", " ", 
+       RowBox[{"-", "1"}], ",", " ", "1"}], "}"}], ",", " ", 
+     "\[IndentingNewLine]", 
+     RowBox[{"VectorPoints", " ", "\[Rule]", " ", 
+      RowBox[{"Flatten", "[", "\[IndentingNewLine]", 
+       RowBox[{
+        RowBox[{"Table", "[", 
+         RowBox[{
+          RowBox[{"{", 
+           RowBox[{
+            RowBox[{"x", "+", 
+             RowBox[{
+              FractionBox["1", "T"], "z", " ", "t"}]}], ",", "y", ",", "z"}], 
+           "}"}], ",", " ", 
+          RowBox[{"{", 
+           RowBox[{"x", ",", " ", 
+            RowBox[{"-", "3"}], ",", "3", ",", "1"}], " ", "}"}], ",", " ", 
+          RowBox[{"{", 
+           RowBox[{"y", ",", " ", 
+            RowBox[{"-", "1"}], ",", " ", "1", ",", " ", "0.75"}], "}"}], ",", 
+          RowBox[{"{", 
+           RowBox[{"z", ",", 
+            RowBox[{"-", "1"}], ",", " ", "1", ",", " ", "0.5"}], "}"}]}], 
+         "]"}], ",", "2"}], "]"}]}], ",", " ", 
+     RowBox[{"VectorScale", " ", "\[Rule]", " ", "0.075"}], ",", " ", 
+     "\[IndentingNewLine]", 
+     RowBox[{"PlotRange", " ", "\[Rule]", " ", 
+      RowBox[{"{", 
+       RowBox[{
+        RowBox[{"-", "1"}], ",", " ", "1"}], "}"}]}]}], "]"}]}], 
+  ";"}]}], "Input",
+ InitializationCell->True,
+ CellChangeTimes->{{3.527010968304543*^9, 3.5270109822824116`*^9}, {
+   3.527011013701416*^9, 3.5270110145126314`*^9}, {3.5270192513858643`*^9, 
+   3.527019252361817*^9}, 3.527443462053224*^9},
+ CellID->578624007],
+
+Cell[BoxData[
+ RowBox[{"Manipulate", "[", "\[IndentingNewLine]", 
+  RowBox[{
+   RowBox[{"Show", "[", 
+    RowBox[{
+     RowBox[{"BgFlow", "[", 
+      RowBox[{
+       RowBox[{"Period", "[", "3", "]"}], ",", " ", "t"}], "]"}], ",", 
+     "\[IndentingNewLine]", 
+     RowBox[{"Graphics3D", "[", "\[IndentingNewLine]", 
+      RowBox[{
+       RowBox[{"{", 
+        RowBox[{"Red", ",", " ", 
+         RowBox[{"JefferyEllipsoid", "[", 
+          RowBox[{
+           RowBox[{"\[Theta]", "[", 
+            RowBox[{"Aspect", ",", " ", 
+             RowBox[{"Full\[Phi]", "[", 
+              RowBox[{"Aspect", ",", " ", "t"}], "]"}], ",", " ", 
+             "OrbitConstant"}], "]"}], " ", ",", 
+           RowBox[{"Full\[Phi]", "[", 
+            RowBox[{"Aspect", ",", "t"}], "]"}]}], "]"}]}], "}"}], ",", 
+       RowBox[{"Lighting", " ", "\[Rule]", " ", 
+        RowBox[{"{", 
+         RowBox[{"{", 
+          RowBox[{"\"\<Directional\>\"", ",", " ", "White", ",", " ", 
+           RowBox[{"{", 
+            RowBox[{"1", ",", " ", "1", ",", " ", "1"}], "}"}]}], "}"}], 
+         "}"}]}], ",", " ", 
+       RowBox[{"ImageSize", "\[Rule]", " ", 
+        RowBox[{"{", 
+         RowBox[{"500", ",", "400"}], "}"}]}]}], "]"}]}], "]"}], ",", 
+   "\[IndentingNewLine]", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{
+      "OrbitConstant", ",", " ", "0.1", ",", " ", "\"\<orbit constant\>\""}], 
+      "}"}], ",", " ", 
+     RowBox[{"{", 
+      RowBox[{
+      "0.1", ",", " ", "0.25", ",", " ", "0.5", ",", " ", "1", ",", " ", 
+       "10"}], "}"}], ",", " ", 
+     RowBox[{"ControlType", " ", "\[Rule]", " ", "RadioButtonBar"}]}], "}"}], 
+   ",", "\[IndentingNewLine]", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{"t", ",", 
+       RowBox[{
+        RowBox[{"-", 
+         RowBox[{"Period", "[", "Aspect", "]"}]}], "/", "2"}], ",", " ", 
+       "\"\<time\>\""}], "}"}], ",", 
+     RowBox[{
+      RowBox[{"-", 
+       RowBox[{"Period", "[", "Aspect", "]"}]}], "/", "2"}], ",", " ", 
+     RowBox[{
+      RowBox[{"Period", "[", "Aspect", "]"}], "/", "2"}], ",", " ", "0.1", 
+     ",", 
+     RowBox[{"ControlType", " ", "\[Rule]", " ", "Animator"}]}], "}"}], ",", 
+   "\[IndentingNewLine]", 
+   RowBox[{"SaveDefinitions", "\[Rule]", " ", "True"}]}], 
+  "\[IndentingNewLine]", "]"}]], "Input",
+ CellChangeTimes->{
+  3.527010841901149*^9, {3.5272504769123693`*^9, 3.527250482152523*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ TagBox[
+  StyleBox[
+   DynamicModuleBox[{$CellContext`OrbitConstant$$ = 0.1, $CellContext`t$$ = 
+    5.9280244880340245`, Typeset`show$$ = True, Typeset`bookmarkList$$ = {}, 
+    Typeset`bookmarkMode$$ = "Menu", Typeset`animator$$, Typeset`animvar$$ = 
+    1, Typeset`name$$ = "\"untitled\"", Typeset`specs$$ = {{{
+       Hold[$CellContext`OrbitConstant$$], 0.1, "orbit constant"}, {
+      0.1, 0.25, 0.5, 1, 10}}, {{
+       Hold[$CellContext`t$$], Rational[-10, 3] Pi, "time"}, Rational[-10, 3] 
+      Pi, Rational[10, 3] Pi, 0.1}}, Typeset`size$$ = {360., {200., 204.}}, 
+    Typeset`update$$ = 0, Typeset`initDone$$, Typeset`skipInitDone$$ = 
+    False, $CellContext`OrbitConstant$3535$$ = 0, $CellContext`t$3536$$ = 0}, 
+    
+    DynamicBox[Manipulate`ManipulateBoxes[
+     1, StandardForm, 
+      "Variables" :> {$CellContext`OrbitConstant$$ = 0.1, $CellContext`t$$ = 
+        Rational[-10, 3] Pi}, "ControllerVariables" :> {
+        Hold[$CellContext`OrbitConstant$$, $CellContext`OrbitConstant$3535$$, 
+         0], 
+        Hold[$CellContext`t$$, $CellContext`t$3536$$, 0]}, 
+      "OtherVariables" :> {
+       Typeset`show$$, Typeset`bookmarkList$$, Typeset`bookmarkMode$$, 
+        Typeset`animator$$, Typeset`animvar$$, Typeset`name$$, 
+        Typeset`specs$$, Typeset`size$$, Typeset`update$$, Typeset`initDone$$,
+         Typeset`skipInitDone$$}, "Body" :> Show[
+        $CellContext`BgFlow[
+         $CellContext`Period[3], $CellContext`t$$], 
+        Graphics3D[{Red, 
+          $CellContext`JefferyEllipsoid[
+           $CellContext`\[Theta][$CellContext`Aspect, 
+            $CellContext`Full\[Phi][$CellContext`Aspect, $CellContext`t$$], \
+$CellContext`OrbitConstant$$], 
+           $CellContext`Full\[Phi][$CellContext`Aspect, $CellContext`t$$]]}, 
+         Lighting -> {{"Directional", White, {1, 1, 1}}}, 
+         ImageSize -> {500, 400}]], 
+      "Specifications" :> {{{$CellContext`OrbitConstant$$, 0.1, 
+          "orbit constant"}, {0.1, 0.25, 0.5, 1, 10}, ControlType -> 
+         RadioButtonBar}, {{$CellContext`t$$, Rational[-10, 3] Pi, "time"}, 
+         Rational[-10, 3] Pi, Rational[10, 3] Pi, 0.1, ControlType -> 
+         Animator}}, "Options" :> {}, 
+      "DefaultOptions" :> {ControllerLinking -> True}],
+     ImageSizeCache->{420., {253., 258.}},
+     SingleEvaluation->True],
+    Deinitialization:>None,
+    DynamicModuleValues:>{},
+    Initialization:>(({$CellContext`BgFlow[
+          Pattern[$CellContext`T, 
+           Blank[]], 
+          Pattern[$CellContext`t, 
+           Blank[]]] := 
+        VectorPlot3D[{$CellContext`z, 0, 0}, {$CellContext`x, -1, 
+           1}, {$CellContext`y, -1, 1}, {$CellContext`z, -1, 1}, VectorPoints -> 
+          Flatten[
+            
+            Table[{$CellContext`x + ((
+                 1/$CellContext`T) $CellContext`z) $CellContext`t, \
+$CellContext`y, $CellContext`z}, {$CellContext`x, -3, 3, 
+              1}, {$CellContext`y, -1, 1, 0.75}, {$CellContext`z, -1, 1, 
+              0.5}], 2], VectorScale -> 0.075, 
+          PlotRange -> {-1, 1}], $CellContext`Period[
+          Pattern[AspectRatio, 
+           Blank[]]] := (2 Pi) (AspectRatio + 
+          1/AspectRatio), $CellContext`JefferyEllipsoid[
+          Pattern[$CellContext`\[Theta], 
+           Blank[]], 
+          Pattern[$CellContext`\[Phi], 
+           Blank[]]] := Rotate[
+          
+          Rotate[$CellContext`primitive, $CellContext`\[Theta], {1, 0, 
+           0}], $CellContext`\[Phi], {0, 1, 0}], $CellContext`\[Theta][
+          Pattern[AspectRatio, 
+           Blank[]], 
+          Pattern[$CellContext`\[Phi], 
+           Blank[]], 
+          Pattern[C, 
+           Blank[]]] := 
+        Pi/2 + ArcTan[(C AspectRatio)/(
+            AspectRatio^2 Cos[$CellContext`\[Phi]]^2 + 
+            Sin[$CellContext`\[Phi]]^2)^(1/2)], $CellContext`primitive = 
+        GeometricTransformation[
+          
+          Sphere[{0, 0, 0}], {{{0.1, 0., 0.}, {0., 0.1, 0.}, {0., 0., 
+           0.30000000000000004`}}, {0., 0., 0.}}], $CellContext`Aspect = 
+        3, $CellContext`Full\[Phi][
+          Pattern[AspectRatio, 
+           Blank[]], 
+          Pattern[$CellContext`t, 
+           Blank[]]] := Piecewise[{{
+            ArcTan[
+            AspectRatio Tan[$CellContext`t/(AspectRatio + 1/AspectRatio)]], 
+            Abs[$CellContext`t] < (2 Pi) ((AspectRatio + 1/AspectRatio)/4)}}, 
+          ArcTan[AspectRatio 
+            Tan[$CellContext`t/(AspectRatio + 1/AspectRatio)]] + 
+          Sign[$CellContext`t] Pi]}; Typeset`initDone$$ = True); ReleaseHold[{{
+         HoldComplete[$CellContext`Period[
+             Pattern[AspectRatio, 
+              Blank[]]] := 2 Pi (AspectRatio + 1/AspectRatio); Null], 
+         HoldComplete[Null], 
+         HoldComplete[$CellContext`Full\[Phi][
+             Pattern[AspectRatio, 
+              Blank[]], 
+             Pattern[$CellContext`t, 
+              Blank[]]] := Piecewise[{{
+               ArcTan[
+               AspectRatio Tan[$CellContext`t/(AspectRatio + 1/AspectRatio)]],
+                Abs[$CellContext`t] < 
+               2 Pi ((AspectRatio + 1/AspectRatio)/4)}}, 
+             ArcTan[AspectRatio 
+               Tan[$CellContext`t/(AspectRatio + 1/AspectRatio)]] + 
+             Sign[$CellContext`t] Pi]; Null], 
+         HoldComplete[Null], 
+         HoldComplete[$CellContext`\[Theta][
+             Pattern[AspectRatio, 
+              Blank[]], 
+             Pattern[$CellContext`\[Phi], 
+              Blank[]], 
+             Pattern[C, 
+              Blank[]]] := 
+           Pi/2 + ArcTan[
+             C AspectRatio/(AspectRatio^2 Cos[$CellContext`\[Phi]]^2 + 
+               Sin[$CellContext`\[Phi]]^2)^(1/2)]; Null], 
+         HoldComplete[Null], 
+         HoldComplete[$CellContext`Ellipsoid[
+             Pattern[$CellContext`SemiMajor, 
+              Blank[]], 
+             Pattern[$CellContext`SemiMinor, 
+              Blank[]]] := GeometricTransformation[
+             Sphere[], 
+             
+             ScalingTransform[{$CellContext`SemiMinor, \
+$CellContext`SemiMinor, $CellContext`SemiMajor}]]; Null], 
+         HoldComplete[Null], 
+         HoldComplete[$CellContext`Aspect = 3; Null], 
+         HoldComplete[Null], 
+         HoldComplete[$CellContext`primitive = $CellContext`Ellipsoid[
+            0.1 $CellContext`Aspect, 0.1]; Null], 
+         HoldComplete[Null], 
+         HoldComplete[$CellContext`JefferyEllipsoid[
+             Pattern[$CellContext`\[Theta], 
+              Blank[]], 
+             Pattern[$CellContext`\[Phi], 
+              Blank[]]] := Rotate[
+             
+             Rotate[$CellContext`primitive, $CellContext`\[Theta], {1, 0, 
+              0}], $CellContext`\[Phi], {0, 1, 0}]; Null], 
+         HoldComplete[Null], 
+         HoldComplete[$CellContext`BgFlow[
+             Pattern[$CellContext`T, 
+              Blank[]], 
+             Pattern[$CellContext`t, 
+              Blank[]]] := 
+           VectorPlot3D[{$CellContext`z, 0, 0}, {$CellContext`x, -1, 
+              1}, {$CellContext`y, -1, 1}, {$CellContext`z, -1, 1}, 
+             VectorPoints -> Flatten[
+               
+               Table[{$CellContext`x + (
+                   1/$CellContext`T) $CellContext`z $CellContext`t, \
+$CellContext`y, $CellContext`z}, {$CellContext`x, -3, 3, 
+                 1}, {$CellContext`y, -1, 1, 0.75}, {$CellContext`z, -1, 1, 
+                 0.5}], 2], VectorScale -> 0.075, PlotRange -> {-1, 1}]; 
+          Null]}}]; Typeset`initDone$$ = True),
+    SynchronousInitialization->True,
+    UnsavedVariables:>{Typeset`initDone$$},
+    UntrackedVariables:>{Typeset`size$$}], "Manipulate",
+   Deployed->True,
+   StripOnInput->False],
+  Manipulate`InterpretManipulate[1]]], "Output",
+ CellID->1626989784],
+
+Cell[CellGroupData[{
+
+Cell["CAPTION", "Section",
+ CellFrame->{{0, 0}, {1, 0}},
+ CellFrameColor->RGBColor[0.87, 0.87, 0.87],
+ FontFamily->"Helvetica",
+ FontSize->12,
+ FontWeight->"Bold",
+ FontColor->RGBColor[0.597406, 0, 0.0527047]],
+
+Cell["\<\
+Jeffery's orbits describe the irregular rotation of an ellipsoid suspended in \
+a sheared fluid. In general, there is a continuum of possible orbits. This \
+Demonstration depicts one particular solution at varying values of orbital \
+constants.\
+\>", "Text"]
+}, Close]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["DETAILS", "Section",
+ CellFrame->{{0, 0}, {1, 0}},
+ CellFrameColor->RGBColor[0.87, 0.87, 0.87],
+ FontFamily->"Helvetica",
+ FontSize->12,
+ FontWeight->"Bold",
+ FontColor->RGBColor[0.597406, 0, 0.0527047]],
+
+Cell["\<\
+The motion of an isolated ellipsoid in a viscous fluid was first described by \
+Jeffery in 1922. Later, it was shown that the Jeffery's orbit is also valid \
+for a cylinder, using an effective aspect ratio. In this Demonstration we \
+have fixed the aspect ratio of the ellipsoid to be 3 and used Jeffery's \
+solutions to visualize its motion.\
+\>", "Text"],
+
+Cell["Reference", "Text"],
+
+Cell[TextData[{
+ "[1] G. B. Jeffery, \"The Motion of Ellipsoidal Particles Immersed in a \
+Viscous Fluid,\" ",
+ StyleBox["Proceedings of the Royal Society Series A",
+  FontSlant->"Italic"],
+ ", ",
+ StyleBox["102",
+  FontWeight->"Bold"],
+ "(715), 1922 pp. 161\[Dash]179."
+}], "Text"]
+}, Close]],
+
+Cell["THIS NOTEBOOK IS THE SOURCE CODE FROM", "Text",
+ CellFrame->{{0, 0}, {0, 0}},
+ CellMargins->{{48, 10}, {4, 28}},
+ CellGroupingRules->{"SectionGrouping", 25},
+ CellFrameMargins->{{48, 48}, {6, 5}},
+ CellFrameColor->RGBColor[0.87, 0.87, 0.87],
+ FontFamily->"Helvetica",
+ FontSize->10,
+ FontWeight->"Bold",
+ FontColor->RGBColor[0.597406, 0, 0.0527047]],
+
+Cell[TextData[{
+ "\[NonBreakingSpace]",
+ ButtonBox["Pramukta Kumar",
+  BaseStyle->"Hyperlink",
+  ButtonData->{
+    URL["http://demonstrations.wolfram.com/author.html?author=Pramukta+Kumar"]\
+, None},
+  ButtonNote->
+   "http://demonstrations.wolfram.com/author.html?author=Pramukta+Kumar"]
+}], "Text",
+ CellMargins->{{48, Inherited}, {0, Inherited}},
+ FontFamily->"Verdana",
+ FontSize->10,
+ FontColor->GrayLevel[0.6],
+ CellID->9649527],
+
+Cell[TextData[{
+ "\"",
+ ButtonBox["Jeffery's Orbits",
+  BaseStyle->"Hyperlink",
+  ButtonData->{
+    URL["http://demonstrations.wolfram.com/JefferysOrbits/"], None},
+  ButtonNote->"http://demonstrations.wolfram.com/JefferysOrbits/"],
+ "\"",
+ "\[ParagraphSeparator]\[NonBreakingSpace]",
+ ButtonBox["http://demonstrations.wolfram.com/JefferysOrbits/",
+  BaseStyle->"Hyperlink",
+  ButtonData->{
+    URL["http://demonstrations.wolfram.com/JefferysOrbits/"], None},
+  ButtonNote->"http://demonstrations.wolfram.com/JefferysOrbits/"],
+ "\[ParagraphSeparator]\[NonBreakingSpace]",
+ ButtonBox["Wolfram Demonstrations Project",
+  BaseStyle->"Hyperlink",
+  ButtonData->{
+    URL["http://demonstrations.wolfram.com/"], None},
+  ButtonNote->"http://demonstrations.wolfram.com/"],
+ "\[ParagraphSeparator]\[NonBreakingSpace]",
+ "Published: ",
+ "October 19, 2011"
+}], "Text",
+ CellMargins->{{48, Inherited}, {0, Inherited}},
+ FontFamily->"Verdana",
+ FontSize->10,
+ FontColor->GrayLevel[0.5]],
+
+Cell[CellGroupData[{
+
+Cell[TextData[{
+ "A full-function Wolfram ",
+ StyleBox["Mathematica",
+  FontSlant->"Italic"],
+ " system is required to edit this notebook.\n",
+ StyleBox[ButtonBox["GET WOLFRAM MATHEMATICA \[RightGuillemet]",
+  BaseStyle->"Hyperlink",
+  ButtonData->{
+    URL["http://www.wolfram.com/products/mathematica/"], None},
+  ButtonNote->"http://www.wolfram.com/products/mathematica/"],
+  FontFamily->"Helvetica",
+  FontWeight->"Bold",
+  FontSlant->"Italic",
+  FontColor->RGBColor[1, 0.42, 0]]
+}], "Text",
+ CellFrame->True,
+ CellMargins->{{48, 68}, {8, 28}},
+ CellFrameMargins->12,
+ CellFrameColor->RGBColor[0.87, 0.87, 0.87],
+ CellChangeTimes->{3.3750111182355957`*^9},
+ ParagraphSpacing->{1., 1.},
+ FontFamily->"Verdana",
+ FontSize->10,
+ FontColor->GrayLevel[0.411765],
+ Background->RGBColor[1, 1, 1]],
+
+Cell[TextData[{
+ "\[Copyright] ",
+ StyleBox[ButtonBox["Wolfram Demonstrations Project & Contributors",
+  BaseStyle->"Hyperlink",
+  ButtonData->{
+    URL["http://demonstrations.wolfram.com/"], None},
+  ButtonNote->"http://demonstrations.wolfram.com/"],
+  FontColor->GrayLevel[0.6]],
+ "\[ThickSpace]\[ThickSpace]\[ThickSpace]|\[ThickSpace]\[ThickSpace]\
+\[ThickSpace]",
+ StyleBox[ButtonBox["Terms of Use",
+  BaseStyle->"Hyperlink",
+  ButtonData->{
+    URL["http://demonstrations.wolfram.com/termsofuse.html"], None},
+  ButtonNote->"http://demonstrations.wolfram.com/termsofuse.html"],
+  FontColor->GrayLevel[0.6]],
+ "\[ThickSpace]\[ThickSpace]\[ThickSpace]|\[ThickSpace]\[ThickSpace]\
+\[ThickSpace]",
+ StyleBox[ButtonBox["Make a new version of this Demonstration \
+\[RightGuillemet]",
+  BaseStyle->"Hyperlink",
+  ButtonData->{
+    URL["http://demonstrations.wolfram.com/participate/upload.jsp?id=\
+JefferysOrbits"], None},
+  ButtonNote->None],
+  FontColor->GrayLevel[0.6]]
+}], "Text",
+ CellFrame->{{0, 0}, {0, 0.5}},
+ CellMargins->{{48, 10}, {20, 50}},
+ CellFrameMargins->{{6, 0}, {6, 6}},
+ CellFrameColor->GrayLevel[0.6],
+ FontFamily->"Verdana",
+ FontSize->9,
+ FontColor->GrayLevel[0.6]]
+}, Open  ]]
+},
+Editable->True,
+Saveable->False,
+ScreenStyleEnvironment->"Working",
+CellInsertionPointCell->None,
+WindowSize->{710, 650},
+WindowMargins->{{Inherited, Inherited}, {Inherited, 0}},
+WindowElements->{
+ "StatusArea", "MemoryMonitor", "MagnificationPopUp", "VerticalScrollBar", 
+  "MenuBar"},
+WindowTitle->"Jeffery's Orbits - Source",
+DockedCells->{},
+CellContext->Notebook,
+FrontEndVersion->"8.0 for Microsoft Windows (32-bit) (February 23, 2011)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[618, 23, 136, 3, 70, "Section"],
+Cell[757, 28, 3700, 64, 70, "Section"],
+Cell[4460, 94, 6082, 165, 70, "Input",
+ InitializationCell->True,
+ CellID->578624007],
+Cell[10545, 261, 2402, 64, 70, "Input"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[12984, 330, 7690, 168, 70, "Output",
+ CellID->1626989784],
+Cell[CellGroupData[{
+Cell[20699, 502, 209, 6, 70, "Section"],
+Cell[20911, 510, 268, 5, 70, "Text"]
+}, Close]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[21227, 521, 209, 6, 70, "Section"],
+Cell[21439, 529, 366, 6, 70, "Text"],
+Cell[21808, 537, 25, 0, 70, "Text"],
+Cell[21836, 539, 282, 9, 70, "Text"]
+}, Close]],
+Cell[22132, 551, 355, 9, 70, "Text",
+ CellGroupingRules->{"SectionGrouping", 25}],
+Cell[22490, 562, 434, 14, 70, "Text",
+ CellID->9649527],
+Cell[22927, 578, 975, 27, 70, "Text"],
+Cell[CellGroupData[{
+Cell[23927, 609, 793, 24, 70, "Text"],
+Cell[24723, 635, 1186, 33, 70, "Text"]
+}, Open  ]]
+}
+]
+*)
+
+(* End of internal cache information *)
+(* NotebookSignature bT4sbGdK3o3YKApjteYxiXy7 *)

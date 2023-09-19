@@ -176,7 +176,7 @@ def get_slice_ft(ugeo0, fgeo0, f_geo, x_fgeo, problem_kwargs, tfct=0.05):
         t_ft = total_force_part(f_geo, x_fgeo, tidx)
         slice_ft.append(t_ft)
     tx.append(ugeo0.axisNodes[:, 2])
-    # cover start
+    # cover end
     tidx = fgeo0.cover_end_idx
     t_ft = total_force_part(f_geo, x_fgeo, tidx)
     slice_ft.append(t_ft)

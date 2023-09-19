@@ -229,6 +229,35 @@ def main_resistanceMatrix_hlx(**main_kwargs):
                 center=helicoid_center, save_name=fileHandle)
     return True
 
+def main_resistanceMatrix_multiObj(**main_kwargs):
+    # OptDB = PETSc.Options()
+    main_kwargs['zoom_factor'] = 1
+    problem_kwargs = get_problem_kwargs(**main_kwargs)
+    matrix_method = problem_kwargs['matrix_method']
+    fileHandle = problem_kwargs['fileHandle']
+    pickProblem = problem_kwargs['pickProblem']
+    print_case_info(**problem_kwargs)
+
+    helicoid_comp = create_helicoid_hlx_comp(**problem_kwargs)
+    # helicoid_comp.show_u_nodes(linestyle='')
+    # assert 1 == 2
+    helicoid_obj_list = helicoid_comp.get_obj_list()
+    helicoid_center = helicoid_comp.get_center()
+
+    # solve
+    problem = sf.StokesFlowProblem(**problem_kwargs)
+    for tobj in helicoid_obj_list:
+        problem.add_obj(tobj)
+    if pickProblem:
+        problem.pickmyself('%s_tran' % fileHandle, ifcheck=True)
+    problem.print_info()
+    problem.create_matrix()
+    # AtBtCt_full(problem, save_vtk=False, pick_M=False,
+    #             center=helicoid_center, save_name=fileHandle)
+    AtBtCt_multiObj(problem, save_vtk=False, pick_M=False, save_name=fileHandle,
+                    uNormFct=1, wNormFct=1, uwNormFct=1, )
+    return True
+
 
 def main_resistanceMatrix_part(**main_kwargs):
     OptDB = PETSc.Options()
@@ -359,6 +388,12 @@ if __name__ == '__main__':
         assert '_selfRotate' not in matrix_method
         OptDB.setValue('main_fun', False)
         main_resistanceMatrix_hlx()
+
+    matrix_method = OptDB.getString('sm', 'pf')
+    if OptDB.getBool('main_resistanceMatrix_multiObj', False):
+        assert '_selfRotate' not in matrix_method
+        OptDB.setValue('main_fun', False)
+        main_resistanceMatrix_multiObj()
 
     if OptDB.getBool('main_resistanceMatrix_part', False):
         assert '_selfRotate' not in matrix_method

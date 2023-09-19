@@ -274,7 +274,7 @@ def print_ecoli_info(ecoName, **problem_kwargs):
 
     PETSc.Sys.Print(ecoName, 'geo information: ')
     PETSc.Sys.Print(
-            '  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
+        '  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
     PETSc.Sys.Print('    nth, n_tail, hfct and epsilon of helix are %d, %d, %f and %f, ' % (
         nth, n_tail, hfct, eh))
     if repeat_n > 1:
@@ -380,7 +380,7 @@ def print_helix_info(helixName, **problem_kwargs):
 
     PETSc.Sys.Print(helixName, 'geo information: ')
     PETSc.Sys.Print(
-            '  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
+        '  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
     PETSc.Sys.Print('    nth, n_tail, hfct and epsilon of helix are %d, %d, %f and %f, ' % (
         nth, n_tail, hfct, eh))
     if repeat_n > 1:
@@ -401,6 +401,7 @@ def get_helix_SLB_kwargs():
     rh2 = OptDB.getReal('rh2', 0.05)  # radius of helix
     ch = OptDB.getReal('ch', 0.1)  # cycles of helix
     ph = OptDB.getReal('ph', 3)  # helix pitch
+    hlx_theta0 = OptDB.getReal('hlx_theta0', 0)  # initial rotation along the major axis of the helix
     n_sgm = OptDB.getInt('n_sgm', 10)
     n_segment = int(np.ceil(n_sgm * ch))
     n_tail = OptDB.getInt('n_tail', 2)  # total of tails
@@ -432,6 +433,7 @@ def get_helix_SLB_kwargs():
                     'ch':          ch,
                     'center':      center,
                     'ph':          ph,
+                    'hlx_theta0':  hlx_theta0,
                     'n_segment':   n_segment,
                     'n_tail':      n_tail,
                     'rel_Uh':      rel_Uh,
@@ -450,6 +452,7 @@ def print_helix_SLB_info(helixName, **problem_kwargs):
     ch = problem_kwargs['ch']
     center = problem_kwargs['center']
     ph = problem_kwargs['ph']
+    hlx_theta0 = problem_kwargs['hlx_theta0']
     n_segment = problem_kwargs['n_segment']
     n_tail = problem_kwargs['n_tail']
     # left_hand = problem_kwargs['left_hand']
@@ -462,10 +465,10 @@ def print_helix_SLB_info(helixName, **problem_kwargs):
 
     PETSc.Sys.Print(helixName, 'geo information: ')
     PETSc.Sys.Print(
-            '  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
+        '  helix radius: %f and %f, helix pitch: %f, helix cycle: %f' % (rh1, rh2, ph, ch))
     PETSc.Sys.Print('    n_tail: %d, n_segment: %d, check_nth: %d. ' % (
         n_tail, n_segment, check_nth))
-    PETSc.Sys.Print('    slb_geo_fun, %s' % slb_geo_fun)
+    PETSc.Sys.Print('    slb_geo_fun: %s, hlx_theta0 %f' % (slb_geo_fun, hlx_theta0))
     PETSc.Sys.Print('    slb_epsabs %e, slb_epsrel %e, slb_limit %d' %
                     (slb_epsabs, slb_epsrel, slb_limit))
     PETSc.Sys.Print('  relative velocity of helix is %s' % (str(rel_Uh)))
@@ -577,9 +580,8 @@ def print_solver_info(**problem_kwargs):
                   'pf_infhelix', 'pf_stokesletsRingInPipe', 'pf_stokesletsRing', 'pf_sphere',
                   'pf_stokesletsRingInPipeProblemSymz', 'pf_stokesletsRingInPipeSymz',
                   'pf_selfRepeat', 'pf_selfRotate', 'rs_selfRotate', 'lg_rs_selfRotate',
-                  'lighthill_slb', 'KRJ_slb',)
-    err_msg = "Only 'pf', 'pf_stokesletsInPipe', 'pf_stokesletsTwoPlane', 'pf_dualPotential'" \
-              ", 'rs', 'lg_rs', and 'rs_plane' methods are accept for this main code. "
+                  'lighthill_slb', 'KRJ_slb', 'forceSphere2d')
+    err_msg = "Only method in %s is accept. " % str(acceptType)
     assert matrix_method in acceptType, err_msg
     PETSc.Sys.Print('  output file handle: ' + fileHandle)
     PETSc.Sys.Print('  create matrix method: %s, ' % matrix_method)
@@ -608,7 +610,7 @@ def print_solver_info(**problem_kwargs):
                            'pf_stokesletsRingInPipeProblemSymz', 'pf_stokesletsRingInPipeSymz'):
         stokeslets_threshold = problem_kwargs['stokeslets_threshold']
         PETSc.Sys.Print('  cut of threshold of the summation is %d' % stokeslets_threshold)
-    elif matrix_method in ('lighthill_slb', 'KRJ_slb'):
+    elif matrix_method in ('lighthill_slb', 'KRJ_slb', 'forceSphere2d'):
         pass
     else:
         raise Exception('  set how to print matrix method please. ')

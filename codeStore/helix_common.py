@@ -532,12 +532,12 @@ def AtBtCt_selfRotate(problem: 'sf.SelfRotateProblem', pick_M=False, save_vtk=Tr
         F_all, T_all, f_info = _do_solve_once(u, w, t1)
         At_list.append(F_all / u_use)
         Bt2_list.append(T_all / u_use)
-        f_info_list.append(f_info)
+        f_tran_list.append(f_info)
         u, w, t1 = 0, w_use, 'rot_%s' % thandle
         F_all, T_all, f_info = _do_solve_once(u, w, t1)
         Bt1_list.append(F_all / w_use)
         Ct_list.append(T_all / w_use)
-        f_info_list.append(f_info)
+        f_rot_list.append(f_info)
         return True
 
     problem_kwargs = problem.get_kwargs()
@@ -546,7 +546,8 @@ def AtBtCt_selfRotate(problem: 'sf.SelfRotateProblem', pick_M=False, save_vtk=Tr
     Bt1_list = []
     Bt2_list = []
     Ct_list = []
-    f_info_list = []
+    f_tran_list = []
+    f_rot_list = []
 
     _do_solve_case(thandle='100', u_use=u_use, w_use=w_use)
     At = At_list[0]
@@ -573,7 +574,13 @@ def AtBtCt_selfRotate(problem: 'sf.SelfRotateProblem', pick_M=False, save_vtk=Tr
         comm = PETSc.COMM_WORLD.tompi4py()
         rank = comm.Get_rank()
         save_name = check_file_extension(save_name, '.pickle')
-        tpickle = [problem_kwargs, At, Bt1, Bt2, Ct, ]
+        geo_info = []
+        for tobj in problem.get_obj_list():
+            fgeo = tobj.get_f_geo().copy()
+            fgeo.destroy_dmda()
+            geo_info.append(fgeo)
+        # tpickle = [problem_kwargs, At, Bt1, Bt2, Ct, ]
+        tpickle = [problem_kwargs, At, Bt1, Bt2, Ct, f_tran_list, f_rot_list, geo_info]
         if rank == 0:
             with open(save_name, 'wb') as output:
                 pickle.dump(tpickle, output, protocol=4)
@@ -610,7 +617,7 @@ def AtBtCt_pickInfo(problem: 'sf.StokesFlowProblem', pick_M=False, save_vtk=True
 
     def _do_solve_case(norm, thandle, u_use, w_use):
         u, w, t1 = u_use, 0, 'tran_%s' % thandle
-        F_all, T_all, f_info = _do_solve_once(u, w, t1, norm, w_use)
+        F_all, T_all, f_info = _do_solve_once(u, w, t1, norm, u_use)
         At_list.append(F_all / u_use)
         Bt2_list.append(T_all / u_use)
         f_tran_list.append(f_info)

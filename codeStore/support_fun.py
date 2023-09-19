@@ -99,7 +99,7 @@ def fit_line(ax, x, y, x0, x1, ifprint=1, linestyle='-.', linewidth=1, extendlin
 def fit_power_law(ax, x, y, x0, x1, ifprint=1, linestyle='-.', linewidth=1, extendline=False,
                   color='k', alpha=0.7):
     idx = np.array(x >= x0) & np.array(x <= x1) & np.isfinite((np.log10(x))) & np.isfinite(
-            (np.log10(y)))
+        (np.log10(y)))
     tx = np.log10(x[idx])
     ty = np.log10(y[idx])
     fit_para = np.polyfit(tx, ty, 1)
@@ -284,13 +284,13 @@ def write_main_run_comm_list(comm_list, txt_list, use_node, njob_node, job_dir,
     def _parallel_pbs_ln0(n_use_comm, njob_node, csh_name):
         t2 = 'seq 0 %d | parallel -j %d -u ' % (n_use_comm - 1, njob_node)
         t2 = t2 + ' --sshloginfile $PBS_NODEFILE --sshdelay 0.1 '
-        t2 = t2 + ' "cd $PWD; echo $PWD; echo; bash %s {} true " \n\n ' % csh_name
+        t2 = t2 + ' "cd $PWD; echo $PWD; echo; bash %s {} true " \n\n' % csh_name
         return t2
 
     def _parallel_pbs_newturb(n_use_comm, njob_node, csh_name):
         t2 = 'seq 0 %d | parallel -j %d -u ' % (n_use_comm - 1, njob_node)
         t2 = t2 + ' --sshdelay 0.1 '
-        t2 = t2 + ' "cd $PWD; echo $PWD; echo; bash %s {} true " \n\n ' % csh_name
+        t2 = t2 + ' "cd $PWD; echo $PWD; echo; bash %s {} true " \n\n' % csh_name
         return t2
 
     PWD = os.getcwd()
@@ -403,7 +403,8 @@ def write_main_run_comm_list(comm_list, txt_list, use_node, njob_node, job_dir,
     return True
 
 
-def write_main_run_local(comm_list, njob_node, job_dir, random_order=False, ):
+def write_main_run_local(comm_list, njob_node, job_dir, random_order=False,
+                         local_hostname='JiUbuntu'):
     PWD = os.getcwd()
     comm_list = np.array(comm_list)
     n_comm = comm_list.size
@@ -438,7 +439,7 @@ def write_main_run_local(comm_list, njob_node, job_dir, random_order=False, ):
         fpbs.write('echo start job at $(date) \n')
         t2 = 'seq 0 %d | parallel -j %d -u ' % (n_comm - 1, njob_node)
         t2 = t2 + ' --sshdelay 0.1 '
-        t2 = t2 + ' "cd $PWD; echo $PWD; echo; bash %s {} true " \n ' % csh_name
+        t2 = t2 + ' "cd $PWD; echo $PWD; echo; bash %s {} true " \n' % csh_name
         fpbs.write(t2)
         fpbs.write('echo finish job at $(date) \n')
         fpbs.write('\n')
@@ -462,17 +463,26 @@ def write_main_run_local(comm_list, njob_node, job_dir, random_order=False, ):
     # generate .sh file
     t_name = os.path.join(t_path, sh_name)
     with open(t_name, 'w') as fsh:
-        fsh.write('t_dir=$PWD \n ')
+        # check if the script run on the main node.
+        fsh.write('if [ $(hostname) == \'%s\' ]; then\n' % local_hostname)
+        fsh.write('    echo DO NOT run in the node $HOSTNAME. \n')
+        fsh.write('    exit \n')
+        fsh.write('else \n')
+        fsh.write('    echo This node is $HOSTNAME. \n')
+        fsh.write('fi \n\n')
+
+        fsh.write('t_dir=$PWD \n')
         fsh.write('bash_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" '
-                  '>/dev/null 2>&1 && pwd )" \n ')
-        fsh.write('echo $bash_dir \n ')
-        fsh.write('cd $bash_dir \n ')
+                  '>/dev/null 2>&1 && pwd )" \n')
+        fsh.write('echo Current path: \n')
+        fsh.write('echo $bash_dir \n')
+        fsh.write('cd $bash_dir \n')
         nohup_name = 'nohup_%s.out' % '$(date +"%Y%m%d_%H%M%S")'
         fsh.write('nohup bash %s > %s 2>&1 & \n' % (pbs_name, nohup_name))
-        fsh.write('echo Try the command to see the output information. \n ')
-        fsh.write('echo tail -f %s \n ' % nohup_name)
-        fsh.write('cd $t_dir \n ')
-        fsh.write('\n ')
+        fsh.write('echo Try the command to see the output information. \n')
+        fsh.write('echo tail -f %s \n' % nohup_name)
+        fsh.write('cd $t_dir \n')
+        fsh.write('\n')
 
     print('Input %d cases. ' % n_comm)
     print('Random order mode is %s. ' % random_order)
@@ -976,8 +986,8 @@ class TwoSlopeNorm(Normalize):
         if not self.vmin <= self.vcenter <= self.vmax:
             raise ValueError("vmin, vcenter, vmax must increase monotonically")
         result = np.ma.masked_array(
-                np.interp(result, [self.vmin, self.vcenter, self.vmax],
-                          [0, 0.5, 1.]), mask=np.ma.getmask(result))
+            np.interp(result, [self.vmin, self.vcenter, self.vmax],
+                      [0, 0.5, 1.]), mask=np.ma.getmask(result))
         if is_scalar:
             result = np.atleast_1d(result)[0]
         return result

@@ -116,6 +116,7 @@ def main_resistanceMatrix_part(**main_kwargs):
     ch = problem_kwargs['ch']
     center = problem_kwargs['center']
     ph = problem_kwargs['ph']
+    hlx_theta0 = problem_kwargs['hlx_theta0']
     n_segment = problem_kwargs['n_segment']
     n_tail = problem_kwargs['n_tail']
     # left_hand = problem_kwargs['left_hand']
@@ -126,7 +127,7 @@ def main_resistanceMatrix_part(**main_kwargs):
 
     err_msg = 'current version, n_tail==1'
     assert n_tail == 1, err_msg
-    hlx1_geo = slb_geo_fun(ph, ch, rh1, rh2, theta0=0)
+    hlx1_geo = slb_geo_fun(ph, ch, rh1, rh2, theta0=hlx_theta0)
     hlx1_geo.create_nSegment(n_segment, check_nth=check_nth)
     hlx1_obj = slb.obj_dic[matrix_method]()
     hlx1_obj.set_data(hlx1_geo, hlx1_geo, name='helix0')
