@@ -83,7 +83,7 @@ from time import time
 from datetime import datetime
 from src.support_class import *
 from src import jeffery_model as jm
-from codeStore import support_fun as spf
+from codeStore import support_fun_bck as spf
 from codeStore import support_fun_table as spf_tb
 # %matplotlib notebook
 from src.objComposite import *

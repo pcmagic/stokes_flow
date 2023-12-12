@@ -2254,3 +2254,47 @@ def forceSphere_2d_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity in
 def check_forceSphere_2d_petsc(**kwargs):
     pass
     return True
+
+
+def forceSphere_2d_simp_petsc(obj1: 'sf.StokesFlowObj',  # object contain velocity information
+                              obj2: 'sf.StokesFlowObj',  # object contain force information
+                              m, **kwargs):
+    err_msg = 'current version, only support a single object during a simulation. '
+    assert obj1 == obj2, err_msg
+    
+    problem = obj1.get_problem()  # type: sf.ForceSphere2DProblem
+    ugeo = obj1.get_u_geo()  # type: geo.sphere_particle_2d
+    NS = ugeo.get_n_nodes()  # NS: Total number of spheres. (总的球体数)
+    sphere_R = ugeo.get_sphere_R()
+    sphere_X = ugeo.get_nodes()
+    diag_err = kwargs['diag_err']  # Avoiding errors introduced by nan values. (避免nan值引入的误差)
+    rs2 = kwargs['rs2']
+    sdis = kwargs['sdis']
+    length = kwargs['length']
+    width = kwargs['width']
+    mu = kwargs['mu']
+    
+    Minf_petsc = m
+    Rlub_petsc = problem.get_Rlub_petsc()
+    Rtol_petsc = problem.get_Rtol_petsc()
+    ptc_lub_list = problem.get_ptc_lub_list()
+    lamb_inter_list = problem.get_lamb_inter_list()
+    u_dmda = obj1.get_u_geo().get_dmda()
+    fs2.M_R_petsc_simp(Minf_petsc, Rlub_petsc, Rtol_petsc, u_dmda,
+                       sphere_R, sphere_X, sdis, length, width,
+                       mu=mu, diag_err=diag_err)
+    # print()
+    # print('Minf_petsc')
+    # Minf_petsc.view()
+    # print()
+    # print('Rlub_petsc')
+    # Rlub_petsc.view()
+    # print()
+    # print('Rtol_petsc')
+    # Rtol_petsc.view()
+    return True
+
+
+def check_forceSphere_2d_simp_petsc(**kwargs):
+    pass
+    return True

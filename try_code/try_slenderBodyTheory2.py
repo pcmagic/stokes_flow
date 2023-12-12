@@ -11,7 +11,7 @@ from mpl_toolkits.mplot3d import axes3d, Axes3D
 from scipy.optimize import leastsq, curve_fit
 from IPython.display import display, HTML
 from scipy import interpolate, integrate, optimize, sparse
-from codeStore import support_fun as spf
+from codeStore import support_fun_bck as spf
 from src import slenderBodyTheory as slb
 from src import slenderBodyTheory as slbt
 

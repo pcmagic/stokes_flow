@@ -3408,6 +3408,7 @@ class infPipe(infgeo_1d):
 class sphere_particle_2d(base_geo):
     def __init__(self):
         super().__init__()
+        self._dof = 2  # degrees of freedom pre node.
         self._sphere_R = np.array([])
         self._w = np.array([])  # spin of 2d spheres
         self._phi = np.array([])  # orintation of 2d spheres
@@ -3536,5 +3537,5 @@ class region:
 
 
 def set_axes_equal(ax):
-    from codeStore import support_fun as spf
+    from codeStore import support_fun_bck as spf
     return spf.set_axes_equal(ax)

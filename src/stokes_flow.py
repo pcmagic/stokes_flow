@@ -75,6 +75,7 @@ class StokesFlowProblem:
             'lg_rs_selfRotate':                   StokesFlowMethod.self_rotate_3d_petsc,
             'pf_sphere':                          StokesFlowMethod.pf_sphere_image_petsc,
             'forceSphere2d':                      StokesFlowMethod.forceSphere_2d_petsc,
+            'forceSphere2d_simp':                 StokesFlowMethod.forceSphere_2d_simp_petsc,
             }
         self._check_args_dict = {
             'rs':                                 StokesFlowMethod.check_regularized_stokeslets_matrix_3d,
@@ -97,6 +98,7 @@ class StokesFlowProblem:
             'lg_rs_selfRotate':                   StokesFlowMethod.check_self_rotate_3d_petsc,
             'pf_sphere':                          StokesFlowMethod.check_pf_sphere_image_petsc,
             'forceSphere2d':                      StokesFlowMethod.check_forceSphere_2d_petsc,
+            'forceSphere2d_simp':                 StokesFlowMethod.check_forceSphere_2d_simp_petsc,
             }
     
     def _check_add_obj(self, obj):
@@ -973,6 +975,9 @@ class StokesFlowProblem:
     
     def get_force_petsc(self):
         return self._force_petsc
+    
+    def get_velocity_petsc(self):
+        return self._velocity_petsc
     
     def get_n_unknown(self):
         return self._n_unknown
@@ -5346,6 +5351,7 @@ class ForceSphere2DProblem(StokesFlowProblem):
         self._Rtol_petsc = PETSc.Mat().create(comm=PETSc.COMM_WORLD)  # full modified R matrix, Rtol = I + Minf^-1 * Rlub
         self._Fmdf_petsc = PETSc.Vec().create(comm=PETSc.COMM_WORLD)  # modified force vector, Fmdf = Minf * F
         self._velocity = np.zeros([0])  # velocity information
+        self._spin = np.zeros([0])  # spin information
         self._re_fmdf = np.zeros([0])  # resolved information of modified force
     
     def get_lamb_inter_list(self):
@@ -5377,6 +5383,13 @@ class ForceSphere2DProblem(StokesFlowProblem):
     
     def get_velocity_z(self):
         return self._velocity[2::self._n_unknown]
+    
+    def get_spin(self):
+        return self._spin
+    
+    def set_velocity_petsc(self, velocity_petsc):
+        self._velocity_petsc = velocity_petsc
+        return True
     
     def initial_lub(self):
         assert self.get_n_obj() == 1
@@ -5444,30 +5457,33 @@ class ForceSphere2DProblem(StokesFlowProblem):
         n_obj = len(self.get_all_obj_list())
         for i0, obj2 in enumerate(self.get_all_obj_list()):
             kwargs['INDEX'] = ' %d/%d, ' % (i0 + 1, n_obj) + INDEX
-            assert obj2.get_matrix_method() == 'forceSphere2d'
+            assert 'forceSphere2d' in obj2.get_matrix_method()
             self._check_args_dict[obj2.get_matrix_method()](**kwargs)
             self._method_dict[obj2.get_matrix_method()](obj1, obj2, m_petsc, **kwargs)
         m_petsc.assemble()
         return True
     
-    def create_matrix(self):
+    def create_matrix_light(self):
+        i0, n_obj, obj1 = 0, 1, self.get_all_obj_list()[0]
+        INDEX = ' %d/%d' % (i0 + 1, n_obj)
+        self._create_matrix_obj(obj1, self._M_petsc, INDEX)
+        return True
+    
+    def create_matrix(self, PETScSysPrint=True):
         assert self.get_n_obj() == 1
+        # print('dbg1')
         
         t0 = time()
         self.create_F_U()
         if not self._M_petsc.isAssembled():
             self.create_empty_M()
             self._M_destroyed = False
-        n_obj = len(self.get_all_obj_list())
-        for i0, obj1 in enumerate(self.get_all_obj_list()):
-            INDEX = ' %d/%d' % (i0 + 1, n_obj)
-            self._create_matrix_obj(obj1, self._M_petsc, INDEX)
-        self._M_petsc.view()
+        self.create_matrix_light()
         t1 = time()
         PETSc.Sys.Print('  %s: create matrix use: %fs' % (str(self), (t1 - t0)))
         return True
     
-    def solve_resistance(self, ini_guess=None):
+    def solve_resistance(self, ini_guess=None, PETScSysPrint=True):
         t0 = time()
         kwargs = self._kwargs
         solve_method = kwargs['solve_method']
@@ -5483,7 +5499,7 @@ class ForceSphere2DProblem(StokesFlowProblem):
         ksp.setType(solve_method)
         ksp.getPC().setType(precondition_method)
         ksp.setOperators(self.get_Rtol_petsc())
-        OptDB = PETSc.Options()
+        # OptDB = PETSc.Options()
         ksp.setFromOptions()
         ksp.setGMRESRestart(ksp.getTolerances()[-1])
         ksp.setInitialGuessNonzero(True)
@@ -5493,15 +5509,24 @@ class ForceSphere2DProblem(StokesFlowProblem):
         self._residualNorm = self._resolve_fmdf(ksp)
         ksp.destroy()
         
-        t1 = time()
-        PETSc.Sys.Print('  %s: solve matrix equation use: %fs, with residual norm %e' %
-                        (str(self) + 'solve_resistance', (t1 - t0), self._residualNorm))
+        if PETScSysPrint:
+            t1 = time()
+            PETSc.Sys.Print('  %s: solve matrix equation use: %fs, with residual norm %e' %
+                            (str(self) + 'solve_resistance', (t1 - t0), self._residualNorm))
         return self._residualNorm
     
     def _solve_velocity(self, ksp):
         assert self.get_n_obj() == 1
+        frac = 1 / (np.pi * self.get_kwargs()['mu'])  # 前置系数
         
+        # self.get_Minf_petsc().view()
         self.get_Minf_petsc().mult(self.get_force_petsc(), self.get_Fmdf_petsc())
+        self.get_Fmdf_petsc().scale(frac)
+        # ksp.getOperators()[0].view()
+        print(self._velocity_petsc.getSizes())
+        print(self.get_Fmdf_petsc().getSizes())
+        print()
+        # assert 1 == 2
         if self._kwargs['getConvergenceHistory']:
             ksp.setConvergenceHistory()
             ksp.solve(self.get_Fmdf_petsc(), self._velocity_petsc)
@@ -5509,16 +5534,20 @@ class ForceSphere2DProblem(StokesFlowProblem):
         else:
             ksp.solve(self.get_Fmdf_petsc(), self._velocity_petsc)
         
-        # reorder force from petsc index to normal index, and separate to each object.
-        t_velocity = self.vec_scatter(self._velocity_petsc, destroy=False)
-        tmp = []
-        for obj0 in self.get_obj_list():  # type: geo.sphere_particle_2d
-            ugeo = obj0.get_u_geo()
-            _, u_glbIdx_all = ugeo.get_glbIdx()
-            obj0.set_velocity(t_velocity[u_glbIdx_all[:ugeo.get_dof() * ugeo.get_n_nodes()]])
-            obj0.set_spin(t_velocity[u_glbIdx_all[ugeo.get_dof() * ugeo.get_n_nodes():]])
-            tmp.append(obj0.get_velocity())
-        self._velocity = np.hstack(tmp)
+        # the following codes are commanded for speedup.
+        # # reorder force from petsc index to normal index, and separate to each object.
+        # t_velocity = self.vec_scatter(self._velocity_petsc, destroy=False)
+        # tmp_velocity = []
+        # tmp_spin = []
+        # for obj0 in self.get_obj_list():  # type: geo.sphere_particle_2d
+        #     ugeo = obj0.get_u_geo()
+        #     _, u_glbIdx_all = ugeo.get_glbIdx()
+        #     obj0.set_velocity(t_velocity[u_glbIdx_all[:ugeo.get_dof() * ugeo.get_n_nodes()]])
+        #     obj0.set_spin(t_velocity[u_glbIdx_all[ugeo.get_dof() * ugeo.get_n_nodes():]])
+        #     tmp_velocity.append(obj0.get_velocity())
+        #     tmp_spin.append(obj0.get_spin())
+        # self._velocity = np.hstack(tmp_velocity)
+        # self._spin = np.hstack(tmp_spin)
         return True
     
     def _resolve_fmdf(self, ksp):

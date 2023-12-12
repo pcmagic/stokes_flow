@@ -1,26 +1,51 @@
 import numpy as np
+import petsc4py.PETSc
 from scipy.special import erfinv
 from petsc4py import PETSc
+from codeStore import support_fun as spf
 
 
 # (1) -------------------------------------------------------------------------------------------------------------------------------------------------------------
-def cal_dist_periodic(X, xi, length, width):
-    
-    dxi = X - xi
-    dxi = dxi[:, :2]
-    dxi = boundary_cond(dxi, length, width)
-    dr2 = np.sum(dxi ** 2, axis=1)
+def cal_dist_periodic_petsc(X_0, X_1, xi_0, xi_1, dof, length, width):
+    dxi_0 = X_0 - xi_0
+    dxi_1 = X_1 - xi_1
+    dxi_0, dxi_1 = boundary_cond_petsc(dxi_0, dxi_1, length, width)
+    dr2 = dxi_0 ** 2 + dxi_1 ** 2
     dr1 = np.sqrt(dr2)
+    return dxi_0, dxi_1, dr1
+
+
+def cal_dist_periodic(X, xi_0, xi_1, length, width):
+    dxi_0 = Xnew_0 - xi_0
+    dxi_1 = Xnew_1 - xi_1
     
-    return dxi, dr1
+    dxi_0, dxi_1 = boundary_cond(dxi_0, dxi_1, length, width)
+    # dr2 = np.sum(dxi ** 2, axis = 1)
+    dr2 = dxi_0 ** 2 + dxi_1 ** 2
+    dr1 = np.sqrt(dr2)
+    return dxi_0, dxi_1, dr1
 
 
 def boundary_cond(dxi, length, width):
-    
     dxi[:, 0] = np.where(dxi[:, 0] < -length / 2, dxi[:, 0] + length, np.where(dxi[:, 0] > length / 2, dxi[:, 0] - length, dxi[:, 0]))
     dxi[:, 1] = np.where(dxi[:, 1] < -width / 2, dxi[:, 1] + width, np.where(dxi[:, 1] > width / 2, dxi[:, 1] - width, dxi[:, 1]))
-    
     return dxi
+
+
+def boundary_cond_petsc(dxi_0, dxi_1, length, width):
+    mask1_dxi_0 = np.zeros_like(dxi_0)  # (mask)********************************************************************************************
+    mask2_dxi_0 = np.zeros_like(dxi_0)  # (mask)********************************************************************************************
+    mask1_dxi_1 = np.zeros_like(dxi_1)  # (mask)********************************************************************************************
+    mask2_dxi_1 = np.zeros_like(dxi_1)  # (mask)********************************************************************************************
+    
+    mask1_dxi_0[dxi_0 < -length / 2] = 1
+    mask2_dxi_0[dxi_0 > length / 2] = 1
+    mask1_dxi_1[dxi_1 < -width / 2] = 1
+    mask2_dxi_1[dxi_1 > width / 2] = 1
+    
+    dxi_0 = dxi_0 + mask1_dxi_0 * length - mask2_dxi_0 * length
+    dxi_1 = dxi_1 + mask1_dxi_1 * width - mask2_dxi_1 * width
+    return dxi_0, dxi_1
 
 
 # (2) -------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -175,7 +200,7 @@ def M_R_fun(R, X, rs2, sdis, length, width, ptc_lub_list, lamb_inter_list, mu=1e
         eij_11 = eij_1 * eij_1
         
         # rss / xi / optimizing intermediate variables.
-        rss = (dr1 / R.T).T
+        rss = dr1 / R
         xi = rss - 2.0
         mask_rss_xi = rss < 2.0 + sdis
         # rss = np.where(mask_rss_xi, 2.0 + sdis, rss)
@@ -216,7 +241,6 @@ def M_R_fun(R, X, rs2, sdis, length, width, ptc_lub_list, lamb_inter_list, mu=1e
         YC = np.where(mask_XY_rss, gYC_3 * np.log(1 / xi) - YC0, 0)
         YC[i0] = 0
         
-        XaF, XcF, YaF, YbF, YcF, XA11, YA11, YB11, YC11, XA, YA, YB, YC = XaF.T, XcF.T, YaF.T, YbF.T, YcF.T, XA11.T, YA11.T, YB11.T, YC11.T, XA.T, YA.T, YB.T, YC.T
         # M_RPY
         m_mtt = 1 / (3 * np.pi * mu * (ri + R))
         m_mrt = 1 / (np.pi * mu * (ri + R) ** 2)
@@ -310,7 +334,7 @@ def M_R_petsc(Minf_petsc, Rlub_petsc, Rtol_petsc, u_dmda,
         eij_11 = eij_1 * eij_1
         
         # rss / xi / optimizing intermediate variables.
-        rss = (dr1 / R.T).T
+        rss = dr1 / R
         xi = rss - 2.0
         mask_rss_xi = rss < 2.0 + sdis
         # rss = np.where(mask_rss_xi, 2.0 + sdis, rss)
@@ -351,7 +375,6 @@ def M_R_petsc(Minf_petsc, Rlub_petsc, Rtol_petsc, u_dmda,
         YC = np.where(mask_XY_rss, gYC_3 * np.log(1 / xi) - YC0, 0)
         YC[i0] = 0
         
-        # XaF, XcF, YaF, YbF, YcF, XA11, YA11, YB11, YC11, XA, YA, YB, YC = XaF.T, XcF.T, YaF.T, YbF.T, YcF.T, XA11.T, YA11.T, YB11.T, YC11.T, XA.T, YA.T, YB.T, YC.T
         # M_RPY
         m_mtt = 1 / (3 * np.pi * mu * (ri + R))
         m_mrt = 1 / (np.pi * mu * (ri + R) ** 2)
@@ -432,6 +455,499 @@ def M_R_petsc(Minf_petsc, Rlub_petsc, Rtol_petsc, u_dmda,
     return True
 
 
+def M_R_petsc_simp(Minf_petsc, Rlub_petsc, Rtol_petsc, u_dmda,
+                   R, X, sdis, length, width, mu=1e-6, diag_err=1e-16):
+    # R: Radius of each spheres. (每个球的半径)
+    # X: Position and orientation information for all spheres. (所有球体的位置信息)
+    # sdis: Minimum surface distance. (最小表面间距)
+    # length / width: Length and width of calculating range. (计算范围的长度和宽度)
+    # frac: prepositioning factor. (前置系数)
+    
+    dof = u_dmda.getDof()
+    NS = R.size  # NS: Total number of spheres. (总的球体数)
+    X_glb = spf.vec_scatter(X)
+    X_0 = np.mod(X_glb[0::3], length)
+    X_1 = np.mod(X_glb[1::3], width)
+    Minf_petsc.zeroEntries()
+    Rlub_petsc.zeroEntries()
+    Rtol_petsc.zeroEntries()
+    
+    # loop alone u_nodes.
+    uidx0, uidx1 = u_dmda.getRanges()[0]
+    for i0 in range(uidx0, uidx1):
+        xi_0, xi_1, ri = X_0[i0], X_1[i0], R[i0]
+        dxi_0, dxi_1, dr1 = cal_dist_periodic_petsc(X_0, X_1, xi_0, xi_1, dof, length, width)
+        
+        # eij
+        # dr1[i0] = diag_err
+        eij_0 = dxi_0 / dr1
+        eij_1 = dxi_1 / dr1
+        eij_0[i0] = 0
+        eij_1[i0] = 0
+        eij_00 = eij_0 * eij_0
+        eij_01 = eij_0 * eij_1
+        eij_10 = eij_1 * eij_0
+        eij_11 = eij_1 * eij_1
+        
+        # rss / xi / optimizing intermediate variables.
+        rss = dr1 / R
+        rss = np.maximum(rss, 2.0 + sdis)
+        xi = rss - 2.0
+        # rss[i0] = diag_err  # ********************************************************************************************
+        # xi[i0] = diag_err  # ********************************************************************************************
+        
+        rss_pow_2 = rss ** 2
+        rss_pow_3 = rss ** 3
+        
+        XaF = 1.5 / rss - 1 / rss_pow_3  # (2 + 2 * lamb_pow_2) / lamb_plus_1_pow_2 = （2+2)/(1+1)**2 = 1
+        XaF[i0] = 0
+        YaF = 0.75 / rss + 0.5 / rss_pow_3  # (1 + lamb_pow_2) / lamb_plus_1_pow_2 = (1+1)/(1+1)**2 = 0.5
+        YaF[i0] = 0
+        YbF = -0.5 / rss_pow_2
+        YbF[i0] = 0
+        XcF = 1 / rss_pow_3
+        XcF[i0] = 0
+        YcF = -0.5 / rss_pow_3
+        YcF[i0] = 0
+        
+        mask_XY_xi = xi <= 1.0
+        XA11 = np.where(mask_XY_xi, 0.25 / xi - 0.25, 0)
+        XA11[i0] = 0
+        YA11 = np.where(mask_XY_xi, -1 / 6 * np.log(xi), 0)
+        YA11[i0] = 0
+        YB11 = np.where(mask_XY_xi, 0.25 * np.log(xi), 0)
+        YB11[i0] = 0
+        YC11 = np.where(mask_XY_xi, -0.2 * np.log(xi), 0)
+        YC11[i0] = 0
+        
+        # XA = np.where(mask_XY_xi, -0.25 / xi + 0.225 * np.log(xi), 0) #-2/(lamb_plus_1) = -1
+        XA = np.where(mask_XY_xi, -0.25 / xi + 0.25, 0)
+        XA[i0] = 0
+        YA = np.where(mask_XY_xi, 1 / 6 * np.log(xi), 0)  # -2/(lamb_plus_1) = -1
+        YA[i0] = 0
+        YB = np.where(mask_XY_xi, -0.25 * np.log(xi), 0)  # -4 / lamb_plus_1_pow_2 = -4/(1+1)**2 = -1
+        YB[i0] = 0
+        YC = np.where(mask_XY_xi, -0.05 * np.log(xi), 0)
+        YC[i0] = 0
+        
+        # M_RPY
+        m_mtt = 1 / 6  # 1 / (3 * np.pi * mu * (ri + R))
+        m_mrt = 1 / 4  # 1 / (np.pi * mu * (ri + R) ** 2)
+        m_mrr = 1 / 8  # 1 / (np.pi * mu * (ri + R) ** 3)
+        
+        ## MTT
+        Minf_petsc[dof * i0 + 0, 0: (dof * NS): dof] = m_mtt * (XaF * eij_00 + YaF * (1 - eij_00))
+        Minf_petsc[dof * i0 + 0, 1: (dof * NS): dof] = m_mtt * (XaF * eij_01 + YaF * (0 - eij_01))
+        Minf_petsc[dof * i0 + 1, 0: (dof * NS): dof] = m_mtt * (XaF * eij_10 + YaF * (0 - eij_10))
+        Minf_petsc[dof * i0 + 1, 1: (dof * NS): dof] = m_mtt * (XaF * eij_11 + YaF * (1 - eij_11))
+        Minf_petsc[dof * i0 + 0, dof * i0 + 0] = m_mtt
+        Minf_petsc[dof * i0 + 1, dof * i0 + 1] = m_mtt
+        ## MRT
+        Minf_petsc[dof * i0 + 2, 0: (dof * NS): dof] = m_mrt * YbF * eij_1
+        Minf_petsc[dof * i0 + 2, 1: (dof * NS): dof] = m_mrt * YbF * -eij_0
+        # Minf_petsc[dof * i0 + 2, dof * i0 + 0] = 0  # Minf_petsc.zeroEntries()
+        # Minf_petsc[dof * i0 + 2, dof * i0 + 1] = 0  # Minf_petsc.zeroEntries()
+        ## MTR
+        Minf_petsc[0: (dof * NS): dof, dof * i0 + 2] = m_mrt * YbF * eij_1
+        Minf_petsc[1: (dof * NS): dof, dof * i0 + 2] = m_mrt * YbF * -eij_0
+        # Minf_petsc[dof * i0 + 0, dof * i0 + 2] = 0  # Minf_petsc.zeroEntries()
+        # Minf_petsc[dof * i0 + 1, dof * i0 + 2] = 0  # Minf_petsc.zeroEntries()
+        ## MRR
+        Minf_petsc[dof * i0 + 2, 2: (dof * NS): dof] = m_mrr * YcF
+        Minf_petsc[dof * i0 + 2, dof * i0 + 2] = m_mrr
+        
+        # R_lub
+        r_rtt = 6  # 1 / m_mtt
+        r_rrt = 4  # 1 / m_mrt
+        r_rrr = 8  # 1 / m_mrr
+        
+        ## RTT
+        Rlub_petsc[dof * i0 + 0, 0: (dof * NS): dof] = r_rtt * (XA * eij_00 + YA * (1 - eij_00))
+        Rlub_petsc[dof * i0 + 0, 1: (dof * NS): dof] = r_rtt * (XA * eij_01 + YA * (0 - eij_01))
+        Rlub_petsc[dof * i0 + 1, 0: (dof * NS): dof] = r_rtt * (XA * eij_10 + YA * (0 - eij_10))
+        Rlub_petsc[dof * i0 + 1, 1: (dof * NS): dof] = r_rtt * (XA * eij_11 + YA * (1 - eij_11))
+        Rlub_petsc[dof * i0 + 0, dof * i0 + 0] = np.sum(r_rtt * (XA11 * eij_00 + YA11 * (1 - eij_00)))
+        Rlub_petsc[dof * i0 + 0, dof * i0 + 1] = np.sum(r_rtt * (XA11 * eij_01 + YA11 * (0 - eij_01)))
+        Rlub_petsc[dof * i0 + 1, dof * i0 + 0] = np.sum(r_rtt * (XA11 * eij_10 + YA11 * (0 - eij_10)))
+        Rlub_petsc[dof * i0 + 1, dof * i0 + 1] = np.sum(r_rtt * (XA11 * eij_11 + YA11 * (1 - eij_11)))
+        ## RRT
+        Rlub_petsc[dof * i0 + 2, 0: (dof * NS): dof] = r_rrt * YB * eij_1
+        Rlub_petsc[dof * i0 + 2, 1: (dof * NS): dof] = r_rrt * YB * -eij_0
+        Rlub_petsc[dof * i0 + 2, dof * i0 + 0] = np.sum(r_rrt * YB11 * eij_1)
+        Rlub_petsc[dof * i0 + 2, dof * i0 + 1] = np.sum(r_rrt * YB11 * -eij_0)
+        ## RTR
+        Rlub_petsc[0: (dof * NS): dof, dof * i0 + 2] = r_rrt * YB * eij_1
+        Rlub_petsc[1: (dof * NS): dof, dof * i0 + 2] = r_rrt * YB * -eij_0
+        Rlub_petsc[dof * i0 + 0, dof * i0 + 2] = np.sum(r_rrt * YB11 * eij_1)
+        Rlub_petsc[dof * i0 + 1, dof * i0 + 2] = np.sum(r_rrt * YB11 * -eij_0)
+        ## RRR
+        Rlub_petsc[dof * i0 + 2, 2: (dof * NS): dof] = r_rrr * YC
+        Rlub_petsc[dof * i0 + 2, dof * i0 + 2] = np.sum(r_rrr * YC11)
+    
+    Minf_petsc.assemble()
+    Rlub_petsc.assemble()
+    # frac = 1 / (np.pi * mu)  # 前置系数
+    # Minf_petsc.scale(frac)  # 远场的迁移率矩阵：M_inf
+    # Rlub_petsc.scale(1 / frac)  # 近场阻力矩阵：R_lub
+    m_start, m_end = Rtol_petsc.getOwnershipRange()
+    Minf_petsc.matMult(Rlub_petsc, result=Rtol_petsc)
+    Rtol_petsc.setValues(range(m_start, m_end), range(m_start, m_end), np.eye(m_end - m_start, m_end - m_start),
+                         addv=True)  # Rtol = M_RPY @ R_lub + np.eye(dof * NS, dof * NS)
+    Rtol_petsc.assemble()
+    
+    # Minf = Minf_petsc.getDenseArray()
+    # Rlub = Rlub_petsc.getDenseArray()
+    # Rtol = Rtol_petsc.getDenseArray()
+    # pass
+    return True
+
+
+def M_R_petsc_simp_v2(Minf_petsc, Rlub_petsc, Rtol_petsc, u_dmda,
+                      R, X, sdis, length, width, mu=1e-6, diag_err=1e-16):
+    # R: Radius of each spheres. (每个球的半径)
+    # X: Position and orientation information for all spheres. (所有球体的位置信息)
+    # sdis: Minimum surface distance. (最小表面间距)
+    # length / width: Length and width of calculating range. (计算范围的长度和宽度)
+    # frac: prepositioning factor. (前置系数)
+    
+    dof = u_dmda.getDof()
+    NS = R.size  # NS: Total number of spheres. (总的球体数)
+    X_glb = spf.vec_scatter(X)
+    X_0 = np.mod(X_glb[0::3], length)
+    X_1 = np.mod(X_glb[1::3], width)
+    Minf_petsc.zeroEntries()
+    Rlub_petsc.zeroEntries()
+    Rtol_petsc.zeroEntries()
+    
+    def M_need_and_R_need(R, dxi_0, dxi_1, dr1):  # (M_need_and_R_need)*
+        # eij (M&R)
+        dr1[i0] = diag_err
+        eij_0 = dxi_0 / dr1
+        eij_1 = dxi_1 / dr1
+        eij_0[i0] = 0
+        eij_1[i0] = 0
+        eij_00 = eij_0 * eij_0
+        eij_01 = eij_0 * eij_1
+        eij_10 = eij_1 * eij_0
+        eij_11 = eij_1 * eij_1
+        eij_list = [eij_0, eij_1, eij_00, eij_01, eij_10, eij_11]
+        
+        # rss / xi / optimizing intermediate variables. (M&R)
+        rss = dr1 / R
+        rss_idx = rss < 2.0 + sdis
+        rss[rss_idx] = 2.0 + sdis
+        xi = rss - 2.0
+        rss[i0] = diag_err
+        xi[i0] = diag_err
+        log_xi = np.log(xi)
+        
+        # xi_mask (M&R)
+        mask_XY_xi = xi > 1.0
+        not_mask_XY_xi = np.logical_not(mask_XY_xi)  # not mask_XY_xi(error)
+        
+        return eij_list, rss, xi, log_xi, mask_XY_xi, not_mask_XY_xi
+    
+    def Minf_petsc_only(rss):  # (Minf_petsc_only)
+        
+        rss_pow_2 = rss ** 2
+        rss_pow_3 = rss ** 3
+        
+        XaF = 1.5 / rss - 1 / rss_pow_3  # (2 + 2 * lamb_pow_2) / lamb_plus_1_pow_2 = （2+2)/(1+1)**2 = 1
+        XaF[i0] = 0
+        XcF = 1 / rss_pow_3
+        XcF[i0] = 0
+        
+        YaF = 0.75 / rss + 0.5 / rss_pow_3  # (1 + lamb_pow_2) / lamb_plus_1_pow_2 = (1+1)/(1+1)**2 = 0.5
+        YaF[i0] = 0
+        YbF = -0.5 / rss_pow_2
+        YbF[i0] = 0
+        YcF = -0.5 / rss_pow_3
+        YcF[i0] = 0
+        
+        return XaF, XcF, YaF, YbF, YcF
+    
+    def Rlub_petsc_only(xi, log_xi, mask_XY_xi, not_mask_XY_xi):  # (Rlub_petsc_only)
+        
+        # XA11 = np.where(mask_XY_xi, 0.25 / xi - 0.225 * np.log(xi), 0)
+        XA11 = np.zeros(NS)
+        XA11[mask_XY_xi] = 0
+        XA11[not_mask_XY_xi] = 0.25 / xi[not_mask_XY_xi] - 0.25
+        XA11[i0] = 0
+        
+        # XA = np.where(mask_XY_xi, -0.25 / xi + 0.225 * np.log(xi), 0) #-2/(lamb_plus_1) = -1
+        XA = np.zeros(NS)
+        XA[mask_XY_xi] = 0
+        XA[not_mask_XY_xi] = -0.25 / xi[not_mask_XY_xi] + 0.25
+        XA[i0] = 0
+        
+        YA11 = np.zeros(NS)
+        YA11[mask_XY_xi] = 0
+        YA11[not_mask_XY_xi] = -1 / 6 * log_xi[not_mask_XY_xi]
+        YA11[i0] = 0
+        YB11 = np.zeros(NS)
+        YB11[mask_XY_xi] = 0
+        YB11[not_mask_XY_xi] = 0.25 * log_xi[not_mask_XY_xi]
+        YB11[i0] = 0
+        YC11 = np.zeros(NS)
+        YC11[mask_XY_xi] = 0
+        YC11[not_mask_XY_xi] = -0.2 * log_xi[not_mask_XY_xi]
+        YC11[i0] = 0
+        
+        YA = np.zeros(NS)
+        YA[mask_XY_xi] = 0
+        YA[not_mask_XY_xi] = 1 / 6 * log_xi[not_mask_XY_xi]
+        YA[i0] = 0
+        YB = np.zeros(NS)
+        YB[mask_XY_xi] = 0
+        YB[not_mask_XY_xi] = -0.25 * log_xi[not_mask_XY_xi]
+        YB[i0] = 0
+        YC = np.zeros(NS)
+        YC[mask_XY_xi] = 0
+        YC[not_mask_XY_xi] = -0.05 * log_xi[not_mask_XY_xi]
+        YC[i0] = 0
+        
+        return XA11, XA, YA11, YB11, YC11, YA, YB, YC
+    
+    def Minf_petsc_fun(eij_list, XaF, XcF, YaF, YbF, YcF):  # (Minf_petsc_fun)
+        eij_0, eij_1, eij_00, eij_01, eij_10, eij_11 = eij_list
+        
+        # Minf_petsc
+        m_mtt = 0.16666666666666666667  # (1 / 6)******************** # 1 / 6 # 1 / (3 * np.pi * mu * (ri + R))
+        m_mrt = 0.25  # 1 / 4 # 1 / (np.pi * mu * (ri + R) ** 2)
+        m_mrr = 0.125  # 1 / 8 # 1 / (np.pi * mu * (ri + R) ** 3)
+        
+        ## MTT
+        Minf_petsc[dof * i0 + 0, 0: (dof * NS): dof] = m_mtt * (XaF * eij_00 + YaF * (1 - eij_00))
+        Minf_petsc[dof * i0 + 0, 1: (dof * NS): dof] = m_mtt * (XaF * eij_01 + YaF * (0 - eij_01))
+        Minf_petsc[dof * i0 + 1, 0: (dof * NS): dof] = m_mtt * (XaF * eij_10 + YaF * (0 - eij_10))
+        Minf_petsc[dof * i0 + 1, 1: (dof * NS): dof] = m_mtt * (XaF * eij_11 + YaF * (1 - eij_11))
+        Minf_petsc[dof * i0 + 0, dof * i0 + 0] = m_mtt
+        Minf_petsc[dof * i0 + 1, dof * i0 + 1] = m_mtt
+        
+        ## MRT
+        MRT_part0 = m_mrt * YbF * eij_1  # (MRT/MTR)
+        MRT_part1 = m_mrt * YbF * -eij_0  # (MRT/MTR)
+        Minf_petsc[dof * i0 + 2, 0: (dof * NS): dof] = MRT_part0
+        Minf_petsc[dof * i0 + 2, 1: (dof * NS): dof] = MRT_part1
+        Minf_petsc[dof * i0 + 2, dof * i0 + 0] = 0
+        Minf_petsc[dof * i0 + 2, dof * i0 + 1] = 0
+        
+        ## MTR
+        Minf_petsc[0: (dof * NS): dof, dof * i0 + 2] = MRT_part0
+        Minf_petsc[1: (dof * NS): dof, dof * i0 + 2] = MRT_part1
+        Minf_petsc[dof * i0 + 0, dof * i0 + 2] = 0
+        Minf_petsc[dof * i0 + 1, dof * i0 + 2] = 0
+        
+        ## MRR
+        Minf_petsc[dof * i0 + 2, 2: (dof * NS): dof] = m_mrr * YcF
+        Minf_petsc[dof * i0 + 2, dof * i0 + 2] = m_mrr
+    
+    def Rlub_petsc_fun(eij_list, XA11, XA, YA11, YB11, YC11, YA, YB, YC):  # (Rlub_petsc_fun)
+        
+        eij_0, eij_1, eij_00, eij_01, eij_10, eij_11 = eij_list
+        
+        # Rlub_petsc
+        r_rtt = 6  # 1 / m_mtt
+        r_rrt = 4  # 1 / m_mrt
+        r_rrr = 8  # 1 / m_mrr
+        
+        ## RTT
+        Rlub_petsc[dof * i0 + 0, 0: (dof * NS): dof] = r_rtt * (XA * eij_00 + YA * (1 - eij_00))
+        Rlub_petsc[dof * i0 + 0, 1: (dof * NS): dof] = r_rtt * (XA * eij_01 + YA * (0 - eij_01))
+        Rlub_petsc[dof * i0 + 1, 0: (dof * NS): dof] = r_rtt * (XA * eij_10 + YA * (0 - eij_10))
+        Rlub_petsc[dof * i0 + 1, 1: (dof * NS): dof] = r_rtt * (XA * eij_11 + YA * (1 - eij_11))
+        Rlub_petsc[dof * i0 + 0, dof * i0 + 0] = np.sum(r_rtt * (XA11 * eij_00 + YA11 * (1 - eij_00)))
+        Rlub_petsc[dof * i0 + 0, dof * i0 + 1] = np.sum(r_rtt * (XA11 * eij_01 + YA11 * (0 - eij_01)))
+        Rlub_petsc[dof * i0 + 1, dof * i0 + 0] = np.sum(r_rtt * (XA11 * eij_10 + YA11 * (0 - eij_10)))
+        Rlub_petsc[dof * i0 + 1, dof * i0 + 1] = np.sum(r_rtt * (XA11 * eij_11 + YA11 * (1 - eij_11)))
+        
+        ## RRT
+        RRT_part0 = r_rrt * YB * eij_1
+        RRT_part1 = r_rrt * YB * -eij_0
+        RTT_sum0 = np.sum(r_rrt * YB11 * eij_1)
+        RTT_sum1 = np.sum(r_rrt * YB11 * -eij_0)
+        Rlub_petsc[dof * i0 + 2, 0: (dof * NS): dof] = RRT_part0
+        Rlub_petsc[dof * i0 + 2, 1: (dof * NS): dof] = RRT_part1
+        Rlub_petsc[dof * i0 + 2, dof * i0 + 0] = RTT_sum0
+        Rlub_petsc[dof * i0 + 2, dof * i0 + 1] = RTT_sum1
+        
+        ## RTR
+        # Rlub_petsc[0 : 2 * NS, 0 + 2 * NS : NS + 2 * NS] = Rlub_petsc[0 + 2 * NS : NS + 2 * NS, 0 : 2 * NS].T
+        Rlub_petsc[0: (dof * NS): dof, dof * i0 + 2] = RRT_part0
+        Rlub_petsc[1: (dof * NS): dof, dof * i0 + 2] = RRT_part1
+        Rlub_petsc[dof * i0 + 0, dof * i0 + 2] = RTT_sum0
+        Rlub_petsc[dof * i0 + 1, dof * i0 + 2] = RTT_sum1
+        
+        ## RRR
+        Rlub_petsc[dof * i0 + 2, 2: (dof * NS): dof] = r_rrr * YC
+        Rlub_petsc[dof * i0 + 2, dof * i0 + 2] = np.sum(r_rrr * YC11)
+    
+    # loop alone u_nodes.
+    uidx0, uidx1 = u_dmda.getRanges()[0]
+    for i0 in range(uidx0, uidx1):
+        xi_0, xi_1, ri = X_0[i0], X_1[i0], R[i0]
+        dxi_0, dxi_1, dr1 = cal_dist_periodic_petsc(X_0, X_1, xi_0, xi_1, dof, length, width)
+        dr1 = dr1 + diag_err
+        
+        # ********************************************************************************************
+        eij_list, rss, xi, log_xi, mask_XY_xi, not_mask_XY_xi = M_need_and_R_need(R, dxi_0, dxi_1, dr1)
+        XaF, XcF, YaF, YbF, YcF = Minf_petsc_only(rss)
+        XA11, XA, YA11, YB11, YC11, YA, YB, YC = Rlub_petsc_only(xi, log_xi, mask_XY_xi, not_mask_XY_xi)
+        Minf_petsc_fun(eij_list, XaF, XcF, YaF, YbF, YcF)
+        Rlub_petsc_fun(eij_list, XA11, XA, YA11, YB11, YC11, YA, YB, YC)
+    
+    Minf_petsc.assemble()
+    Rlub_petsc.assemble()
+    # frac = 1 / (np.pi * mu)  # 前置系数
+    # Minf_petsc.scale(frac)  # 远场的迁移率矩阵：M_inf
+    # Rlub_petsc.scale(1 / frac)  # 近场阻力矩阵：R_lub
+    m_start, m_end = Rtol_petsc.getOwnershipRange()
+    Minf_petsc.matMult(Rlub_petsc, result=Rtol_petsc)
+    Rtol_petsc.setValues(range(m_start, m_end), range(m_start, m_end), np.eye(m_end - m_start, m_end - m_start),
+                         addv=True)  # Rtol = Minf_petsc @ R_lub + np.eye(dof * NS, dof * NS)
+    Rtol_petsc.assemble()
+    
+    # Minf = Minf_petsc.getDenseArray()
+    # Rlub = Rlub_petsc.getDenseArray()
+    # Rtol = Rtol_petsc.getDenseArray()
+    # pass
+    return True
+
+
+def M_R_petsc_simp_noMult(Minf_petsc, Rlub_petsc, u_dmda,
+                          R, X, sdis, length, width, mu=1e-6, diag_err=1e-16):
+    # R: Radius of each spheres. (每个球的半径)
+    # X: Position and orientation information for all spheres. (所有球体的位置信息)
+    # sdis: Minimum surface distance. (最小表面间距)
+    # length / width: Length and width of calculating range. (计算范围的长度和宽度)
+    # frac: prepositioning factor. (前置系数)
+    
+    dof = u_dmda.getDof()
+    NS = R.size  # NS: Total number of spheres. (总的球体数)
+    X_glb = spf.vec_scatter(X)
+    Minf_petsc.zeroEntries()
+    Rlub_petsc.zeroEntries()
+    
+    # loop alone u_nodes.
+    uidx0, uidx1 = u_dmda.getRanges()[0]
+    for i0 in range(uidx0, uidx1):
+        xi_0, xi_1, ri = X_0[i0], X_1[i0], R[i0]
+        dxi_0, dxi_1, dr1 = cal_dist_periodic_petsc(X_glb, xi_0, xi_1, dof, length, width)
+        
+        # eij
+        dr1[i0] = diag_err
+        eij_0 = dxi_0 / dr1
+        eij_1 = dxi_1 / dr1
+        eij_0[i0] = 0
+        eij_1[i0] = 0
+        eij_00 = eij_0 * eij_0
+        eij_01 = eij_0 * eij_1
+        eij_10 = eij_1 * eij_0
+        eij_11 = eij_1 * eij_1
+        
+        # rss / xi / optimizing intermediate variables.
+        rss = dr1 / R
+        rss = np.maximum(rss, 2.0 + sdis)
+        xi = rss - 2.0
+        rss[i0] = diag_err  # ********************************************************************************************
+        xi[i0] = diag_err  # ********************************************************************************************
+        
+        rss_pow_2 = rss ** 2
+        rss_pow_3 = rss ** 3
+        
+        XaF = 1.5 / rss - 1 / rss_pow_3  # (2 + 2 * lamb_pow_2) / lamb_plus_1_pow_2 = （2+2)/(1+1)**2 = 1
+        XaF[i0] = 0
+        YaF = 0.75 / rss + 0.5 / rss_pow_3  # (1 + lamb_pow_2) / lamb_plus_1_pow_2 = (1+1)/(1+1)**2 = 0.5
+        YaF[i0] = 0
+        YbF = -0.5 / rss_pow_2
+        YbF[i0] = 0
+        XcF = 1 / rss_pow_3
+        XcF[i0] = 0
+        YcF = -0.5 / rss_pow_3
+        YcF[i0] = 0
+        
+        mask_XY_xi = xi <= 1.0
+        XA11 = np.where(mask_XY_xi, 0.25 / xi - 0.25, 0)
+        XA11[i0] = 0
+        YA11 = np.where(mask_XY_xi, -1 / 6 * np.log(xi), 0)
+        YA11[i0] = 0
+        YB11 = np.where(mask_XY_xi, 0.25 * np.log(xi), 0)
+        YB11[i0] = 0
+        YC11 = np.where(mask_XY_xi, -0.2 * np.log(xi), 0)
+        YC11[i0] = 0
+        
+        # XA = np.where(mask_XY_xi, -0.25 / xi + 0.225 * np.log(xi), 0) #-2/(lamb_plus_1) = -1
+        XA = np.where(mask_XY_xi, -0.25 / xi + 0.25, 0)
+        XA[i0] = 0
+        YA = np.where(mask_XY_xi, 1 / 6 * np.log(xi), 0)  # -2/(lamb_plus_1) = -1
+        YA[i0] = 0
+        YB = np.where(mask_XY_xi, -0.25 * np.log(xi), 0)  # -4 / lamb_plus_1_pow_2 = -4/(1+1)**2 = -1
+        YB[i0] = 0
+        YC = np.where(mask_XY_xi, -0.05 * np.log(xi), 0)
+        YC[i0] = 0
+        
+        # M_RPY
+        m_mtt = 1 / 6  # 1 / (3 * np.pi * mu * (ri + R))
+        m_mrt = 1 / 4  # 1 / (np.pi * mu * (ri + R) ** 2)
+        m_mrr = 1 / 8  # 1 / (np.pi * mu * (ri + R) ** 3)
+        
+        ## MTT
+        Minf_petsc[dof * i0 + 0, 0: (dof * NS): dof] = m_mtt * (XaF * eij_00 + YaF * (1 - eij_00))
+        Minf_petsc[dof * i0 + 0, 1: (dof * NS): dof] = m_mtt * (XaF * eij_01 + YaF * (0 - eij_01))
+        Minf_petsc[dof * i0 + 1, 0: (dof * NS): dof] = m_mtt * (XaF * eij_10 + YaF * (0 - eij_10))
+        Minf_petsc[dof * i0 + 1, 1: (dof * NS): dof] = m_mtt * (XaF * eij_11 + YaF * (1 - eij_11))
+        Minf_petsc[dof * i0 + 0, dof * i0 + 0] = m_mtt
+        Minf_petsc[dof * i0 + 1, dof * i0 + 1] = m_mtt
+        ## MRT
+        Minf_petsc[dof * i0 + 2, 0: (dof * NS): dof] = m_mrt * YbF * eij_1
+        Minf_petsc[dof * i0 + 2, 1: (dof * NS): dof] = m_mrt * YbF * -eij_0
+        # Minf_petsc[dof * i0 + 2, dof * i0 + 0] = 0  # Minf_petsc.zeroEntries()
+        # Minf_petsc[dof * i0 + 2, dof * i0 + 1] = 0  # Minf_petsc.zeroEntries()
+        ## MTR
+        Minf_petsc[0: (dof * NS): dof, dof * i0 + 2] = m_mrt * YbF * eij_1
+        Minf_petsc[1: (dof * NS): dof, dof * i0 + 2] = m_mrt * YbF * -eij_0
+        # Minf_petsc[dof * i0 + 0, dof * i0 + 2] = 0  # Minf_petsc.zeroEntries()
+        # Minf_petsc[dof * i0 + 1, dof * i0 + 2] = 0  # Minf_petsc.zeroEntries()
+        ## MRR
+        Minf_petsc[dof * i0 + 2, 2: (dof * NS): dof] = m_mrr * YcF
+        Minf_petsc[dof * i0 + 2, dof * i0 + 2] = m_mrr
+        
+        # R_lub
+        r_rtt = 6  # 1 / m_mtt
+        r_rrt = 4  # 1 / m_mrt
+        r_rrr = 8  # 1 / m_mrr
+        
+        ## RTT
+        Rlub_petsc[dof * i0 + 0, 0: (dof * NS): dof] = r_rtt * (XA * eij_00 + YA * (1 - eij_00))
+        Rlub_petsc[dof * i0 + 0, 1: (dof * NS): dof] = r_rtt * (XA * eij_01 + YA * (0 - eij_01))
+        Rlub_petsc[dof * i0 + 1, 0: (dof * NS): dof] = r_rtt * (XA * eij_10 + YA * (0 - eij_10))
+        Rlub_petsc[dof * i0 + 1, 1: (dof * NS): dof] = r_rtt * (XA * eij_11 + YA * (1 - eij_11))
+        Rlub_petsc[dof * i0 + 0, dof * i0 + 0] = np.sum(r_rtt * (XA11 * eij_00 + YA11 * (1 - eij_00)))
+        Rlub_petsc[dof * i0 + 0, dof * i0 + 1] = np.sum(r_rtt * (XA11 * eij_01 + YA11 * (0 - eij_01)))
+        Rlub_petsc[dof * i0 + 1, dof * i0 + 0] = np.sum(r_rtt * (XA11 * eij_10 + YA11 * (0 - eij_10)))
+        Rlub_petsc[dof * i0 + 1, dof * i0 + 1] = np.sum(r_rtt * (XA11 * eij_11 + YA11 * (1 - eij_11)))
+        ## RRT
+        Rlub_petsc[dof * i0 + 2, 0: (dof * NS): dof] = r_rrt * YB * eij_1
+        Rlub_petsc[dof * i0 + 2, 1: (dof * NS): dof] = r_rrt * YB * -eij_0
+        Rlub_petsc[dof * i0 + 2, dof * i0 + 0] = np.sum(r_rrt * YB11 * eij_1)
+        Rlub_petsc[dof * i0 + 2, dof * i0 + 1] = np.sum(r_rrt * YB11 * -eij_0)
+        ## RTR
+        Rlub_petsc[0: (dof * NS): dof, dof * i0 + 2] = r_rrt * YB * eij_1
+        Rlub_petsc[1: (dof * NS): dof, dof * i0 + 2] = r_rrt * YB * -eij_0
+        Rlub_petsc[dof * i0 + 0, dof * i0 + 2] = np.sum(r_rrt * YB11 * eij_1)
+        Rlub_petsc[dof * i0 + 1, dof * i0 + 2] = np.sum(r_rrt * YB11 * -eij_0)
+        ## RRR
+        Rlub_petsc[dof * i0 + 2, 2: (dof * NS): dof] = r_rrr * YC
+        Rlub_petsc[dof * i0 + 2, dof * i0 + 2] = np.sum(r_rrr * YC11)
+    
+    Minf_petsc.assemble()
+    Rlub_petsc.assemble()
+    # frac = 1 / (np.pi * mu)  # 前置系数
+    # Minf_petsc.scale(frac)  # 远场的迁移率矩阵：M_inf
+    # Rlub_petsc.scale(1 / frac)  # 近场阻力矩阵：R_lub
+    return True
+
+
 # 白噪声
 # 给定力矩，计算平移速度和旋转速度
 def F_fun(NS, For, Tor, phi):
@@ -442,3 +958,22 @@ def F_fun(NS, For, Tor, phi):
     F1[2 * NS:] = Tor  # 推进力矩和白噪声
     
     return F1
+
+
+def F_petsc(dmda, f, For, Tor, Frnd, Trnd, phi):
+    f: petsc4py.PETSc.Vec
+    
+    fidx0, fidx1 = dmda.getRanges()[0]
+    locN = fidx1 - fidx0
+    f[(3 * fidx0 + 0):(3 * fidx1):3] = For * np.cos(phi[fidx0: fidx1]) + Frnd * np.random.standard_normal(locN)  # 推进力和白噪声
+    f[(3 * fidx0 + 1):(3 * fidx1):3] = For * np.sin(phi[fidx0: fidx1]) + Frnd * np.random.standard_normal(locN)  # 推进力和白噪声
+    f[(3 * fidx0 + 2):(3 * fidx1):3] = Tor * np.ones(locN) + Trnd * np.random.standard_normal(locN)  # 推进力矩和白噪声
+    
+    # # dbg
+    # F1 =  np.loadtxt("/home/zhangji/ForceSphere/A000-Test_RK4/NS/F1_400.txt")
+    # f[(3 * fidx0 + 0):(3 * fidx1):3] = F1[(2 * fidx0 + 0):(2 * fidx1):2]
+    # f[(3 * fidx0 + 1):(3 * fidx1):3] = F1[(2 * fidx0 + 1):(2 * fidx1):2]
+    # f[(3 * fidx0 + 2):(3 * fidx1):3] = F1[2 * fidx1:]
+    
+    f.assemble()
+    return True
